@@ -32,6 +32,14 @@ config SUSPEND_SKIP_SYNC
 	  This setting changes the default for the run-tim switch. Say Y
 	  to change the default to disable the kernel sys_sync().
 
+config HAS_WAKELOCK
+	bool
+	default y
+
+config WAKELOCK
+	bool
+	default y
+
 config HIBERNATE_CALLBACKS
 	bool
 
