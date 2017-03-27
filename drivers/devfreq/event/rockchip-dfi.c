@@ -28,6 +28,15 @@
 #include <soc/rockchip/rk3568_grf.h>
 #include <soc/rockchip/rk3588_grf.h>
 
+#define RK3368_GRF_DDRC0_CON0		0x600
+#define RK3368_GRF_SOC_STATUS5		0x494
+#define RK3368_GRF_SOC_STATUS6		0x498
+#define RK3368_GRF_SOC_STATUS8		0x4a0
+#define RK3368_GRF_SOC_STATUS9		0x4a4
+#define RK3368_GRF_SOC_STATUS10		0x4a8
+#define RK3368_DFI_EN			(0x30003 << 5)
+#define RK3368_DFI_DIS			(0x30000 << 5)
+
 #define DMC_MAX_CHANNELS	4
 
 #define HIWORD_UPDATE(val, mask)	((val) | (mask) << 16)
@@ -100,6 +109,7 @@ struct rockchip_dfi {
 	struct device *dev;
 	void __iomem *regs;
 	struct regmap *regmap_pmu;
+	struct regmap *regmap_grf;
 	struct clk *clk;
 	int usecount;
 	struct mutex mutex;
@@ -117,6 +127,73 @@ struct rockchip_dfi {
 	int ddrmon_stride;
 	bool ddrmon_ctrl_single;
 	unsigned int count_multiplier;	/* number of data clocks per count */
+};
+
+static void rk3368_dfi_start_hardware_counter(struct devfreq_event_dev *edev)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+
+	regmap_write(info->regmap_grf, RK3368_GRF_DDRC0_CON0, RK3368_DFI_EN);
+}
+
+static void rk3368_dfi_stop_hardware_counter(struct devfreq_event_dev *edev)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+
+	regmap_write(info->regmap_grf, RK3368_GRF_DDRC0_CON0, RK3368_DFI_DIS);
+}
+
+static int rk3368_dfi_disable(struct devfreq_event_dev *edev)
+{
+	rk3368_dfi_stop_hardware_counter(edev);
+
+	return 0;
+}
+
+static int rk3368_dfi_enable(struct devfreq_event_dev *edev)
+{
+	rk3368_dfi_start_hardware_counter(edev);
+
+	return 0;
+}
+
+static int rk3368_dfi_set_event(struct devfreq_event_dev *edev)
+{
+	return 0;
+}
+
+static int rk3368_dfi_get_event(struct devfreq_event_dev *edev,
+				struct devfreq_event_data *edata)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+	unsigned long flags;
+	u32 dfi0_wr, dfi0_rd, dfi1_wr, dfi1_rd, dfi_timer;
+
+	local_irq_save(flags);
+
+	rk3368_dfi_stop_hardware_counter(edev);
+
+	regmap_read(info->regmap_grf, RK3368_GRF_SOC_STATUS5, &dfi0_wr);
+	regmap_read(info->regmap_grf, RK3368_GRF_SOC_STATUS6, &dfi0_rd);
+	regmap_read(info->regmap_grf, RK3368_GRF_SOC_STATUS9, &dfi1_wr);
+	regmap_read(info->regmap_grf, RK3368_GRF_SOC_STATUS10, &dfi1_rd);
+	regmap_read(info->regmap_grf, RK3368_GRF_SOC_STATUS8, &dfi_timer);
+
+	edata->load_count = (dfi0_wr + dfi0_rd + dfi1_wr + dfi1_rd) * 2;
+	edata->total_count = dfi_timer;
+
+	rk3368_dfi_start_hardware_counter(edev);
+
+	local_irq_restore(flags);
+
+	return 0;
+}
+
+static const struct devfreq_event_ops rk3368_dfi_ops = {
+	.disable = rk3368_dfi_disable,
+	.enable = rk3368_dfi_enable,
+	.get_event = rk3368_dfi_get_event,
+	.set_event = rk3368_dfi_set_event,
 };
 
 static int rockchip_dfi_enable(struct rockchip_dfi *dfi)
@@ -761,7 +838,26 @@ static int rk3588_dfi_init(struct rockchip_dfi *dfi)
 	return 0;
 };
 
+static __init int rk3368_dfi_init(struct platform_device *pdev,
+				  struct rockchip_dfi *data,
+				  struct devfreq_event_desc *desc)
+{
+	struct device *dev = &pdev->dev;
+
+	if (!dev->parent || !dev->parent->of_node)
+		return -EINVAL;
+
+	data->regmap_grf = syscon_node_to_regmap(dev->parent->of_node);
+	if (IS_ERR(data->regmap_grf))
+		return PTR_ERR(data->regmap_grf);
+
+	desc->ops = &rk3368_dfi_ops;
+
+	return 0;
+}
+
 static const struct of_device_id rockchip_dfi_id_match[] = {
+	{ .compatible = "rockchip,rk3368-dfi", .data = rk3368_dfi_init },
 	{ .compatible = "rockchip,rk3399-dfi", .data = rk3399_dfi_init },
 	{ .compatible = "rockchip,rk3568-dfi", .data = rk3568_dfi_init },
 	{ .compatible = "rockchip,rk3588-dfi", .data = rk3588_dfi_init },
