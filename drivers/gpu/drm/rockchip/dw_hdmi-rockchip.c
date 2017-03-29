@@ -10,6 +10,7 @@
 #include <linux/phy/phy.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pm_runtime.h>
 
 #include <drm/bridge/dw_hdmi.h>
 #include <drm/drm_edid.h>
@@ -705,12 +706,16 @@ static const struct component_ops dw_hdmi_rockchip_ops = {
 
 static int dw_hdmi_rockchip_probe(struct platform_device *pdev)
 {
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+
 	return component_add(&pdev->dev, &dw_hdmi_rockchip_ops);
 }
 
 static void dw_hdmi_rockchip_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &dw_hdmi_rockchip_ops);
+	pm_runtime_disable(&pdev->dev);
 }
 
 static int dw_hdmi_rockchip_suspend(struct device *dev)
@@ -718,6 +723,7 @@ static int dw_hdmi_rockchip_suspend(struct device *dev)
 	struct rockchip_hdmi *hdmi = dev_get_drvdata(dev);
 
 	dw_hdmi_suspend(hdmi->hdmi);
+	pm_runtime_put_sync(dev);
 
 	return 0;
 }
@@ -727,6 +733,7 @@ static int dw_hdmi_rockchip_resume(struct device *dev)
 	struct rockchip_hdmi *hdmi = dev_get_drvdata(dev);
 
 	dw_hdmi_resume(hdmi->hdmi);
+	pm_runtime_get_sync(dev);
 
 	return 0;
 }
