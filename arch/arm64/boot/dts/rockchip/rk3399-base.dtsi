@@ -288,6 +288,20 @@
 		#clock-cells = <0>;
 	};
 
+	dummy_cpll: dummy_cpll {
+		compatible = "fixed-clock";
+		clock-frequency = <0>;
+		clock-output-names = "dummy_cpll";
+		#clock-cells = <0>;
+	};
+
+	dummy_vpll: dummy_vpll {
+		compatible = "fixed-clock";
+		clock-frequency = <0>;
+		clock-output-names = "dummy_vpll";
+		#clock-cells = <0>;
+	};
+
 	pcie0: pcie@f8000000 {
 		compatible = "rockchip,rk3399-pcie";
 		reg = <0x0 0xf8000000 0x0 0x2000000>,
