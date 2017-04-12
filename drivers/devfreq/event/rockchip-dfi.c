@@ -28,6 +28,15 @@
 #include <soc/rockchip/rk3568_grf.h>
 #include <soc/rockchip/rk3588_grf.h>
 
+#define RK3288_PMU_SYS_REG2		0x9c
+#define RK3288_GRF_SOC_CON4		0x254
+#define RK3288_GRF_SOC_STATUS(n)	(0x280 + (n) * 4)
+#define READ_DRAMTYPE_INFO(n)		(((n) >> 13) & 0x7)
+#define RK3288_DFI_EN			(0x30003 << 14)
+#define RK3288_DFI_DIS			(0x30000 << 14)
+#define RK3288_LPDDR_SEL		(0x10001 << 13)
+#define RK3288_DDR3_SEL			(0x10000 << 13)
+
 #define RK3368_GRF_DDRC0_CON0		0x600
 #define RK3368_GRF_SOC_STATUS5		0x494
 #define RK3368_GRF_SOC_STATUS6		0x498
@@ -73,6 +82,13 @@
 #define PERF_EVENT_WRITE_BYTES3		0xa
 #define PERF_EVENT_BYTES		0xb
 #define PERF_ACCESS_TYPE_MAX		0xc
+
+enum {
+	DDR3 = 3,
+	LPDDR3 = 6,
+	LPDDR4 = 7,
+	UNUSED = 0xFF
+};
 
 /**
  * struct dmc_count_channel - structure to hold counter values from the DDR controller
@@ -127,6 +143,93 @@ struct rockchip_dfi {
 	int ddrmon_stride;
 	bool ddrmon_ctrl_single;
 	unsigned int count_multiplier;	/* number of data clocks per count */
+};
+
+static void rk3288_dfi_start_hardware_counter(struct devfreq_event_dev *edev)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+
+	regmap_write(info->regmap_grf, RK3288_GRF_SOC_CON4, RK3288_DFI_EN);
+}
+
+static void rk3288_dfi_stop_hardware_counter(struct devfreq_event_dev *edev)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+
+	regmap_write(info->regmap_grf, RK3288_GRF_SOC_CON4, RK3288_DFI_DIS);
+}
+
+static int rk3288_dfi_disable(struct devfreq_event_dev *edev)
+{
+	rk3288_dfi_stop_hardware_counter(edev);
+
+	return 0;
+}
+
+static int rk3288_dfi_enable(struct devfreq_event_dev *edev)
+{
+	rk3288_dfi_start_hardware_counter(edev);
+
+	return 0;
+}
+
+static int rk3288_dfi_set_event(struct devfreq_event_dev *edev)
+{
+	return 0;
+}
+
+static int rk3288_dfi_get_busier_ch(struct devfreq_event_dev *edev)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+	u32 tmp, max = 0;
+	u32 i, busier_ch = 0;
+	u32 rd_count, wr_count, total_count;
+
+	rk3288_dfi_stop_hardware_counter(edev);
+
+	/* Find out which channel is busier */
+	for (i = 0; i < RK3399_DMC_NUM_CH; i++) {
+		regmap_read(info->regmap_grf,
+			    RK3288_GRF_SOC_STATUS(11 + i * 4), &wr_count);
+		regmap_read(info->regmap_grf,
+			    RK3288_GRF_SOC_STATUS(12 + i * 4), &rd_count);
+		regmap_read(info->regmap_grf,
+			    RK3288_GRF_SOC_STATUS(14 + i * 4), &total_count);
+		info->ch_usage[i].access = (wr_count + rd_count) * 4;
+		info->ch_usage[i].total = total_count;
+		tmp = info->ch_usage[i].access;
+		if (tmp > max) {
+			busier_ch = i;
+			max = tmp;
+		}
+	}
+	rk3288_dfi_start_hardware_counter(edev);
+
+	return busier_ch;
+}
+
+static int rk3288_dfi_get_event(struct devfreq_event_dev *edev,
+				struct devfreq_event_data *edata)
+{
+	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
+	int busier_ch;
+	unsigned long flags;
+
+	local_irq_save(flags);
+	busier_ch = rk3288_dfi_get_busier_ch(edev);
+	local_irq_restore(flags);
+
+	edata->load_count = info->ch_usage[busier_ch].access;
+	edata->total_count = info->ch_usage[busier_ch].total;
+
+	return 0;
+}
+
+static const struct devfreq_event_ops rk3288_dfi_ops = {
+	.disable = rk3288_dfi_disable,
+	.enable = rk3288_dfi_enable,
+	.get_event = rk3288_dfi_get_event,
+	.set_event = rk3288_dfi_set_event,
 };
 
 static void rk3368_dfi_start_hardware_counter(struct devfreq_event_dev *edev)
@@ -838,6 +941,42 @@ static int rk3588_dfi_init(struct rockchip_dfi *dfi)
 	return 0;
 };
 
+static __init int rk3288_dfi_init(struct platform_device *pdev,
+				  struct rockchip_dfi *data,
+				  struct devfreq_event_desc *desc)
+{
+	struct device_node *np = pdev->dev.of_node, *node;
+	u32 dram_type;
+
+	node = of_parse_phandle(np, "rockchip,pmu", 0);
+	if (node) {
+		data->regmap_pmu = syscon_node_to_regmap(node);
+		if (IS_ERR(data->regmap_pmu))
+			return PTR_ERR(data->regmap_pmu);
+	}
+
+	node = of_parse_phandle(np, "rockchip,grf", 0);
+	if (node) {
+		data->regmap_grf = syscon_node_to_regmap(node);
+		if (IS_ERR(data->regmap_grf))
+			return PTR_ERR(data->regmap_grf);
+	}
+
+	regmap_read(data->regmap_pmu, RK3288_PMU_SYS_REG2, &dram_type);
+	dram_type = READ_DRAMTYPE_INFO(dram_type);
+
+	if (dram_type == DDR3)
+		regmap_write(data->regmap_grf, RK3288_GRF_SOC_CON4,
+			     RK3288_DDR3_SEL);
+	else
+		regmap_write(data->regmap_grf, RK3288_GRF_SOC_CON4,
+			     RK3288_LPDDR_SEL);
+
+	desc->ops = &rk3288_dfi_ops;
+
+	return 0;
+}
+
 static __init int rk3368_dfi_init(struct platform_device *pdev,
 				  struct rockchip_dfi *data,
 				  struct devfreq_event_desc *desc)
@@ -857,6 +996,7 @@ static __init int rk3368_dfi_init(struct platform_device *pdev,
 }
 
 static const struct of_device_id rockchip_dfi_id_match[] = {
+	{ .compatible = "rockchip,rk3288-dfi", .data = rk3288_dfi_init },
 	{ .compatible = "rockchip,rk3368-dfi", .data = rk3368_dfi_init },
 	{ .compatible = "rockchip,rk3399-dfi", .data = rk3399_dfi_init },
 	{ .compatible = "rockchip,rk3568-dfi", .data = rk3568_dfi_init },
