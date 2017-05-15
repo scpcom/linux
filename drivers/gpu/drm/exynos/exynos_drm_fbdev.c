@@ -18,6 +18,18 @@
 #include <drm/drm_prime.h>
 #include <drm/exynos_drm.h>
 
+#include <linux/export.h>
+#include <linux/dma-buf.h>
+#include <linux/rbtree.h>
+
+#include <drm/drm.h>
+#include <drm/drm_drv.h>
+#include <drm/drm_file.h>
+#include <drm/drm_framebuffer.h>
+#include <drm/drm_gem.h>
+#include <drm/drm_prime.h>
+
+
 #include "exynos_drm_drv.h"
 #include "exynos_drm_fb.h"
 #include "exynos_drm_fbdev.h"
@@ -47,6 +59,24 @@ static void exynos_drm_fb_destroy(struct fb_info *info)
 	kfree(fb_helper);
 }
 
+static struct dma_buf *exynos_fb_get_dma_buf(struct fb_info *info)
+{
+	struct dma_buf *buf = NULL;
+	struct drm_fb_helper *helper = info->par;
+	struct drm_device *dev = helper->dev;
+	struct exynos_drm_fbdev *exynos_fbd = to_exynos_fbdev(helper);
+	struct exynos_drm_gem *exynos_gem = exynos_fbd->exynos_gem;
+
+	if(dev->driver->gem_prime_export) {
+		buf = dev->driver->gem_prime_export(&exynos_gem->base, O_RDWR);
+		if(buf) {
+			drm_gem_object_get(&exynos_gem->base);
+		}
+	}
+
+	return buf;
+}
+
 static const struct fb_ops exynos_drm_fb_ops = {
 	.owner		= THIS_MODULE,
 	__FB_DEFAULT_DMAMEM_OPS_RDWR,
@@ -54,6 +84,7 @@ static const struct fb_ops exynos_drm_fb_ops = {
 	__FB_DEFAULT_DMAMEM_OPS_DRAW,
 	.fb_mmap        = exynos_drm_fb_mmap,
 	.fb_destroy	= exynos_drm_fb_destroy,
+	.fb_dmabuf_export = exynos_fb_get_dma_buf,
 };
 
 static int exynos_drm_fbdev_update(struct drm_fb_helper *helper,
