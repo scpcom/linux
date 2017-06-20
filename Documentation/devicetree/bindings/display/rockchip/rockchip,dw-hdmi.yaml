@@ -78,6 +78,10 @@ properties:
   phy-names:
     const: hdmi
 
+  hdcp1x-enable:
+    description:
+      enable hdcp1.x, enable if defined, disable if not defined
+
   pinctrl-names:
     description:
       The unwedge pinctrl entry shall drive the DDC SDA line low. This is
