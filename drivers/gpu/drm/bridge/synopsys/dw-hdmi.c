@@ -2703,6 +2703,50 @@ static int dw_hdmi_connector_atomic_check(struct drm_connector *connector,
 	return 0;
 }
 
+static int
+dw_hdmi_atomic_connector_set_property(struct drm_connector *connector,
+				      struct drm_connector_state *state,
+				      struct drm_property *property,
+				      uint64_t val)
+{
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+	const struct dw_hdmi_property_ops *ops =
+				hdmi->plat_data->property_ops;
+
+	if (ops && ops->set_property)
+		return ops->set_property(connector, state, property,
+					 val, hdmi->plat_data->phy_data);
+	else
+		return -EINVAL;
+}
+
+static int
+dw_hdmi_atomic_connector_get_property(struct drm_connector *connector,
+				      const struct drm_connector_state *state,
+				      struct drm_property *property,
+				      uint64_t *val)
+{
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+	const struct dw_hdmi_property_ops *ops =
+				hdmi->plat_data->property_ops;
+
+	if (ops && ops->get_property)
+		return ops->get_property(connector, state, property,
+					 val, hdmi->plat_data->phy_data);
+	else
+		return -EINVAL;
+}
+
+static int
+dw_hdmi_connector_set_property(struct drm_connector *connector,
+			       struct drm_property *property, uint64_t val)
+{
+	return dw_hdmi_atomic_connector_set_property(connector, NULL,
+						     property, val);
+}
+
 static void dw_hdmi_connector_force(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
@@ -2721,8 +2765,11 @@ static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
 	.destroy = drm_connector_cleanup,
 	.force = dw_hdmi_connector_force,
 	.reset = drm_atomic_helper_connector_reset,
+	.set_property = dw_hdmi_connector_set_property,
 	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	.atomic_set_property = dw_hdmi_atomic_connector_set_property,
+	.atomic_get_property = dw_hdmi_atomic_connector_get_property,
 };
 
 static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = {
@@ -2730,6 +2777,27 @@ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = 
 	.best_encoder = dw_hdmi_connector_best_encoder,
 	.atomic_check = dw_hdmi_connector_atomic_check,
 };
+
+static void dw_hdmi_attach_properties(struct dw_hdmi *hdmi)
+{
+	const struct dw_hdmi_property_ops *ops =
+				hdmi->plat_data->property_ops;
+
+	if (ops && ops->attach_properties)
+		return ops->attach_properties(&hdmi->connector,
+					       hdmi->version,
+					       hdmi->plat_data->phy_data);
+}
+
+static void dw_hdmi_destroy_properties(struct dw_hdmi *hdmi)
+{
+	const struct dw_hdmi_property_ops *ops =
+				hdmi->plat_data->property_ops;
+
+	if (ops && ops->destroy_properties)
+		return ops->destroy_properties(&hdmi->connector,
+					       hdmi->plat_data->phy_data);
+}
 
 static int dw_hdmi_connector_create(struct dw_hdmi *hdmi)
 {
@@ -2765,6 +2833,8 @@ static int dw_hdmi_connector_create(struct dw_hdmi *hdmi)
 		drm_connector_attach_hdr_output_metadata_property(connector);
 
 	drm_connector_attach_encoder(connector, hdmi->bridge.encoder);
+
+	dw_hdmi_attach_properties(hdmi);
 
 	cec_fill_conn_info_from_drm(&conn_info, connector);
 
@@ -3777,6 +3847,8 @@ void dw_hdmi_remove(struct dw_hdmi *hdmi)
 
 	/* Disable all interrupts */
 	hdmi_writeb(hdmi, ~0, HDMI_IH_MUTE_PHY_STAT0);
+
+	dw_hdmi_destroy_properties(hdmi);
 
 	if (hdmi->i2c)
 		i2c_del_adapter(&hdmi->i2c->adap);
