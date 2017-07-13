@@ -6,6 +6,7 @@
  * based on exynos_drm_drv.c
  */
 
+#include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -567,9 +568,59 @@ static void rockchip_drm_unbind(struct device *dev)
 
 DEFINE_DRM_GEM_FOPS(rockchip_drm_driver_fops);
 
+static int rockchip_drm_gem_dmabuf_begin_cpu_access(struct dma_buf *dma_buf,
+						    enum dma_data_direction dir)
+{
+	struct drm_gem_object *obj = dma_buf->priv;
+
+	return rockchip_gem_prime_begin_cpu_access(obj, dir);
+}
+
+static int rockchip_drm_gem_dmabuf_end_cpu_access(struct dma_buf *dma_buf,
+						  enum dma_data_direction dir)
+{
+	struct drm_gem_object *obj = dma_buf->priv;
+
+	return rockchip_gem_prime_end_cpu_access(obj, dir);
+}
+
+static const struct dma_buf_ops rockchip_drm_gem_prime_dmabuf_ops = {
+	.cache_sgt_mapping = true,
+	.attach = drm_gem_map_attach,
+	.detach = drm_gem_map_detach,
+	.map_dma_buf = drm_gem_map_dma_buf,
+	.unmap_dma_buf = drm_gem_unmap_dma_buf,
+	.release = drm_gem_dmabuf_release,
+	.mmap = drm_gem_dmabuf_mmap,
+	.vmap = drm_gem_dmabuf_vmap,
+	.vunmap = drm_gem_dmabuf_vunmap,
+	.get_uuid = drm_gem_dmabuf_get_uuid,
+	.begin_cpu_access = rockchip_drm_gem_dmabuf_begin_cpu_access,
+	.end_cpu_access = rockchip_drm_gem_dmabuf_end_cpu_access,
+};
+
+static struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj,
+						     int flags)
+{
+	struct drm_device *dev = obj->dev;
+	struct dma_buf_export_info exp_info = {
+		.exp_name = KBUILD_MODNAME, /* white lie for debug */
+		.owner = dev->driver->fops->owner,
+		.ops = &rockchip_drm_gem_prime_dmabuf_ops,
+		.size = obj->size,
+		.flags = flags,
+		.priv = obj,
+		.resv = obj->resv,
+	};
+
+	return drm_gem_dmabuf_export(dev, &exp_info);
+}
+
 static const struct drm_driver rockchip_drm_driver = {
 	.driver_features	= DRIVER_MODESET | DRIVER_GEM | DRIVER_ATOMIC,
 	.dumb_create		= rockchip_gem_dumb_create,
+	.gem_prime_import	= drm_gem_prime_import,
+	.gem_prime_export	= rockchip_drm_gem_prime_export,
 	.gem_prime_import_sg_table	= rockchip_gem_prime_import_sg_table,
 #ifdef CONFIG_DEBUG_FS
 	.debugfs_init		= rockchip_drm_debugfs_init,
