@@ -186,6 +186,7 @@ struct rockchip_crtc_funcs {
 struct rockchip_drm_private {
 	struct iommu_domain *domain;
 	struct device *iommu_dev;
+	struct gen_pool *secure_buffer_pool;
 	struct mutex mm_lock;
 	struct drm_mm mm;
 
