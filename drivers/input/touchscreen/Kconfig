@@ -1284,6 +1284,17 @@ config TOUCHSCREEN_SX8654
 	  To compile this driver as a module, choose M here: the
 	  module will be called sx8654.
 
+config TOUCHSCREEN_SX865X
+	tristate "Semtech multitouch resistive touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have a touchscreen using Semtec sx8650 controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sx865x.
+
 config TOUCHSCREEN_TPS6507X
 	tristate "TPS6507x based touchscreens"
 	depends on I2C
