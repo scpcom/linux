@@ -155,6 +155,14 @@ static const struct rk808_reg_data rk806_pre_init_reg[] = {
 	{ RK806_SYS_OPTION, RK806_SYS_ENB2_2M_MSK, RK806_SYS_ENB2_2M_EN },
 };
 
+static struct rk808_reg_data rk805_suspend_reg[] = {
+	{RK805_BUCK3_CONFIG_REG, PWM_MODE_MSK, AUTO_PWM_MODE},
+};
+
+static struct rk808_reg_data rk805_resume_reg[] = {
+	{RK805_BUCK3_CONFIG_REG, PWM_MODE_MSK, FPWM_MODE},
+};
+
 static const struct rk808_reg_data rk808_pre_init_reg[] = {
 	{ RK808_BUCK3_CONFIG_REG, BUCK_ILMIN_MASK,  BUCK_ILMIN_150MA },
 	{ RK808_BUCK4_CONFIG_REG, BUCK_ILMIN_MASK,  BUCK_ILMIN_200MA },
@@ -408,6 +416,18 @@ static const unsigned int rk816_irq_mask_offsets[] = {
 	RK816_IRQ_MSK_OFFSET(RK816_INT_STS_MSK_REG3),
 };
 
+static struct rk808_reg_data rk816_suspend_reg[] = {
+	/* set bat 3.4v low and act irq */
+	{ RK816_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
+	  RK816_VBAT_LOW_3V4 | EN_VBAT_LOW_IRQ },
+};
+
+static struct rk808_reg_data rk816_resume_reg[] = {
+	/* set bat 3.0v low and act shutdown */
+	{ RK816_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
+	  RK816_VBAT_LOW_3V0 | EN_VABT_LOW_SHUT_DOWN },
+};
+
 static unsigned int rk816_get_irq_reg(struct regmap_irq_chip_data *data,
 				      unsigned int base, int index)
 {
@@ -447,6 +467,18 @@ static const struct regmap_irq rk816_irqs[] = {
 	REGMAP_IRQ_REG(RK816_IRQ_CHG_TS, 2, RK816_INT_STS_CHG_TS),
 	REGMAP_IRQ_REG(RK816_IRQ_CHG_CVTLIM, 2, RK816_INT_STS_CHG_CVTLIM),
 	REGMAP_IRQ_REG(RK816_IRQ_DISCHG_ILIM, 2, RK816_INT_STS_DISCHG_ILIM),
+};
+
+static struct rk808_reg_data rk818_suspend_reg[] = {
+	/* set bat 3.4v low and act irq */
+	{ RK808_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
+	  RK808_VBAT_LOW_3V4 | EN_VBAT_LOW_IRQ },
+};
+
+static struct rk808_reg_data rk818_resume_reg[] = {
+	/* set bat 3.0v low and act shutdown */
+	{ RK808_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
+	  RK808_VBAT_LOW_3V0 | EN_VABT_LOW_SHUT_DOWN },
 };
 
 static const struct regmap_irq rk818_irqs[] = {
@@ -659,6 +691,9 @@ static const struct regmap_irq_chip rk818_irq_chip = {
 	.ack_base = RK818_INT_STS_REG1,
 	.init_ack_masked = true,
 };
+
+static struct rk808_reg_data *suspend_reg, *resume_reg;
+static int suspend_reg_num, resume_reg_num;
 
 static int rk808_power_off(struct sys_off_data *data)
 {
@@ -1034,6 +1069,10 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_cells = ARRAY_SIZE(rk805s);
 		on_source = RK805_ON_SOURCE_REG;
 		off_source = RK805_OFF_SOURCE_REG;
+		suspend_reg = rk805_suspend_reg;
+		suspend_reg_num = ARRAY_SIZE(rk805_suspend_reg);
+		resume_reg = rk805_resume_reg;
+		resume_reg_num = ARRAY_SIZE(rk805_resume_reg);
 		break;
 	case RK806_ID:
 		rk808->regmap_irq_chip = &rk806_irq_chip;
@@ -1059,6 +1098,10 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_cells = ARRAY_SIZE(rk816s);
 		on_source = RK816_ON_SOURCE_REG;
 		off_source = RK816_OFF_SOURCE_REG;
+		suspend_reg = rk816_suspend_reg;
+		suspend_reg_num = ARRAY_SIZE(rk816_suspend_reg);
+		resume_reg = rk816_resume_reg;
+		resume_reg_num = ARRAY_SIZE(rk816_resume_reg);
 		break;
 	case RK818_ID:
 		rk808->regmap_irq_chip = &rk818_irq_chip;
@@ -1068,6 +1111,10 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_cells = ARRAY_SIZE(rk818s);
 		on_source = RK818_ON_SOURCE_REG;
 		off_source = RK818_OFF_SOURCE_REG;
+		suspend_reg = rk818_suspend_reg;
+		suspend_reg_num = ARRAY_SIZE(rk818_suspend_reg);
+		resume_reg = rk818_resume_reg;
+		resume_reg_num = ARRAY_SIZE(rk818_resume_reg);
 		break;
 	case RK809_ID:
 	case RK817_ID:
@@ -1184,8 +1231,20 @@ EXPORT_SYMBOL_GPL(rk8xx_probe);
 int rk8xx_suspend(struct device *dev)
 {
 	struct rk808 *rk808 = dev_get_drvdata(dev);
-	int ret = 0;
+	int i, ret = 0;
 	int value;
+
+	for (i = 0; i < suspend_reg_num; i++) {
+		ret = regmap_update_bits(rk808->regmap,
+					 suspend_reg[i].addr,
+					 suspend_reg[i].mask,
+					 suspend_reg[i].value);
+		if (ret) {
+			dev_err(dev, "0x%x write err\n",
+				suspend_reg[i].addr);
+			return ret;
+		}
+	}
 
 	switch (rk808->variant) {
 	case RK805_ID:
@@ -1237,7 +1296,19 @@ int rk8xx_resume(struct device *dev)
 {
 	struct rk808 *rk808 = dev_get_drvdata(dev);
 	int value;
-	int ret = 0;
+	int i, ret = 0;
+
+	for (i = 0; i < resume_reg_num; i++) {
+		ret = regmap_update_bits(rk808->regmap,
+					 resume_reg[i].addr,
+					 resume_reg[i].mask,
+					 resume_reg[i].value);
+		if (ret) {
+			dev_err(dev, "0x%x write err\n",
+				resume_reg[i].addr);
+			return ret;
+		}
+	}
 
 	switch (rk808->variant) {
 	case RK809_ID:
