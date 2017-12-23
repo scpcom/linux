@@ -39,7 +39,6 @@
 #define RK3288_PMU_SYS_REG2		0x9c
 #define RK3288_GRF_SOC_CON4		0x254
 #define RK3288_GRF_SOC_STATUS(n)	(0x280 + (n) * 4)
-#define READ_DRAMTYPE_INFO(n)		(((n) >> 13) & 0x7)
 #define RK3288_DFI_EN			(0x30003 << 14)
 #define RK3288_DFI_DIS			(0x30000 << 14)
 #define RK3288_LPDDR_SEL		(0x10001 << 13)
@@ -55,6 +54,8 @@
 #define RK3368_DFI_DIS			(0x30000 << 5)
 
 #define DMC_MAX_CHANNELS	4
+#define READ_DRAMTYPE_INFO(n)		(((n) >> 13) & 0x7)
+#define READ_CH_INFO(n)			(((n) >> 28) & 0x3)
 
 #define HIWORD_UPDATE(val, mask)	((val) | (mask) << 16)
 
@@ -90,6 +91,9 @@
 #define PERF_EVENT_WRITE_BYTES3		0xa
 #define PERF_EVENT_BYTES		0xb
 #define PERF_ACCESS_TYPE_MAX		0xc
+
+/* pmu grf */
+#define PMUGRF_OS_REG2			0x308
 
 enum {
 	DDR3 = 3,
@@ -151,6 +155,7 @@ struct rockchip_dfi {
 	int ddrmon_stride;
 	bool ddrmon_ctrl_single;
 	unsigned int count_multiplier;	/* number of data clocks per count */
+	u32 dram_type;
 };
 
 static void rk3128_dfi_start_hardware_counter(struct devfreq_event_dev *edev)
@@ -387,10 +392,13 @@ static int rockchip_dfi_enable(struct rockchip_dfi *dfi)
 	if (dfi->usecount > 1)
 		goto out;
 
-	ret = clk_prepare_enable(dfi->clk);
-	if (ret) {
-		dev_err(&dfi->edev->dev, "failed to enable dfi clk: %d\n", ret);
-		goto out;
+	if (dfi->clk) {
+		ret = clk_prepare_enable(dfi->clk);
+		if (ret) {
+			dev_err(&dfi->edev->dev, "failed to enable dfi clk: %d\n",
+				ret);
+			goto out;
+		}
 	}
 
 	for (i = 0; i < dfi->max_channels; i++) {
@@ -459,7 +467,8 @@ static void rockchip_dfi_disable(struct rockchip_dfi *dfi)
 			break;
 	}
 
-	clk_disable_unprepare(dfi->clk);
+	if (dfi->clk)
+		clk_disable_unprepare(dfi->clk);
 out:
 	mutex_unlock(&dfi->mutex);
 }
@@ -953,6 +962,10 @@ static int rk3399_dfi_init(struct rockchip_dfi *dfi)
 	dfi->ddrmon_stride = 0x14;
 	dfi->ddrmon_ctrl_single = true;
 
+	regmap_read(data->regmap_pmu, PMUGRF_OS_REG2, &val);
+	data->dram_type = READ_DRAMTYPE_INFO(val);
+	data->ch_msk = READ_CH_INFO(val);
+
 	return 0;
 };
 
@@ -1041,7 +1054,7 @@ static __init int rk3288_dfi_init(struct platform_device *pdev,
 				  struct devfreq_event_desc *desc)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
-	u32 dram_type;
+	u32 val;
 
 	node = of_parse_phandle(np, "rockchip,pmu", 0);
 	if (node) {
@@ -1057,10 +1070,11 @@ static __init int rk3288_dfi_init(struct platform_device *pdev,
 			return PTR_ERR(data->regmap_grf);
 	}
 
-	regmap_read(data->regmap_pmu, RK3288_PMU_SYS_REG2, &dram_type);
-	dram_type = READ_DRAMTYPE_INFO(dram_type);
+	regmap_read(data->regmap_pmu, RK3288_PMU_SYS_REG2, &val);
+	data->dram_type = READ_DRAMTYPE_INFO(val);
+	data->ch_msk = READ_CH_INFO(val);
 
-	if (dram_type == DDR3)
+	if (data->dram_type == DDR3)
 		regmap_write(data->regmap_grf, RK3288_GRF_SOC_CON4,
 			     RK3288_DDR3_SEL);
 	else
