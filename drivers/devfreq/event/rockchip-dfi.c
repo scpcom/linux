@@ -44,6 +44,8 @@
 #define RK3288_LPDDR_SEL		(0x10001 << 13)
 #define RK3288_DDR3_SEL			(0x10000 << 13)
 
+#define RK3328_GRF_OS_REG2		0x5d0
+
 #define RK3368_GRF_DDRC0_CON0		0x600
 #define RK3368_GRF_SOC_STATUS5		0x494
 #define RK3368_GRF_SOC_STATUS6		0x498
@@ -96,6 +98,7 @@
 #define PMUGRF_OS_REG2			0x308
 
 enum {
+	DDR4 = 0,
 	DDR3 = 3,
 	LPDDR3 = 6,
 	LPDDR4 = 7,
@@ -1104,9 +1107,40 @@ static __init int rk3368_dfi_init(struct platform_device *pdev,
 	return 0;
 }
 
+static __init int rk3328_dfi_init(struct platform_device *pdev,
+				  struct rockchip_dfi *data,
+				  struct devfreq_event_desc *desc)
+{
+	struct device_node *np = pdev->dev.of_node, *node;
+	struct resource *res;
+	u32 val;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	data->regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(data->regs))
+		return PTR_ERR(data->regs);
+
+	node = of_parse_phandle(np, "rockchip,grf", 0);
+	if (node) {
+		data->regmap_grf = syscon_node_to_regmap(node);
+		if (IS_ERR(data->regmap_grf))
+			return PTR_ERR(data->regmap_grf);
+	}
+
+	regmap_read(data->regmap_grf, RK3328_GRF_OS_REG2, &val);
+	data->dram_type = READ_DRAMTYPE_INFO(val);
+	data->ch_msk = 1;
+	data->clk = NULL;
+
+	desc->ops = &rockchip_dfi_ops;
+
+	return 0;
+}
+
 static const struct of_device_id rockchip_dfi_id_match[] = {
 	{ .compatible = "rockchip,rk3128-dfi", .data = rk3128_dfi_init },
 	{ .compatible = "rockchip,rk3288-dfi", .data = rk3288_dfi_init },
+	{ .compatible = "rockchip,rk3328-dfi", .data = rk3328_dfi_init },
 	{ .compatible = "rockchip,rk3368-dfi", .data = rk3368_dfi_init },
 	{ .compatible = "rockchip,rk3399-dfi", .data = rk3399_dfi_init },
 	{ .compatible = "rockchip,rk3568-dfi", .data = rk3568_dfi_init },
