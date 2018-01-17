@@ -82,6 +82,10 @@ properties:
     description:
       enable hdcp1.x, enable if defined, disable if not defined
 
+  scramble-low-rates:
+    description:
+      if defined enable scarmble when tmdsclk less than 340Mhz
+
   pinctrl-names:
     description:
       The unwedge pinctrl entry shall drive the DDC SDA line low. This is
