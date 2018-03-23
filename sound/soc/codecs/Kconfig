@@ -577,6 +577,9 @@ config SND_SOC_DA9055
 config SND_SOC_DMIC
 	tristate
 
+config SND_SOC_DUMMY_CODEC
+	tristate "dummy codec"
+
 config SND_SOC_HDMI_CODEC
 	tristate
 	select SND_PCM_ELD
