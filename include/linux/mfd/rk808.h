@@ -1141,6 +1141,9 @@ enum rk809_reg_id {
 #define RK817_GAS_GAUGE_DATA5		0xa2
 #define RK817_GAS_GAUGE_CUR_ADC_K0	0xb0
 
+#define RK817_POWER_EN_SAVE0            0x99
+#define RK817_POWER_EN_SAVE1            0xa4
+
 #define RK817_POWER_EN_REG(i)		(0xb1 + (i))
 #define RK817_POWER_SLP_EN_REG(i)	(0xb5 + (i))
 
