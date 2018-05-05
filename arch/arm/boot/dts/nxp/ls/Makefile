@@ -6,3 +6,5 @@ dtb-$(CONFIG_SOC_LS1021A) += \
 	ls1021a-tqmls1021a-mbls1021a.dtb \
 	ls1021a-tsn.dtb \
 	ls1021a-twr.dtb
+dtb-$(CONFIG_ARCH_LS1024A) += \
+	ls1024a-evm.dtb
