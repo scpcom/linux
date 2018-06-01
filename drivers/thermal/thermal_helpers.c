@@ -72,6 +72,9 @@ bool thermal_trip_is_bound_to_cdev(struct thermal_zone_device *tz,
 }
 EXPORT_SYMBOL_GPL(thermal_trip_is_bound_to_cdev);
 
+#define	CRITICAL_TEMP	120000
+int thermal_zone_data[4] = { 0, };
+
 /**
  * __thermal_zone_get_temp() - returns the temperature of a thermal zone
  * @tz: a valid pointer to a struct thermal_zone_device
@@ -113,6 +116,30 @@ int __thermal_zone_get_temp(struct thermal_zone_device *tz, int *temp)
 		 */
 		if (!ret && *temp < crit_temp)
 			*temp = tz->emul_temperature;
+	}
+
+	/* save thermal_zone data */
+	if (!ret)
+		thermal_zone_data[tz->id] = *temp;
+	/*
+	 * This case is that the thermal sensor is broken.
+	 * That's not real temperature. Set the fake temperature value in order to
+	 * avoid reaching the ciritical temperature.
+	 */
+	if ((thermal_zone_data[tz->id] > CRITICAL_TEMP) && (tz->id != 4)) {
+		int i, broken_sensor = 0, correct_temp = 0;
+		for (i = 0; i < 4; i++) {
+			if ((thermal_zone_data[i] <= CRITICAL_TEMP) &&
+			    (correct_temp <= thermal_zone_data[i]))
+				correct_temp = thermal_zone_data[i];
+			if (thermal_zone_data[i] > CRITICAL_TEMP)
+				broken_sensor++;
+		}
+		/*
+		 * if all thermal sensor broken then critical temperature data send
+		 * for system poweroff.
+		 */
+		*temp = (broken_sensor == 4) ? CRITICAL_TEMP : correct_temp;
 	}
 
 	if (ret)
