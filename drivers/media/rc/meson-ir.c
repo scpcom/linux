@@ -227,7 +227,8 @@ static irqreturn_t meson_ir_irq(int irqno, void *dev_id)
 		duration = FIELD_GET(IR_DEC_REG1_TIME_IV, duration);
 		rawir.duration = duration * MESON_RAW_TRATE;
 
-		ir_raw_event_store_with_timeout(ir->rc, &rawir);
+		if (ir_raw_event_store_with_filter(ir->rc, &rawir))
+			ir_raw_event_handle(ir->rc);
 	} else if (ir->rc->driver_type == RC_DRIVER_SCANCODE) {
 		if (status & DEC_STATUS_VALID)
 			meson_ir_hw_handler(ir);
