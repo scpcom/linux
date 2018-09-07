@@ -4567,6 +4567,8 @@ void dw_hdmi_suspend(struct dw_hdmi *hdmi)
 
 	if (hdmi->irq)
 		disable_irq(hdmi->irq);
+	cancel_delayed_work(&hdmi->work);
+	flush_workqueue(hdmi->workqueue);
 	pinctrl_pm_select_sleep_state(hdmi->dev);
 }
 EXPORT_SYMBOL_GPL(dw_hdmi_suspend);
