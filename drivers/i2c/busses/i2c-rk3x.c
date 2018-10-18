@@ -254,6 +254,13 @@ static inline void rk3x_i2c_clean_ipd(struct rk3x_i2c *i2c)
 	i2c_writel(i2c, REG_INT_ALL, REG_IPD);
 }
 
+static inline void rk3x_i2c_disable(struct rk3x_i2c *i2c)
+{
+	u32 val = i2c_readl(i2c, REG_CON) & REG_CON_TUNING_MASK;
+
+	i2c_writel(i2c, val, REG_CON);
+}
+
 /**
  * rk3x_i2c_start - Generate a START condition, which triggers a REG_INT_START interrupt.
  * @i2c: target controller data
@@ -1145,6 +1152,8 @@ static int rk3x_i2c_xfer_common(struct i2c_adapter *adap,
 			break;
 		}
 	}
+
+	rk3x_i2c_disable(i2c);
 
 	clk_disable(i2c->pclk);
 	clk_disable(i2c->clk);
