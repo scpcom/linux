@@ -25,6 +25,7 @@ obj-$(CONFIG_XR829_WLAN)   += xr829/
 obj-$(CONFIG_XR819S_WLAN)   += xr819s/
 obj-$(CONFIG_RTL8821CS)   += rtl8821cs/
 obj-$(CONFIG_RTL8723DS)   += rtl8723ds/
+obj-$(CONFIG_RTL8188EU) += rtl8188eu/
 obj-$(CONFIG_RTL8812AU) += rtl8812au/
 obj-$(CONFIG_RTL8192CU) += rtl8192cu/
 obj-$(CONFIG_RTL8822BU) += rtl88x2bu/
