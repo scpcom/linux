@@ -34,6 +34,11 @@
 #define RK817_BOOST_VSEL_MASK		0x7
 #define RK817_BUCK_VSEL_MASK		0x7f
 
+#define RK816_DCDC_SLP_EN_REG_OFFSET	2
+#define RK816_SWITCH_SLP_EN_REG_OFFSET	1
+#define RK816_LDO1_4_SLP_EN_REG_OFFSET	1
+#define RK816_LDO5_6_SLP_EN_REG_OFFSET	2
+
 #define RK818_BUCK_VSEL_MASK		0x3f
 #define RK818_BUCK4_VSEL_MASK		0x1f
 #define RK818_LDO_VSEL_MASK		0x1f
@@ -219,6 +224,17 @@ static const int rk808_buck_config_regs[] = {
 static const struct linear_range rk808_ldo3_voltage_ranges[] = {
 	REGULATOR_LINEAR_RANGE(800000, 0, 13, 100000),
 	REGULATOR_LINEAR_RANGE(2500000, 15, 15, 0),
+};
+
+static const struct linear_range rk816_buck_voltage_ranges[] = {
+	REGULATOR_LINEAR_RANGE(712500, 0, 59, 12500),	/* 0.7125v - 1.45v */
+	REGULATOR_LINEAR_RANGE(1800000, 60, 62, 200000),/* 1.8v - 2.2v */
+	REGULATOR_LINEAR_RANGE(2300000, 63, 63, 0),	/* 2.3v - 2.3v */
+};
+
+static const struct linear_range rk816_buck4_voltage_ranges[] = {
+	REGULATOR_LINEAR_RANGE(800000, 0, 26, 100000),	/* 0.8v - 3.4 */
+	REGULATOR_LINEAR_RANGE(3500000, 27, 31, 0),	/* 3.5v */
 };
 
 #define RK809_BUCK5_SEL_CNT		(8)
@@ -465,6 +481,58 @@ static int rk808_buck1_2_i2c_set_voltage_sel(struct regulator_dev *rdev,
 	return ret;
 }
 
+#ifdef CONFIG_CLK_RK312X
+extern void rkclk_cpuclk_div_setting(int div);
+#else
+static inline void rkclk_cpuclk_div_setting(int div) {}
+#endif
+
+static int rk816_regulator_set_voltage_sel_regmap(struct regulator_dev *rdev,
+						  unsigned int sel)
+{
+	int ret, real_sel, delay = 100;
+	int rk816_type;
+	int id = rdev_get_id(rdev);
+
+	regmap_read(rdev->regmap, RK816_CHIP_VER_REG, &rk816_type);
+	rk816_type &= RK816_CHIP_VERSION_MASK;
+	sel <<= ffs(rdev->desc->vsel_mask) - 1;
+
+	if ((rk816_type != RK816_TYPE_ES2) && (id == 0)) {
+		if (sel > 23)
+			rkclk_cpuclk_div_setting(4);
+		else
+			rkclk_cpuclk_div_setting(2);
+	}
+
+	do {
+		ret = regmap_update_bits(rdev->regmap,
+					 rdev->desc->vsel_reg,
+					 rdev->desc->vsel_mask, sel);
+		if (ret)
+			return ret;
+
+		if (rk816_type == RK816_TYPE_ES2) {
+			ret = regmap_update_bits(rdev->regmap,
+						 RK816_DCDC_EN_REG2,
+						 RK816_BUCK_DVS_CONFIRM,
+						 RK816_BUCK_DVS_CONFIRM);
+			if (ret)
+				return ret;
+		}
+
+		regmap_read(rdev->regmap,
+			    rdev->desc->vsel_reg, &real_sel);
+		real_sel &= rdev->desc->vsel_mask;
+		delay--;
+	} while ((sel != real_sel) && (delay > 0));
+
+	if ((rk816_type != RK816_TYPE_ES2) && (id == 0))
+		rkclk_cpuclk_div_setting(1);
+
+	return ret;
+}
+
 static int rk808_buck1_2_set_voltage_sel(struct regulator_dev *rdev,
 					 unsigned sel)
 {
@@ -542,6 +610,11 @@ static int rk808_set_ramp_delay(struct regulator_dev *rdev, int ramp_delay)
 
 	return regmap_update_bits(rdev->regmap, reg,
 				  RK808_RAMP_RATE_MASK, ramp_value);
+}
+
+static int rk8xx_set_ramp_delay(struct regulator_dev *rdev, int ramp_delay)
+{
+	return rk808_set_ramp_delay(rdev, ramp_delay);
 }
 
 /*
@@ -1962,7 +2035,7 @@ static struct platform_driver rk808_regulator_driver = {
 
 module_platform_driver(rk808_regulator_driver);
 
-MODULE_DESCRIPTION("regulator driver for the RK805/RK808/RK818 series PMICs");
+MODULE_DESCRIPTION("regulator driver for the RK805/RK808/RK816/RK818 series PMICs");
 MODULE_AUTHOR("Tony xie <tony.xie@rock-chips.com>");
 MODULE_AUTHOR("Chris Zhong <zyw@rock-chips.com>");
 MODULE_AUTHOR("Zhang Qing <zhangqing@rock-chips.com>");
