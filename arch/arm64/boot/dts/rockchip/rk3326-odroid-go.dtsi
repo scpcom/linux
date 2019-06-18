@@ -279,6 +279,10 @@
 	cpu-supply = <&vdd_arm>;
 };
 
+&cpu0_opp_table {
+	rockchip,avs = <1>;
+};
+
 &cru {
 	assigned-clocks = <&cru PLL_NPLL>,
 		<&cru ACLK_BUS_PRE>, <&cru ACLK_PERI_PRE>,
