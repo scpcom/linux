@@ -1343,7 +1343,7 @@ static int vhost_copy_to_user(struct vhost_virtqueue *vq, void __user *to,
 		if (ret < 0)
 			goto out;
 		iov_iter_init(&t, ITER_DEST, vq->iotlb_iov, ret, size);
-		ret = copy_to_iter(from, size, &t);
+		ret = copy_to_iter((void*)from, size, &t);
 		if (ret == size)
 			ret = 0;
 	}
