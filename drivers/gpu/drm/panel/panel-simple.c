@@ -496,8 +496,8 @@ static int panel_simple_suspend(struct device *dev)
 		if (p->dsi)
 			panel_simple_xfer_dsi_cmd_seq(p, p->desc->exit_seq);
 
-	gpiod_set_value_cansleep(p->reset_gpio, 1);
-	gpiod_set_value_cansleep(p->enable_gpio, 0);
+	gpiod_direction_output(p->reset_gpio, 1);
+	gpiod_direction_output(p->enable_gpio, 0);
 	panel_simple_regulator_disable(p);
 	p->unprepared_time = ktime_get_boottime();
 
@@ -532,17 +532,17 @@ static int panel_simple_resume(struct device *dev)
 		return err;
 	}
 
-	gpiod_set_value_cansleep(p->enable_gpio, 1);
+	gpiod_direction_output(p->enable_gpio, 1);
 
 	if (p->desc->delay.reset)
 		msleep(p->desc->delay.prepare);
 
-	gpiod_set_value_cansleep(p->reset_gpio, 1);
+	gpiod_direction_output(p->reset_gpio, 1);
 
 	if (p->desc->delay.reset)
 		msleep(p->desc->delay.reset);
 
-	gpiod_set_value_cansleep(p->reset_gpio, 0);
+	gpiod_direction_output(p->reset_gpio, 0);
 
 	if (p->desc->delay.prepare)
 		msleep(p->desc->delay.prepare);
@@ -806,8 +806,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (IS_ERR(panel->supply))
 		return PTR_ERR(panel->supply);
 
-	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable",
-						     GPIOD_OUT_LOW);
+	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable", GPIOD_ASIS);
 	if (IS_ERR(panel->enable_gpio))
 		return dev_err_probe(dev, PTR_ERR(panel->enable_gpio),
 				     "failed to request enable GPIO\n");
