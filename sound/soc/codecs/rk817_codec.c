@@ -598,10 +598,12 @@ static int rk817_playback_path_config(struct snd_soc_component *component,
 						      RK817_CODEC_DDAC_MUTE_MIXCTL,
 						      DACMT_ENABLE, DACMT_DISABLE);
 		}
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLL,
 					rk817->spk_volume);
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLR,
 					rk817->spk_volume);
+#endif
 		break;
 	case HP_PATH:
 	case HP_NO_MIC:
@@ -621,10 +623,12 @@ static int rk817_playback_path_config(struct snd_soc_component *component,
 					      RK817_CODEC_DDAC_MUTE_MIXCTL,
 					      DACMT_ENABLE, DACMT_DISABLE);
 
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLL,
 					rk817->hp_volume);
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLR,
 					rk817->hp_volume);
+#endif
 		break;
 	case BT:
 		break;
@@ -658,10 +662,12 @@ static int rk817_playback_path_config(struct snd_soc_component *component,
 						0xf7);
 		}
 
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLL,
 					rk817->hp_volume);
 		snd_soc_component_write(component, RK817_CODEC_DDAC_VOLR,
 					rk817->hp_volume);
+#endif
 		break;
 	default:
 		return -EINVAL;
