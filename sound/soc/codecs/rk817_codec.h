@@ -184,23 +184,31 @@ enum {
 
 enum {
 	OFF,
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	RCV,
+#endif
 	SPK_PATH,
 	HP_PATH,
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	HP_NO_MIC,
 	BT,
+#endif
 	SPK_HP,
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	RING_SPK,
 	RING_HP,
 	RING_HP_NO_MIC,
 	RING_SPK_HP,
+#endif
 };
 
 enum {
 	MIC_OFF,
 	MAIN_MIC,
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	HANDS_FREE_MIC,
 	BT_SCO_MIC,
+#endif
 };
 
 struct rk817_reg_val_typ {
