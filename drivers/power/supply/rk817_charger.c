@@ -801,8 +801,13 @@ static void rk817_charge_set_chrg_param(struct rk817_charger *charge,
 		charge->usb_in = 1;
 		charge->ac_in = 0;
 		charge->prop_status = POWER_SUPPLY_STATUS_CHARGING;
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		if (charge->dc_in == 0)
 			rk817_charge_set_input_current(charge, INPUT_450MA);
+#else
+		if (charge->dc_in == 0)
+			rk817_charge_set_input_current(charge, INPUT_1500MA);
+#endif
 		power_supply_changed(charge->usb_psy);
 		power_supply_changed(charge->ac_psy);
 		break;
@@ -1037,18 +1042,24 @@ static void rk817_charger_evt_worker(struct work_struct *work)
 {
 	struct rk817_charger *charge = container_of(work,
 				struct rk817_charger, usb_work.work);
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	struct extcon_dev *edev = charge->cable_edev;
+#endif
 	enum charger_t charger = USB_TYPE_UNKNOWN_CHARGER;
 	static const char * const event[] = {"UN", "NONE", "USB",
 					     "AC", "CDP1.5A"};
 
 	/* Determine cable/charger type */
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	if (extcon_get_state(edev, EXTCON_CHG_USB_SDP) > 0)
 		charger = USB_TYPE_USB_CHARGER;
 	else if (extcon_get_state(edev, EXTCON_CHG_USB_DCP) > 0)
 		charger = USB_TYPE_AC_CHARGER;
 	else if (extcon_get_state(edev, EXTCON_CHG_USB_CDP) > 0)
 		charger = USB_TYPE_CDP_CHARGER;
+#else
+	charger = USB_TYPE_USB_CHARGER;
+#endif
 
 	if (charger != USB_TYPE_UNKNOWN_CHARGER) {
 		DBG("receive type-c notifier event: %s...\n",
@@ -1260,6 +1271,7 @@ static int rk817_charge_usb_init(struct rk817_charger *charge)
 			return -EINVAL;
 	}
 
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		switch (bc_type) {
 		case USB_BC_TYPE_DISCNT:
 			charger = USB_TYPE_NONE_CHARGER;
@@ -1275,6 +1287,9 @@ static int rk817_charge_usb_init(struct rk817_charger *charge)
 			charger = USB_TYPE_NONE_CHARGER;
 			break;
 		}
+#else
+		charger = USB_TYPE_USB_CHARGER;
+#endif
 
 		charge->usb_charger = charger;
 		if (charge->dc_charger != DC_TYPE_NONE_CHARGER)
