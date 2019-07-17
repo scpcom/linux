@@ -841,8 +841,8 @@
 		#size-cells = <1>;
 		reg = <0>;
 		m25p,fast-read;
-		/* The max SCLK of the flash 104/80 MHZ  */
-		spi-max-frequency = <50000000>;
+		/* max spi clk 10MHz */
+		spi-max-frequency = <10000000>;
 	};
 };
 
