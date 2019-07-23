@@ -278,6 +278,10 @@ struct charger_platform_data {
 	u32 dc_det_level;
 	int dc_det_pin;
 	bool support_dc_det;
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	int chg_led_pin;
+	bool chg_led_on;
+#endif
 	int virtual_power;
 	int sample_res;
 	int otg5v_suspend_enable;
@@ -801,13 +805,8 @@ static void rk817_charge_set_chrg_param(struct rk817_charger *charge,
 		charge->usb_in = 1;
 		charge->ac_in = 0;
 		charge->prop_status = POWER_SUPPLY_STATUS_CHARGING;
-#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		if (charge->dc_in == 0)
 			rk817_charge_set_input_current(charge, INPUT_450MA);
-#else
-		if (charge->dc_in == 0)
-			rk817_charge_set_input_current(charge, INPUT_1500MA);
-#endif
 		power_supply_changed(charge->usb_psy);
 		power_supply_changed(charge->ac_psy);
 		break;
@@ -855,6 +854,15 @@ static void rk817_charge_set_chrg_param(struct rk817_charger *charge,
 
 	if (rk817_charge_online(charge) && rk817_charge_get_dsoc(charge) == 100)
 		charge->prop_status = POWER_SUPPLY_STATUS_FULL;
+
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	if (charge->prop_status != POWER_SUPPLY_STATUS_CHARGING)
+		gpio_set_value(charge->pdata->chg_led_pin,
+					!charge->pdata->chg_led_on);
+	else
+		gpio_set_value(charge->pdata->chg_led_pin,
+					charge->pdata->chg_led_on);
+#endif
 }
 
 static void rk817_charge_set_otg_state(struct rk817_charger *charge, int state)
@@ -1010,6 +1018,19 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 	if (charge->dc_charger != DC_TYPE_NONE_CHARGER)
 		rk817_charge_set_chrg_param(charge, charge->dc_charger);
 
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	if (charge->pdata->chg_led_pin) {
+		ret = devm_gpio_request(charge->dev,
+					charge->pdata->chg_led_pin,
+					"rk817_chg_led");
+		if (ret < 0)
+			dev_err(charge->dev, "failed to request gpio %d\n",
+				charge->pdata->chg_led_pin);
+		else
+			gpio_direction_output(charge->pdata->chg_led_pin,
+					     !charge->pdata->chg_led_on);
+	}
+#endif
 	return 0;
 }
 
@@ -1042,24 +1063,18 @@ static void rk817_charger_evt_worker(struct work_struct *work)
 {
 	struct rk817_charger *charge = container_of(work,
 				struct rk817_charger, usb_work.work);
-#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	struct extcon_dev *edev = charge->cable_edev;
-#endif
 	enum charger_t charger = USB_TYPE_UNKNOWN_CHARGER;
 	static const char * const event[] = {"UN", "NONE", "USB",
 					     "AC", "CDP1.5A"};
 
 	/* Determine cable/charger type */
-#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	if (extcon_get_state(edev, EXTCON_CHG_USB_SDP) > 0)
 		charger = USB_TYPE_USB_CHARGER;
 	else if (extcon_get_state(edev, EXTCON_CHG_USB_DCP) > 0)
 		charger = USB_TYPE_AC_CHARGER;
 	else if (extcon_get_state(edev, EXTCON_CHG_USB_CDP) > 0)
 		charger = USB_TYPE_CDP_CHARGER;
-#else
-	charger = USB_TYPE_USB_CHARGER;
-#endif
 
 	if (charger != USB_TYPE_UNKNOWN_CHARGER) {
 		DBG("receive type-c notifier event: %s...\n",
@@ -1269,9 +1284,8 @@ static int rk817_charge_usb_init(struct rk817_charger *charge)
 		if (ret) {
 			dev_err(dev, "failed to register notifier for bc\n");
 			return -EINVAL;
-	}
+		}
 
-#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 		switch (bc_type) {
 		case USB_BC_TYPE_DISCNT:
 			charger = USB_TYPE_NONE_CHARGER;
@@ -1287,9 +1301,6 @@ static int rk817_charge_usb_init(struct rk817_charger *charge)
 			charger = USB_TYPE_NONE_CHARGER;
 			break;
 		}
-#else
-		charger = USB_TYPE_USB_CHARGER;
-#endif
 
 		charge->usb_charger = charger;
 		if (charge->dc_charger != DC_TYPE_NONE_CHARGER)
@@ -1464,10 +1475,25 @@ static int rk817_charge_parse_dt(struct rk817_charger *charge)
 			dev_err(dev, "invalid dc det gpio!\n");
 			return -EINVAL;
 		}
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+		if (!of_find_property(np, "chg_led_gpio", &ret)) {
+			DBG("not support charge led\n");
+			pdata->chg_led_pin = 0;
+		} else {
+			pdata->chg_led_pin = of_get_named_gpio_flags(np,
+							"chg_led_gpio",
+							0, &flags);
+			if (gpio_is_valid(pdata->chg_led_pin)) {
+				DBG("support charge led\n");
+				pdata->chg_led_on =
+					(flags & OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+			}
+		}
+#endif
 	}
 
 	DBG("input_current:%d\n"
-		"input_min_voltage: %d\n"
+	    "input_min_voltage: %d\n"
 	    "chrg_current:%d\n"
 	    "chrg_voltage:%d\n"
 	    "sample_res:%d\n"
