@@ -39,7 +39,7 @@
 };
 
 &internal_display {
-	compatible = "elida,kd35t133";
+	compatible = "elida,kd35t133", "simple-panel-dsi";
 	iovcc-supply = <&vcc_lcd>;
 	vdd-supply = <&vcc_lcd>;
 };
