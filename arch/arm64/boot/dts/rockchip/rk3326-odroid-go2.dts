@@ -36,10 +36,106 @@
 			linux,code = <ABS_Y>;
 		};
 	};
+
+	ext_cam_clk: external-camera-clock {
+		compatible = "fixed-clock";
+		clock-frequency = <25000000>;
+		clock-output-names = "CLK_CAMERA_25MHZ";
+		#clock-cells = <0>;
+	};
+};
+
+/* MIPI CSI I2C */
+&i2c2 {
+	status = "okay";
+
+	clock-frequency = <100000>;
+
+	i2c-scl-falling-time-ns = <50>;
+	i2c-scl-rising-time-ns = <300>;
+
+	ov5647: ov5647@36 {
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		clocks = <&ext_cam_clk>;
+		status = "okay";
+
+		port {
+			ov5647_out: endpoint {
+				remote-endpoint = <&ov5647_in>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
 };
 
 &internal_display {
 	compatible = "elida,kd35t133", "simple-panel-dsi";
 	iovcc-supply = <&vcc_lcd>;
 	vdd-supply = <&vcc_lcd>;
+};
+
+&mipi_dphy_rx0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			ov5647_in: endpoint@1 {
+				reg = <1>;
+
+				remote-endpoint = <&ov5647_out>;
+				data-lanes = <1 2>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+
+			dphy_rx0_out: endpoint@0 {
+				remote-endpoint = <&isp0_mipi_in>;
+			};
+		};
+	};
+};
+
+&rk817 {
+	regulators {
+		/* Rev 0.2 CAM Power */
+		vcc_cam: LDO_REG9 {
+			/* No regulator control in OV5647 and IMX219 drivers */
+			regulator-always-on;
+			regulator-boot-on;
+
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+
+			regulator-state-mem {
+				regulator-off-in-suspend;
+				regulator-suspend-microvolt = <3000000>;
+			};
+		};
+	};
+};
+
+&rkisp1 {
+	status = "okay";
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* mipi */
+		isp0_mipi_in: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&dphy_rx0_out>;
+		};
+	};
 };
