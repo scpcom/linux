@@ -78,6 +78,31 @@
 		status = "okay";
 	};
 
+	joystick: adc_joystick {
+		/* drivers/input/joystick/adc-joystick.c */
+		compatible = "adc-joystick";
+
+		/* JOY_X, JOY_Y Channel define */
+		io-channel-names = "joy_x", "joy_y";
+		io-channels = <&saradc 2>, <&saradc 1>;
+
+		/* poll device read interval(ms) */
+		poll-interval = <1>;
+
+		/* x channel adc read max(mV) */
+		report-x-max = <1800>;
+		/* x channel adc read min(mV) */
+		report-x-min = <0>;
+
+		/* y channel adc read max(mV) */
+		report-y-max = <1800>;
+		/* y channel adc read min(mV) */
+		report-y-min = <0>;
+
+		/* report threshold(mV) */
+		report-threshold = <1>;
+	};
+
 	builtin_gamepad: gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -424,8 +449,8 @@
 				vfront-porch = <8>;
 				vsync-len = <8>;
 				vback-porch = <8>;
-				hsync-active = <8>;
-				vsync-active = <8>;
+				hsync-active = <0>;
+				vsync-active = <0>;
 				de-active = <0>;
 				pixelclk-active = <0>;
 			};
