@@ -86,9 +86,6 @@
 		io-channel-names = "joy_x", "joy_y";
 		io-channels = <&saradc 2>, <&saradc 1>;
 
-		/* poll device read interval(ms) */
-		poll-interval = <1>;
-
 		/* x channel adc read max(mV) */
 		report-x-max = <1800>;
 		/* x channel adc read min(mV) */
@@ -99,8 +96,19 @@
 		/* y channel adc read min(mV) */
 		report-y-min = <0>;
 
-		/* report threshold(mV) */
-		report-threshold = <1>;
+		/*
+		  - report threshold(mV) -
+
+		  /sys/devices/platform/adc_joystick/threshold [r/w]
+		*/
+		report-threshold = <2>;
+
+		/*
+		  - poll device read interval(ms) -
+
+		  /sys/devices/platform/adc_joystick/interval [r/w]
+		*/
+		poll-interval = <1>;
 	};
 
 	builtin_gamepad: gpio-keys {
