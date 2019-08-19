@@ -915,8 +915,8 @@
 		#size-cells = <1>;
 		reg = <0>;
 		m25p,fast-read;
-		/* max spi clk 10MHz */
-		spi-max-frequency = <10000000>;
+		/* max spi clk 24MHz */
+		spi-max-frequency = <24000000>;
 	};
 };
 
