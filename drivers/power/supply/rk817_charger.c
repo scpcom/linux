@@ -856,12 +856,12 @@ static void rk817_charge_set_chrg_param(struct rk817_charger *charge,
 		charge->prop_status = POWER_SUPPLY_STATUS_FULL;
 
 #if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
-	if (charge->prop_status != POWER_SUPPLY_STATUS_CHARGING)
-		gpio_set_value(charge->pdata->chg_led_pin,
-					!charge->pdata->chg_led_on);
-	else
+	if (charge->prop_status == POWER_SUPPLY_STATUS_CHARGING)
 		gpio_set_value(charge->pdata->chg_led_pin,
 					charge->pdata->chg_led_on);
+	else
+		gpio_set_value(charge->pdata->chg_led_pin,
+					!charge->pdata->chg_led_on);
 #endif
 }
 
@@ -918,8 +918,13 @@ static irqreturn_t rk817_charge_dc_det_isr(int irq, void *charger)
 	else
 		irq_set_irq_type(irq, IRQF_TRIGGER_HIGH);
 
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	queue_delayed_work(charge->dc_charger_wq, &charge->dc_work,
+			   msecs_to_jiffies(2000));
+#else
 	queue_delayed_work(charge->dc_charger_wq, &charge->dc_work,
 			   msecs_to_jiffies(10));
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -994,7 +999,22 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 		return ret;
 	}
 
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	if (charge->pdata->chg_led_pin) {
+		ret = devm_gpio_request(charge->dev,
+					charge->pdata->chg_led_pin,
+					"rk817_chg_led");
+		if (ret < 0)
+			dev_err(charge->dev, "failed to request gpio %d\n",
+				charge->pdata->chg_led_pin);
+		else
+			gpio_direction_output(charge->pdata->chg_led_pin,
+					     !charge->pdata->chg_led_on);
+	}
+#endif
+
 	level = gpio_get_value(charge->pdata->dc_det_pin);
+
 	if (level == charge->pdata->dc_det_level)
 		charge->dc_charger = DC_TYPE_DC_CHARGER;
 	else
@@ -1012,25 +1032,11 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 		dev_err(charge->dev, "rk817_dc_det_irq request failed!\n");
 		return ret;
 	}
-
 	enable_irq_wake(dc_det_irq);
 
 	if (charge->dc_charger != DC_TYPE_NONE_CHARGER)
 		rk817_charge_set_chrg_param(charge, charge->dc_charger);
 
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
-	if (charge->pdata->chg_led_pin) {
-		ret = devm_gpio_request(charge->dev,
-					charge->pdata->chg_led_pin,
-					"rk817_chg_led");
-		if (ret < 0)
-			dev_err(charge->dev, "failed to request gpio %d\n",
-				charge->pdata->chg_led_pin);
-		else
-			gpio_direction_output(charge->pdata->chg_led_pin,
-					     !charge->pdata->chg_led_on);
-	}
-#endif
 	return 0;
 }
 
