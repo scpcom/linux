@@ -790,7 +790,7 @@
 			sample_res = <10>;
 
 			/* P.C.B rev0.2 DC Detect & Charger Status LED GPIO */
-			dc_det_gpio  = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
+			dc_det_gpio  = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
 			chg_led_gpio = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
 
 			extcon = <&u2phy>;
