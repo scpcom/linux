@@ -308,6 +308,10 @@ struct rk817_charger {
 	struct delayed_work host_work;
 	struct delayed_work discnt_work;
 	struct delayed_work irq_work;
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	struct workqueue_struct *led_wq;
+	struct delayed_work led_work;
+#endif
 	struct notifier_block bc_nb;
 	struct notifier_block cable_cg_nb;
 	struct notifier_block cable_host_nb;
@@ -854,15 +858,6 @@ static void rk817_charge_set_chrg_param(struct rk817_charger *charge,
 
 	if (rk817_charge_online(charge) && rk817_charge_get_dsoc(charge) == 100)
 		charge->prop_status = POWER_SUPPLY_STATUS_FULL;
-
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
-	if (charge->prop_status == POWER_SUPPLY_STATUS_CHARGING)
-		gpio_set_value(charge->pdata->chg_led_pin,
-					charge->pdata->chg_led_on);
-	else
-		gpio_set_value(charge->pdata->chg_led_pin,
-					!charge->pdata->chg_led_on);
-#endif
 }
 
 static void rk817_charge_set_otg_state(struct rk817_charger *charge, int state)
@@ -942,6 +937,35 @@ static enum charger_t rk817_charge_get_dc_state(struct rk817_charger *charge)
 		DC_TYPE_DC_CHARGER : DC_TYPE_NONE_CHARGER;
 }
 
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+static void rk817_charge_led_worker(struct work_struct *work)
+{
+	struct rk817_charger *charge = container_of(work,
+			struct rk817_charger, led_work.work);
+
+	/* battery status check */
+	if (rk817_charge_online(charge)) {
+		if ((rk817_charge_get_dsoc(charge) == 100) &&
+		    (charge->prop_status != POWER_SUPPLY_STATUS_FULL))
+			queue_delayed_work(charge->dc_charger_wq, &charge->dc_work,
+					msecs_to_jiffies(2000));
+
+		if (charge->prop_status == POWER_SUPPLY_STATUS_CHARGING)
+			gpio_set_value(charge->pdata->chg_led_pin,
+					!gpio_get_value(charge->pdata->chg_led_pin));
+		else
+			gpio_set_value(charge->pdata->chg_led_pin,
+					charge->pdata->chg_led_on);
+	}
+	else
+		gpio_set_value(charge->pdata->chg_led_pin,
+				!charge->pdata->chg_led_on);
+
+	queue_delayed_work(charge->led_wq, &charge->led_work,
+		msecs_to_jiffies(1000));
+}
+#endif
+
 static void rk817_charge_dc_det_worker(struct work_struct *work)
 {
 	enum charger_t charger;
@@ -1011,6 +1035,14 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 			gpio_direction_output(charge->pdata->chg_led_pin,
 					     !charge->pdata->chg_led_on);
 	}
+
+	charge->led_wq = alloc_ordered_workqueue("%s",
+				WQ_MEM_RECLAIM | WQ_FREEZABLE,
+				"rk817-led-wq");
+	INIT_DELAYED_WORK(&charge->led_work, rk817_charge_led_worker);
+
+	queue_delayed_work(charge->led_wq, &charge->led_work,
+		msecs_to_jiffies(500));
 #endif
 
 	level = gpio_get_value(charge->pdata->dc_det_pin);
@@ -1712,6 +1744,11 @@ irq_fail:
 	destroy_workqueue(charge->usb_charger_wq);
 	destroy_workqueue(charge->dc_charger_wq);
 
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	cancel_delayed_work_sync(&charge->led_work);
+	destroy_workqueue(charge->led_wq);
+#endif
+
 	if (charge->pdata->extcon) {
 		extcon_unregister_notifier(charge->cable_edev,
 					   EXTCON_CHG_USB_SDP,
@@ -1795,6 +1832,10 @@ static void rk817_charger_shutdown(struct platform_device *dev)
 	cancel_delayed_work_sync(&charge->irq_work);
 	flush_workqueue(charge->usb_charger_wq);
 	flush_workqueue(charge->dc_charger_wq);
+#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGO2)
+	cancel_delayed_work_sync(&charge->led_work);
+	destroy_workqueue(charge->led_wq);
+#endif
 
 	if (charge->pdata->extcon) {
 		extcon_unregister_notifier(charge->cable_edev,
