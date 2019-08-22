@@ -766,7 +766,7 @@
 			*/
 			design_capacity = <3000>;
 			design_qmax = <3000>;
-			bat_res = <60>;
+			bat_res = <180>;
 			sleep_enter_current = <300>;
 			sleep_exit_current = <300>;
 			sleep_filter_current = <100>;
