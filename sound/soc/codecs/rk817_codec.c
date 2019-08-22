@@ -778,12 +778,12 @@ static int rk817_capture_path_config(struct snd_soc_component *component,
 						0xff);
 			snd_soc_component_update_bits(component,
 						      RK817_CODEC_AADC_CFG0,
-						      ADC_R_PWD_MASK,
-						      ADC_R_PWD_EN);
+						      ADC_L_PWD_MASK,
+						      ADC_L_PWD_EN);
 			snd_soc_component_update_bits(component,
 						      RK817_CODEC_AMIC_CFG0,
-						      PWD_PGA_R_MASK,
-						      PWD_PGA_R_EN);
+						      PWD_PGA_L_MASK,
+						      PWD_PGA_L_EN);
 		}
 		break;
 #ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
