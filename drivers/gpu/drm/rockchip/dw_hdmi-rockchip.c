@@ -80,6 +80,7 @@ struct rockchip_hdmi {
 	const struct dw_hdmi_plat_data *plat_data;
 	struct clk *phyref_clk;
 	struct clk *grf_clk;
+	struct clk *hclk_vio;
 	struct dw_hdmi *hdmi;
 	struct phy *phy;
 };
@@ -230,6 +231,16 @@ static int rockchip_hdmi_parse_dt(struct rockchip_hdmi *hdmi)
 		if (ret != -EPROBE_DEFER)
 			drm_err(hdmi, "failed to get grf clock\n");
 		return ret;
+	}
+
+	hdmi->hclk_vio = devm_clk_get(hdmi->dev, "hclk_vio");
+	if (PTR_ERR(hdmi->hclk_vio) == -ENOENT) {
+		hdmi->hclk_vio = NULL;
+	} else if (PTR_ERR(hdmi->hclk_vio) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(hdmi->hclk_vio)) {
+		dev_err(hdmi->dev, "failed to get hclk_vio clock\n");
+		return PTR_ERR(hdmi->hclk_vio);
 	}
 
 	ret = devm_regulator_get_enable(hdmi->dev, "avdd-0v9");
@@ -608,6 +619,13 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 	if (ret) {
 		if (ret != -EPROBE_DEFER)
 			drm_err(hdmi, "Unable to parse OF data\n");
+		return ret;
+	}
+
+	ret = clk_prepare_enable(hdmi->hclk_vio);
+	if (ret) {
+		dev_err(hdmi->dev, "Failed to enable HDMI hclk_vio: %d\n",
+			ret);
 		return ret;
 	}
 
