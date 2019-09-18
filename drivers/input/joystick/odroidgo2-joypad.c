@@ -54,6 +54,8 @@ struct bt_adc {
 	int cal;
 	/* report threshold check (mV) */
 	int threshold;
+	/* invert report */
+	bool invert;
 };
 
 struct bt_gpio {
@@ -80,6 +82,10 @@ struct joypad {
 	/* report enable/disable */
 	bool enable;
 
+	/* report reference point */
+	bool invert_absx;
+	bool invert_absy;
+
 	/* report interval (ms) */
 	int bt_gpio_interval;
 	int bt_gpio_count;
@@ -95,6 +101,17 @@ struct joypad {
 
 	struct mutex lock;
 };
+
+/*----------------------------------------------------------------------------*/
+static int joypad_adc_read(struct bt_adc *adc)
+{
+	int value;
+
+	if (iio_read_channel_processed(adc->channel, &value))
+		return 0;
+
+	return (adc->invert ? (adc->max - value) : value);
+}
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
@@ -274,10 +291,10 @@ static ssize_t joypad_store_adc_cal(struct device *dev,
 		for (nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 			struct bt_adc *adc = &joypad->adcs[nbtn];
 
-			if (iio_read_channel_processed(adc->channel,
-				&adc->cal)) {
-				dev_err(joypad->dev, "error! channels[%d]!\n",
-					nbtn);
+			adc->cal = joypad_adc_read(adc);
+			if (!adc->cal) {
+				dev_err(joypad->dev, "%s : saradc channels[%d]!\n",
+					__func__, nbtn);
 				continue;
 			}
 			adc->old_value = adc->cal;
@@ -369,12 +386,14 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 
 	for (nbtn = 0, sync = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
-		if (iio_read_channel_processed(adc->channel,
-			&value)) {
+
+		value = joypad_adc_read(adc);
+		if (!value) {
 			dev_err(joypad->dev, "%s : saradc channels[%d]!\n",
 				__func__, nbtn);
 			continue;
 		}
+
 		adc->threshold = abs(adc->old_value - value);
 		if (adc->threshold > joypad->bt_adc_threshold) {
 			input_report_abs(poll_dev->input,
@@ -408,24 +427,25 @@ static void joypad_poll(struct input_polled_dev *poll_dev)
 static void joypad_open(struct input_polled_dev *poll_dev)
 {
 	struct joypad *joypad = poll_dev->private;
-	int i;
+	int nbtn;
 
-	for (i = 0; i < joypad->bt_gpio_count; i++) {
-		struct bt_gpio *gpio = &joypad->gpios[i];
+	for (nbtn = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
+		struct bt_gpio *gpio = &joypad->gpios[nbtn];
 		gpio->old_value = gpio->active_level ? 0 : 1;
 		gpio->interval = 0;
 	}
-	for (i = 0; i < joypad->bt_adc_count; i++) {
-		struct bt_adc *adc = &joypad->adcs[i];
-		if (iio_read_channel_processed(adc->channel,
-			&adc->old_value)) {
+	for (nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
+		struct bt_adc *adc = &joypad->adcs[nbtn];
+
+		adc->old_value = joypad_adc_read(adc);
+		if (!adc->old_value) {
 			dev_err(joypad->dev, "%s : saradc channels[%d]!\n",
-				__func__, i);
+				__func__, nbtn);
 			continue;
 		}
 		adc->cal = adc->old_value;
 		dev_info(joypad->dev, "%s : adc[%d] adc->cal = %d\n",
-			__func__, i, adc->cal);
+			__func__, nbtn, adc->cal);
 	}
 	/* buttons status sync */
 	joypad_adc_check(poll_dev);
@@ -473,11 +493,15 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 			adc->channel =
 				devm_iio_channel_get(dev, "joy_y");
 			adc->report_type = ABS_Y;
+			if (joypad->invert_absy)
+				adc->invert = true;
 		}
 		else {
 			adc->channel =
 				devm_iio_channel_get(dev, "joy_x");
 			adc->report_type = ABS_X;
+			if (joypad->invert_absx)
+				adc->invert = true;
 		}
 
 		if (IS_ERR(adc->channel)) {
@@ -495,6 +519,8 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 				nbtn, type);
 			return -EINVAL;
 		}
+		adc->max = joypad->bt_adc_max;
+		adc->min = joypad->bt_adc_min;
 	}
 	if (nbtn == 0)
 		return -EINVAL;
@@ -532,13 +558,13 @@ static int joypad_gpio_setup(struct device *dev, struct joypad *joypad)
 			dev_err(dev, "Failed to get gpio flags, error: %d\n",
 				error);
 			return error;
-		} 
+		}
 
 		/* gpio active level(key press level) */
 		gpio->active_level = (flags & OF_GPIO_ACTIVE_LOW) ? 0 : 1;
 
 		gpio->label = of_get_property(pp, "label", NULL);
-	
+
 		if (gpio_is_valid(gpio->num)) {
 			error = devm_gpio_request_one(dev, gpio->num,
 						      GPIOF_IN, gpio->label);
@@ -598,8 +624,8 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 	for(nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
 		input_set_abs_params(input, adc->report_type,
-				-(joypad->bt_adc_max + joypad->bt_adc_min)/2,
-				 (joypad->bt_adc_max + joypad->bt_adc_min)/2 -1,
+				-(adc->max + adc->min)/2,
+				 (adc->max + adc->min)/2 -1,
 				0, 0);
 	}
 	dev_info(dev, "%s : ABS min = %d, max = %d\n", __func__,
@@ -647,6 +673,12 @@ static int joypad_dt_parse(struct device *dev, struct joypad *joypad)
 				&joypad->poll_interval);
 
 	joypad->auto_repeat = device_property_present(dev, "autorepeat");
+
+	/* change the report reference point? (ADC MAX - read value) */
+	joypad->invert_absx = device_property_present(dev, "invert-absx");
+	joypad->invert_absy = device_property_present(dev, "invert-absy");
+	dev_info(dev, "%s : invert-absx = %d, inveret-absy = %d\n",
+		__func__, joypad->invert_absx, joypad->invert_absy);
 
 	joypad->bt_gpio_count = device_get_child_node_count(dev);
 

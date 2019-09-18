@@ -100,7 +100,11 @@
 
 		/* JOY_X, JOY_Y Channel define */
 		io-channel-names = "joy_x", "joy_y";
-		io-channels = <&saradc 2>, <&saradc 1>;
+		io-channels = <&saradc 1>, <&saradc 2>;
+
+		/* change the report reference point (ADC MAX - read value) */
+		invert-absx;
+		/* invert-absy; */
 
 		/* adc button max, min (mV) */
 		button-adc-max = <1800>;
@@ -113,10 +117,10 @@
 		button-adc-threshold = <5>;
 
 		/* poll device interval (ms), adc read interval */
-		poll-interval = <2>;
+		poll-interval = <5>;
 
 		/* gpio read interval = poll-interval * button-gpio-interval */
-		button-gpio-interval = <2>;
+		button-gpio-interval = <1>;
 
 		/* gpio button auto repeat set value : default disable */
 		/*
