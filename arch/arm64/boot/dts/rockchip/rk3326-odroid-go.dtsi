@@ -78,43 +78,55 @@
 		status = "okay";
 	};
 
-	joystick: adc_joystick {
-		/* drivers/input/joystick/adc-joystick.c */
-		compatible = "adc-joystick";
+	joypad: odroidgo2-joypad {
+                compatible = "odroidgo2-joypad";
+                /*
+                  - odroidgo2-joypad sysfs list -
+		   * for poll device interval(ms)
+		   /sys/devices/platform/odroidgo2_joypad/poll_interval [rw]
+                   * for button-adc-threshold(mv)
+		   /sys/devices/platform/odroidgo2_joypad/adc_threshold [rw]
+		   * for button-gpio-interval(ms)
+		   /sys/devices/platform/odroidgo2_joypad/gpio_interval [rw]
+		   * for report control(1:enable, 0:disable)
+		   /sys/devices/platform/odroidgo2_joypad/enable [rw]
+		   * for adc calibration value setup(1:current adcs value -> cal value)
+		   /sys/devices/platform/odroidgo2_joypad/adc_cal [rw]
+                */
+
+		/* gpio pincontrol setup */
+                pinctrl-names = "default";
+                pinctrl-0 = <&btn_pins>;
 
 		/* JOY_X, JOY_Y Channel define */
 		io-channel-names = "joy_x", "joy_y";
 		io-channels = <&saradc 2>, <&saradc 1>;
 
-		/* x channel adc read max(mV) */
-		report-x-max = <1800>;
-		/* x channel adc read min(mV) */
-		report-x-min = <0>;
+		/* adc button max, min (mV) */
+		button-adc-max = <1800>;
+		button-adc-min = <0>;
 
-		/* y channel adc read max(mV) */
-		report-y-max = <1800>;
-		/* y channel adc read min(mV) */
-		report-y-min = <0>;
+		/* adc channel count */
+		button-adc-count = <2>;
 
+		/* report threshold (mV) */
+		button-adc-threshold = <5>;
+
+		/* poll device interval (ms), adc read interval */
+		poll-interval = <2>;
+
+		/* gpio read interval = poll-interval * button-gpio-interval */
+		button-gpio-interval = <2>;
+
+		/* gpio button auto repeat set value : default disable */
 		/*
-		  - report threshold(mV) -
-
-		  /sys/devices/platform/adc_joystick/threshold [r/w]
+			autorepeat;
 		*/
-		report-threshold = <2>;
 
-		/*
-		  - poll device read interval(ms) -
-
-		  /sys/devices/platform/adc_joystick/interval [r/w]
+                /*
+                    joypad driver is poll-device driver.
+                    poll-device is does not support wakeup-source.
 		*/
-		poll-interval = <1>;
-	};
-
-	builtin_gamepad: gpio-keys {
-		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&btn_pins>;
 
 		button-sw1 {
 			gpios = <&gpio1 RK_PB4 GPIO_ACTIVE_LOW>;
