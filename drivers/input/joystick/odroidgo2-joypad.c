@@ -396,9 +396,19 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 
 		adc->threshold = abs(adc->old_value - value);
 		if (adc->threshold > joypad->bt_adc_threshold) {
-			input_report_abs(poll_dev->input,
+			if (nbtn == 0)
+			{
+				// Invert
+				input_report_abs(poll_dev->input,
+					adc->report_type,
+					(value - adc->cal) * -1);
+			}
+			else
+			{
+				input_report_abs(poll_dev->input,
 					adc->report_type,
 					value - adc->cal);
+			}
 			adc->old_value = value;
 			sync = true;
 		}

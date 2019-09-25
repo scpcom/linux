@@ -102,10 +102,6 @@
 		io-channel-names = "joy_x", "joy_y";
 		io-channels = <&saradc 1>, <&saradc 2>;
 
-		/* change the report reference point (ADC MAX - read value) */
-		invert-absx;
-		/* invert-absy; */
-
 		/* adc button max, min (mV) */
 		button-adc-max = <1800>;
 		button-adc-min = <0>;
