@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2019 Dongjin Kim <tobetter@gmail.com>
+ *
+ */
+
+/dts-v1/;
+
+#include "meson-sm1-odroid-c4.dts"
+
+/ {
+	model = "Hardkernel ODROID-C4";
+};
