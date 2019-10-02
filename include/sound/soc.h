@@ -1600,6 +1600,11 @@ static inline void _snd_soc_dpcm_mutex_assert_held_r(struct snd_soc_pcm_runtime 
 	struct snd_soc_card * :		_snd_soc_dpcm_mutex_assert_held_c, \
 	struct snd_soc_pcm_runtime * :	_snd_soc_dpcm_mutex_assert_held_r)(x)
 
+/* bypass */
+int snd_soc_pcm_lib_ioctl(struct snd_soc_component *component,
+			  struct snd_pcm_substream *substream,
+			  unsigned int cmd, void *arg);
+
 #include <sound/soc-component.h>
 #include <sound/soc-card.h>
 #include <sound/soc-jack.h>

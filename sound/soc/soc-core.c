@@ -313,6 +313,18 @@ const char *snd_soc_dai_name_get(const struct snd_soc_dai *dai)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_name_get);
 
+/*
+ * This is glue code between snd_pcm_lib_ioctl() and
+ * snd_soc_component_driver :: ioctl
+ */
+int snd_soc_pcm_lib_ioctl(struct snd_soc_component *component,
+			  struct snd_pcm_substream *substream,
+			  unsigned int cmd, void *arg)
+{
+	return snd_pcm_lib_ioctl(substream, cmd, arg);
+}
+EXPORT_SYMBOL_GPL(snd_soc_pcm_lib_ioctl);
+
 static int snd_soc_rtd_add_component(struct snd_soc_pcm_runtime *rtd,
 				     struct snd_soc_component *component)
 {
