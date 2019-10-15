@@ -528,6 +528,10 @@
 	status = "disabled";
 };
 
+&sfc {
+	status = "okay";
+};
+
 &gpu {
 	mali-supply = <&vdd_logic>;
 	status = "okay";
@@ -933,17 +937,7 @@
 };
 
 &spi0 {
-	status = "okay";
-
-	flash@0 {
-		compatible = "xtx,xt25f128b", "jedec,spi-nor";
-		#address-cells = <1>;
-		#size-cells = <1>;
-		reg = <0>;
-		m25p,fast-read;
-		/* max spi clk 24MHz */
-		spi-max-frequency = <24000000>;
-	};
+	status = "disabled";
 };
 
 &tsadc {

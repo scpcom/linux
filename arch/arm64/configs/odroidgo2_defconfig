@@ -3671,7 +3671,15 @@ CONFIG_ROCKCHIP_OTP=y
 #
 # CONFIG_FPGA is not set
 # CONFIG_TEE is not set
-# CONFIG_RK_FLASH is not set
+CONFIG_RK_FLASH=y
+
+#
+# Rockchip Flash Devices
+#
+# CONFIG_RK_NANDC_NAND is not set
+CONFIG_RK_SFC_NAND=y
+CONFIG_RK_SFC_NOR=y
+CONFIG_RK_SFC_NOR_MTD=y
 # CONFIG_RK_NAND is not set
 
 #
