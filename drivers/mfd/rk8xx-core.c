@@ -956,9 +956,12 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	struct rk808 *rk808;
 	const struct rk808_reg_data *pre_init_reg;
 	const struct mfd_cell *cells;
+	u8 on_source = 0, off_source = 0;
+	unsigned int on, off;
 	int dual_support = 0;
 	int nr_pre_init_regs;
 	int nr_cells;
+
 	int ret;
 	int i;
 	void (*of_property_prepare_fn)(struct rk808 *rk808,
@@ -980,6 +983,8 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_pre_init_regs = ARRAY_SIZE(rk805_pre_init_reg);
 		cells = rk805s;
 		nr_cells = ARRAY_SIZE(rk805s);
+		on_source = RK805_ON_SOURCE_REG;
+		off_source = RK805_OFF_SOURCE_REG;
 		break;
 	case RK806_ID:
 		rk808->regmap_irq_chip = &rk806_irq_chip;
@@ -1009,6 +1014,8 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_pre_init_regs = ARRAY_SIZE(rk818_pre_init_reg);
 		cells = rk818s;
 		nr_cells = ARRAY_SIZE(rk818s);
+		on_source = RK818_ON_SOURCE_REG;
+		off_source = RK818_OFF_SOURCE_REG;
 		break;
 	case RK809_ID:
 	case RK817_ID:
@@ -1017,12 +1024,31 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_pre_init_regs = ARRAY_SIZE(rk817_pre_init_reg);
 		cells = rk817s;
 		nr_cells = ARRAY_SIZE(rk817s);
+		on_source = RK817_ON_SOURCE_REG;
+		off_source = RK817_OFF_SOURCE_REG;
 		of_property_prepare_fn = rk817_of_property_prepare;
 		pinctrl_init = rk817_pinctrl_init;
 		break;
 	default:
 		dev_err(dev, "Unsupported RK8XX ID %lu\n", rk808->variant);
 		return -EINVAL;
+	}
+
+	if (on_source && off_source) {
+		ret = regmap_read(rk808->regmap, on_source, &on);
+		if (ret) {
+			dev_err(&client->dev, "read 0x%x failed\n", on_source);
+			return ret;
+		}
+
+		ret = regmap_read(rk808->regmap, off_source, &off);
+		if (ret) {
+			dev_err(&client->dev, "read 0x%x failed\n", off_source);
+			return ret;
+		}
+
+		dev_info(&client->dev, "source: on=0x%02x, off=0x%02x\n",
+			 on, off);
 	}
 
 	if (!irq)
