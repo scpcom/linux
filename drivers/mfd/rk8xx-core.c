@@ -701,6 +701,7 @@ static const struct regmap_irq_chip rk818_irq_chip = {
 	.init_ack_masked = true,
 };
 
+static struct device *rk8xx_dev;
 static struct rk808_reg_data *suspend_reg, *resume_reg;
 static int suspend_reg_num, resume_reg_num;
 
@@ -770,10 +771,10 @@ static int rk808_restart(struct sys_off_data *data)
 	return NOTIFY_DONE;
 }
 
-static void rk817_shutdown_prepare(void)
+static void rk817_shutdown_prepare(struct device *dev)
 {
 	int ret;
-	struct rk808 *rk808 = i2c_get_clientdata(rk808_i2c_client);
+	struct rk808 *rk808 = dev_get_drvdata(dev);
 
 	/* close rtc int when power off */
 	regmap_update_bits(rk808->regmap,
@@ -810,7 +811,7 @@ static void rk817_shutdown_prepare(void)
 				 RK817_SYS_CFG(3),
 				 RK817_SLPPIN_FUNC_MSK, SLPPIN_DN_FUN);
 	if (ret)
-		dev_err(&rk808_i2c_client->dev, "Failed to shutdown device!\n");
+		dev_err(dev, "Failed to shutdown device!\n");
 	/* pmic need the SCL clock to synchronize register */
 	mdelay(2);
 }
@@ -843,7 +844,7 @@ void rk8xx_shutdown(struct device *dev)
 		break;
 	case RK809_ID:
 	case RK817_ID:
-		rk817_shutdown_prepare();
+		rk817_shutdown_prepare(dev);
 		break;
 	default:
 		return;
@@ -1064,7 +1065,7 @@ static ssize_t rk8xx_dbg_store(struct device *dev,
 	int ret;
 	char cmd;
 	u32 input[2], addr, data;
-	struct rk808 *rk808 = i2c_get_clientdata(rk808_i2c_client);
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
 
 	ret = sscanf(buf, "%c ", &cmd);
 	if (ret != 1) {
@@ -1130,6 +1131,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	rk808 = devm_kzalloc(dev, sizeof(*rk808), GFP_KERNEL);
 	if (!rk808)
 		return -ENOMEM;
+	rk8xx_dev = dev;
 	rk808->dev = dev;
 	rk808->variant = variant;
 	rk808->regmap = regmap;
@@ -1211,17 +1213,17 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	if (on_source && off_source) {
 		ret = regmap_read(rk808->regmap, on_source, &on);
 		if (ret) {
-			dev_err(&client->dev, "read 0x%x failed\n", on_source);
+			dev_err(dev, "read 0x%x failed\n", on_source);
 			return ret;
 		}
 
 		ret = regmap_read(rk808->regmap, off_source, &off);
 		if (ret) {
-			dev_err(&client->dev, "read 0x%x failed\n", off_source);
+			dev_err(dev, "read 0x%x failed\n", off_source);
 			return ret;
 		}
 
-		dev_info(&client->dev, "source: on=0x%02x, off=0x%02x\n",
+		dev_info(dev, "source: on=0x%02x, off=0x%02x\n",
 			 on, off);
 	}
 
@@ -1229,11 +1231,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		return dev_err_probe(dev, -EINVAL, "No interrupt support, no core IRQ\n");
 
 	if (of_property_prepare_fn)
-		of_property_prepare_fn(rk808, &client->dev);
-
-	i2c_set_clientdata(client, rk808);
-	rk808->i2c = client;
-	rk808_i2c_client = client;
+		of_property_prepare_fn(rk808, dev);
 
 	for (i = 0; i < nr_pre_init_regs; i++) {
 		ret = regmap_update_bits(rk808->regmap,
@@ -1241,7 +1239,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 					pre_init_reg[i].mask,
 					pre_init_reg[i].value);
 		if (ret) {
-			dev_err(&client->dev,
+			dev_err(dev,
 				"0x%x write err\n",
 				pre_init_reg[i].addr);
 			return ret;
@@ -1249,7 +1247,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	}
 
 	if (pinctrl_init) {
-		ret = pinctrl_init(&client->dev, rk808);
+		ret = pinctrl_init(dev, rk808);
 		if (ret)
 			return ret;
 	}
