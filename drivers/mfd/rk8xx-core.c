@@ -97,6 +97,7 @@ static const struct mfd_cell rk816s[] = {
 	{ .name = "rk805-pinctrl", },
 	{ .name = "rk808-clkout", },
 	{ .name = "rk808-regulator", },
+	{ .name = "rk816-battery", .of_compatible = "rk816-battery", },
 	{
 		.name = "rk805-pwrkey",
 		.num_resources = ARRAY_SIZE(rk805_key_resources),
@@ -166,14 +167,30 @@ static const struct rk808_reg_data rk808_pre_init_reg[] = {
 };
 
 static const struct rk808_reg_data rk816_pre_init_reg[] = {
-	{ RK818_BUCK1_CONFIG_REG, RK817_RAMP_RATE_MASK,
-				  RK817_RAMP_RATE_12_5MV_PER_US },
-	{ RK818_BUCK2_CONFIG_REG, RK817_RAMP_RATE_MASK,
-				  RK817_RAMP_RATE_12_5MV_PER_US },
-	{ RK818_BUCK4_CONFIG_REG, BUCK_ILMIN_MASK,  BUCK_ILMIN_250MA },
-	{ RK808_THERMAL_REG, TEMP_HOTDIE_MSK, TEMP105C},
-	{ RK808_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
-			    RK808_VBAT_LOW_3V0 | EN_VABT_LOW_SHUT_DOWN },
+	/* buck4 Max ILMIT*/
+	{ RK816_BUCK4_CONFIG_REG, REG_WRITE_MSK, BUCK4_MAX_ILIMIT },
+	/* hotdie temperature: 105c*/
+	{ RK816_THERMAL_REG, REG_WRITE_MSK, TEMP105C },
+	/* set buck 12.5mv/us */
+	{ RK816_BUCK1_CONFIG_REG, BUCK_RATE_MSK, BUCK_RATE_12_5MV_US },
+	{ RK816_BUCK2_CONFIG_REG, BUCK_RATE_MSK, BUCK_RATE_12_5MV_US },
+	/* enable RTC_PERIOD & RTC_ALARM int */
+	{ RK816_INT_STS_MSK_REG2, REG_WRITE_MSK, RTC_PERIOD_ALARM_INT_EN },
+	/* set bat 3.0 low and act shutdown */
+	{ RK816_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
+	  RK816_VBAT_LOW_3V0 | EN_VABT_LOW_SHUT_DOWN },
+	/* enable PWRON rising/faling int */
+	{ RK816_INT_STS_MSK_REG1, REG_WRITE_MSK, RK816_PWRON_FALL_RISE_INT_EN },
+	/* enable PLUG IN/OUT int */
+	{ RK816_INT_STS_MSK_REG3, REG_WRITE_MSK, PLUGIN_OUT_INT_EN },
+	/* clear int flags */
+	{ RK816_INT_STS_REG1, REG_WRITE_MSK, ALL_INT_FLAGS_ST },
+	{ RK816_INT_STS_REG2, REG_WRITE_MSK, ALL_INT_FLAGS_ST },
+	{ RK816_INT_STS_REG3, REG_WRITE_MSK, ALL_INT_FLAGS_ST },
+	{ RK816_DCDC_EN_REG2, BOOST_EN_MASK, BOOST_DISABLE },
+	/* set write mask bit 1, otherwise 'is_enabled()' get wrong status */
+	{ RK816_LDO_EN_REG1, REGS_WMSK, REGS_WMSK },
+	{ RK816_LDO_EN_REG2, REGS_WMSK, REGS_WMSK },
 };
 
 static const struct rk808_reg_data rk817_pre_init_reg[] = {
@@ -563,6 +580,38 @@ static const struct regmap_irq_chip rk808_irq_chip = {
 	.init_ack_masked = true,
 };
 
+static const struct regmap_irq rk816_battery_irqs[] = {
+	/* INT_STS */
+	[RK816_IRQ_PLUG_IN] = {
+		.mask = RK816_IRQ_PLUG_IN_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_PLUG_OUT] = {
+		.mask = RK816_IRQ_PLUG_OUT_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_CHG_OK] = {
+		.mask = RK816_IRQ_CHG_OK_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_CHG_TE] = {
+		.mask = RK816_IRQ_CHG_TE_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_CHG_TS] = {
+		.mask = RK816_IRQ_CHG_TS_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_CHG_CVTLIM] = {
+		.mask = RK816_IRQ_CHG_CVTLIM_MSK,
+		.reg_offset = 0,
+	},
+	[RK816_IRQ_DISCHG_ILIM] = {
+		.mask = RK816_IRQ_DISCHG_ILIM_MSK,
+		.reg_offset = 0,
+	},
+};
+
 static const struct regmap_irq_chip rk816_irq_chip = {
 	.name = "rk816",
 	.irqs = rk816_irqs,
@@ -572,6 +621,17 @@ static const struct regmap_irq_chip rk816_irq_chip = {
 	.status_base = RK816_INT_STS_REG1,
 	.mask_base = RK816_INT_STS_MSK_REG1,
 	.ack_base = RK816_INT_STS_REG1,
+	.init_ack_masked = true,
+};
+
+static const struct regmap_irq_chip rk816_battery_irq_chip = {
+	.name = "rk816_battery",
+	.irqs = rk816_battery_irqs,
+	.num_irqs = ARRAY_SIZE(rk816_battery_irqs),
+	.num_regs = 1,
+	.status_base = RK816_INT_STS_REG3,
+	.mask_base = RK816_INT_STS_MSK_REG3,
+	.ack_base = RK816_INT_STS_REG3,
 	.init_ack_masked = true,
 };
 
@@ -617,6 +677,10 @@ static int rk808_power_off(struct sys_off_data *data)
 	case RK808_ID:
 		reg = RK808_DEVCTRL_REG,
 		bit = DEV_OFF_RST;
+		break;
+	case RK816_ID:
+		reg = RK816_DEV_CTRL_REG,
+		bit = DEV_OFF;
 		break;
 	case RK809_ID:
 	case RK817_ID:
@@ -947,6 +1011,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 {
 	struct rk808 *rk808;
 	const struct rk808_reg_data *pre_init_reg;
+	const struct regmap_irq_chip *battery_irq_chip = NULL;
 	const struct mfd_cell *cells;
 	u8 on_source = 0, off_source = 0;
 	unsigned int on, off;
@@ -995,10 +1060,13 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		break;
 	case RK816_ID:
 		rk808->regmap_irq_chip = &rk816_irq_chip;
+		battery_irq_chip = &rk816_battery_irq_chip;
 		pre_init_reg = rk816_pre_init_reg;
 		nr_pre_init_regs = ARRAY_SIZE(rk816_pre_init_reg);
 		cells = rk816s;
 		nr_cells = ARRAY_SIZE(rk816s);
+		on_source = RK816_ON_SOURCE_REG;
+		off_source = RK816_OFF_SOURCE_REG;
 		break;
 	case RK818_ID:
 		rk808->regmap_irq_chip = &rk818_irq_chip;
@@ -1073,6 +1141,19 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		if (ret)
 			return dev_err_probe(dev, ret, "0x%x write err\n",
 					     pre_init_reg[i].addr);
+	}
+
+	if (battery_irq_chip) {
+		ret = devm_regmap_add_irq_chip(dev, rk808->regmap, irq,
+					  IRQF_ONESHOT | IRQF_SHARED, -1,
+					  battery_irq_chip,
+					  &rk808->battery_irq_data);
+		if (ret) {
+			dev_err(dev,
+				"Failed to add batterry irq_chip %d\n", ret);
+			regmap_del_irq_chip(irq, rk808->irq_data);
+			return ret;
+		}
 	}
 
 	ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_AUTO, cells, nr_cells, NULL, 0,

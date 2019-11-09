@@ -153,6 +153,83 @@ enum rk816_irqs {
 	RK816_IRQ_DISCHG_ILIM,
 };
 
+/*VERSION REGISTER*/
+#define RK816_CHIP_NAME_REG			0x17
+#define RK816_CHIP_VER_REG			0x18
+#define RK816_OTP_VER_REG			0x19
+#define RK816_NUM_REGULATORS			10
+
+/*POWER ON/OFF REGISTER*/
+#define RK816_VB_MON_REG			0x21
+#define RK816_THERMAL_REG			0x22
+#define RK816_PWRON_LP_INT_TIME_REG		0x47
+#define RK816_PWRON_DB_REG			0x48
+#define RK816_DEV_CTRL_REG			0x4B
+#define RK816_ON_SOURCE_REG			0xAE
+#define RK816_OFF_SOURCE_REG			0xAF
+
+/*BUCK AND LDO CONFIG REGISTER*/
+#define RK816_BUCK1_CONFIG_REG			0x2E
+#define RK816_BUCK1_ON_VSEL_REG			0x2F
+#define RK816_BUCK1_SLP_VSEL_REG		0x30
+#define RK816_BUCK2_CONFIG_REG			0x32
+#define RK816_BUCK2_ON_VSEL_REG			0x33
+#define RK816_BUCK2_SLP_VSEL_REG		0x34
+#define RK816_BUCK3_CONFIG_REG			0x36
+#define RK816_BUCK4_CONFIG_REG			0x37
+#define RK816_BUCK4_ON_VSEL_REG			0x38
+#define RK816_BUCK4_SLP_VSEL_REG		0x39
+
+#define RK816_IRQ_PWRON_FALL_MSK		BIT(5)
+#define RK816_IRQ_PWRON_RISE_MSK		BIT(6)
+#define RK816_IRQ_VB_LOW_MSK			BIT(1)
+#define RK816_IRQ_PWRON_MSK			BIT(2)
+#define RK816_IRQ_PWRON_LP_MSK			BIT(3)
+#define RK816_IRQ_HOTDIE_MSK			BIT(4)
+#define RK816_IRQ_RTC_ALARM_MSK			BIT(5)
+#define RK816_IRQ_RTC_PERIOD_MSK		BIT(6)
+#define RK816_IRQ_USB_OV_MSK			BIT(7)
+#define RK816_IRQ_PLUG_IN_MSK			BIT(0)
+#define RK816_IRQ_PLUG_OUT_MSK			BIT(1)
+#define RK816_IRQ_CHG_OK_MSK			BIT(2)
+#define RK816_IRQ_CHG_TE_MSK			BIT(3)
+#define RK816_IRQ_CHG_TS_MSK			BIT(4)
+#define RK816_IRQ_CHG_CVTLIM_MSK		BIT(6)
+#define RK816_IRQ_DISCHG_ILIM_MSK		BIT(7)
+
+#define RK816_VBAT_LOW_2V8			0x00
+#define RK816_VBAT_LOW_2V9			0x01
+#define RK816_VBAT_LOW_3V0			0x02
+#define RK816_VBAT_LOW_3V1			0x03
+#define RK816_VBAT_LOW_3V2			0x04
+#define RK816_VBAT_LOW_3V3			0x05
+#define RK816_VBAT_LOW_3V4			0x06
+#define RK816_VBAT_LOW_3V5			0x07
+#define RK816_PWR_FALL_INT_STATUS		(0x1 << 5)
+#define RK816_PWR_RISE_INT_STATUS		(0x1 << 6)
+#define RK816_ALARM_INT_STATUS			(0x1 << 5)
+#define EN_VBAT_LOW_IRQ				(0x1 << 4)
+#define VBAT_LOW_ACT_MASK			(0x1 << 4)
+#define RTC_TIMER_ALARM_INT_MSK			(0x3 << 2)
+#define RTC_TIMER_ALARM_INT_DIS			(0x0 << 2)
+#define RTC_PERIOD_ALARM_INT_MSK		(0x3 << 5)
+#define RTC_PERIOD_ALARM_INT_ST			(0x3 << 5)
+#define RTC_PERIOD_ALARM_INT_DIS		(0x3 << 5)
+#define RTC_PERIOD_ALARM_INT_EN			(0x9f)
+#define REG_WRITE_MSK				0xff
+#define BUCK4_MAX_ILIMIT			0x2c
+#define BUCK_RATE_MSK				(0x3 << 3)
+#define BUCK_RATE_12_5MV_US			(0x2 << 3)
+#define ALL_INT_FLAGS_ST			0xff
+#define PLUGIN_OUT_INT_EN			0xfc
+#define RK816_PWRON_FALL_RISE_INT_EN		0x9f
+#define BUCK1_2_IMAX_MAX			(0x3 << 6)
+#define BUCK3_4_IMAX_MAX			(0x3 << 3)
+#define BOOST_DISABLE				((0x1 << 5) | (0x0 << 1))
+#define BUCK4_VRP_3PERCENT			0xc0
+#define RK816_TYPE_ES2				0x05
+#define RK816_CHIP_VERSION_MASK			0x0f
+
 /* power channel registers */
 #define RK816_DCDC_EN_REG1		0x23
 
@@ -973,6 +1050,107 @@ enum rk806_dvs_mode {
 
 #define RK818_NUM_IRQ		16
 
+/*RK818_DCDC_EN_REG*/
+#define BUCK1_EN_MASK		BIT(0)
+#define BUCK2_EN_MASK		BIT(1)
+#define BUCK3_EN_MASK		BIT(2)
+#define BUCK4_EN_MASK		BIT(3)
+#define BOOST_EN_MASK		BIT(4)
+#define LDO9_EN_MASK		BIT(5)
+#define SWITCH_EN_MASK		BIT(6)
+#define OTG_EN_MASK		BIT(7)
+
+#define BUCK1_EN_ENABLE		BIT(0)
+#define BUCK2_EN_ENABLE		BIT(1)
+#define BUCK3_EN_ENABLE		BIT(2)
+#define BUCK4_EN_ENABLE		BIT(3)
+#define BOOST_EN_ENABLE		BIT(4)
+#define LDO9_EN_ENABLE		BIT(5)
+#define SWITCH_EN_ENABLE	BIT(6)
+#define OTG_EN_ENABLE		BIT(7)
+
+#define BUCK1_SLP_SET_MASK	BIT(0)
+#define BUCK2_SLP_SET_MASK	BIT(1)
+#define BUCK3_SLP_SET_MASK	BIT(2)
+#define BUCK4_SLP_SET_MASK	BIT(3)
+#define BOOST_SLP_SET_MASK	BIT(4)
+#define LDO9_SLP_SET_MASK	BIT(5)
+#define SWITCH_SLP_SET_MASK	BIT(6)
+#define OTG_SLP_SET_MASK	BIT(7)
+
+#define BUCK1_SLP_SET_OFF	BIT(0)
+#define BUCK2_SLP_SET_OFF	BIT(1)
+#define BUCK3_SLP_SET_OFF	BIT(2)
+#define BUCK4_SLP_SET_OFF	BIT(3)
+#define BOOST_SLP_SET_OFF	BIT(4)
+#define LDO9_SLP_SET_OFF	BIT(5)
+#define SWITCH_SLP_SET_OFF	BIT(6)
+#define OTG_SLP_SET_OFF		BIT(7)
+#define OTG_BOOST_SLP_OFF	(BOOST_SLP_SET_OFF | OTG_SLP_SET_OFF)
+
+#define BUCK1_SLP_SET_ON	BIT(0)
+#define BUCK2_SLP_SET_ON	BIT(1)
+#define BUCK3_SLP_SET_ON	BIT(2)
+#define BUCK4_SLP_SET_ON	BIT(3)
+#define BOOST_SLP_SET_ON	BIT(4)
+#define LDO9_SLP_SET_ON		BIT(5)
+#define SWITCH_SLP_SET_ON	BIT(6)
+#define OTG_SLP_SET_ON		BIT(7)
+
+#define VOUT_LO_MASK		BIT(0)
+#define VB_LO_MASK		BIT(1)
+#define PWRON_MASK		BIT(2)
+#define PWRON_LP_MASK		BIT(3)
+#define HOTDIE_MASK		BIT(4)
+#define RTC_ALARM_MASK		BIT(5)
+#define RTC_PERIOD_MASK		BIT(6)
+#define USB_OV_MASK		BIT(7)
+
+#define VOUT_LO_DISABLE		BIT(0)
+#define VB_LO_DISABLE		BIT(1)
+#define PWRON_DISABLE		BIT(2)
+#define PWRON_LP_DISABLE	BIT(3)
+#define HOTDIE_DISABLE		BIT(4)
+#define RTC_ALARM_DISABLE	BIT(5)
+#define RTC_PERIOD_DISABLE	BIT(6)
+#define USB_OV_INT_DISABLE	BIT(7)
+
+#define VOUT_LO_ENABLE		(0 << 0)
+#define VB_LO_ENABLE		(0 << 1)
+#define PWRON_ENABLE		(0 << 2)
+#define PWRON_LP_ENABLE		(0 << 3)
+#define HOTDIE_ENABLE		(0 << 4)
+#define RTC_ALARM_ENABLE	(0 << 5)
+#define RTC_PERIOD_ENABLE	(0 << 6)
+#define USB_OV_INT_ENABLE	(0 << 7)
+
+#define PLUG_IN_MASK		BIT(0)
+#define PLUG_OUT_MASK		BIT(1)
+#define CHGOK_MASK		BIT(2)
+#define CHGTE_MASK		BIT(3)
+#define CHGTS1_MASK		BIT(4)
+#define TS2_MASK		BIT(5)
+#define CHG_CVTLIM_MASK		BIT(6)
+#define DISCHG_ILIM_MASK	BIT(7)
+
+#define PLUG_IN_DISABLE		BIT(0)
+#define PLUG_OUT_DISABLE	BIT(1)
+#define CHGOK_DISABLE		BIT(2)
+#define CHGTE_DISABLE		BIT(3)
+#define CHGTS1_DISABLE		BIT(4)
+#define TS2_DISABLE		BIT(5)
+#define CHG_CVTLIM_DISABLE	BIT(6)
+#define DISCHG_ILIM_DISABLE	BIT(7)
+
+#define PLUG_IN_ENABLE		BIT(0)
+#define PLUG_OUT_ENABLE		BIT(1)
+#define CHGOK_ENABLE		BIT(2)
+#define CHGTE_ENABLE		BIT(3)
+#define CHGTS1_ENABLE		BIT(4)
+#define TS2_ENABLE		BIT(5)
+#define CHG_CVTLIM_ENABLE	BIT(6)
+#define DISCHG_ILIM_ENABLE	BIT(7)
+
 #define RK808_VBAT_LOW_2V8	0x00
 #define RK808_VBAT_LOW_2V9	0x01
 #define RK808_VBAT_LOW_3V0	0x02
@@ -1018,6 +1196,7 @@ enum rk806_dvs_mode {
 #define PWM_MODE_MSK			BIT(7)
 #define FPWM_MODE			BIT(7)
 #define AUTO_PWM_MODE			0
+#define REGS_WMSK			0xf0
 
 enum rk817_reg_id {
 	RK817_ID_DCDC1 = 0,
@@ -1427,6 +1606,7 @@ struct rk808_pin_info {
 struct rk808 {
 	struct device			*dev;
 	struct regmap_irq_chip_data	*irq_data;
+	struct regmap_irq_chip_data	*battery_irq_data;
 	struct regmap			*regmap;
 	long				variant;
 	const struct regmap_config	*regmap_cfg;
