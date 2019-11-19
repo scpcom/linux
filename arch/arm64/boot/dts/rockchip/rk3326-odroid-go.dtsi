@@ -521,7 +521,7 @@
 };
 
 &sfc {
-	status = "okay";
+	status = "disabled";
 };
 
 &gpu {
