@@ -108,12 +108,8 @@
 
 &rk817 {
 	regulators {
-		/* Rev 0.2 CAM Power */
+		/* Rev 0.2 CAM Power - Disabled by default */
 		vcc_cam: LDO_REG9 {
-			/* No regulator control in OV5647 and IMX219 drivers */
-			regulator-always-on;
-			regulator-boot-on;
-
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3000000>;
 
