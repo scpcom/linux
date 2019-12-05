@@ -39,3 +39,7 @@ subdir-y += unisoc
 subdir-y += vt8500
 subdir-y += xen
 subdir-y += xilinx
+
+targets += $(dtb-y)
+
+subdir-y += overlays
