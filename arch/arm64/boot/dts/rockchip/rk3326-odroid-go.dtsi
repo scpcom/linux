@@ -84,10 +84,11 @@
                   - odroidgo2-joypad sysfs list -
 		   * for poll device interval(ms)
 		   /sys/devices/platform/odroidgo2_joypad/poll_interval [rw]
-                   * for button-adc-threshold(mv)
-		   /sys/devices/platform/odroidgo2_joypad/adc_threshold [rw]
-		   * for button-gpio-interval(ms)
-		   /sys/devices/platform/odroidgo2_joypad/gpio_interval [rw]
+                   * for button-adc-fuzz
+		   /sys/devices/platform/odroidgo2_joypad/adc_fuzz [r]
+                   * for button-adc-flat
+		   /sys/devices/platform/odroidgo2_joypad/adc_flat [r]
+
 		   * for report control(1:enable, 0:disable)
 		   /sys/devices/platform/odroidgo2_joypad/enable [rw]
 		   * for adc calibration value setup(1:current adcs value -> cal value)
@@ -102,21 +103,30 @@
 		io-channel-names = "joy_x", "joy_y";
 		io-channels = <&saradc 1>, <&saradc 2>;
 
-		/* adc button max, min (mV) */
-		button-adc-max = <1800>;
-		button-adc-min = <0>;
+		/*
+		    joy-stick voltage range
+		    /sys/devices/platform/ff288000.saradc/iio:device0
+		    adc-x : in_voltage1_raw
+		    adc-y : in_voltage2_raw
+
+		    range calculate.
+		    (adc raw max value - adc raw min value) * 1.7515
+		*/
+		button-adc-x-range = <1100>;
+		button-adc-y-range = <1000>;
 
 		/* adc channel count */
 		button-adc-count = <2>;
 
-		/* report threshold (mV) */
-		button-adc-threshold = <5>;
+		/*
+		  specifies fuzz value that is used to filter noise from
+		  the event stream.
+		*/
+		button-adc-fuzz = <10>;
+		button-adc-flat = <10>;
 
 		/* poll device interval (ms), adc read interval */
-		poll-interval = <5>;
-
-		/* gpio read interval = poll-interval * button-gpio-interval */
-		button-gpio-interval = <1>;
+		poll-interval = <1>;
 
 		/* gpio button auto repeat set value : default disable */
 		/*

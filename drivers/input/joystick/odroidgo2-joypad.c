@@ -40,6 +40,9 @@
 /*----------------------------------------------------------------------------*/
 #define DRV_NAME "odroidgo2_joypad"
 
+/* RK3326 ADC max voltage(mv) */
+#define	RK3326_ADC_MAX_MV	1800
+
 /*----------------------------------------------------------------------------*/
 struct bt_adc {
 	/* IIO ADC Channel */
@@ -52,8 +55,6 @@ struct bt_adc {
 	int max, min;
 	/* calibrated adc value */
 	int cal;
-	/* report threshold check (mV) */
-	int threshold;
 	/* invert report */
 	bool invert;
 };
@@ -71,8 +72,6 @@ struct bt_gpio {
 	bool old_value;
 	/* button press level */
 	bool active_level;
-	/* report interval check */
-	int interval;
 };
 
 struct joypad {
@@ -87,21 +86,71 @@ struct joypad {
 	bool invert_absy;
 
 	/* report interval (ms) */
-	int bt_gpio_interval;
 	int bt_gpio_count;
 	struct bt_gpio *gpios;
 	/* button auto repeat */
 	int auto_repeat;
 
 	/* report threshold (mV) */
-	int bt_adc_threshold;
-	int bt_adc_max, bt_adc_min;
+	int bt_adc_fuzz, bt_adc_flat;
+	int bt_adc_x_range, bt_adc_y_range;
 	int bt_adc_count;
 	struct bt_adc *adcs;
 
 	struct mutex lock;
 };
 
+/*----------------------------------------------------------------------------*/
+//
+// set to the value in the boot.ini file. (if exist)
+//
+/*----------------------------------------------------------------------------*/
+static unsigned int g_button_adc_x_range = 0;
+static unsigned int g_button_adc_y_range = 0;
+static unsigned int g_button_adc_fuzz = 0;
+static unsigned int g_button_adc_flat = 0;
+
+static int __init button_adcx_range_setup(char *str)
+{
+        if (!str)
+                return -EINVAL;
+
+	g_button_adc_x_range = simple_strtoul(str, NULL, 10);
+
+        return 0;
+}
+__setup("button-adc-x-range=", button_adcx_range_setup);
+
+static int __init button_adcy_range_setup(char *str)
+{
+        if (!str)
+                return -EINVAL;
+
+	g_button_adc_y_range = simple_strtoul(str, NULL, 10);
+
+        return 0;
+}
+__setup("button-adc-y-range=", button_adcy_range_setup);
+
+static int button_adc_fuzz(char *str)
+{
+        if (!str)
+                return -EINVAL;
+	g_button_adc_fuzz = simple_strtoul(str, NULL, 10);
+	return 0;
+}
+__setup("button-adc-fuzz=", button_adc_fuzz);
+
+static int button_adc_flat(char *str)
+{
+        if (!str)
+                return -EINVAL;
+	g_button_adc_flat = simple_strtoul(str, NULL, 10);
+	return 0;
+}
+__setup("button-adc-flat=", button_adc_flat);
+
+/*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 static int joypad_adc_read(struct bt_adc *adc)
 {
@@ -156,77 +205,45 @@ static DEVICE_ATTR(poll_interval, S_IWUSR | S_IRUGO,
 /*
  * ATTRIBUTES:
  *
- * /sys/devices/platform/odroidgo2_joypad/gpio_interval [rw]
+ * /sys/devices/platform/odroidgo2_joypad/adc_fuzz [r]
  */
 /*----------------------------------------------------------------------------*/
-static ssize_t joypad_store_gpio_interval(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf,
-				      size_t count)
-{
-	struct platform_device *pdev  = to_platform_device(dev);
-	struct joypad *joypad = platform_get_drvdata(pdev);
-
-	mutex_lock(&joypad->lock);
-	joypad->bt_gpio_interval = simple_strtoul(buf, NULL, 10);
-	mutex_unlock(&joypad->lock);
-
-	return count;
-}
-
-/*----------------------------------------------------------------------------*/
-static ssize_t joypad_show_gpio_interval(struct device *dev,
+static ssize_t joypad_show_adc_fuzz(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
 {
 	struct platform_device *pdev  = to_platform_device(dev);
 	struct joypad *joypad = platform_get_drvdata(pdev);
 
-	return sprintf(buf, "%d\n", joypad->bt_gpio_interval);
+	return sprintf(buf, "%d\n", joypad->bt_adc_fuzz);
 }
 
 /*----------------------------------------------------------------------------*/
-static DEVICE_ATTR(gpio_interval, S_IWUSR | S_IRUGO,
-		   joypad_show_gpio_interval,
-		   joypad_store_gpio_interval);
+static DEVICE_ATTR(adc_fuzz, S_IWUSR | S_IRUGO,
+		   joypad_show_adc_fuzz,
+		   NULL);
 
 /*----------------------------------------------------------------------------*/
 /*
  * ATTRIBUTES:
  *
- * /sys/devices/platform/odroidgo2_joypad/adc_threshold [rw]
+ * /sys/devices/platform/odroidgo2_joypad/adc_flat [r]
  */
 /*----------------------------------------------------------------------------*/
-static ssize_t joypad_store_adc_threshold(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf,
-				      size_t count)
-{
-	struct platform_device *pdev  = to_platform_device(dev);
-	struct joypad *joypad = platform_get_drvdata(pdev);
-
-	mutex_lock(&joypad->lock);
-	joypad->bt_adc_threshold = simple_strtoul(buf, NULL, 10);
-	mutex_unlock(&joypad->lock);
-
-	return count;
-}
-
-/*----------------------------------------------------------------------------*/
-static ssize_t joypad_show_adc_threshold(struct device *dev,
+static ssize_t joypad_show_adc_flat(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
 {
 	struct platform_device *pdev  = to_platform_device(dev);
 	struct joypad *joypad = platform_get_drvdata(pdev);
 
-	return sprintf(buf, "%d\n", joypad->bt_adc_threshold);
+	return sprintf(buf, "%d\n", joypad->bt_adc_flat);
 }
 
 /*----------------------------------------------------------------------------*/
-static DEVICE_ATTR(adc_threshold, S_IWUSR | S_IRUGO,
-		   joypad_show_adc_threshold,
-		   joypad_store_adc_threshold);
+static DEVICE_ATTR(adc_flat, S_IWUSR | S_IRUGO,
+		   joypad_show_adc_flat,
+		   NULL);
 
 /*----------------------------------------------------------------------------*/
 /*
@@ -332,8 +349,8 @@ static DEVICE_ATTR(adc_cal, S_IWUSR | S_IRUGO,
 /*----------------------------------------------------------------------------*/
 static struct attribute *joypad_attrs[] = {
 	&dev_attr_poll_interval.attr,
-	&dev_attr_gpio_interval.attr,
-	&dev_attr_adc_threshold.attr,
+	&dev_attr_adc_fuzz.attr,
+	&dev_attr_adc_flat.attr,
 	&dev_attr_enable.attr,
 	&dev_attr_adc_cal.attr,
 	NULL,
@@ -349,9 +366,8 @@ static void joypad_gpio_check(struct input_polled_dev *poll_dev)
 {
 	struct joypad *joypad = poll_dev->private;
 	int nbtn, value;
-	bool sync;
 
-	for (nbtn = 0, sync = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
+	for (nbtn = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
 		struct bt_gpio *gpio = &joypad->gpios[nbtn];
 
 		if (gpio_get_value_cansleep(gpio->num) < 0) {
@@ -360,21 +376,14 @@ static void joypad_gpio_check(struct input_polled_dev *poll_dev)
 		}
 		value = gpio_get_value(gpio->num);
 		if (value != gpio->old_value) {
-			if (gpio->interval < joypad->bt_gpio_interval) {
-				gpio->interval++;
-				continue;
-			}
 			input_event(poll_dev->input,
 				gpio->report_type,
 				gpio->linux_code,
 				(value == gpio->active_level) ? 1 : 0);
 			gpio->old_value = value;
-			sync = true;
 		}
-		gpio->interval = 0;
 	}
-	if (sync)
-		input_sync(poll_dev->input);
+	input_sync(poll_dev->input);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -382,9 +391,8 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 {
 	struct joypad *joypad = poll_dev->private;
 	int nbtn, value;
-	bool sync;
 
-	for (nbtn = 0, sync = 0; nbtn < joypad->bt_adc_count; nbtn++) {
+	for (nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
 
 		value = joypad_adc_read(adc);
@@ -393,28 +401,24 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 				__func__, nbtn);
 			continue;
 		}
+		value = value - adc->cal;
+		value = value > adc->max ? adc->max : value;
+		value = value < adc->min ? adc->min : value;
 
-		adc->threshold = abs(adc->old_value - value);
-		if (adc->threshold > joypad->bt_adc_threshold) {
-			if (nbtn == 0)
-			{
-				// Invert
-				input_report_abs(poll_dev->input,
-					adc->report_type,
-					(value - adc->cal) * -1);
-			}
-			else
-			{
-				input_report_abs(poll_dev->input,
-					adc->report_type,
-					value - adc->cal);
-			}
-			adc->old_value = value;
-			sync = true;
+		if (nbtn == 0)
+		{
+			// adc-x value is default inverted(h/w)
+			input_report_abs(poll_dev->input,
+				adc->report_type, value * (-1));
 		}
+		else
+		{
+			input_report_abs(poll_dev->input,
+				adc->report_type, value);
+		}
+		adc->old_value = value;
 	}
-	if (sync)
-		input_sync(poll_dev->input);
+	input_sync(poll_dev->input);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -442,7 +446,6 @@ static void joypad_open(struct input_polled_dev *poll_dev)
 	for (nbtn = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
 		struct bt_gpio *gpio = &joypad->gpios[nbtn];
 		gpio->old_value = gpio->active_level ? 0 : 1;
-		gpio->interval = 0;
 	}
 	for (nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
@@ -505,6 +508,9 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 			adc->report_type = ABS_Y;
 			if (joypad->invert_absy)
 				adc->invert = true;
+
+			adc->max =  (joypad->bt_adc_y_range / 2) - 1;
+			adc->min = -(joypad->bt_adc_y_range / 2);
 		}
 		else {
 			adc->channel =
@@ -512,6 +518,9 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 			adc->report_type = ABS_X;
 			if (joypad->invert_absx)
 				adc->invert = true;
+
+			adc->max =  (joypad->bt_adc_x_range / 2) - 1;
+			adc->min = -(joypad->bt_adc_x_range / 2);
 		}
 
 		if (IS_ERR(adc->channel)) {
@@ -529,8 +538,6 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 				nbtn, type);
 			return -EINVAL;
 		}
-		adc->max = joypad->bt_adc_max;
-		adc->min = joypad->bt_adc_min;
 	}
 	if (nbtn == 0)
 		return -EINVAL;
@@ -634,13 +641,14 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 	for(nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
 		input_set_abs_params(input, adc->report_type,
-				-(adc->max + adc->min)/2,
-				 (adc->max + adc->min)/2 -1,
-				0, 0);
+				adc->min, adc->max,
+				joypad->bt_adc_fuzz,
+				joypad->bt_adc_flat);
+		dev_info(dev,
+			"%s : ABS min = %d, max = %d, fuzz = %d, flat = %d\n",
+			__func__, adc->min, adc->max,
+			joypad->bt_adc_fuzz, joypad->bt_adc_flat);
 	}
-	dev_info(dev, "%s : ABS min = %d, max = %d\n", __func__,
-			-(joypad->bt_adc_max + joypad->bt_adc_min)/2,
-			 (joypad->bt_adc_max + joypad->bt_adc_min)/2 -1);
 
 	/* GPIO key setup */
 	__set_bit(EV_KEY, input->evbit);
@@ -665,20 +673,62 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 }
 
 /*----------------------------------------------------------------------------*/
+static void joypad_setup_value_check(struct device *dev, struct joypad *joypad)
+{
+	/*
+		fuzz: specifies fuzz value that is used to filter noise from
+			the event stream.
+	*/
+	if (g_button_adc_fuzz)
+		joypad->bt_adc_fuzz = g_button_adc_fuzz;
+	else
+		device_property_read_u32(dev, "button-adc-fuzz",
+					&joypad->bt_adc_fuzz);
+	/*
+		flat: values that are within this value will be discarded by
+			joydev interface and reported as 0 instead.
+	*/
+	if (g_button_adc_flat)
+		joypad->bt_adc_flat = g_button_adc_flat;
+	else
+		device_property_read_u32(dev, "button-adc-flat",
+					&joypad->bt_adc_flat);
+
+	if (g_button_adc_x_range)
+		joypad->bt_adc_x_range = g_button_adc_x_range;
+	else
+		device_property_read_u32(dev, "button-adc-x-range",
+					&joypad->bt_adc_x_range);
+	if (g_button_adc_y_range)
+		joypad->bt_adc_y_range = g_button_adc_y_range;
+	else
+		device_property_read_u32(dev, "button-adc-y-range",
+					&joypad->bt_adc_y_range);
+
+	if (joypad->bt_adc_fuzz > RK3326_ADC_MAX_MV)
+		joypad->bt_adc_fuzz = 0;
+
+	if (joypad->bt_adc_flat > RK3326_ADC_MAX_MV)
+		joypad->bt_adc_flat = 0;
+
+	if (joypad->bt_adc_x_range > RK3326_ADC_MAX_MV)
+		joypad->bt_adc_x_range = RK3326_ADC_MAX_MV;
+
+	if (joypad->bt_adc_y_range > RK3326_ADC_MAX_MV)
+		joypad->bt_adc_y_range = RK3326_ADC_MAX_MV;
+}
+
+/*----------------------------------------------------------------------------*/
 static int joypad_dt_parse(struct device *dev, struct joypad *joypad)
 {
 	int error = 0;
 
+	/* initialize value check from boot.ini */
+	joypad_setup_value_check(dev, joypad);
+
 	device_property_read_u32(dev, "button-adc-count",
 				&joypad->bt_adc_count);
-	device_property_read_u32(dev, "button-gpio-interval",
-				&joypad->bt_gpio_interval);
-	device_property_read_u32(dev, "button-adc-threshold",
-				&joypad->bt_adc_threshold);
-	device_property_read_u32(dev, "button-adc-max",
-				&joypad->bt_adc_max);
-	device_property_read_u32(dev, "button-adc-min",
-				&joypad->bt_adc_min);
+
 	device_property_read_u32(dev, "poll-interval",
 				&joypad->poll_interval);
 
