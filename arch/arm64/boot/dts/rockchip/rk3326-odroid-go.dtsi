@@ -126,7 +126,7 @@
 		button-adc-flat = <10>;
 
 		/* poll device interval (ms), adc read interval */
-		poll-interval = <1>;
+		poll-interval = <2>;
 
 		/* gpio button auto repeat set value : default disable */
 		/*
