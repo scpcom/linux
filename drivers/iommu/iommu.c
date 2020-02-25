@@ -2665,6 +2665,12 @@ next:
 		if (ret)
 			goto out_err;
 	}
+
+#ifdef IOMMU_TLB_SHOT_ENTIRE
+	if (domain->ops->flush_iotlb_all && (prot & IOMMU_TLB_SHOT_ENTIRE))
+		domain->ops->flush_iotlb_all(domain);
+#endif
+
 	return mapped;
 
 out_err:

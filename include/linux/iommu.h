@@ -31,6 +31,13 @@
  */
 #define IOMMU_PRIV	(1 << 5)
 
+#ifdef CONFIG_NO_GKI
+
+/* For shoting entire IOMMU tlb once */
+#define IOMMU_TLB_SHOT_ENTIRE	(1 << 8)
+
+#endif
+
 struct iommu_ops;
 struct iommu_group;
 struct bus_type;
