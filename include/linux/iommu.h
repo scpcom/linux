@@ -1455,6 +1455,9 @@ int iommu_get_msi_cookie(struct iommu_domain *domain, dma_addr_t base);
 int iommu_dma_prepare_msi(struct msi_desc *desc, phys_addr_t msi_addr);
 void iommu_dma_compose_msi_msg(struct msi_desc *desc, struct msi_msg *msg);
 
+int iommu_dma_reserve_iova(struct device *dev, dma_addr_t base,
+			   u64 size);
+
 #else /* CONFIG_IOMMU_DMA */
 
 struct msi_desc;
@@ -1472,6 +1475,12 @@ static inline int iommu_dma_prepare_msi(struct msi_desc *desc, phys_addr_t msi_a
 
 static inline void iommu_dma_compose_msi_msg(struct msi_desc *desc, struct msi_msg *msg)
 {
+}
+
+static inline int iommu_dma_reserve_iova(struct device *dev, dma_addr_t base,
+					 u64 size)
+{
+	return -ENODEV;
 }
 
 #endif	/* CONFIG_IOMMU_DMA */
