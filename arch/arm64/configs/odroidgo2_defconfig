@@ -1656,6 +1656,7 @@ CONFIG_RTL8192CU=m
 # CONFIG_CW1200 is not set
 # CONFIG_RSI_91X is not set
 CONFIG_RTL8812AU=m
+CONFIG_RTL8822BU=m
 
 #
 # Enable WiMAX (Networking options) to see the WiMAX drivers
