@@ -1629,9 +1629,7 @@ static int set_machine_constraints(struct regulator_dev *rdev)
 				regulator_disable(rdev->supply);
 			return ret;
 		}
-
-		if (rdev->constraints->always_on)
-			rdev->use_count++;
+		rdev->use_count++;
 	} else if (rdev->desc->off_on_delay) {
 		rdev->last_off = ktime_get();
 	}
