@@ -29,6 +29,7 @@ obj-$(CONFIG_RTL8812AU) += rtl8812au/
 obj-$(CONFIG_RTL8192CU) += rtl8192cu/
 obj-$(CONFIG_RTL8822BU) += rtl88x2bu/
 obj-$(CONFIG_RTL8821CU) += rtl8821cu/
+obj-$(CONFIG_RTL8723BU) += ew-7611ulb/
 obj-$(CONFIG_SPARD_WLAN_SUPPORT) += uwe5622/
 obj-$(CONFIG_BCMDHD) += bcmdhd/
 obj-$(CONFIG_AIC_WLAN_SUPPORT) += aic8800/
