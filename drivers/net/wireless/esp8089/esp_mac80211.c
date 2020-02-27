@@ -2171,8 +2171,10 @@ esp_pub_init_mac80211(struct esp_pub *epub)
         /* ONLY station for now, support P2P soon... */
         hw->wiphy->interface_modes = 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
+#ifdef P2P_CONCURRENT
             BIT(NL80211_IFTYPE_P2P_GO) |
 		    BIT(NL80211_IFTYPE_P2P_CLIENT) |
+#endif
 #endif
             BIT(NL80211_IFTYPE_STATION) |
 		    BIT(NL80211_IFTYPE_AP);
