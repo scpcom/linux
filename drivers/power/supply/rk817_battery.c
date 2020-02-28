@@ -1954,7 +1954,9 @@ static enum power_supply_property rk817_bat_props[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	POWER_SUPPLY_PROP_TEMP,
+#endif
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
@@ -2095,11 +2097,13 @@ static int rk817_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = POWER_SUPPLY_HEALTH_GOOD;
 		break;
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = battery->temperature;
 		if (battery->pdata->bat_mode == MODE_VIRTUAL)
 			val->intval = VIRTUAL_TEMPERATURE;
 		break;
+#endif
 	case POWER_SUPPLY_PROP_STATUS:
 		if (battery->pdata->bat_mode == MODE_VIRTUAL)
 			val->intval = VIRTUAL_STATUS;
