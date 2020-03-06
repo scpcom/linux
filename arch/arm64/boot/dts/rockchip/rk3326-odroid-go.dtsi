@@ -78,7 +78,7 @@
 		status = "okay";
 	};
 
-	joypad: odroidgo2-joypad {
+	joypad: builtin_gamepad: odroidgo2-joypad {
                 compatible = "odroidgo2-joypad";
                 /*
                   - odroidgo2-joypad sysfs list -

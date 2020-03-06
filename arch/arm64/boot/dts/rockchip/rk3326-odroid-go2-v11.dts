@@ -41,15 +41,33 @@
 		};
 	};
 
-	wifi_pwrseq: wifi-pwrseq {
+	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		pinctrl-names = "default";
-		pinctrl-0 = <&wifi_pwrseq_pins>;
-		reset-gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&wifi_enable_h>;
+
+		/* CHIP_EN GPIO3_B6 */
+		reset-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
+	};
+
+	wireless-wlan {
+		compatible = "wlan-platdata";
+		rockchip,grf = <&grf>;
+		/* wifi_chip_type - wifi chip define
+		* ap6210, ap6330, ap6335
+		* rtl8188eu, rtl8723bs, rtl8723bu
+		* esp8089
+		*/
+		wifi_chip_type = "esp8089";
+		sdio_vref = <3300>; //1800mv or 3300mv
+		status = "okay";
 	};
 };
 
 &builtin_gamepad {
+	/* poll device interval (ms), adc read interval */
+	poll-interval = <2>;
+
 	button-sw20 {
 		gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
 		label = "TOP-LEFT 2";
@@ -62,16 +80,28 @@
 	};
 };
 
+/* MIPI CSI I2C */
+&i2c2 {
+	status = "disabled";
+};
+
 &internal_display {
 	compatible = "elida,kd35t133", "simple-panel-dsi";
 	iovcc-supply = <&vcc_lcd>;
 	vdd-supply = <&vcc_lcd>;
 };
 
+&mipi_dphy_rx0 {
+	status = "okay";
+};
+
 &rk817 {
 	regulators {
+		/* Rev 1.1 WIFI Power */
 		vcc_wifi: LDO_REG9 {
 			regulator-name = "vcc_wifi";
+			regulator-always-on;
+			regulator-boot-on;
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
 
@@ -83,23 +113,22 @@
 	};
 };
 
+&rkisp1 {
+	status = "okay";
+};
+
 &sdio {
 	bus-width = <4>;
 	cap-sd-highspeed;
 	cap-sdio-irq;
 	disable-wp;
+	supports-sdio;
+	ignore-pm-notify;
 	keep-power-in-suspend;
-	mmc-pwrseq = <&wifi_pwrseq>;
-	non-removable;
+	/* non-removable; */
+	mmc-pwrseq = <&sdio_pwrseq>;
 	vmmc-supply = <&vcc_wifi>;
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
-
-	esp8089: wifi@1 {
-		compatible = "esp,esp8089";
-		reg = <1>;
-	};
 };
 
 &pinctrl {
@@ -126,10 +155,9 @@
 		};
 	};
 
-	wifi {
-		wifi_pwrseq_pins: wifi-pwrseq-pins {
-			rockchip,pins = <3 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>,
-					<3 RK_PB6 RK_FUNC_GPIO &pcfg_output_high>;
+	sdio-pwrseq {
+		wifi_enable_h: wifi-enable-h {
+			rockchip,pins = <3 RK_PB6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
