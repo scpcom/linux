@@ -70,13 +70,13 @@
 
 	button-sw20 {
 		gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
-		label = "TOP-LEFT 2";
-		linux,code = <BTN_TL2>;
+		label = "GPIO TOP-RIGHT2";
+		linux,code = <BTN_TR2>;
 	};
 	button-sw21 {
 		gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
-		label = "TOP-RIGHT 2";
-		linux,code = <BTN_TR2>;
+		label = "GPIO TOP-LEFT2";
+		linux,code = <BTN_TL2>;
 	};
 };
 
