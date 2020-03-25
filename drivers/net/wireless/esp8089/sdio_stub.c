@@ -11,7 +11,8 @@
 //#include <mach/iomux.h>
 
 /* reset GPIO parameter defaults to GPIO 0 (ID_SD) on the Raspberry Pi */
-static int esp_reset_gpio = 0;
+/* default reset port of OGA hw rev 1.1 : GPIO3_B1 (105) */
+static int esp_reset_gpio = 105;
 module_param(esp_reset_gpio, int, 0);
 MODULE_PARM_DESC(esp_reset_gpio, "ESP8089 CH_PD reset GPIO number");
 
@@ -35,12 +36,10 @@ void sif_platform_rescan_card(unsigned insert)
 
 void sif_platform_reset_target(void)
 {
+	/* set output high by default */
 	printk("ESP8089 reset via GPIO %d\n", esp_reset_gpio);
 	gpio_request(esp_reset_gpio,"esp_reset");
-	gpio_direction_output(esp_reset_gpio,0);
-	msleep(200);
-	gpio_direction_input(esp_reset_gpio);
-	gpio_free(esp_reset_gpio);
+	gpio_direction_output(esp_reset_gpio, 1);
 }
 
 void sif_platform_target_poweroff(void)
