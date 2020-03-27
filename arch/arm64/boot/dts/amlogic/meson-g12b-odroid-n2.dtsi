@@ -8,6 +8,8 @@
 
 / {
 	aliases {
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
 		rtc0 = &rtc;
 		serial1 = &uart_A;
 		spi0 = &spicc0;
@@ -266,6 +268,20 @@
 		"PIN_36"; /* GPIOX_19 */
 };
 
+&i2c2 {
+	status = "okay";
+
+	/*
+	 * 40 Pin Header : SDA(GPIOX.17->3 Pin)
+	 *		   SCL(GPIOX.18->5 Pin)
+	 */
+	pinctrl-0 = <&i2c2_sda_x_pins>, <&i2c2_sck_x_pins>;
+	pinctrl-names = "default";
+
+	/* default 400k */
+	clock-frequency = <400000>;
+};
+ 
 &i2c3 {
 	status = "okay";
 	pinctrl-0 = <&i2c3_sda_a_pins>, <&i2c3_sck_a_pins>;
