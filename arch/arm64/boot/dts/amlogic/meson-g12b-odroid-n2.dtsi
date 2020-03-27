@@ -9,6 +9,7 @@
 / {
 	aliases {
 		rtc0 = &rtc;
+		serial1 = &uart_A;
 		spi0 = &spicc0;
 	};
 
@@ -334,6 +335,12 @@
 
 &toacodec {
 	status = "okay";
+};
+
+&uart_A {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_a_pins>;
 };
 
 &usb {
