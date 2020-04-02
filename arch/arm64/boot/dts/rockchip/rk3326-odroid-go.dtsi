@@ -530,9 +530,18 @@
 };
 
 &dmc_opp_table {
+	/delete-node/ opp-194000000;
+	/delete-node/ opp-328000000;
+	/delete-node/ opp-450000000;
+
 	opp-786000000 {
 		status = "okay";
 	};
+};
+
+&gpu_opp_table {
+	/delete-node/ opp-200000000;
+	/delete-node/ opp-300000000;
 };
 
 &emmc {
