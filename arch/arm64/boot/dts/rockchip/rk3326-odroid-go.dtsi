@@ -103,6 +103,15 @@
 		io-channel-names = "joy_x", "joy_y";
 		io-channels = <&saradc 1>, <&saradc 2>;
 
+		/* adc channel count */
+		button-adc-count = <2>;
+
+		/* adc calculate scale */
+		button-adc-scale = <2>;
+
+		/* adc deadzone range  */
+		button-adc-deadzone = <0>;
+
 		/*
 		    joy-stick voltage range
 		    /sys/devices/platform/ff288000.saradc/iio:device0
@@ -110,20 +119,17 @@
 		    adc-y : in_voltage2_raw
 
 		    range calculate.
-		    (adc raw max value - adc raw min value) * 1.7515
+		    (adc raw max value - adc raw min value) * scale * 1.7515
 		*/
-		button-adc-x-range = <1100>;
-		button-adc-y-range = <1000>;
-
-		/* adc channel count */
-		button-adc-count = <2>;
+		button-adc-x-range = <1800>;
+		button-adc-y-range = <1800>;
 
 		/*
 		  specifies fuzz value that is used to filter noise from
 		  the event stream.
 		*/
-		button-adc-fuzz = <10>;
-		button-adc-flat = <10>;
+		button-adc-fuzz = <32>;
+		button-adc-flat = <32>;
 
 		/* poll device interval (ms), adc read interval */
 		poll-interval = <10>;

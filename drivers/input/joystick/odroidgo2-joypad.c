@@ -40,9 +40,6 @@
 /*----------------------------------------------------------------------------*/
 #define DRV_NAME "odroidgo2_joypad"
 
-/* RK3326 ADC max voltage(mv) */
-#define	RK3326_ADC_MAX_MV	1800
-
 /*----------------------------------------------------------------------------*/
 struct bt_adc {
 	/* IIO ADC Channel */
@@ -55,6 +52,8 @@ struct bt_adc {
 	int max, min;
 	/* calibrated adc value */
 	int cal;
+	/*  adc scale value */
+	int scale;
 	/* invert report */
 	bool invert;
 };
@@ -94,6 +93,10 @@ struct joypad {
 	/* report threshold (mV) */
 	int bt_adc_fuzz, bt_adc_flat;
 	int bt_adc_x_range, bt_adc_y_range;
+	/* adc read value scale */
+	int bt_adc_scale;
+	/* joystick deadzone control */
+	int bt_adc_deadzone;
 	int bt_adc_count;
 	struct bt_adc *adcs;
 
@@ -109,6 +112,8 @@ static unsigned int g_button_adc_x_range = 0;
 static unsigned int g_button_adc_y_range = 0;
 static unsigned int g_button_adc_fuzz = 0;
 static unsigned int g_button_adc_flat = 0;
+static unsigned int g_button_adc_scale = 0;
+static unsigned int g_button_adc_deadzone = 0;
 
 static int __init button_adcx_range_setup(char *str)
 {
@@ -150,6 +155,24 @@ static int button_adc_flat(char *str)
 }
 __setup("button-adc-flat=", button_adc_flat);
 
+static int button_adc_scale(char *str)
+{
+        if (!str)
+                return -EINVAL;
+	g_button_adc_scale = simple_strtoul(str, NULL, 10);
+	return 0;
+}
+__setup("button-adc-scale=", button_adc_scale);
+
+static int button_adc_deadzone(char *str)
+{
+        if (!str)
+                return -EINVAL;
+	g_button_adc_deadzone = simple_strtoul(str, NULL, 10);
+	return 0;
+}
+__setup("button-adc-deadzone=", button_adc_deadzone);
+
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 static int joypad_adc_read(struct bt_adc *adc)
@@ -158,6 +181,8 @@ static int joypad_adc_read(struct bt_adc *adc)
 
 	if (iio_read_channel_processed(adc->channel, &value))
 		return 0;
+
+	value *= adc->scale;
 
 	return (adc->invert ? (adc->max - value) : value);
 }
@@ -401,6 +426,13 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 				__func__, nbtn);
 			continue;
 		}
+
+		/* Joystick Deadzone check */
+		if (joypad->bt_adc_deadzone) {
+			if ((value < adc->cal + joypad->bt_adc_deadzone) ||
+			    (value > adc->cal - joypad->bt_adc_deadzone))
+				value = adc->cal;
+		}
 		value = value - adc->cal;
 		value = value > adc->max ? adc->max : value;
 		value = value < adc->min ? adc->min : value;
@@ -502,6 +534,7 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 		struct bt_adc *adc = &joypad->adcs[nbtn];
 		enum iio_chan_type type;
 
+		adc->scale = joypad->bt_adc_scale;
 		if (nbtn) {
 			adc->channel =
 				devm_iio_channel_get(dev, "joy_y");
@@ -636,7 +669,7 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 	input->id.product = 0x0001;
 	input->id.version = 0x0101;
 
-	/* IIO ADC key setup (0 mv ~ 1800 mv) */
+	/* IIO ADC key setup (0 mv ~ 1800 mv) * adc->scale */
 	__set_bit(EV_ABS, input->evbit);
 	for(nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
@@ -645,9 +678,11 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 				joypad->bt_adc_fuzz,
 				joypad->bt_adc_flat);
 		dev_info(dev,
-			"%s : ABS min = %d, max = %d, fuzz = %d, flat = %d\n",
-			__func__, adc->min, adc->max,
-			joypad->bt_adc_fuzz, joypad->bt_adc_flat);
+			"%s : SCALE = %d, ABS min = %d, max = %d,"
+			" fuzz = %d, flat = %d, deadzone = %d\n",
+			__func__, adc->scale, adc->min, adc->max,
+			joypad->bt_adc_fuzz, joypad->bt_adc_flat,
+			joypad->bt_adc_deadzone);
 	}
 
 	/* GPIO key setup */
@@ -694,6 +729,20 @@ static void joypad_setup_value_check(struct device *dev, struct joypad *joypad)
 		device_property_read_u32(dev, "button-adc-flat",
 					&joypad->bt_adc_flat);
 
+	/* Joystick report value control */
+	if (g_button_adc_scale)
+		joypad->bt_adc_scale = g_button_adc_scale;
+	else
+		device_property_read_u32(dev, "button-adc-scale",
+					&joypad->bt_adc_scale);
+
+	/* Joystick deadzone value control */
+	if (g_button_adc_deadzone)
+		joypad->bt_adc_deadzone = g_button_adc_deadzone;
+	else
+		device_property_read_u32(dev, "button-adc-deadzone",
+					&joypad->bt_adc_deadzone);
+
 	if (g_button_adc_x_range)
 		joypad->bt_adc_x_range = g_button_adc_x_range;
 	else
@@ -704,18 +753,6 @@ static void joypad_setup_value_check(struct device *dev, struct joypad *joypad)
 	else
 		device_property_read_u32(dev, "button-adc-y-range",
 					&joypad->bt_adc_y_range);
-
-	if (joypad->bt_adc_fuzz > RK3326_ADC_MAX_MV)
-		joypad->bt_adc_fuzz = 0;
-
-	if (joypad->bt_adc_flat > RK3326_ADC_MAX_MV)
-		joypad->bt_adc_flat = 0;
-
-	if (joypad->bt_adc_x_range > RK3326_ADC_MAX_MV)
-		joypad->bt_adc_x_range = RK3326_ADC_MAX_MV;
-
-	if (joypad->bt_adc_y_range > RK3326_ADC_MAX_MV)
-		joypad->bt_adc_y_range = RK3326_ADC_MAX_MV;
 }
 
 /*----------------------------------------------------------------------------*/
