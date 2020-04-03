@@ -66,7 +66,7 @@
 
 &builtin_gamepad {
 	/* poll device interval (ms), adc read interval */
-	poll-interval = <2>;
+	poll-interval = <10>;
 
 	button-sw20 {
 		gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
