@@ -195,6 +195,52 @@
 	status = "okay";
 };
 
+&cpu_opp_table_0 {
+	opp-1992000000 {
+		opp-hz = /bits/ 64 <1992000000>;
+		opp-microvolt = <1001000>;
+	};
+};
+
+&cpub_opp_table_1 {
+	opp-1800000000 {
+		opp-hz = /bits/ 64 <1800000000>;
+		opp-microvolt = <981000>;
+	};
+
+        opp-1908000000 {
+                opp-hz = /bits/ 64 <1908000000>;
+                opp-microvolt = <1022000>;
+        };
+
+        opp-2016000000 {
+                opp-hz = /bits/ 64 <2016000000>;
+                opp-microvolt = <1022000>;
+        };
+};
+
+&cpu_thermal {
+	trips {
+		cpu_warm: cpu-warm {
+			temperature = <70000>; /* millicelsius */
+			hysteresis = <2000>; /* millicelsius */
+			type = "passive";
+		};
+	};
+	cooling-maps {
+		cpufreq_map0 {
+			trip = <&cpu_warm>;
+			contribution = <1024>;
+			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+		};
+		cpufreq_map1 {
+			trip = <&cpu_warm>;
+			contribution = <1024>;
+			cooling-device = <&cpu100 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+		};
+	};
+};
+
 &ethmac {
 	pinctrl-0 = <&eth_pins>, <&eth_rgmii_pins>;
 	pinctrl-names = "default";
