@@ -894,7 +894,11 @@ static int __init rk805_pinctrl_driver_register(void)
 {
 	return platform_driver_register(&rk805_pinctrl_driver);
 }
+#ifdef CONFIG_ROCKCHIP_THUNDER_BOOT
+subsys_initcall(rk805_pinctrl_driver_register);
+#else
 fs_initcall_sync(rk805_pinctrl_driver_register);
+#endif
 
 MODULE_DESCRIPTION("RK805 pin control and GPIO driver");
 MODULE_AUTHOR("Xu Shengfei <xsf@rock-chips.com>");
