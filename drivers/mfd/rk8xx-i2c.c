@@ -195,7 +195,8 @@ static const struct regmap_config rk817_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = RK817_GPIO_INT_CFG,
-	.cache_type = REGCACHE_NONE,
+	.num_reg_defaults_raw = RK817_GPIO_INT_CFG + 1,
+	.cache_type = REGCACHE_RBTREE,
 	.volatile_reg = rk817_is_volatile_reg,
 };
 
