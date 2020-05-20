@@ -40,6 +40,7 @@ void sif_platform_reset_target(void)
 	printk("ESP8089 reset via GPIO %d\n", esp_reset_gpio);
 	gpio_request(esp_reset_gpio,"esp_reset");
 	gpio_direction_output(esp_reset_gpio, 1);
+	gpio_free(esp_reset_gpio);
 }
 
 void sif_platform_target_poweroff(void)
