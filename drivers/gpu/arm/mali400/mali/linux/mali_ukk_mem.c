@@ -217,8 +217,8 @@ int mem_write_safe_wrapper(struct mali_session_data *session_data, _mali_uk_mem_
 	if (!access_ok((void __user *)kargs.dest, kargs.size)
 	    || !access_ok((void __user *)kargs.src, kargs.size)) {
 #else
-	if (!access_ok(VERIFY_WRITE, kargs.dest, kargs.size)
-	    || !access_ok(VERIFY_READ, kargs.src, kargs.size)) {
+	if (!access_ok(VERIFY_WRITE, (const void __user *)kargs.dest, kargs.size)
+	    || !access_ok(VERIFY_READ, (const void __user *)kargs.src, kargs.size)) {
 		return -EINVAL;
 #endif
 	}
