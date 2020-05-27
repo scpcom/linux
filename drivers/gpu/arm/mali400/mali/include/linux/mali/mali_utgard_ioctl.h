@@ -64,6 +64,13 @@ extern "C" {
 #define MALI_IOC_MEM_DUMP_MMU_PAGE_TABLE    _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_DUMP_MMU_PAGE_TABLE, _mali_uk_dump_mmu_page_table_s)
 #define MALI_IOC_MEM_WRITE_SAFE             _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_MEM_WRITE_SAFE, _mali_uk_mem_write_safe_s)
 
+#define MALI_IOC_MEM_ALLOC_V800             _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_ALLOC_MEM_V800, _mali_uk_alloc_mem_v800_s)
+
+#define MALI_IOC_MEM_DMA_BUF_GET_SIZE_V800  _IOR(MALI_IOC_MEMORY_BASE, _MALI_UK_DMA_BUF_GET_SIZE_V800, _mali_uk_dma_buf_get_size_s)
+#define MALI_IOC_MEM_QUERY_MMU_PAGE_TABLE_DUMP_SIZE_V800 _IOR (MALI_IOC_MEMORY_BASE, _MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE_V800, _mali_uk_query_mmu_page_table_dump_size_s)
+#define MALI_IOC_MEM_DUMP_MMU_PAGE_TABLE_V800 _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_DUMP_MMU_PAGE_TABLE_V800, _mali_uk_dump_mmu_page_table_s)
+#define MALI_IOC_MEM_WRITE_SAFE_V800        _IOWR(MALI_IOC_MEMORY_BASE, _MALI_UK_MEM_WRITE_SAFE_V800, _mali_uk_mem_write_safe_s)
+
 #define MALI_IOC_PP_START_JOB               _IOWR(MALI_IOC_PP_BASE, _MALI_UK_PP_START_JOB, _mali_uk_pp_start_job_s)
 #define MALI_IOC_PP_AND_GP_START_JOB        _IOWR(MALI_IOC_PP_BASE, _MALI_UK_PP_AND_GP_START_JOB, _mali_uk_pp_and_gp_start_job_s)
 #define MALI_IOC_PP_NUMBER_OF_CORES_GET     _IOR (MALI_IOC_PP_BASE, _MALI_UK_GET_PP_NUMBER_OF_CORES, _mali_uk_get_pp_number_of_cores_s)
@@ -71,6 +78,7 @@ extern "C" {
 #define MALI_IOC_PP_DISABLE_WB              _IOW (MALI_IOC_PP_BASE, _MALI_UK_PP_DISABLE_WB, _mali_uk_pp_disable_wb_s)
 
 #define MALI_IOC_GP2_START_JOB              _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, _mali_uk_gp_start_job_s)
+#define MALI_IOC_GP2_START_JOB_V800         _IOWR(MALI_IOC_GP_BASE, _MALI_UK_GP_START_JOB, _mali_uk_gp_start_job_v800_s)
 #define MALI_IOC_GP2_NUMBER_OF_CORES_GET    _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_NUMBER_OF_CORES, _mali_uk_get_gp_number_of_cores_s)
 #define MALI_IOC_GP2_CORE_VERSION_GET       _IOR (MALI_IOC_GP_BASE, _MALI_UK_GET_GP_CORE_VERSION, _mali_uk_get_gp_core_version_s)
 #define MALI_IOC_GP2_SUSPEND_RESPONSE       _IOW (MALI_IOC_GP_BASE, _MALI_UK_GP_SUSPEND_RESPONSE,_mali_uk_gp_suspend_response_s)

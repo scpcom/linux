@@ -64,6 +64,8 @@ struct mali_session_data {
 	u32 fence_context;      /** <  The execution dma fence context this fence is run on. */
 	_mali_osk_atomic_t fence_seqno; /** < Alinear increasing sequence number for this dma fence context. */
 #endif
+
+	_mali_uk_api_version version;
 };
 
 _mali_osk_errcode_t mali_session_initialize(void);

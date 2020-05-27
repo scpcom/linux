@@ -99,6 +99,17 @@ typedef enum {
 	_MALI_UK_DMA_BUF_GET_SIZE,               /**< _mali_ukk_dma_buf_get_size() */
 	_MALI_UK_MEM_WRITE_SAFE,                 /**< _mali_uku_mem_write_safe() */
 
+	/** Memory v800 functions */
+
+	_MALI_UK_ALLOC_MEM_V800                = 0,   /**< _mali_ukk_init_mem() */
+	_MALI_UK_FREE_MEM_V800,                       /**< _mali_ukk_term_mem() */
+	_MALI_UK_BIND_MEM_V800,                       /**< _mali_ukk_mem_mmap() */
+	_MALI_UK_UNBIND_MEM_V800,                     /**< _mali_ukk_mem_munmap() */
+	_MALI_UK_QUERY_MMU_PAGE_TABLE_DUMP_SIZE_V800, /**< _mali_ukk_mem_get_mmu_page_table_dump_size() */
+	_MALI_UK_DUMP_MMU_PAGE_TABLE_V800,            /**< _mali_ukk_mem_dump_mmu_page_table() */
+	_MALI_UK_DMA_BUF_GET_SIZE_V800,               /**< _mali_ukk_dma_buf_get_size() */
+	_MALI_UK_MEM_WRITE_SAFE_V800,                 /**< _mali_uku_mem_write_safe() */
+
 	/** Common functions for each core */
 
 	_MALI_UK_START_JOB           = 0,     /**< Start a Fragment/Vertex Processor Job on a core */
@@ -273,6 +284,25 @@ typedef struct {
 	u32 deferred_mem_num;
 	u64 deferred_mem_list;         /** < [in] memory hanlde list of varying buffer to use deffer bind */
 } _mali_uk_gp_start_job_s;
+
+typedef struct {
+	u64 ctx;                          /**< [in,out] user-kernel context (trashed on output) */
+	u64 user_job_ptr;                   /**< [in] identifier for the job in user space, a @c mali_gp_job_info* */
+	u32 priority;                       /**< [in] job priority. A lower number means higher priority */
+	u32 frame_registers[MALIGP2_NUM_REGS_FRAME]; /**< [in] core specific registers associated with this job */
+	u32 perf_counter_flag;              /**< [in] bitmask indicating which performance counters to enable, see \ref _MALI_PERFORMANCE_COUNTER_FLAG_SRC0_ENABLE and related macro definitions */
+	u32 perf_counter_src0;              /**< [in] source id for performance counter 0 (see ARM DDI0415A, Table 3-60) */
+	u32 perf_counter_src1;              /**< [in] source id for performance counter 1 (see ARM DDI0415A, Table 3-60) */
+	u32 frame_builder_id;               /**< [in] id of the originating frame builder */
+	u32 flush_id;                       /**< [in] flush id within the originating frame builder */
+	_mali_uk_fence_t fence;             /**< [in] fence this job must wait on */
+	u64 timeline_point_ptr;            /**< [in,out] pointer to u32: location where point on gp timeline for this job will be written */
+#if 0
+	u32 varying_memsize;            /** < [in] size of varying memory to use deffer bind*/
+	u32 deferred_mem_num;
+	u64 deferred_mem_list;         /** < [in] memory hanlde list of varying buffer to use deffer bind */
+#endif
+} _mali_uk_gp_start_job_v800_s;
 
 #define _MALI_PERFORMANCE_COUNTER_FLAG_SRC0_ENABLE (1<<0) /**< Enable performance counter SRC0 for a job */
 #define _MALI_PERFORMANCE_COUNTER_FLAG_SRC1_ENABLE (1<<1) /**< Enable performance counter SRC1 for a job */
@@ -651,6 +681,9 @@ typedef struct {
 #define _MALI_API_VERSION 900
 #define _MALI_UK_API_VERSION _MAKE_VERSION_ID(_MALI_API_VERSION)
 
+#define _MALI_API_VERSION_V800 800
+#define _MALI_UK_API_VERSION_V800 _MAKE_VERSION_ID(_MALI_API_VERSION_V800)
+
 /**
  * The API version is a 16-bit integer stored in both the lower and upper 16-bits
  * of a 32-bit value. The 16-bit API version value is incremented on each API
@@ -762,6 +795,23 @@ typedef struct {
 	u32 gpu_vaddr;                /**< [in] use as handle to free allocation */
 	u32 free_pages_nr;      /** < [out] record the number of free pages */
 } _mali_uk_free_mem_s;
+
+typedef struct {
+	u64 ctx;                                          /**< [in,out] user-kernel context (trashed on output) */
+	u32 gpu_vaddr;                                    /**< [in] GPU virtual address */
+	u32 vsize;                                        /**< [in] vitrual size of the allocation */
+	u32 psize;                                        /**< [in] physical size of the allocation */
+	u32 flags;
+	u64 backend_handle;                               /**< [out] backend handle */
+#if 0
+	s32 secure_shared_fd;                           /** < [in] the mem handle for secure mem */
+#else
+	struct {
+		/* buffer types*/
+		/* CPU read/write info*/
+	} buffer_info;
+#endif
+} _mali_uk_alloc_mem_v800_s;
 
 
 #define _MALI_MEMORY_BIND_BACKEND_UMP             (1<<8)

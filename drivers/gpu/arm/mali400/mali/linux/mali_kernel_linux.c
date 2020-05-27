@@ -1022,21 +1022,25 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 		break;
 
 	case MALI_IOC_MEM_WRITE_SAFE:
+	case MALI_IOC_MEM_WRITE_SAFE_V800:
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_mem_write_safe_s), sizeof(u64)));
 		err = mem_write_safe_wrapper(session_data, (_mali_uk_mem_write_safe_s __user *)arg);
 		break;
 
 	case MALI_IOC_MEM_QUERY_MMU_PAGE_TABLE_DUMP_SIZE:
+	case MALI_IOC_MEM_QUERY_MMU_PAGE_TABLE_DUMP_SIZE_V800:
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_query_mmu_page_table_dump_size_s), sizeof(u64)));
 		err = mem_query_mmu_page_table_dump_size_wrapper(session_data, (_mali_uk_query_mmu_page_table_dump_size_s __user *)arg);
 		break;
 
 	case MALI_IOC_MEM_DUMP_MMU_PAGE_TABLE:
+	case MALI_IOC_MEM_DUMP_MMU_PAGE_TABLE_V800:
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_dump_mmu_page_table_s), sizeof(u64)));
 		err = mem_dump_mmu_page_table_wrapper(session_data, (_mali_uk_dump_mmu_page_table_s __user *)arg);
 		break;
 
 	case MALI_IOC_MEM_DMA_BUF_GET_SIZE:
+	case MALI_IOC_MEM_DMA_BUF_GET_SIZE_V800:
 #ifdef CONFIG_DMA_SHARED_BUFFER
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_dma_buf_get_size_s), sizeof(u64)));
 		err = mali_dma_buf_get_size(session_data, (_mali_uk_dma_buf_get_size_s __user *)arg);
@@ -1044,6 +1048,11 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 		MALI_DEBUG_PRINT(2, ("DMA-BUF not supported\n"));
 		err = -ENOTTY;
 #endif
+		break;
+
+	case MALI_IOC_MEM_ALLOC_V800:
+		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_alloc_mem_v800_s), sizeof(u64)));
+		err = mem_alloc_wrapper_v800(session_data, (_mali_uk_alloc_mem_v800_s __user *)arg);
 		break;
 
 	case MALI_IOC_PP_START_JOB:
@@ -1074,6 +1083,11 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 	case MALI_IOC_GP2_START_JOB:
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_gp_start_job_s), sizeof(u64)));
 		err = gp_start_job_wrapper(session_data, (_mali_uk_gp_start_job_s __user *)arg);
+		break;
+
+	case MALI_IOC_GP2_START_JOB_V800:
+		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_gp_start_job_v800_s), sizeof(u64)));
+		err = gp_start_job_wrapper_v800(session_data, (_mali_uk_gp_start_job_v800_s __user *)arg);
 		break;
 
 	case MALI_IOC_GP2_NUMBER_OF_CORES_GET:

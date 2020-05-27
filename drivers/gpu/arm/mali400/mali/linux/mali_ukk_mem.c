@@ -16,7 +16,7 @@
 #include "mali_session.h"
 #include "mali_ukk_wrappers.h"
 
-int mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem_s __user *uargs)
+int __mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem_s __user *uargs, u32 usize)
 {
 	_mali_uk_alloc_mem_s kargs;
 	_mali_osk_errcode_t err;
@@ -24,7 +24,8 @@ int mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem
 	MALI_CHECK_NON_NULL(uargs, -EINVAL);
 	MALI_CHECK_NON_NULL(session_data, -EINVAL);
 
-	if (0 != copy_from_user(&kargs, uargs, sizeof(_mali_uk_alloc_mem_s))) {
+	memset(&kargs, 0, sizeof(_mali_uk_alloc_mem_s));
+	if (0 != copy_from_user(&kargs, uargs, usize)) {
 		return -EFAULT;
 	}
 	kargs.ctx = (uintptr_t)session_data;
@@ -40,6 +41,16 @@ int mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem
 	}
 
 	return 0;
+}
+
+int mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem_s __user *uargs)
+{
+	return __mem_alloc_wrapper(session_data, uargs, sizeof(_mali_uk_alloc_mem_s));
+}
+
+int mem_alloc_wrapper_v800(struct mali_session_data *session_data, _mali_uk_alloc_mem_v800_s __user *uargs)
+{
+	return __mem_alloc_wrapper(session_data, (_mali_uk_alloc_mem_s __user *)uargs, sizeof(_mali_uk_alloc_mem_v800_s));
 }
 
 int mem_free_wrapper(struct mali_session_data *session_data, _mali_uk_free_mem_s __user *uargs)

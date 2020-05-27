@@ -984,7 +984,12 @@ _mali_osk_errcode_t _mali_ukk_get_api_version(_mali_uk_get_api_version_s *args)
 		args->compatible = 0;
 	}
 
-	args->version = _MALI_UK_API_VERSION; /* report our version */
+	if (args->version == _MALI_UK_API_VERSION_V800) {
+		args->compatible = 1;
+		args->version = _MALI_UK_API_VERSION_V800;
+	} else
+		args->version = _MALI_UK_API_VERSION; /* report our version */
+
 
 	/* success regardless of being compatible or not */
 	MALI_SUCCESS;
@@ -1002,7 +1007,12 @@ _mali_osk_errcode_t _mali_ukk_get_api_version_v2(_mali_uk_get_api_version_v2_s *
 		args->compatible = 0;
 	}
 
-	args->version = _MALI_UK_API_VERSION; /* report our version */
+	if (args->version == _MALI_UK_API_VERSION_V800) {
+		args->compatible = 1;
+		args->version = _MALI_UK_API_VERSION_V800;
+	} else
+		args->version = _MALI_UK_API_VERSION; /* report our version */
+
 
 	/* success regardless of being compatible or not */
 	return _MALI_OSK_ERR_OK;
@@ -1199,6 +1209,9 @@ _mali_osk_errcode_t _mali_ukk_open(void **context)
 		atomic_set(&session->mali_mem_array[i], 0);
 	}
 	atomic_set(&session->mali_mem_allocated_pages, 0);
+
+	session->version = _MALI_UK_API_VERSION;
+
 	*context = (void *)session;
 
 	/* Add session to the list of all sessions. */
