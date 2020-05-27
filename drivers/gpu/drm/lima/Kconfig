@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0 OR MIT
 # Copyright 2017-2019 Qiang Yu <yuq825@gmail.com>
 
+if (MALI400!=m &&  MALI400!=y)
+
 config DRM_LIMA
        tristate "LIMA (DRM support for ARM Mali 400/450 GPU)"
        depends on DRM
@@ -14,3 +16,5 @@ config DRM_LIMA
        select DEVFREQ_GOV_SIMPLE_ONDEMAND
        help
 	 DRM driver for ARM Mali 400/450 GPUs.
+
+endif
