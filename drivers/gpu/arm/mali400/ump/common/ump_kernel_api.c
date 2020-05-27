@@ -284,7 +284,7 @@ void _ump_ukk_msync(_ump_uk_msync_s *args)
 		    (ump_secure_id)args->secure_id, args->op, args->address, args->mapping));
 
 	if (args->address) {
-		virtual = (void *)((u32)args->address);
+		virtual = (void *)((size_t)args->address);
 		offset = (u32)((args->address) - (args->mapping));
 	} else {
 		/* Flush entire mapping when no address is specified. */
