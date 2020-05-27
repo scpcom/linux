@@ -15,6 +15,7 @@
 #include <linux/bitfield.h>
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
+#include <asm/system_info.h>
 
 #define AO_SEC_SD_CFG8		0xe0
 #define AO_SEC_SOCINFO_OFFSET	AO_SEC_SD_CFG8
@@ -180,6 +181,9 @@ static int __init meson_gx_socinfo_init(void)
 		pr_err("%s: invalid chipid value\n", __func__);
 		return -EINVAL;
 	}
+
+	/* meson 8b = 0x0000, meson gx = 0x0200 */
+	system_rev = 0x0200 | socinfo_to_minor(socinfo);
 
 	soc_dev_attr = kzalloc(sizeof(*soc_dev_attr), GFP_KERNEL);
 	if (!soc_dev_attr)
