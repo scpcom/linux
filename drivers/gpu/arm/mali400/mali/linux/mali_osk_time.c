@@ -53,11 +53,15 @@ u64 _mali_osk_time_get_ns(void)
 
 u64 _mali_osk_boot_time_get_ns(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	return ktime_get_boottime_ns();
+#else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
 	return ktime_get_boot_ns();
 #else
 	struct timespec tsval;
 	get_monotonic_boottime(&tsval);
 	return (u64)timespec_to_ns(&tsval);
+#endif
 #endif
 }
