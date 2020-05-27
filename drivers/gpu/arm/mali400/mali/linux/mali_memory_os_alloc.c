@@ -380,7 +380,12 @@ int mali_mem_os_cpu_map(mali_mem_backend *mem_bkend, struct vm_area_struct *vma)
 		page = m_page->page;
 		ret = vm_insert_pfn(vma, addr, page_to_pfn(page));
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,20,0))
+		if (unlikely(ret & VM_FAULT_ERROR)) {
+#else
 		if (unlikely(0 != ret)) {
+#endif
+			MALI_DEBUG_PRINT(4, ("...failed: 0x%x (%d)\n", ret, ret));
 			return -EFAULT;
 		}
 		addr += _MALI_OSK_MALI_PAGE_SIZE;
@@ -418,7 +423,11 @@ _mali_osk_errcode_t mali_mem_os_resize_cpu_map_locked(mali_mem_backend *mem_bken
 			if (mapping_page_num > 0) {
 				ret = vm_insert_pfn(vma, vm_end, page_to_pfn(m_page->page));
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,20,0))
+				if (unlikely(ret & VM_FAULT_ERROR)) {
+#else
 				if (unlikely(0 != ret)) {
+#endif
 					/*will return -EBUSY If the page has already been mapped into table, but it's OK*/
 					if (-EBUSY == ret) {
 						break;
@@ -441,7 +450,11 @@ _mali_osk_errcode_t mali_mem_os_resize_cpu_map_locked(mali_mem_backend *mem_bken
 
 				ret = vm_insert_pfn(vma, vstart, page_to_pfn(m_page->page));
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,20,0))
+				if (unlikely(ret & VM_FAULT_ERROR)) {
+#else
 				if (unlikely(0 != ret)) {
+#endif
 					/*will return -EBUSY If the page has already been mapped into table, but it's OK*/
 					if (-EBUSY == ret) {
 						break;
