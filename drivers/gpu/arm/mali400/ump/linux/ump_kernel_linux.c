@@ -416,7 +416,13 @@ static int ump_file_mmap(struct file *filp, struct vm_area_struct *vma)
 	args.size = vma->vm_end - vma->vm_start;
 	args._ukk_private = vma;
 	args.secure_id = vma->vm_pgoff;
+	args.is_cached = 0;
 
+	if (!(vma->vm_flags & VM_SHARED)) {
+		args.is_cached = 1;
+		vma->vm_flags = vma->vm_flags | VM_SHARED | VM_MAYSHARE  ;
+		DBG_MSG(3, ("UMP Map function: Forcing the CPU to use cache\n"));
+	}
 	/* By setting this flag, during a process fork; the child process will not have the parent UMP mappings */
 	vma->vm_flags |= VM_DONTCOPY;
 
