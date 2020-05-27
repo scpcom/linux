@@ -182,7 +182,7 @@ endif
 
 #build-in include path is different
 ifeq ($(MALI_PLATFORM_FILES),)
-ccflags-$(CONFIG_MALI400_UMP) += -I$(src)/../ump/include/
+ccflags-$(CONFIG_MALI400_UMP) += -I$(srctree)/include/ump -I$(src)/../ump/include/
 else
 ccflags-$(CONFIG_MALI400_UMP) += -I$(src)/../../ump/include/ump
 endif
