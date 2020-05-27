@@ -25,7 +25,9 @@ endif
 
 UDD_FILE_PREFIX = ../mali/
 
-# Get subversion revision number, fall back to 0000 if no svn info is available
+# Get subversion revision number, fall back to only ${MALI_RELEASE_NAME} if no svn info is available
+MALI_RELEASE_NAME=$(shell cat $(src)/.version 2> /dev/null)
+
 SVN_INFO = (cd $(src); svn info 2>/dev/null)
 
 ifneq ($(shell $(SVN_INFO) 2>/dev/null),)
