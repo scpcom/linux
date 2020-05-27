@@ -48,9 +48,9 @@ ifeq ($(USING_GPU_UTILIZATION), 1)
 endif
 
 ifeq ($(MALI_PLATFORM_FILES),)
-ifeq ($(CONFIG_ARCH_EXYNOS4),y)
+ifeq ($(CONFIG_ARCH_MESON),y)
 EXTRA_DEFINES += -DMALI_FAKE_PLATFORM_DEVICE=1
-export MALI_PLATFORM=exynos4
+export MALI_PLATFORM=meson
 export MALI_PLATFORM_FILES_BUILDIN = $(notdir $(wildcard $(src)/platform/$(MALI_PLATFORM)/*.c))
 export MALI_PLATFORM_FILES_ADD_PREFIX = $(addprefix platform/$(MALI_PLATFORM)/,$(MALI_PLATFORM_FILES_BUILDIN)) 
 endif

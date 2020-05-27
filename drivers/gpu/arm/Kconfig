@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0
+source "drivers/gpu/arm/mali400/mali/Kconfig"
+source "drivers/gpu/arm/mali400/ump/Kconfig"
