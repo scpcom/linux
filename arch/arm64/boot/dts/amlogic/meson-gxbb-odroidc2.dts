@@ -342,7 +342,8 @@
 };
 
 &scpi_clocks {
-	status = "disabled";
+	/* Works only with new blobs that have limited DVFS table */
+	status = "okay";
 };
 
 /* SD */
