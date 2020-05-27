@@ -242,7 +242,12 @@ void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_ms
 
 	/* Flush L1 using virtual address, the entire range in one go.
 	 * Only flush if user space process has a valid write mapping on given address. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	if ((mem) && (virt != NULL) && (access_ok(virt, size))) {
+#else
 	if ((mem) && (virt != NULL) && (access_ok(VERIFY_WRITE, virt, size))) {
+#endif
+
 		__flush_dcache_area(virt, size);
 		DBG_MSG(3, ("UMP[%02u] Flushing CPU L1 Cache. CPU address: %x, size: %x\n", mem->secure_id, virt, size));
 	} else {
