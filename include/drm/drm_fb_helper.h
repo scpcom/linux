@@ -37,6 +37,10 @@ struct drm_fb_helper;
 
 #include <drm/drm_client.h>
 
+#if defined(CONFIG_UMP)
+#include <ump/ump_kernel_interface.h>
+#endif
+
 /**
  * struct drm_fb_helper_surface_size - describes fbdev size and scanout surface size
  * @fb_width: fbdev width
@@ -100,6 +104,8 @@ struct drm_fb_helper_funcs {
 	 */
 	int (*fb_dirty)(struct drm_fb_helper *helper, struct drm_clip_rect *clip);
 };
+
+#define DRM_FB_UMP_COUNT 1 /* only enable one FB UMP layer */
 
 /**
  * struct drm_fb_helper - main structure to emulate fbdev on top of KMS
@@ -205,6 +211,9 @@ struct drm_fb_helper {
 	 * a shadow buffer.
 	 */
 	struct fb_deferred_io fbdefio;
+#endif
+#if defined(CONFIG_UMP)
+	ump_dd_handle ump_wrapped_buffer[DRM_FB_UMP_COUNT][2];
 #endif
 };
 
@@ -399,6 +408,13 @@ static inline int drm_fb_helper_debug_leave(struct fb_info *info)
 static inline void drm_fb_helper_lastclose(struct drm_device *dev)
 {
 }
+#endif
+
+#if defined(CONFIG_UMP)
+extern int (*drm_get_ump_secure_id) (struct fb_info *info,
+        struct drm_fb_helper *g_fbi,     unsigned long arg, int buf);
+#define GET_UMP_SECURE_ID_BUF1 _IOWR('m', 311, unsigned int)
+#define GET_UMP_SECURE_ID_BUF2 _IOWR('m', 312, unsigned int)
 #endif
 
 #endif

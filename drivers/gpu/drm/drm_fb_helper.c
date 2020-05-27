@@ -1094,6 +1094,14 @@ int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 
 		ret = 0;
 		break;
+#if defined(CONFIG_UMP)
+	case GET_UMP_SECURE_ID_BUF1:
+		ret = drm_get_ump_secure_id(info, fb_helper, arg, 0);
+		break;
+	case GET_UMP_SECURE_ID_BUF2:
+		ret = drm_get_ump_secure_id(info, fb_helper, arg, 1);
+		break;
+#endif
 	default:
 		ret = -ENOTTY;
 	}

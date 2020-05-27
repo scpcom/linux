@@ -152,6 +152,7 @@ drm_kms_helper-$(CONFIG_DRM_FBDEV_EMULATION) += \
 	drm_fbdev_client.o \
 	drm_fb_helper.o
 obj-$(CONFIG_DRM_KMS_HELPER) += drm_kms_helper.o
+obj-$(CONFIG_UMP) += drm_fb_ump.o
 
 #
 # Drivers and the rest
