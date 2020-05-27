@@ -135,7 +135,7 @@ static int os_allocate(void *ctx, ump_dd_mem *descriptor)
 		if (is_cached) {
 			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN);
 		} else {
-			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN | __GFP_COLD);
+			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN);
 		}
 		if (NULL == new_page) {
 			break;

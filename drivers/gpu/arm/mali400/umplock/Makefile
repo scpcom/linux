@@ -16,16 +16,7 @@ ARCH ?= $(shell uname -m)
 ifneq ($(KERNELRELEASE),)
 # Inside the kernel build system
 
-EXTRA_CFLAGS += -I$(KBUILD_EXTMOD)
-
-SRC =	umplock_driver.c
-
-MODULE:=umplock.ko
-
-obj-m := $(MODULE:.ko=.o)
-$(MODULE:.ko=-y) := $(SRC:.c=.o)
-
-$(MODULE:.ko=-objs) := $(SRC:.c=.o) 
+obj-y += umplock_driver.o
 
 else
 # Outside the kernel build system

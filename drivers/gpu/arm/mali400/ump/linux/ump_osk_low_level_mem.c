@@ -37,7 +37,11 @@ typedef struct ump_vma_usage_tracker {
 
 static void ump_vma_open(struct vm_area_struct *vma);
 static void ump_vma_close(struct vm_area_struct *vma);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+static vm_fault_t ump_cpu_page_fault_handler(struct vm_fault *vmf);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+static int ump_cpu_page_fault_handler(struct vm_fault *vmf);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 static int ump_cpu_page_fault_handler(struct vm_area_struct *vma, struct vm_fault *vmf);
 #else
 static unsigned long ump_cpu_page_fault_handler(struct vm_area_struct *vma, unsigned long address);
@@ -57,13 +61,20 @@ static struct vm_operations_struct ump_vm_ops = {
  * Page fault for VMA region
  * This should never happen since we always map in the entire virtual memory range.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+static vm_fault_t ump_cpu_page_fault_handler(struct vm_fault *vmf)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+static int ump_cpu_page_fault_handler(struct vm_fault *vmf)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 static int ump_cpu_page_fault_handler(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 static unsigned long ump_cpu_page_fault_handler(struct vm_area_struct *vma, unsigned long address)
 #endif
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+	struct vm_area_struct *vma = vmf->vma;
+	void __user *address = (void*)vmf->address;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 	void __user *address;
 	address = vmf->virtual_address;
 #endif
