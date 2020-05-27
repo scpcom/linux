@@ -39,6 +39,10 @@ extern int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
 			 unsigned long pfn);
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#define __GFP_REPEAT __GFP_RETRY_MAYFAIL
+#endif
+
 #ifdef __cplusplus
 }
 #endif
