@@ -131,6 +131,10 @@ static int os_allocate(void *ctx, ump_dd_mem *descriptor)
 		return 0; /* failure */
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+	set_dma_ops(ump_global_mdev, &dma_dummy_ops);
+#endif
+
 	while (left > 0 && ((info->num_pages_allocated + pages_allocated) < info->num_pages_max)) {
 		struct page *new_page;
 
@@ -151,6 +155,12 @@ static int os_allocate(void *ctx, ump_dd_mem *descriptor)
 			descriptor->block_array[pages_allocated].addr = dma_map_page(ump_global_mdev, new_page, 0, PAGE_SIZE, DMA_BIDIRECTIONAL);
 			descriptor->block_array[pages_allocated].size = PAGE_SIZE;
 		}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+		if (descriptor->block_array[pages_allocated].addr == DMA_MAPPING_ERROR) {
+			break;
+		}
+#endif
 
 		DBG_MSG(5, ("Allocated page 0x%08lx cached: %d\n", descriptor->block_array[pages_allocated].addr, is_cached));
 
@@ -219,6 +229,11 @@ static void os_free(void *ctx, ump_dd_mem *descriptor)
 
 	for (i = 0; i < descriptor->nr_blocks; i++) {
 		struct page *page;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+		if (descriptor->block_array[i].addr == DMA_MAPPING_ERROR)
+			continue;
+#endif
 
 		DBG_MSG(6, ("Freeing physical page. Address: 0x%08lx\n", descriptor->block_array[i].addr));
 		if (! descriptor->is_cached) {
