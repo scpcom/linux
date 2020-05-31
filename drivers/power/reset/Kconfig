@@ -315,4 +315,9 @@ config POWER_MLXBF
 	help
 	  This driver supports reset or low power mode handling for Mellanox BlueField.
 
+config POWER_RESET_RK3399
+	bool "Rockchip RK3399 odroid restart driver"
+	depends on ARCH_ROCKCHIP || PLAT_RK3399_ODROIDN1
+	help
+	  Power off and restart support for odroid-n1 boards.
 endif
