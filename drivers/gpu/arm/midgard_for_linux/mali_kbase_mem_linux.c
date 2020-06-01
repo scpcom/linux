@@ -49,6 +49,18 @@
 static int kbase_tracking_page_setup(struct kbase_context *kctx, struct vm_area_struct *vma);
 static const struct vm_operations_struct kbase_vm_ops;
 
+/*
+ * From 4.20.0 kernel vm_insert_pfn was dropped
+ * Make wrapper to preserve compatibility
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+static int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+		  unsigned long pfn)
+{
+	return vm_fault_to_errno(vmf_insert_pfn(vma, addr, pfn), 0xffff);
+}
+#endif
+
 /**
  * kbase_mem_shrink_cpu_mapping - Shrink the CPU mapping(s) of an allocation
  * @kctx:      Context the region belongs to
@@ -1192,9 +1204,13 @@ static struct kbase_va_region *kbase_mem_from_user_buffer(
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	faulted_pages = get_user_pages(current, current->mm, address, *va_pages,
 			reg->flags & KBASE_REG_GPU_WR, 0, NULL, NULL);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	faulted_pages = get_user_pages(address, *va_pages,
 			reg->flags & KBASE_REG_GPU_WR, 0, NULL, NULL);
+#else
+	faulted_pages = get_user_pages(address, *va_pages,
+			(reg->flags & KBASE_REG_GPU_WR) ? FOLL_WRITE : 0,
+			NULL, NULL);
 #endif
 	up_read(&current->mm->mmap_sem);
 
@@ -1614,9 +1630,14 @@ static int zap_range_nolock(struct mm_struct *mm,
 		if (end < local_end)
 			local_end = end;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+		zap_vma_ptes(vma, local_start, local_end - local_start);
+		err = 0;
+#else
 		err = zap_vma_ptes(vma, local_start, local_end - local_start);
 		if (unlikely(err))
 			break;
+#endif
 
 try_next:
 		/* go to next vma, if any */
@@ -1885,20 +1906,36 @@ static void kbase_cpu_vm_close(struct vm_area_struct *vma)
 KBASE_EXPORT_TEST_API(kbase_cpu_vm_close);
 
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+static vm_fault_t kbase_cpu_vm_fault(struct vm_fault *vmf)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+static int kbase_cpu_vm_fault(struct vm_fault *vmf)
+#else
 static int kbase_cpu_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	struct vm_area_struct *vma = vmf->vma;
+#endif
 	struct kbase_cpu_mapping *map = vma->vm_private_data;
 	pgoff_t rel_pgoff;
 	size_t i;
+	unsigned long address;
 
 	KBASE_DEBUG_ASSERT(map);
 	KBASE_DEBUG_ASSERT(map->count > 0);
 	KBASE_DEBUG_ASSERT(map->kctx);
 	KBASE_DEBUG_ASSERT(map->alloc);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	address = (unsigned long)vmf->address;
+#else
+	address = (unsigned long)vmf->virtual_address;
+#endif
+
 	/* we don't use vmf->pgoff as it's affected by our mmap with
 	 * offset being a GPU VA or a cookie */
-	rel_pgoff = ((unsigned long)vmf->virtual_address - map->vm_start)
+	rel_pgoff = (address - map->vm_start)
 			>> PAGE_SHIFT;
 
 	kbase_gpu_vm_lock(map->kctx);

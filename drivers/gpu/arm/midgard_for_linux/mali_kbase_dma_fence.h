@@ -20,9 +20,36 @@
 
 #ifdef CONFIG_MALI_DMA_FENCE
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#include <linux/dma-fence.h>
+
+#define fence_func_t dma_fence_func_t
+
+#define fence_context_alloc dma_fence_context_alloc
+#define fence_default_wait dma_fence_default_wait
+#define fence_init dma_fence_init
+#define fence_remove_callback dma_fence_remove_callback
+#define fence_put dma_fence_put
+#define fence_add_callback dma_fence_add_callback
+#define fence_get dma_fence_get
+#define fence_signal dma_fence_signal
+#else
 #include <linux/fence.h>
+#endif
+
 #include <linux/list.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#include <linux/dma-resv.h>
+
+#define reservation_object_get_fences_rcu dma_resv_get_fences_rcu
+#define reservation_object_reserve_shared(o) dma_resv_reserve_shared(o, 1)
+#define reservation_object_add_excl_fence dma_resv_add_excl_fence
+#define reservation_object_add_shared_fence dma_resv_add_shared_fence
+#else
 #include <linux/reservation.h>
+#endif
 
 
 /* Forward declaration from mali_kbase_defs.h */
@@ -37,9 +64,17 @@ struct kbase_context;
  * @node:     List head for linking this callback to the katom
  */
 struct kbase_dma_fence_cb {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence_cb fence_cb;
+#else
 	struct fence_cb fence_cb;
+#endif
 	struct kbase_jd_atom *katom;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence *fence;
+#else
 	struct fence *fence;
+#endif
 	struct list_head node;
 };
 
@@ -54,7 +89,11 @@ struct kbase_dma_fence_cb {
  * reservation objects.
  */
 struct kbase_dma_fence_resv_info {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	struct dma_resv **resv_objs;
+#else
 	struct reservation_object **resv_objs;
+#endif
 	unsigned int dma_fence_resv_count;
 	unsigned long *dma_fence_excl_bitmap;
 };
@@ -69,7 +108,11 @@ struct kbase_dma_fence_resv_info {
  * reservation_objects. At the same time keeps track of which objects require
  * exclusive access in dma_fence_excl_bitmap.
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+void kbase_dma_fence_add_reservation(struct dma_resv *resv,
+#else
 void kbase_dma_fence_add_reservation(struct reservation_object *resv,
+#endif
 				     struct kbase_dma_fence_resv_info *info,
 				     bool exclusive);
 

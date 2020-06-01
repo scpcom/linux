@@ -219,7 +219,11 @@ static void kbase_gpuprops_calculate_props(base_gpu_props * const gpu_props, str
 	gpu_props->core_props.major_revision = KBASE_UBFX32(gpu_props->raw_props.gpu_id, 12U, 4);
 	gpu_props->core_props.product_id = KBASE_UBFX32(gpu_props->raw_props.gpu_id, 16U, 16);
 	gpu_props->core_props.log2_program_counter_size = KBASE_GPU_PC_SIZE_LOG2;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	gpu_props->core_props.gpu_available_memory_size = totalram_pages() << PAGE_SHIFT;
+#else
 	gpu_props->core_props.gpu_available_memory_size = totalram_pages << PAGE_SHIFT;
+#endif
 
 	for (i = 0; i < BASE_GPU_NUM_TEXTURE_FEATURES_REGISTERS; i++)
 		gpu_props->core_props.texture_features[i] = gpu_props->raw_props.texture_features[i];

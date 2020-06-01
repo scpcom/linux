@@ -401,7 +401,11 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 
 #ifdef CONFIG_MALI_DMA_FENCE
 		if (reg->gpu_alloc->type == KBASE_MEM_TYPE_IMPORTED_UMM) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			struct dma_resv *resv;
+#else
 			struct reservation_object *resv;
+#endif
 
 			resv = reg->gpu_alloc->imported.umm.dma_buf->resv;
 			if (resv)
@@ -957,7 +961,11 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 	 * the scheduler: 'not ready to run' and 'dependency-only' jobs. */
 	jctx->job_nr++;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	katom->start_timestamp = 0;
+#else
 	katom->start_timestamp.tv64 = 0;
+#endif
 	katom->time_spent_us = 0;
 	katom->udata = user_atom->udata;
 	katom->kctx = kctx;

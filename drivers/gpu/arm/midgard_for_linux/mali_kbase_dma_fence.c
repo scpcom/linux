@@ -22,11 +22,9 @@
 #include "mali_kbase_dma_fence.h"
 
 #include <linux/atomic.h>
-#include <linux/fence.h>
 #include <linux/list.h>
 #include <linux/lockdep.h>
 #include <linux/mutex.h>
-#include <linux/reservation.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
@@ -56,19 +54,31 @@ kbase_dma_fence_waiters_remove(struct kbase_jd_atom *katom)
 }
 
 static const char *
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+kbase_dma_fence_get_driver_name(struct dma_fence *fence)
+#else
 kbase_dma_fence_get_driver_name(struct fence *fence)
+#endif
 {
 	return kbase_drv_name;
 }
 
 static const char *
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+kbase_dma_fence_get_timeline_name(struct dma_fence *fence)
+#else
 kbase_dma_fence_get_timeline_name(struct fence *fence)
+#endif
 {
 	return kbase_timeline_name;
 }
 
 static bool
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+kbase_dma_fence_enable_signaling(struct dma_fence *fence)
+#else
 kbase_dma_fence_enable_signaling(struct fence *fence)
+#endif
 {
 	/* If in the future we need to add code here remember to
 	 * to get a reference to the fence and release it when signaling
@@ -78,12 +88,24 @@ kbase_dma_fence_enable_signaling(struct fence *fence)
 }
 
 static void
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+kbase_dma_fence_fence_value_str(struct dma_fence *fence, char *str, int size)
+#else
 kbase_dma_fence_fence_value_str(struct fence *fence, char *str, int size)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	snprintf(str, size, "%llu", fence->seqno);
+#else
 	snprintf(str, size, "%u", fence->seqno);
+#endif
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+static const struct dma_fence_ops kbase_dma_fence_ops = {
+#else
 static const struct fence_ops kbase_dma_fence_ops = {
+#endif
 	.get_driver_name = kbase_dma_fence_get_driver_name,
 	.get_timeline_name = kbase_dma_fence_get_timeline_name,
 	.enable_signaling = kbase_dma_fence_enable_signaling,
@@ -92,10 +114,18 @@ static const struct fence_ops kbase_dma_fence_ops = {
 	.fence_value_str = kbase_dma_fence_fence_value_str,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+static struct dma_fence *
+#else
 static struct fence *
+#endif
 kbase_dma_fence_new(unsigned int context, unsigned int seqno)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence *fence;
+#else
 	struct fence *fence;
+#endif
 
 	fence = kzalloc(sizeof(*fence), GFP_KERNEL);
 	if (!fence)
@@ -114,7 +144,11 @@ static int
 kbase_dma_fence_lock_reservations(struct kbase_dma_fence_resv_info *info,
 				  struct ww_acquire_ctx *ctx)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	struct dma_resv *content_res = NULL;
+#else
 	struct reservation_object *content_res = NULL;
+#endif
 	unsigned int content_res_idx = 0;
 	unsigned int r;
 	int err = 0;
@@ -329,7 +363,11 @@ out:
  */
 static int
 kbase_dma_fence_add_callback(struct kbase_jd_atom *katom,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+			     struct dma_fence *fence,
+#else
 			     struct fence *fence,
+#endif
 			     fence_func_t callback)
 {
 	int err = 0;
@@ -366,7 +404,11 @@ kbase_dma_fence_add_callback(struct kbase_jd_atom *katom,
 }
 
 static void
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+kbase_dma_fence_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
+#else
 kbase_dma_fence_cb(struct fence *fence, struct fence_cb *cb)
+#endif
 {
 	struct kbase_dma_fence_cb *kcb = container_of(cb,
 				struct kbase_dma_fence_cb,
@@ -383,11 +425,20 @@ kbase_dma_fence_cb(struct fence *fence, struct fence_cb *cb)
 
 static int
 kbase_dma_fence_add_reservation_callback(struct kbase_jd_atom *katom,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+					 struct dma_resv *resv,
+#else
 					 struct reservation_object *resv,
+#endif
 					 bool exclusive)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence *excl_fence = NULL;
+	struct dma_fence **shared_fences = NULL;
+#else
 	struct fence *excl_fence = NULL;
 	struct fence **shared_fences = NULL;
+#endif
 	unsigned int shared_count = 0;
 	int err, i;
 
@@ -445,7 +496,11 @@ out:
 	return err;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+void kbase_dma_fence_add_reservation(struct dma_resv *resv,
+#else
 void kbase_dma_fence_add_reservation(struct reservation_object *resv,
+#endif
 				     struct kbase_dma_fence_resv_info *info,
 				     bool exclusive)
 {
@@ -468,7 +523,11 @@ int kbase_dma_fence_wait(struct kbase_jd_atom *katom,
 			 struct kbase_dma_fence_resv_info *info)
 {
 	int err, i;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	struct dma_fence *fence;
+#else
 	struct fence *fence;
+#endif
 	struct ww_acquire_ctx ww_ctx;
 
 	lockdep_assert_held(&katom->kctx->jctx.lock);
@@ -495,7 +554,11 @@ int kbase_dma_fence_wait(struct kbase_jd_atom *katom,
 	}
 
 	for (i = 0; i < info->dma_fence_resv_count; i++) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+		struct dma_resv *obj = info->resv_objs[i];
+#else
 		struct reservation_object *obj = info->resv_objs[i];
+#endif
 
 		if (!test_bit(i, info->dma_fence_excl_bitmap)) {
 			err = reservation_object_reserve_shared(obj);

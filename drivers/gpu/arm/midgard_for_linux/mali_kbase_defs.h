@@ -446,7 +446,11 @@ struct kbase_jd_atom {
 		 * regardless of the event_code of the katom (signal also on
 		 * failure).
 		 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+		struct dma_fence *fence;
+#else
 		struct fence *fence;
+#endif
 		/* The dma-buf fence context number for this atom. A unique
 		 * context number is allocated to each katom in the context on
 		 * context creation.

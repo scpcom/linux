@@ -29,6 +29,16 @@
 #include "mali_kbase_pm_ca.h"
 #include "mali_kbase_pm_policy.h"
 
+#ifdef CONFIG_ROCKCHIP_OPP
+#include <soc/rockchip/rockchip_opp_select.h>
+#else
+static inline int rockchip_init_opp_table(struct device *dev,
+					  const struct of_device_id *matches,
+					  char *lkg_name, char *reg_name)
+{
+	return -ENOTSUPP;
+}
+#endif
 
 /**
  * kbase_pm_dev_idle - The GPU is idle.

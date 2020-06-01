@@ -35,6 +35,9 @@
 #include <linux/mutex.h>
 #include <linux/rwsem.h>
 #include <linux/sched.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#include <linux/sched/mm.h>
+#endif
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/vmalloc.h>
@@ -204,7 +207,11 @@ int kbase_soft_event_update(struct kbase_context *kctx,
 
 bool kbase_replay_process(struct kbase_jd_atom *katom);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+void kbasep_soft_job_timeout_worker(struct timer_list *t);
+#else
 void kbasep_soft_job_timeout_worker(unsigned long data);
+#endif
 void kbasep_complete_triggered_soft_events(struct kbase_context *kctx, u64 evt);
 
 /* api used internally for register access. Contains validation and tracing */
