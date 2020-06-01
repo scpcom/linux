@@ -33,6 +33,31 @@ struct wake_lock {
 	struct wakeup_source ws;
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+static inline void wakeup_source_prepare(struct wakeup_source *ws, const char *name)
+{
+	if (ws) {
+		memset(ws, 0, sizeof(*ws));
+		ws->name = name;
+	}
+}
+
+#define wakeup_source_drop __pm_relax
+
+static inline void wakeup_source_init(struct wakeup_source *ws,
+				      const char *name)
+{
+	wakeup_source_prepare(ws, name);
+	wakeup_source_add(ws);
+}
+
+static inline void wakeup_source_trash(struct wakeup_source *ws)
+{
+	wakeup_source_remove(ws);
+	wakeup_source_drop(ws);
+}
+#endif
+
 static inline void wake_lock_init(struct wake_lock *lock, int type,
 				  const char *name)
 {
