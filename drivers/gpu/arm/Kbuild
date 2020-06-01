@@ -1,2 +1,3 @@
 # SPDX-License-Identifier: GPL-2.0
 obj-y += mali400/
+obj-$(CONFIG_MALI_MIDGARD_FOR_LINUX) += midgard_for_linux/

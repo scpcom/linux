@@ -222,4 +222,4 @@ config MALI_GPU_MMU_AARCH64
 
 	  If in doubt, say N.
 
-source "drivers/gpu/arm/midgard/platform/Kconfig"
+source "drivers/gpu/arm/midgard_for_linux/platform/Kconfig"

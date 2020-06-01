@@ -1,3 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 source "drivers/gpu/arm/mali400/mali/Kconfig"
 source "drivers/gpu/arm/mali400/ump/Kconfig"
+
+config MALI_MIDGARD_FOR_LINUX
+	bool "Mali Midgard for Linux only"
+
+source "drivers/gpu/arm/midgard_for_linux/Kconfig"
