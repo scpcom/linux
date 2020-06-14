@@ -873,7 +873,7 @@ int kbase_mem_flags_change(struct kbase_context *kctx, u64 gpu_addr, unsigned in
 
 	/* Currently supporting only imported memory */
 	switch (reg->gpu_alloc->type) {
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 	case KBASE_MEM_TYPE_IMPORTED_UMP:
 		ret = kbase_mmu_update_pages(kctx, reg->start_pfn, kbase_get_cpu_phy_pages(reg), reg->gpu_alloc->nents, reg->flags);
 		break;
@@ -904,7 +904,7 @@ out:
 
 #define KBASE_MEM_IMPORT_HAVE_PAGES (1UL << BASE_MEM_FLAGS_NR_BITS)
 
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 static struct kbase_va_region *kbase_mem_from_ump(struct kbase_context *kctx, ump_secure_id id, u64 *va_pages, u64 *flags)
 {
 	struct kbase_va_region *reg;
@@ -1020,7 +1020,7 @@ bad_id:
 bad_flags:
 	return NULL;
 }
-#endif				/* CONFIG_UMP */
+#endif				/* CONFIG_MALI_MIDGARD_UMP */
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 static struct kbase_va_region *kbase_mem_from_umm(struct kbase_context *kctx, int fd, u64 *va_pages, u64 *flags)
@@ -1482,7 +1482,7 @@ int kbase_mem_import(struct kbase_context *kctx, enum base_mem_import_type type,
 	}
 
 	switch (type) {
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 	case BASE_MEM_IMPORT_TYPE_UMP: {
 		ump_secure_id id;
 
@@ -1492,7 +1492,7 @@ int kbase_mem_import(struct kbase_context *kctx, enum base_mem_import_type type,
 			reg = kbase_mem_from_ump(kctx, id, va_pages, flags);
 	}
 	break;
-#endif /* CONFIG_UMP */
+#endif /* CONFIG_MALI_MIDGARD_UMP */
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	case BASE_MEM_IMPORT_TYPE_UMM: {
 		int fd;

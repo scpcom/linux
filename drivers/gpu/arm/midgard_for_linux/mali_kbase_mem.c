@@ -24,9 +24,9 @@
 #ifdef CONFIG_DMA_SHARED_BUFFER
 #include <linux/dma-buf.h>
 #endif				/* CONFIG_DMA_SHARED_BUFFER */
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 #include <linux/ump.h>
-#endif				/* CONFIG_UMP */
+#endif				/* CONFIG_MALI_MIDGARD_UMP */
 #include <linux/kernel.h>
 #include <linux/bug.h>
 #include <linux/compat.h>
@@ -1411,7 +1411,7 @@ void kbase_mem_kref_free(struct kref *kref)
 	case KBASE_MEM_TYPE_RAW:
 		/* raw pages, external cleanup */
 		break;
- #ifdef CONFIG_UMP
+ #ifdef CONFIG_MALI_MIDGARD_UMP
 	case KBASE_MEM_TYPE_IMPORTED_UMP:
 		ump_dd_release(alloc->imported.ump_handle);
 		break;
@@ -2233,7 +2233,7 @@ static void kbase_jd_umm_unmap(struct kbase_context *kctx,
 }
 #endif				/* CONFIG_DMA_SHARED_BUFFER */
 
-#if (defined(CONFIG_KDS) && defined(CONFIG_UMP)) \
+#if (defined(CONFIG_KDS) && defined(CONFIG_MALI_MIDGARD_UMP)) \
 		|| defined(CONFIG_DMA_SHARED_BUFFER_USES_KDS)
 static void add_kds_resource(struct kds_resource *kds_res,
 		struct kds_resource **kds_resources, u32 *kds_res_count,
@@ -2282,7 +2282,7 @@ struct kbase_mem_phy_alloc *kbase_map_external_resource(
 	}
 	break;
 	case KBASE_MEM_TYPE_IMPORTED_UMP: {
-#if defined(CONFIG_KDS) && defined(CONFIG_UMP)
+#if defined(CONFIG_KDS) && defined(CONFIG_MALI_MIDGARD_UMP)
 		if (kds_res_count) {
 			struct kds_resource *kds_res;
 
@@ -2293,7 +2293,7 @@ struct kbase_mem_phy_alloc *kbase_map_external_resource(
 						kds_res_count,
 						kds_access_bitmap, exclusive);
 		}
-#endif				/*defined(CONFIG_KDS) && defined(CONFIG_UMP) */
+#endif				/*defined(CONFIG_KDS) && defined(CONFIG_MALI_MIDGARD_UMP) */
 		break;
 	}
 #ifdef CONFIG_DMA_SHARED_BUFFER
