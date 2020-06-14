@@ -34,8 +34,10 @@
 #include <linux/dma-mapping.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
+#ifdef CONFIG_ROCKCHIP_OPP
 #include <linux/rockchip/cpu.h>
 #include <soc/rockchip/rockchip_opp_select.h>
+#endif
 
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_common.h"
@@ -447,7 +449,11 @@ static void rk_platform_power_off_gpu(struct device *dev)
 
 int rk_platform_init_opp_table(struct device *dev)
 {
+#ifdef CONFIG_ROCKCHIP_OPP
 	return rockchip_init_opp_table(dev, NULL, "gpu_leakage", "mali");
+#else
+	return -ENOTSUPP;
+#endif
 }
 
 static int mali_runtime_suspend(struct device *device)
