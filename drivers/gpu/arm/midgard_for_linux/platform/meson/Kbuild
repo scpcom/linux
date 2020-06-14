@@ -13,6 +13,6 @@
 #
 
 
-mali_kbase-y += \
+SRC += \
 	$(MALI_PLATFORM_DIR)/mali_kbase_config_devicetree.o \
 	$(MALI_PLATFORM_DIR)/mali_kbase_runtime_pm.o
