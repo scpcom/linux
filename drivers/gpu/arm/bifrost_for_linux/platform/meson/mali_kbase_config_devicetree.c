@@ -16,6 +16,7 @@
 
 
 #include <mali_kbase_config.h>
+#include <linux/errno.h>
 
 int kbase_platform_early_init(void)
 {
@@ -40,3 +41,16 @@ void kbase_platform_unregister(void)
 {
 }
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+void kbase_platform_rk_shutdown(struct kbase_device *kbdev)
+{
+	/* Nothing needed at this stage */
+}
+
+int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev)
+{
+	return -ENOTSUPP;
+}
+
