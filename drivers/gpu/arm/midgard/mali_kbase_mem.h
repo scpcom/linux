@@ -33,9 +33,9 @@
 #ifdef CONFIG_KDS
 #include <linux/kds.h>
 #endif				/* CONFIG_KDS */
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 #include <linux/ump.h>
-#endif				/* CONFIG_UMP */
+#endif				/* CONFIG_MALI_MIDGARD_UMP */
 #include "mali_base_kernel.h"
 #include <mali_kbase_hw.h>
 #include "mali_kbase_pm.h"
@@ -133,9 +133,9 @@ struct kbase_mem_phy_alloc {
 
 	/* member in union valid based on @a type */
 	union {
-#ifdef CONFIG_UMP
+#ifdef CONFIG_MALI_MIDGARD_UMP
 		ump_dd_handle ump_handle;
-#endif /* CONFIG_UMP */
+#endif /* CONFIG_MALI_MIDGARD_UMP */
 #if defined(CONFIG_DMA_SHARED_BUFFER)
 		struct {
 			struct dma_buf *dma_buf;
