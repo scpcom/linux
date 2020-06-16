@@ -17,7 +17,26 @@
 	};
 
 	chosen {
+		// disable USB autosuspend as this solves USB stability issues
+		bootargs = "earlycon=uart8250,mmio32,0xff1a0000 swiotlb=1 no_console_suspend=1 usbcore.autosuspend=-1 coherent_pool=1m";
 		stdout-path = "serial2:1500000n8";
+	};
+
+	cpuinfo {
+		compatible = "rockchip,cpuinfo";
+		nvmem-cells = <&cpu_id>;
+		nvmem-cell-names = "id";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		drm_logo: drm-logo@00000000 {
+			compatible = "rockchip,drm-logo";
+			reg = <0x0 0x0 0x0 0x0>;
+		};
 	};
 
 	/* enable for panel backlight support */
