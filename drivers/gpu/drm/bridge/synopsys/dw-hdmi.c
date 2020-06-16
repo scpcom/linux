@@ -40,6 +40,10 @@
 #include "dw-hdmi-cec.h"
 #include "dw-hdmi.h"
 
+/* try to probe edid two times only, allows to continue without edid in case
+   nothing is connected. */
+int dw_hdmi_wait_for_ddc = 2;
+
 #define DDC_CI_ADDR		0x37
 #define DDC_SEGMENT_ADDR	0x30
 
@@ -3505,6 +3509,11 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 		hdmi->ddc = dw_hdmi_i2c_adapter(hdmi);
 		if (IS_ERR(hdmi->ddc))
 			hdmi->ddc = NULL;
+		else if (!drm_probe_ddc(hdmi->ddc) && dw_hdmi_wait_for_ddc) {
+			dw_hdmi_wait_for_ddc--;
+			ret = -EPROBE_DEFER;
+			goto err_res;
+		}
 	}
 
 	hdmi->bridge.driver_private = hdmi;
