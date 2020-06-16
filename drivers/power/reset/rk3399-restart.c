@@ -18,6 +18,7 @@
 #include <linux/of_platform.h>
 #include <linux/module.h>
 #include <asm/system_misc.h>
+#include <asm/system_info.h>
 
 struct rk3399_restart {
 	struct gpio_desc *reset_gpio;
@@ -83,6 +84,8 @@ static int rk3399_restart_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, rk3399_restart);
 
 	arm_pm_restart = rk3399_reboot;
+
+	system_rev = 0x0301;
 
 	return 0;
 }
