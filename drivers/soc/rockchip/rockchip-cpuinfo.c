@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/platform_device.h>
+#include <linux/of_platform.h>
 #include <linux/slab.h>
 #include <asm/system_info.h>
 
