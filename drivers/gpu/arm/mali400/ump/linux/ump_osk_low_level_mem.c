@@ -248,7 +248,11 @@ void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_ms
 	if ((mem) && (virt != NULL) && (access_ok(VERIFY_WRITE, virt, size))) {
 #endif
 
+#ifdef CONFIG_ARM64
 		__flush_dcache_area(virt, size);
+#else
+		__cpuc_flush_dcache_area(virt, size);
+#endif
 		DBG_MSG(3, ("UMP[%02u] Flushing CPU L1 Cache. CPU address: %x, size: %x\n", mem->secure_id, virt, size));
 	} else {
 		if (session_data) {
