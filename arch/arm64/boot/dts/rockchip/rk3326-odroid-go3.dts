@@ -103,26 +103,60 @@
 /delete-node/ &btn_f2;
 
 &builtin_gamepad {
+	compatible = "odroidgo3-joypad";
+
+	/* Analog mux define */
+	io-channel-names = "amux_adc";
+	io-channels = <&saradc 1>;
+
+	/* adc mux channel count */
+	amux-count = <4>;
+	/* adc mux select(a,b) gpio */
+	amux-a-gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_LOW>;
+	amux-b-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
+	/* adc mux enable gpio */
+	amux-en-gpios = <&gpio3 RK_PB5 GPIO_ACTIVE_LOW>;
+
+	/* adc calculate scale */
+	button-adc-scale = <2>;
+
+	/* adc deadzone range  */
+	button-adc-deadzone = <64>;
+
+	button-sw9 {
+		gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_LOW>;
+		label = "GPIO BTN-VOLUP";
+		linux,code = <KEY_VOLUMEUP>; // 115, 0x73
+	};
+	button-sw10 {
+		gpios = <&gpio2 RK_PA1 GPIO_ACTIVE_LOW>;
+		label = "GPIO BTN-VOLDN";
+		linux,code = <KEY_VOLUMEDOWN>; // 114, 0x72
+	};
+	button-sw11 {
+		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
+		label = "TOP-RIGHT";
+		linux,code = <BTN_TR>;
+	};
 	button-sw19 {
 		gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>;
-		label = "SELECT";
-		linux,code = <BTN_SELECT>;
+		label = "GPIO F1";
+		linux,code = <BTN_TRIGGER_HAPPY1>;
 	};
-	/* note that TR2 and TL2 are swapped */
 	button-sw20 {
 		gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
-		label = "TOP-RIGHT 2";
+		label = "GPIO TOP-RIGHT2";
 		linux,code = <BTN_TR2>;
 	};
 	button-sw21 {
 		gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
-		label = "TOP-LEFT 2";
+		label = "GPIO TOP-LEFT2";
 		linux,code = <BTN_TL2>;
 	};
 	button-sw22 {
 		gpios = <&gpio3 RK_PB4 GPIO_ACTIVE_LOW>;
-		label = "START";
-		linux,code = <BTN_START>;
+		label = "GPIO F2";
+		linux,code = <BTN_TRIGGER_HAPPY2>;
 	};
 };
 

@@ -8,6 +8,7 @@
 obj-$(CONFIG_JOYSTICK_A3D)		+= a3d.o
 obj-$(CONFIG_JOYSTICK_ADC)		+= adc-joystick.o
 obj-$(CONFIG_JOYSTICK_ODROIDGO2)	+= odroidgo2-joypad.o
+obj-$(CONFIG_JOYSTICK_ODROIDGO3)	+= odroidgo3-joypad.o
 obj-$(CONFIG_JOYSTICK_ADI)		+= adi.o
 obj-$(CONFIG_JOYSTICK_AMIGA)		+= amijoy.o
 obj-$(CONFIG_JOYSTICK_AS5011)		+= as5011.o
