@@ -161,7 +161,11 @@ static void kbase_fence_wait_callback(struct dma_fence *fence,
 	struct kbase_context *kctx = katom->kctx;
 
 	/* Cancel atom if fence is erroneous */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+	if (dma_fence_is_signaled(kcb->fence) && kcb->fence->error < 0)
+#else
 	if (dma_fence_is_signaled(kcb->fence) && kcb->fence->status < 0)
+#endif
 		katom->event_code = BASE_JD_EVENT_JOB_CANCELLED;
 
 	if (kbase_fence_dep_count_dec_and_test(katom)) {
@@ -273,8 +277,13 @@ static void kbase_sync_fence_info_get(struct dma_fence *fence,
 	 * 1 : signaled
 	 */
 	if (dma_fence_is_signaled(fence)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+		if (fence->error < 0)
+			info->status = fence->error; /* signaled with error */
+#else
 		if (fence->status < 0)
 			info->status = fence->status; /* signaled with error */
+#endif
 		else
 			info->status = 1; /* signaled with success */
 	} else  {

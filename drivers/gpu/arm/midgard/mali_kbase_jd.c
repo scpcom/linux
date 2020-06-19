@@ -355,7 +355,11 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 #ifdef CONFIG_MALI_DMA_FENCE
 	if (implicit_sync) {
 		info.resv_objs = kmalloc_array(katom->nr_extres,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+					sizeof(struct dma_resv *),
+#else
 					sizeof(struct reservation_object *),
+#endif
 					GFP_KERNEL);
 		if (!info.resv_objs) {
 			err_ret_val = -ENOMEM;
@@ -415,7 +419,11 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 #ifdef CONFIG_MALI_DMA_FENCE
 		if (implicit_sync &&
 		    reg->gpu_alloc->type == KBASE_MEM_TYPE_IMPORTED_UMM) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+			struct dma_resv *resv;
+#else
 			struct reservation_object *resv;
+#endif
 
 			resv = reg->gpu_alloc->imported.umm.dma_buf->resv;
 			if (resv)

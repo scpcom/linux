@@ -559,7 +559,11 @@ void kbase_mem_pool_free_pages(struct kbase_mem_pool *pool, size_t nr_pages,
  */
 static inline size_t kbase_mem_pool_size(struct kbase_mem_pool *pool)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	return READ_ONCE(pool->cur_size);
+#else
 	return ACCESS_ONCE(pool->cur_size);
+#endif
 }
 
 /**
