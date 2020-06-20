@@ -20,9 +20,16 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <linux/nvmem-consumer.h>
+#ifdef CONFIG_ROCKCHIP_PVTM
 #include <linux/soc/rockchip/pvtm.h>
+#else
+static inline u32 rockchip_get_pvtm_value(unsigned int ch, unsigned int sub_ch,
+					  unsigned int time_us)
+{
+	return 0;
+}
+#endif
 #include <linux/thermal.h>
-#include <soc/rockchip/rockchip_opp_select.h>
 
 #include "mali_kbase_rk.h"
 

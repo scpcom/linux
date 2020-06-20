@@ -38,7 +38,11 @@ static int kbase_simple_power_model_get_dummy_temp(
 	struct thermal_zone_device *tz,
 	unsigned long *temp)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	*temp = READ_ONCE(dummy_temp);
+#else
 	*temp = ACCESS_ONCE(dummy_temp);
+#endif
 	return 0;
 }
 
@@ -49,7 +53,11 @@ static int kbase_simple_power_model_get_dummy_temp(
 	struct thermal_zone_device *tz,
 	int *dummy_temp)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	*temp = READ_ONCE(dummy_temp);
+#else
 	*temp = ACCESS_ONCE(dummy_temp);
+#endif
 	return 0;
 }
 #endif
@@ -63,7 +71,11 @@ static int kbase_simple_power_model_get_dummy_temp(
 
 void kbase_simple_power_model_set_dummy_temp(int temp)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	WRITE_ONCE(dummy_temp, temp);
+#else
 	ACCESS_ONCE(dummy_temp) = temp;
+#endif
 }
 KBASE_EXPORT_TEST_API(kbase_simple_power_model_set_dummy_temp);
 
@@ -152,7 +164,11 @@ static int poll_temperature(void *data)
 	set_freezable();
 
 	while (!kthread_should_stop()) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+		struct thermal_zone_device *tz = READ_ONCE(model_data->gpu_tz);
+#else
 		struct thermal_zone_device *tz = ACCESS_ONCE(model_data->gpu_tz);
+#endif
 
 		if (tz) {
 			int ret;
@@ -167,9 +183,17 @@ static int poll_temperature(void *data)
 			temp = FALLBACK_STATIC_TEMPERATURE;
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+		WRITE_ONCE(model_data->current_temperature, temp);
+#else
 		ACCESS_ONCE(model_data->current_temperature) = temp;
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+		msleep_interruptible(READ_ONCE(model_data->temperature_poll_interval_ms));
+#else
 		msleep_interruptible(ACCESS_ONCE(model_data->temperature_poll_interval_ms));
+#endif
 
 		try_to_freeze();
 	}
@@ -185,7 +209,11 @@ static int model_static_coeff(struct kbase_ipa_model *model, u32 *coeffp)
 	u64 coeff_big;
 	int temp;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	temp = READ_ONCE(model_data->current_temperature);
+#else
 	temp = ACCESS_ONCE(model_data->current_temperature);
+#endif
 
 	/* Range: 0 <= temp_scaling_factor < 2^24 */
 	temp_scaling_factor = calculate_temp_scaling_factor(model_data->ts,
@@ -301,7 +329,11 @@ static int kbase_simple_power_model_recalculate(struct kbase_ipa_model *model)
 		}
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	WRITE_ONCE(model_data->gpu_tz, tz);
+#else
 	ACCESS_ONCE(model_data->gpu_tz) = tz;
+#endif
 
 	return 0;
 }

@@ -168,9 +168,15 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 
 	mutex_init(&kctx->vinstr_cli_lock);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	timer_setup(&kctx->soft_job_timeout,
+		    kbasep_soft_job_timeout_worker,
+		    0);
+#else
 	setup_timer(&kctx->soft_job_timeout,
 		    kbasep_soft_job_timeout_worker,
 		    (uintptr_t)kctx);
+#endif
 
 	return kctx;
 
