@@ -192,5 +192,5 @@ config MALI_PWRSOFT_765
 	  not merged in mainline kernel yet. So this define helps to guard those
 	  parts of the code.
 
-source "drivers/gpu/arm/bifrost/platform/Kconfig"
-# source "drivers/gpu/arm/bifrost/tests/Kconfig"
+source "drivers/gpu/arm/bifrost_for_linux/platform/Kconfig"
+# source "drivers/gpu/arm/bifrost_for_linux/tests/Kconfig"

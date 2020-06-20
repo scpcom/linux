@@ -14,3 +14,8 @@ config MALI_MIDGARD_FOR_LINUX
 endchoice
 
 source "drivers/gpu/arm/midgard/Kconfig"
+
+config MALI_BIFROST_FOR_LINUX
+	bool "Mali Bifrost for Linux only"
+
+source "drivers/gpu/arm/bifrost_for_linux/Kconfig"
