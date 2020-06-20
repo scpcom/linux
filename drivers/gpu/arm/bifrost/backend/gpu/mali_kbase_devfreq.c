@@ -47,13 +47,14 @@
 #define dev_pm_opp_find_freq_ceil opp_find_freq_ceil
 #define dev_pm_opp_find_freq_floor opp_find_freq_floor
 #endif /* Linux >= 3.13 */
-#include <soc/rockchip/rockchip_opp_select.h>
 
+#ifdef CONFIG_ROCKCHIP_OPP
 static struct thermal_opp_device_data gpu_devdata = {
 	.type = THERMAL_OPP_TPYE_DEV,
 	.low_temp_adjust = rockchip_dev_low_temp_adjust,
 	.high_temp_adjust = rockchip_dev_high_temp_adjust,
 };
+#endif
 
 /**
  * opp_translate - Translate nominal OPP frequency from devicetree into real
@@ -403,6 +404,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	devfreq_recommended_opp(kbdev->dev, &opp_rate, 0);
 	rcu_read_unlock();
 	kbdev->devfreq->last_status.current_frequency = opp_rate;
+#ifdef CONFIG_ROCKCHIP_OPP
 	gpu_devdata.data = kbdev->devfreq;
 	kbdev->opp_info = rockchip_register_thermal_notifier(kbdev->dev,
 							     &gpu_devdata);
@@ -410,6 +412,9 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 		dev_dbg(kbdev->dev, "without thermal notifier\n");
 		kbdev->opp_info = NULL;
 	}
+#else
+	 kbdev->opp_info = NULL;
+#endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 	err = kbase_ipa_init(kbdev);
 	if (err) {
@@ -451,7 +456,9 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 
 	dev_dbg(kbdev->dev, "Term Mali devfreq\n");
 
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_unregister_thermal_notifier(kbdev->opp_info);
+#endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 	if (kbdev->devfreq_cooling)
 		devfreq_cooling_unregister(kbdev->devfreq_cooling);

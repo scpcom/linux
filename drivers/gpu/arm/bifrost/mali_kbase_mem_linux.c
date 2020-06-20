@@ -53,6 +53,18 @@
 
 static int kbase_tracking_page_setup(struct kbase_context *kctx, struct vm_area_struct *vma);
 
+/*
+ * From 4.20.0 kernel vm_insert_pfn was dropped
+ * Make wrapper to preserve compatibility
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+static int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+		  unsigned long pfn)
+{
+	return vm_fault_to_errno(vmf_insert_pfn(vma, addr, pfn), 0xffff);
+}
+#endif
+
 struct kbase_va_region *kbase_mem_alloc(struct kbase_context *kctx,
 		u64 va_pages, u64 commit_pages, u64 extent, u64 *flags,
 		u64 *gpu_va)
@@ -1486,12 +1498,15 @@ static void kbase_cpu_vm_close(struct vm_area_struct *vma)
 KBASE_EXPORT_TEST_API(kbase_cpu_vm_close);
 
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0))
-static int kbase_cpu_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
-{
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+static vm_fault_t kbase_cpu_vm_fault(struct vm_fault *vmf)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 static int kbase_cpu_vm_fault(struct vm_fault *vmf)
+#else
+static int kbase_cpu_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	struct vm_area_struct *vma = vmf->vma;
 #endif
 	struct kbase_cpu_mapping *map = vma->vm_private_data;

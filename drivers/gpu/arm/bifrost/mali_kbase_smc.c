@@ -27,6 +27,12 @@
 
 #include <linux/compiler.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+#ifdef CONFIG_ARM64
+#define __asmeq(x, y)  ".ifnc " x "," y " ; .err ; .endif\n\t"
+#endif
+#endif
+
 static noinline u64 invoke_smc_fid(u64 function_id,
 		u64 arg0, u64 arg1, u64 arg2)
 {

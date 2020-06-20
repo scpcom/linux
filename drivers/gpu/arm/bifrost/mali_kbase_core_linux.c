@@ -85,7 +85,6 @@
 
 #if (KERNEL_VERSION(3, 13, 0) <= LINUX_VERSION_CODE)
 #include <linux/pm_opp.h>
-#include <soc/rockchip/rockchip_opp_select.h>
 #else
 #include <linux/opp.h>
 #endif
