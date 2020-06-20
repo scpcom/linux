@@ -298,7 +298,7 @@ static int kbase_fence_wait(struct kbase_jd_atom *katom)
 		queue_work(katom->kctx->jctx.job_done_wq, &katom->work);
 	}
 
-#ifdef CONFIG_MALI_FENCE_DEBUG
+#if defined(CONFIG_MALI_FENCE_DEBUG) && defined(CONFIG_SYNC)
 	/* The timeout code will add this job to the list of waiting soft jobs.
 	 */
 	kbasep_add_waiting_with_timeout(katom);
@@ -387,7 +387,7 @@ void kbasep_complete_triggered_soft_events(struct kbase_context *kctx, u64 evt)
 				cancel_timer = 0;
 			}
 			break;
-#ifdef CONFIG_MALI_FENCE_DEBUG
+#if defined(CONFIG_MALI_FENCE_DEBUG) && defined(CONFIG_SYNC)
 		case BASE_JD_REQ_SOFT_FENCE_WAIT:
 			/* Keep the timer running if fence debug is enabled and
 			 * there are waiting fence jobs.
@@ -403,7 +403,7 @@ void kbasep_complete_triggered_soft_events(struct kbase_context *kctx, u64 evt)
 	spin_unlock_irqrestore(&kctx->waiting_soft_jobs_lock, lflags);
 }
 
-#ifdef CONFIG_MALI_FENCE_DEBUG
+#if defined(CONFIG_MALI_FENCE_DEBUG) && defined(CONFIG_SYNC)
 static char *kbase_fence_debug_status_string(int status)
 {
 	if (status == 0)
@@ -556,7 +556,7 @@ void kbasep_soft_job_timeout_worker(unsigned long data)
 			INIT_WORK(&katom->work, kbasep_soft_event_complete_job);
 			queue_work(kctx->jctx.job_done_wq, &katom->work);
 			break;
-#ifdef CONFIG_MALI_FENCE_DEBUG
+#if defined(CONFIG_MALI_FENCE_DEBUG) && defined(CONFIG_SYNC)
 		case BASE_JD_REQ_SOFT_FENCE_WAIT:
 			kbase_fence_debug_timeout(katom);
 			break;
