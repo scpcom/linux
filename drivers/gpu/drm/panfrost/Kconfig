@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
+if (MALI_MIDGARD!=m && MALI_MIDGARD!=y && MALI_BIFROST!=m && MALI_BIFROST!=y)
+
 config DRM_PANFROST
 	tristate "Panfrost (DRM support for ARM Mali Midgard/Bifrost GPUs)"
 	depends on DRM
@@ -16,3 +18,5 @@ config DRM_PANFROST
 	help
 	  DRM driver for ARM Mali Midgard (T6xx, T7xx, T8xx) and
 	  Bifrost (G3x, G5x, G7x) GPUs.
+
+endif
