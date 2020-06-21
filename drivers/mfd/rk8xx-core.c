@@ -1160,6 +1160,19 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	rk808->i2c = client;
 	rk808_i2c_client = client;
 
+	for (i = 0; i < nr_pre_init_regs; i++) {
+		ret = regmap_update_bits(rk808->regmap,
+					pre_init_reg[i].addr,
+					pre_init_reg[i].mask,
+					pre_init_reg[i].value);
+		if (ret) {
+			dev_err(&client->dev,
+				"0x%x write err\n",
+				pre_init_reg[i].addr);
+			return ret;
+		}
+	}
+
 	if (pinctrl_init) {
 		ret = pinctrl_init(&client->dev, rk808);
 		if (ret)
@@ -1171,16 +1184,6 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 				       rk808->regmap_irq_chip, &rk808->irq_data);
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to add irq_chip\n");
-
-	for (i = 0; i < nr_pre_init_regs; i++) {
-		ret = regmap_update_bits(rk808->regmap,
-					pre_init_reg[i].addr,
-					pre_init_reg[i].mask,
-					pre_init_reg[i].value);
-		if (ret)
-			return dev_err_probe(dev, ret, "0x%x write err\n",
-					     pre_init_reg[i].addr);
-	}
 
 	if (battery_irq_chip) {
 		ret = devm_regmap_add_irq_chip(dev, rk808->regmap, irq,
