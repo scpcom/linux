@@ -2,7 +2,7 @@
 if ARCH_ROCKCHIP || COMPILE_TEST
 
 config ROCKCHIP_PM_DOMAINS
-	bool "Rockchip generic power domain"
+	tristate "Rockchip generic power domain"
 	depends on PM
 	select PM_GENERIC_DOMAINS
 	help
