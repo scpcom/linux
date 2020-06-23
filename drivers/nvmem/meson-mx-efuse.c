@@ -18,6 +18,8 @@
 #include <linux/sizes.h>
 #include <linux/slab.h>
 
+#include "generic-efuse-class.h"
+
 #define MESON_MX_EFUSE_CNTL1					0x04
 #define MESON_MX_EFUSE_CNTL1_PD_ENABLE				BIT(27)
 #define MESON_MX_EFUSE_CNTL1_AUTO_RD_BUSY			BIT(26)
@@ -225,11 +227,24 @@ static int meson_mx_efuse_probe(struct platform_device *pdev)
 
 	nvmem = devm_nvmem_register(&pdev->dev, &efuse->config);
 
+	generic_efuse_class_probe(pdev, nvmem);
+
 	return PTR_ERR_OR_ZERO(nvmem);
+}
+
+static int meson_mx_efuse_remove(struct platform_device *pdev)
+{
+	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
+
+	generic_efuse_class_remove(pdev);
+
+	nvmem_unregister(nvmem);
+	return 0;
 }
 
 static struct platform_driver meson_mx_efuse_driver = {
 	.probe = meson_mx_efuse_probe,
+	.remove = meson_mx_efuse_remove,
 	.driver = {
 		.name = "meson-mx-efuse",
 		.of_match_table = meson_mx_efuse_match,

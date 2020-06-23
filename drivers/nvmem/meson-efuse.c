@@ -14,6 +14,8 @@
 
 #include <linux/firmware/meson/meson_sm.h>
 
+#include "generic-efuse-class.h"
+
 static int meson_efuse_read(void *context, unsigned int offset,
 			    void *val, size_t bytes)
 {
@@ -89,11 +91,24 @@ static int meson_efuse_probe(struct platform_device *pdev)
 
 	nvmem = devm_nvmem_register(&pdev->dev, econfig);
 
+	generic_efuse_class_probe(pdev, nvmem);
+
 	return PTR_ERR_OR_ZERO(nvmem);
+}
+
+static int meson_efuse_remove(struct platform_device *pdev)
+{
+	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
+
+	generic_efuse_class_remove(pdev);
+
+	nvmem_unregister(nvmem);
+	return 0;
 }
 
 static struct platform_driver meson_efuse_driver = {
 	.probe = meson_efuse_probe,
+	.remove = meson_efuse_remove,
 	.driver = {
 		.name = "meson-efuse",
 		.of_match_table = meson_efuse_match,
