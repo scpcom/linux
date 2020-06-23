@@ -9,6 +9,9 @@ obj-$(CONFIG_NVMEM_LAYOUTS)	+= nvmem_layouts.o
 nvmem_layouts-y			:= layouts.o
 obj-y				+= layouts/
 
+obj-$(CONFIG_GENERIC_EFUSE_CLASS) += nvmem_generic_efuse_class.o
+nvmem_generic_efuse_class-y       := generic-efuse-class.o
+
 # Devices
 obj-$(CONFIG_NVMEM_APPLE_EFUSES)	+= nvmem-apple-efuses.o
 nvmem-apple-efuses-y 			:= apple-efuses.o

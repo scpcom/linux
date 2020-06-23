@@ -12,6 +12,9 @@ menuconfig NVMEM
 
 if NVMEM
 
+config GENERIC_EFUSE_CLASS
+        tristate "Generic eFuse Class"
+
 config NVMEM_SYSFS
 	bool "/sys/bus/nvmem/devices/*/nvmem (sysfs interface)"
 	depends on SYSFS
