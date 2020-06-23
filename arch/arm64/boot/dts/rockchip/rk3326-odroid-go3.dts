@@ -95,6 +95,7 @@
 };
 
 &backlight {
+	pwms = <&pwm1 0 40000 0>;
 	default-brightness-level = <255>;
 };
 
