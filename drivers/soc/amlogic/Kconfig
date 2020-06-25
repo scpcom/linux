@@ -17,6 +17,15 @@ config MESON_CLK_MEASURE
 	  Say yes to support of Measuring a set of internal SoC clocks
 	  from the debugfs interface.
 
+config MESON_GX_CPUINFO
+	tristate "Amlogic Meson GX cpuinfo support"
+	depends on MESON_EFUSE && (ARM64 || ARM)
+	default MESON_EFUSE
+	help
+	  Say y here to enable Amlogic Meson GX cpuinfo support.
+	  Set system_serial from eFuse SN.
+	  Serial can read from /proc/cpuinfo.
+
 config MESON_GX_SOCINFO
 	bool "Amlogic Meson GX SoC Information driver"
 	depends on (ARM64 && ARCH_MESON) || COMPILE_TEST
