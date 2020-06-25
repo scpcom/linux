@@ -1678,6 +1678,10 @@ static int __nvmem_cell_read(struct nvmem_device *nvmem,
 
 	rc = nvmem_reg_read(nvmem, cell->offset, buf, cell->raw_len);
 
+	/* returning bytes read is successful read too */
+	if (rc == cell->bytes)
+		rc = 0;
+
 	if (rc)
 		return rc;
 
@@ -1753,6 +1757,9 @@ static void *nvmem_cell_prepare_write_buffer(struct nvmem_cell_entry *cell,
 
 		/* setup the first byte with lsb bits from nvmem */
 		rc = nvmem_reg_read(nvmem, cell->offset, &v, 1);
+		/* returning bytes read is successful read too */
+		if (rc == 1)
+			rc = 0;
 		if (rc)
 			goto err;
 		*b++ |= GENMASK(bit_offset - 1, 0) & v;
@@ -1773,6 +1780,9 @@ static void *nvmem_cell_prepare_write_buffer(struct nvmem_cell_entry *cell,
 		/* setup the last byte with msb bits from nvmem */
 		rc = nvmem_reg_read(nvmem,
 				    cell->offset + cell->bytes - 1, &v, 1);
+		/* returning bytes read is successful read too */
+		if (rc == 1)
+			rc = 0;
 		if (rc)
 			goto err;
 		*p |= GENMASK(7, (nbits + bit_offset) % BITS_PER_BYTE) & v;
