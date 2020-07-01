@@ -4198,7 +4198,7 @@ EXPORT_SYMBOL_GPL(dw_hdmi_remove);
  */
 struct dw_hdmi *dw_hdmi_bind(struct platform_device *pdev,
 			     struct drm_encoder *encoder,
-			     const struct dw_hdmi_plat_data *plat_data)
+			     struct dw_hdmi_plat_data *plat_data)
 {
 	struct dw_hdmi *hdmi;
 	int ret;
@@ -4212,6 +4212,7 @@ struct dw_hdmi *dw_hdmi_bind(struct platform_device *pdev,
 		dw_hdmi_remove(hdmi);
 		return ERR_PTR(ret);
 	}
+	plat_data->connector = &hdmi->connector;
 
 	return hdmi;
 }
