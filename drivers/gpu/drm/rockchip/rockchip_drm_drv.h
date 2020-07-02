@@ -42,6 +42,12 @@ struct drm_device;
 struct drm_connector;
 struct iommu_domain;
 
+struct rockchip_drm_sub_dev {
+	struct list_head list;
+	struct drm_connector *connector;
+	struct device_node *of_node;
+};
+
 struct rockchip_crtc_state {
 	struct drm_crtc_state base;
 	int output_type;
@@ -85,6 +91,10 @@ void rockchip_drm_dma_init_device(struct drm_device *drm_dev,
 int rockchip_drm_wait_vact_end(struct drm_crtc *crtc, unsigned int mstimeout);
 int rockchip_drm_encoder_set_crtc_endpoint_id(struct rockchip_encoder *rencoder,
 					      struct device_node *np, int port, int reg);
+void rockchip_drm_register_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
+void rockchip_drm_unregister_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
+struct rockchip_drm_sub_dev *rockchip_drm_get_sub_dev(struct device_node *node);
+
 int rockchip_drm_endpoint_is_subdriver(struct device_node *ep);
 uint32_t rockchip_drm_of_find_possible_crtcs(struct drm_device *dev,
 					     struct device_node *port);
