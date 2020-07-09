@@ -42,7 +42,11 @@
 #define DRV_NAME "odroidgo3_joypad"
 
 /*----------------------------------------------------------------------------*/
-#define	ADC_MAX_VOLTAGE	1800
+#define	ADC_MAX_VOLTAGE		1800
+#define	ADC_DATA_TUNING(x, p)	((x * p) / 100)
+#define	ADC_TUNING_DEFAULT	180
+
+/*----------------------------------------------------------------------------*/
 /*
 	+--------------------------------+
 	| IIO Channel : ADC_IN1          |
@@ -60,6 +64,7 @@
 	|      1       |        X        |         X       |  XXXX  |
 	+--------------+-----------------+-----------------+--------+
 */
+/*----------------------------------------------------------------------------*/
 struct bt_adc {
 	/* report value (mV) */
 	int value;
@@ -75,6 +80,8 @@ struct bt_adc {
 	bool invert;
 	/* amux channel */
 	int amux_ch;
+	/* adc data tuning value([percent), p = positive, n = negative */
+	int tuning_p, tuning_n;
 };
 
 struct analog_mux {
@@ -147,8 +154,8 @@ static unsigned int g_button_adc_deadzone = 0;
 
 static int button_adc_fuzz(char *str)
 {
-        if (!str)
-                return -EINVAL;
+	if (!str)
+		return -EINVAL;
 	g_button_adc_fuzz = simple_strtoul(str, NULL, 10);
 	return 0;
 }
@@ -156,8 +163,8 @@ __setup("button-adc-fuzz=", button_adc_fuzz);
 
 static int button_adc_flat(char *str)
 {
-        if (!str)
-                return -EINVAL;
+	if (!str)
+		return -EINVAL;
 	g_button_adc_flat = simple_strtoul(str, NULL, 10);
 	return 0;
 }
@@ -165,8 +172,8 @@ __setup("button-adc-flat=", button_adc_flat);
 
 static int button_adc_scale(char *str)
 {
-        if (!str)
-                return -EINVAL;
+	if (!str)
+		return -EINVAL;
 	g_button_adc_scale = simple_strtoul(str, NULL, 10);
 	return 0;
 }
@@ -174,8 +181,8 @@ __setup("button-adc-scale=", button_adc_scale);
 
 static int button_adc_deadzone(char *str)
 {
-        if (!str)
-                return -EINVAL;
+	if (!str)
+		return -EINVAL;
 	g_button_adc_deadzone = simple_strtoul(str, NULL, 10);
 	return 0;
 }
@@ -546,6 +553,12 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 				adc->value = 0;
 		}
 
+		/* adc data tuning */
+		if (adc->tuning_n && adc->value < 0)
+			adc->value = ADC_DATA_TUNING(adc->value, adc->tuning_n);
+		if (adc->tuning_p && adc->value > 0)
+			adc->value = ADC_DATA_TUNING(adc->value, adc->tuning_p);
+
 		adc->value = adc->value > adc->max ? adc->max : adc->value;
 		adc->value = adc->value < adc->min ? adc->min : adc->value;
 
@@ -723,23 +736,52 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 			adc->min *= adc->scale;
 		}
 		adc->amux_ch = nbtn;
+		adc->invert = false;
 
 		switch (nbtn) {
 			case 0:
 				adc->report_type = ABS_RY;
-				adc->invert = false;
+				if (device_property_read_u32(dev,
+					"abs_ry-p-tuning",
+					&adc->tuning_p))
+					adc->tuning_p = ADC_TUNING_DEFAULT;
+				if (device_property_read_u32(dev,
+					"abs_ry-n-tuning",
+					&adc->tuning_n))
+					adc->tuning_n = ADC_TUNING_DEFAULT;
 				break;
 			case 1:
 				adc->report_type = ABS_RX;
-				adc->invert = false;
+				if (device_property_read_u32(dev,
+					"abs_rx-p-tuning",
+					&adc->tuning_p))
+					adc->tuning_p = ADC_TUNING_DEFAULT;
+				if (device_property_read_u32(dev,
+					"abs_rx-n-tuning",
+					&adc->tuning_n))
+					adc->tuning_n = ADC_TUNING_DEFAULT;
 				break;
 			case 2:
 				adc->report_type = ABS_Y;
-				adc->invert = false;
+				if (device_property_read_u32(dev,
+					"abs_y-p-tuning",
+					&adc->tuning_p))
+					adc->tuning_p = ADC_TUNING_DEFAULT;
+				if (device_property_read_u32(dev,
+					"abs_y-n-tuning",
+					&adc->tuning_n))
+					adc->tuning_n = ADC_TUNING_DEFAULT;
 				break;
 			case 3:
 				adc->report_type = ABS_X;
-				adc->invert = false;
+				if (device_property_read_u32(dev,
+					"abs_x-p-tuning",
+					&adc->tuning_p))
+					adc->tuning_p = ADC_TUNING_DEFAULT;
+				if (device_property_read_u32(dev,
+					"abs_x-n-tuning",
+					&adc->tuning_n))
+					adc->tuning_n = ADC_TUNING_DEFAULT;
 				break;
 			default :
 				dev_err(dev, "%s amux count(%d) error!",
@@ -855,6 +897,9 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 			__func__, adc->scale, adc->min, adc->max,
 			joypad->bt_adc_fuzz, joypad->bt_adc_flat,
 			joypad->bt_adc_deadzone);
+		dev_info(dev,
+			"%s : adc tuning_p = %d, adc_tuning_n = %d\n\n",
+			__func__, adc->tuning_p, adc->tuning_n);
 	}
 
 	/* GPIO key setup */
