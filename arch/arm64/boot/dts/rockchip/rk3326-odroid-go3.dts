@@ -124,6 +124,23 @@
 	/* adc deadzone range  */
 	button-adc-deadzone = <64>;
 
+	/*
+	  Analog Stick data tuning value(precent)
+	  p = positive direction, n = negative direction
+	  report value = (real_adc_data * tuning_value) / 100
+	*/
+	abs_x-p-tuning = <180>;
+	abs_x-n-tuning = <180>;
+
+	abs_y-p-tuning = <180>;
+	abs_y-n-tuning = <170>;
+
+	abs_rx-p-tuning = <180>;
+	abs_rx-n-tuning = <180>;
+
+	abs_ry-p-tuning = <180>;
+	abs_ry-n-tuning = <170>;
+
 	button-sw9 {
 		gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_LOW>;
 		label = "GPIO BTN-VOLUP";
@@ -162,15 +179,146 @@
 };
 
 &internal_display {
-	compatible = "odroid,st7701s";
+	compatible = "elida,kd50t048a", "simple-panel-dsi";
 
-	/* RK817 LDO8 : LCD VCC, VCCIO */
-	vcc-supply = <&vcc_lcd>;
+	/* RK817 LDO8 */
+	power-supply = <&vcc_lcd>;
 	IOVCC-supply = <&vcc_lcd>;
 	VCC-supply = <&vcc_lcd>;
 
-	/* Rev 0.2 LCD reset gpio GPIO3.C0 */
+	/* LCD reset gpio GPIO3.C0 */
 	reset-gpios = <&gpio3 RK_PC0 GPIO_ACTIVE_LOW>;
+
+	prepare-delay-ms = <2>;
+	reset-delay-ms = <20>;
+	init-delay-ms = <10>;
+	enable-delay-ms = <10>;
+	disable-delay-ms = <10>;
+	unprepare-delay-ms = <10>;
+
+	/* LCD size */
+	width-mm = <69>;
+	height-mm = <139>;
+
+	dsi,flags = <(MIPI_DSI_MODE_VIDEO           |
+		      MIPI_DSI_MODE_VIDEO_BURST     |
+		      MIPI_DSI_MODE_EOT_PACKET)>;
+
+	dsi,format = <MIPI_DSI_FMT_RGB888>;
+	dsi,lanes = <2>;
+
+	/*
+		- panel-init-sequence data description -
+		  mipi_cmd, delay(ms), len, lcd_cmd, lcd_data...
+
+		- mipi_cmd description -
+		  05 : MIPI_DSI_SHORT_WRITE
+		  15 : MIPI_DSI_SHORT_WRITE_PARAM
+		  39 : MIPI_DSI_LONG_WRITE
+
+		- ST7710S (Initialize sequence) -
+		  01: Soft reset
+		  11: Sleep out & 250ms wait
+		  FF: Bank select CMD
+		  C0: CMD2 Bank0 LNESET
+		  C1: CMD2 Bank0 PORCTRL
+		  C2: CMD2 Bank0 INVSEL
+		  CC: ???
+		  B0: CMD2 Bank0 PVGAMCTRL
+		  B1: CMD2 Bank0 NVGAMCTRL
+		  B0: CMD2 Bank1 VRHS
+		  B1: CMD2 Bank1 VCOMS
+		  B2: CMD2 Bank1 VGHSS
+		  B3: CMD2 Bank1 TESTCMD
+		  B5: CMD2 Bank1 VGLS
+		  B7: CMD2 Bank1 PWRCTRL1
+		  B8: CMD2 Bank1 PWRCTRL2
+		  B9: CMD2 Bank1 PWRCTRL3
+		  C1: CMD2 Bank1 PDR1
+		  C2: CMD2 Bank1 PDR2
+		  D0: CMD2 Bank1 MIPISET1
+		  E0 ~ EF : GIP Setting
+		  3A: Normal CMD COLMOD
+		  53: Normal CMD WRCTRLD
+		  55: Normal CMD WRCABC
+		  5E: Normal CMD WRCABCMB
+		  29: DisplayOn & 50ms wait
+	*/
+
+	panel-init-sequence = [
+		05 05 01 01
+		05 FA 01 11
+		39 00 06 FF 77 01 00 00 10
+		15 00 03 C0 E9 03
+		15 00 03 C1 11 02
+		15 00 03 C2 31 08
+		15 00 02 CC 10
+		39 00 11 B0 00 0D 14 0D 10 05 02 08
+		            08 1E 05 13 11 A3 29 18
+		39 00 11 B1 00 0C 14 0C 10 05 03 08
+		            07 20 05 13 11 A4 29 18
+		39 00 06 FF 77 01 00 00 11
+		15 00 02 B0 6C
+		15 00 02 B1 43
+		15 00 02 B2 07
+		15 00 02 B3 80
+		15 00 02 B5 47
+		15 00 02 B7 85
+		15 00 02 B8 20
+		15 00 02 B9 10
+		15 00 02 C1 78
+		15 00 02 C3 78
+		15 FA 02 D0 88
+		39 00 04 E0 00 00 02
+		39 00 0C E1 08 00 0A 00 07 00 09 00 00 33 33
+		39 00 0F E2 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+		39 00 05 E3 00 00 33 33
+		15 00 03 E4 44 44
+		39 00 11 E5 0E 60 A0 A0 10 60 A0 A0
+		            0A 60 A0 A0 0C 60 A0 A0
+		39 00 05 E6 00 00 33 33
+		15 00 03 E7 44 44
+		39 00 11 E8 0D 60 A0 A0 0F 60 A0 A0
+		            09 60 A0 A0 0B 60 A0 A0
+		39 00 08 EB 02 01 E4 E4 44 00 40
+		15 00 03 EC 02 01
+		39 00 11 ED AB 89 76 54 01 FF FF FF
+		            FF FF FF 10 45 67 98 BA
+		39 00 06 FF 77 01 00 00 00
+		15 00 02 3A 70
+		15 00 02 53 EC
+		15 00 02 55 B3
+		15 00 02 5E FF
+		05 32 01 29
+	];
+
+	/* 28: DisplayOff */
+	/* 10: SleepIn */
+	panel-exit-sequence = [
+		05 00 01 28
+		05 00 01 10
+	];
+
+	display-timings {
+		native-mode = <&timing0>;
+
+		timing0: timing0 {
+			clock-frequency = <27500000>;
+			hactive = <480>;
+			vactive = <854>;
+
+			hfront-porch = <10>;
+			hsync-len = <10>;
+			hback-porch = <5>;
+			vfront-porch = <12>;
+			vsync-len = <2>;
+			vback-porch = <60>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <0>;
+			pixelclk-active = <0>;
+		};
+	};
 };
 
 &pinctrl {
