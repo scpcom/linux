@@ -55,6 +55,46 @@ static void analogix_dp_init_dp(struct analogix_dp_device *dp)
 	analogix_dp_init_aux(dp);
 }
 
+static int analogix_dp_panel_prepare(struct analogix_dp_device *dp)
+{
+	int ret;
+
+	mutex_lock(&dp->panel_lock);
+
+	if (dp->panel_is_prepared)
+		goto out;
+
+	ret = drm_panel_prepare(dp->plat_data->panel);
+	if (ret)
+		goto out;
+
+	dp->panel_is_prepared = true;
+
+out:
+	mutex_unlock(&dp->panel_lock);
+	return 0;
+}
+
+static int analogix_dp_panel_unprepare(struct analogix_dp_device *dp)
+{
+	int ret;
+
+	mutex_lock(&dp->panel_lock);
+
+	if (!dp->panel_is_prepared)
+		goto out;
+
+	ret = drm_panel_unprepare(dp->plat_data->panel);
+	if (ret)
+		goto out;
+
+	dp->panel_is_prepared = false;
+
+out:
+	mutex_unlock(&dp->panel_lock);
+	return 0;
+}
+
 static int analogix_dp_detect_hpd(struct analogix_dp_device *dp)
 {
 	int timeout_loop = 0;
@@ -995,66 +1035,18 @@ static int analogix_dp_disable_psr(struct analogix_dp_device *dp)
 	return analogix_dp_send_psr_spd(dp, &psr_vsc, true);
 }
 
-/*
- * This function is a bit of a catch-all for panel preparation, hopefully
- * simplifying the logic of functions that need to prepare/unprepare the panel
- * below.
- *
- * If @prepare is true, this function will prepare the panel. Conversely, if it
- * is false, the panel will be unprepared.
- *
- * If @is_modeset_prepare is true, the function will disregard the current state
- * of the panel and either prepare/unprepare the panel based on @prepare. Once
- * it finishes, it will update dp->panel_is_modeset to reflect the current state
- * of the panel.
- */
-static int analogix_dp_prepare_panel(struct analogix_dp_device *dp,
-				     bool prepare, bool is_modeset_prepare)
-{
-	int ret = 0;
-
-	if (!dp->plat_data->panel)
-		return 0;
-
-	mutex_lock(&dp->panel_lock);
-
-	/*
-	 * Exit early if this is a temporary prepare/unprepare and we're already
-	 * modeset (since we neither want to prepare twice or unprepare early).
-	 */
-	if (dp->panel_is_modeset && !is_modeset_prepare)
-		goto out;
-
-	if (prepare)
-		ret = drm_panel_prepare(dp->plat_data->panel);
-	else
-		ret = drm_panel_unprepare(dp->plat_data->panel);
-
-	if (ret)
-		goto out;
-
-	if (is_modeset_prepare)
-		dp->panel_is_modeset = prepare;
-
-out:
-	mutex_unlock(&dp->panel_lock);
-	return ret;
-}
-
 static int analogix_dp_get_modes(struct drm_connector *connector)
 {
 	struct analogix_dp_device *dp = to_dp(connector);
 	const struct drm_edid *drm_edid;
-	int ret, num_modes = 0;
+	int num_modes = 0;
 
-	if (dp->plat_data->panel) {
+	if (dp->plat_data->panel)
 		num_modes += drm_panel_get_modes(dp->plat_data->panel, connector);
-	} else {
-		ret = analogix_dp_prepare_panel(dp, true, false);
-		if (ret) {
-			DRM_ERROR("Failed to prepare panel (%d)\n", ret);
-			return 0;
-		}
+
+	if (!num_modes) {
+		if (dp->plat_data->panel)
+			analogix_dp_panel_prepare(dp);
 
 		drm_edid = drm_edid_read_ddc(connector, &dp->aux.ddc);
 
@@ -1064,10 +1056,6 @@ static int analogix_dp_get_modes(struct drm_connector *connector)
 			num_modes += drm_edid_connector_add_modes(&dp->connector);
 			drm_edid_free(drm_edid);
 		}
-
-		ret = analogix_dp_prepare_panel(dp, false, false);
-		if (ret)
-			DRM_ERROR("Failed to unprepare panel (%d)\n", ret);
 	}
 
 	if (dp->plat_data->get_modes)
@@ -1122,23 +1110,16 @@ analogix_dp_detect(struct drm_connector *connector, bool force)
 {
 	struct analogix_dp_device *dp = to_dp(connector);
 	enum drm_connector_status status = connector_status_disconnected;
-	int ret;
 
 	if (dp->plat_data->panel)
-		return connector_status_connected;
+		analogix_dp_panel_prepare(dp);
 
-	ret = analogix_dp_prepare_panel(dp, true, false);
-	if (ret) {
-		DRM_ERROR("Failed to prepare panel (%d)\n", ret);
-		return connector_status_disconnected;
-	}
+	pm_runtime_get_sync(dp->dev);
 
 	if (!analogix_dp_detect_hpd(dp))
 		status = connector_status_connected;
 
-	ret = analogix_dp_prepare_panel(dp, false, false);
-	if (ret)
-		DRM_ERROR("Failed to unprepare panel (%d)\n", ret);
+	pm_runtime_put(dp->dev);
 
 	return status;
 }
@@ -1245,7 +1226,6 @@ analogix_dp_bridge_atomic_pre_enable(struct drm_bridge *bridge,
 	struct analogix_dp_device *dp = bridge->driver_private;
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
-	int ret;
 
 	crtc = analogix_dp_get_new_crtc(dp, old_state);
 	if (!crtc)
@@ -1256,9 +1236,8 @@ analogix_dp_bridge_atomic_pre_enable(struct drm_bridge *bridge,
 	if (old_crtc_state && old_crtc_state->self_refresh_active)
 		return;
 
-	ret = analogix_dp_prepare_panel(dp, true, true);
-	if (ret)
-		DRM_ERROR("failed to setup the panel ret = %d\n", ret);
+	if (dp->plat_data->panel)
+		analogix_dp_panel_prepare(dp);
 }
 
 static int analogix_dp_set_bridge(struct analogix_dp_device *dp)
@@ -1340,7 +1319,6 @@ analogix_dp_bridge_atomic_enable(struct drm_bridge *bridge,
 static void analogix_dp_bridge_disable(struct drm_bridge *bridge)
 {
 	struct analogix_dp_device *dp = bridge->driver_private;
-	int ret;
 
 	if (dp->dpms_mode != DRM_MODE_DPMS_ON)
 		return;
@@ -1354,13 +1332,13 @@ static void analogix_dp_bridge_disable(struct drm_bridge *bridge)
 
 	disable_irq(dp->irq);
 
+	analogix_dp_reset_aux(dp);
 	analogix_dp_set_analog_power_down(dp, POWER_ALL, 1);
 
 	pm_runtime_put_sync(dp->dev);
 
-	ret = analogix_dp_prepare_panel(dp, false, true);
-	if (ret)
-		DRM_ERROR("failed to setup the panel ret = %d\n", ret);
+	if (dp->plat_data->panel)
+		analogix_dp_panel_unprepare(dp);
 
 	dp->fast_train_enable = false;
 	dp->psr_supported = false;
@@ -1603,7 +1581,7 @@ analogix_dp_probe(struct device *dev, struct analogix_dp_plat_data *plat_data)
 	dp->dpms_mode = DRM_MODE_DPMS_OFF;
 
 	mutex_init(&dp->panel_lock);
-	dp->panel_is_modeset = false;
+	dp->panel_is_prepared = false;
 
 	/*
 	 * platform dp driver need containor_of the plat_data to get
