@@ -7,6 +7,7 @@
 
 #include <linux/err.h>
 #include <linux/mfd/syscon.h>
+#include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -236,3 +237,6 @@ static int __init rockchip_grf_init(void)
 	return 0;
 }
 postcore_initcall(rockchip_grf_init);
+
+MODULE_DESCRIPTION("Rockchip GRF");
+MODULE_LICENSE("GPL");
