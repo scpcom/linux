@@ -179,13 +179,24 @@ static int __init rockchip_soc_id_init(void)
 
 	return 0;
 }
+#ifndef MODULE
 pure_initcall(rockchip_soc_id_init);
+#endif
 
 static int __init rockchip_cpuinfo_init(void)
 {
+#ifdef MODULE
+	rockchip_soc_id_init();
+#endif
 	return platform_driver_register(&rockchip_cpuinfo_driver);
 }
 subsys_initcall_sync(rockchip_cpuinfo_init);
+
+static void __exit rockchip_cpuinfo_exit(void)
+{
+	platform_driver_unregister(&rockchip_cpuinfo_driver);
+}
+module_exit(rockchip_cpuinfo_exit);
 
 MODULE_DESCRIPTION("Rockchip CPU info driver");
 MODULE_AUTHOR("Huang, Tao <huangtao@rock-chips.com>");
