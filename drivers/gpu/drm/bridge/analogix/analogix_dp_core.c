@@ -1599,11 +1599,13 @@ analogix_dp_probe(struct device *dev, struct analogix_dp_plat_data *plat_data)
 		}
 	}
 
-	dp->clock = devm_clk_get(&pdev->dev, "dp");
-	if (IS_ERR(dp->clock)) {
-		dev_err(&pdev->dev, "failed to get clock\n");
-		return ERR_CAST(dp->clock);
+	ret = devm_clk_bulk_get_all(dev, &dp->clks);
+	if (ret < 0) {
+		dev_err(dev, "failed to get clocks %d\n", ret);
+		return ERR_PTR(ret);
 	}
+
+	dp->nr_clks = ret;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
@@ -1658,24 +1660,24 @@ analogix_dp_probe(struct device *dev, struct analogix_dp_plat_data *plat_data)
 }
 EXPORT_SYMBOL_GPL(analogix_dp_probe);
 
-int analogix_dp_suspend(struct analogix_dp_device *dp)
+int analogix_dp_runtime_suspend(struct analogix_dp_device *dp)
 {
 	phy_power_off(dp->phy);
 
 	if (dp->plat_data->power_off)
 		dp->plat_data->power_off(dp->plat_data);
 
-	clk_disable_unprepare(dp->clock);
+	clk_bulk_disable_unprepare(dp->nr_clks, dp->clks);
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(analogix_dp_suspend);
+EXPORT_SYMBOL_GPL(analogix_dp_runtime_suspend);
 
-int analogix_dp_resume(struct analogix_dp_device *dp)
+int analogix_dp_runtime_resume(struct analogix_dp_device *dp)
 {
 	int ret;
 
-	ret = clk_prepare_enable(dp->clock);
+	ret = clk_bulk_prepare_enable(dp->nr_clks, dp->clks);
 	if (ret < 0) {
 		DRM_ERROR("Failed to prepare_enable the clock clk [%d]\n", ret);
 		return ret;
@@ -1690,7 +1692,7 @@ int analogix_dp_resume(struct analogix_dp_device *dp)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(analogix_dp_resume);
+EXPORT_SYMBOL_GPL(analogix_dp_runtime_resume);
 
 int analogix_dp_bind(struct analogix_dp_device *dp, struct drm_device *drm_dev)
 {

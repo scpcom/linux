@@ -61,8 +61,6 @@ struct rockchip_dp_device {
 	struct rockchip_encoder  encoder;
 	struct drm_display_mode  mode;
 
-	struct clk               *pclk;
-	struct clk               *grfclk;
 	struct regmap            *grf;
 	struct reset_control     *rst;
 
@@ -98,16 +96,9 @@ static int rockchip_dp_poweron(struct analogix_dp_plat_data *plat_data)
 	struct rockchip_dp_device *dp = pdata_encoder_to_dp(plat_data);
 	int ret;
 
-	ret = clk_prepare_enable(dp->pclk);
-	if (ret < 0) {
-		DRM_DEV_ERROR(dp->dev, "failed to enable pclk %d\n", ret);
-		return ret;
-	}
-
 	ret = rockchip_dp_pre_init(dp);
 	if (ret < 0) {
 		DRM_DEV_ERROR(dp->dev, "failed to dp pre init %d\n", ret);
-		clk_disable_unprepare(dp->pclk);
 		return ret;
 	}
 
@@ -116,10 +107,6 @@ static int rockchip_dp_poweron(struct analogix_dp_plat_data *plat_data)
 
 static int rockchip_dp_powerdown(struct analogix_dp_plat_data *plat_data)
 {
-	struct rockchip_dp_device *dp = pdata_encoder_to_dp(plat_data);
-
-	clk_disable_unprepare(dp->pclk);
-
 	return 0;
 }
 
@@ -203,17 +190,9 @@ static void rockchip_dp_drm_encoder_enable(struct drm_encoder *encoder,
 
 	DRM_DEV_DEBUG(dp->dev, "vop %s output to dp\n", (ret) ? "LIT" : "BIG");
 
-	ret = clk_prepare_enable(dp->grfclk);
-	if (ret < 0) {
-		DRM_DEV_ERROR(dp->dev, "failed to enable grfclk %d\n", ret);
-		return;
-	}
-
 	ret = regmap_write(dp->grf, dp->data->lcdsel_grf_reg, val);
 	if (ret != 0)
 		DRM_DEV_ERROR(dp->dev, "Could not write to GRF: %d\n", ret);
-
-	clk_disable_unprepare(dp->grfclk);
 }
 
 static void rockchip_dp_drm_encoder_disable(struct drm_encoder *encoder,
@@ -279,22 +258,6 @@ static int rockchip_dp_of_probe(struct rockchip_dp_device *dp)
 	if (IS_ERR(dp->grf)) {
 		DRM_DEV_ERROR(dev, "failed to get rockchip,grf property\n");
 		return PTR_ERR(dp->grf);
-	}
-
-	dp->grfclk = devm_clk_get(dev, "grf");
-	if (PTR_ERR(dp->grfclk) == -ENOENT) {
-		dp->grfclk = NULL;
-	} else if (PTR_ERR(dp->grfclk) == -EPROBE_DEFER) {
-		return -EPROBE_DEFER;
-	} else if (IS_ERR(dp->grfclk)) {
-		DRM_DEV_ERROR(dev, "failed to get grf clock\n");
-		return PTR_ERR(dp->grfclk);
-	}
-
-	dp->pclk = devm_clk_get(dev, "pclk");
-	if (IS_ERR(dp->pclk)) {
-		DRM_DEV_ERROR(dev, "failed to get pclk property\n");
-		return PTR_ERR(dp->pclk);
 	}
 
 	dp->rst = devm_reset_control_get(dev, "dp");
@@ -424,28 +387,28 @@ static void rockchip_dp_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &rockchip_dp_component_ops);
 }
 
-static int rockchip_dp_suspend(struct device *dev)
+static __maybe_unused int rockchip_dp_runtime_suspend(struct device *dev)
 {
 	struct rockchip_dp_device *dp = dev_get_drvdata(dev);
 
 	if (IS_ERR(dp->adp))
 		return 0;
 
-	return analogix_dp_suspend(dp->adp);
+	return analogix_dp_runtime_suspend(dp->adp);
 }
 
-static int rockchip_dp_resume(struct device *dev)
+static __maybe_unused int rockchip_dp_runtime_resume(struct device *dev)
 {
 	struct rockchip_dp_device *dp = dev_get_drvdata(dev);
 
 	if (IS_ERR(dp->adp))
 		return 0;
 
-	return analogix_dp_resume(dp->adp);
+	return analogix_dp_runtime_resume(dp->adp);
 }
 
-static DEFINE_RUNTIME_DEV_PM_OPS(rockchip_dp_pm_ops, rockchip_dp_suspend,
-		rockchip_dp_resume, NULL);
+static DEFINE_RUNTIME_DEV_PM_OPS(rockchip_dp_pm_ops, rockchip_dp_runtime_suspend,
+		rockchip_dp_runtime_resume, NULL);
 
 static const struct rockchip_dp_chip_data rk3399_edp = {
 	.lcdsel_grf_reg = RK3399_GRF_SOC_CON20,
