@@ -2907,6 +2907,35 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	return dw_hdmi_detect(hdmi);
 }
 
+static int
+dw_hdmi_update_hdr_property(struct drm_connector *connector)
+{
+	struct drm_device *dev = connector->dev;
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					    connector);
+	void *data = hdmi->plat_data->phy_data;
+	const struct hdr_static_metadata *metadata =
+		&connector->hdr_sink_metadata.hdmi_type1;
+	size_t size = sizeof(*metadata);
+	struct drm_property *property;
+	struct drm_property_blob *blob;
+	int ret;
+
+	if (hdmi->plat_data->get_hdr_property)
+		property = hdmi->plat_data->get_hdr_property(data);
+	else
+		return -EINVAL;
+
+	if (hdmi->plat_data->get_hdr_blob)
+		blob = hdmi->plat_data->get_hdr_blob(data);
+	else
+		return -EINVAL;
+
+	ret = drm_property_replace_global_blob(dev, &blob, size, metadata,
+					       &connector->base, property);
+	return ret;
+}
+
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
@@ -2924,6 +2953,7 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 		cec_notifier_set_phys_addr(hdmi->cec_notifier,
 					   connector->display_info.source_physical_address);
 		ret = drm_edid_connector_add_modes(connector);
+		dw_hdmi_update_hdr_property(connector);
 		drm_edid_free(drm_edid);
 	} else {
 		dev_info(hdmi->dev, "no edid: fallback to default modes\n");
