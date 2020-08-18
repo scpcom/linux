@@ -23,7 +23,9 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/spinlock.h>
+#ifdef CONFIG_ROCKCHIP_VENDOR_STORAGE
 #include <linux/soc/rockchip/rk_vendor_storage.h>
+#endif
 #include <crypto/sha.h>
 #include <drm/bridge/dw_hdmi.h>
 
@@ -265,8 +267,10 @@ static int hdcp_verify_ksv(const u8 *data, u32 size)
 
 static int hdcp_load_keys_cb(struct dw_hdcp *hdcp)
 {
+#ifdef CONFIG_ROCKCHIP_VENDOR_STORAGE
 	u32 size;
 	u8 hdcp_vendor_data[320];
+#endif
 
 	hdcp->keys = kmalloc(HDCP_KEY_SIZE, GFP_KERNEL);
 	if (!hdcp->keys)
@@ -278,6 +282,7 @@ static int hdcp_load_keys_cb(struct dw_hdcp *hdcp)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_ROCKCHIP_VENDOR_STORAGE
 	size = rk_vendor_read(HDMI_HDCP1X_ID, hdcp_vendor_data, 314);
 	if (size < (HDCP_KEY_SIZE + HDCP_KEY_SEED_SIZE)) {
 		dev_dbg(hdcp->dev, "HDCP: read size %d\n", size);
@@ -288,6 +293,11 @@ static int hdcp_load_keys_cb(struct dw_hdcp *hdcp)
 		memcpy(hdcp->seeds, hdcp_vendor_data + HDCP_KEY_SIZE,
 		       HDCP_KEY_SEED_SIZE);
 	}
+#else
+	dev_dbg(hdcp->dev, "HDCP: vendor storage not available\n");
+	memset(hdcp->keys, 0, HDCP_KEY_SIZE);
+	memset(hdcp->seeds, 0, HDCP_KEY_SEED_SIZE);
+#endif
 	return 0;
 }
 
