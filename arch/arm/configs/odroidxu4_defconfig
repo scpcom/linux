@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 5.4.41 Kernel Configuration
+# Linux/arm 5.4.58 Kernel Configuration
 #
 
 #
@@ -12,7 +12,6 @@ CONFIG_CLANG_VERSION=0
 CONFIG_CC_CAN_LINK=y
 CONFIG_CC_HAS_ASM_GOTO=y
 CONFIG_CC_HAS_ASM_INLINE=y
-CONFIG_CC_HAS_WARN_MAYBE_UNINITIALIZED=y
 CONFIG_IRQ_WORK=y
 CONFIG_BUILDTIME_EXTABLE_SORT=y
 
@@ -1684,7 +1683,8 @@ CONFIG_PREVENT_FIRMWARE_BUILD=y
 # Firmware loader
 #
 CONFIG_FW_LOADER=y
-CONFIG_EXTRA_FIRMWARE=""
+CONFIG_EXTRA_FIRMWARE="edid/1024x600.bin edid/1024x768.bin edid/1152x864_75hz.bin edid/1280x1024.bin edid/1280x720.bin edid/1280x768.bin edid/1280x800.bin edid/1360x768.bin edid/1366x768.bin edid/1400x1050.bin edid/1440x900.bin edid/1600x1200.bin edid/1600x900.bin edid/1680x1050.bin edid/1792x1344.bin edid/1920x1080_23_976hz.bin edid/1920x1080_24hz.bin edid/1920x1080_50hz.bin edid/1920x1080.bin edid/1920x1200_30hz.bin edid/1920x1200_60hz.bin edid/1920x800.bin edid/480x800.bin edid/640x480.bin edid/720x480.bin edid/720x576.bin edid/800x480.bin edid/800x600.bin edid/848x480.bin"
+CONFIG_EXTRA_FIRMWARE_DIR="/lib/firmware"
 # CONFIG_FW_LOADER_USER_HELPER is not set
 # CONFIG_FW_LOADER_COMPRESS is not set
 # end of Firmware loader
@@ -1865,7 +1865,6 @@ CONFIG_SCSI_PROC_FS=y
 CONFIG_BLK_DEV_SD=m
 CONFIG_CHR_DEV_ST=m
 CONFIG_BLK_DEV_SR=m
-CONFIG_BLK_DEV_SR_VENDOR=y
 CONFIG_CHR_DEV_SG=m
 CONFIG_CHR_DEV_SCH=m
 # CONFIG_SCSI_CONSTANTS is not set
