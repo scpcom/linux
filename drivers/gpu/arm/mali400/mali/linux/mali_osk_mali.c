@@ -105,6 +105,15 @@ static int _mali_osk_get_compatible_name(const char **out_string)
 	return of_property_read_string(node, "compatible", out_string);
 }
 
+static bool _mali_osk_is_compatible(const char *compatible_name)
+{
+	struct device_node *node = mali_platform_device->dev.of_node;
+
+	MALI_DEBUG_ASSERT(NULL != node);
+
+	return of_device_is_compatible(node, compatible_name);
+}
+
 _mali_osk_errcode_t _mali_osk_resource_initialize(void)
 {
 	mali_bool mali_is_450 = MALI_FALSE, mali_is_470 = MALI_FALSE;
@@ -113,12 +122,18 @@ _mali_osk_errcode_t _mali_osk_resource_initialize(void)
 	const char *compatible_name = NULL;
 
 	if (0 == _mali_osk_get_compatible_name(&compatible_name)) {
-		if (0 == strncmp(compatible_name, "arm,mali-450", strlen("arm,mali-450"))) {
+		if (_mali_osk_is_compatible("arm,mali-300")) {
+			MALI_DEBUG_PRINT(2, ("mali-300 device tree detected."));
+		} else if (_mali_osk_is_compatible("arm,mali-400")) {
+			MALI_DEBUG_PRINT(2, ("mali-400 device tree detected."));
+		} else if (_mali_osk_is_compatible("arm,mali-450")) {
 			mali_is_450 = MALI_TRUE;
 			MALI_DEBUG_PRINT(2, ("mali-450 device tree detected."));
-		} else if (0 == strncmp(compatible_name, "arm,mali-470", strlen("arm,mali-470"))) {
+		} else if (_mali_osk_is_compatible("arm,mali-470")) {
 			mali_is_470 = MALI_TRUE;
 			MALI_DEBUG_PRINT(2, ("mali-470 device tree detected."));
+		} else {
+			MALI_DEBUG_PRINT(2, ("unknown device tree %s detected.", compatible_name));
 		}
 	}
 
