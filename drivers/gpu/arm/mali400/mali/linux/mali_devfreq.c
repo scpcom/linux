@@ -127,7 +127,8 @@ mali_devfreq_status(struct device *dev, struct devfreq_dev_status *stat)
 	stat->private_data = NULL;
 
 #ifdef CONFIG_DEVFREQ_THERMAL
-	memcpy(&mdev->devfreq->last_status, stat, sizeof(*stat));
+	if (mdev->devfreq)
+		memcpy(&mdev->devfreq->last_status, stat, sizeof(*stat));
 #endif
 
 	return 0;
@@ -194,9 +195,13 @@ static int mali_devfreq_init_freq_table(struct mali_device *mdev,
 
 static void mali_devfreq_term_freq_table(struct mali_device *mdev)
 {
-	struct devfreq_dev_profile *dp = mdev->devfreq->profile;
+	struct devfreq_dev_profile *dp;
 
-	kfree(dp->freq_table);
+	if (!IS_ERR_OR_NULL(mdev->devfreq)) {
+		dp = mdev->devfreq->profile;
+
+		kfree(dp->freq_table);
+	}
 	term_opps(mdev->dev);
 }
 
@@ -249,6 +254,8 @@ int mali_devfreq_init(struct mali_device *mdev)
 	}
 
 #ifdef CONFIG_DEVFREQ_THERMAL
+	mdev->devfreq_cooling = NULL;
+
 	/* Initilization last_status it will be used when first power allocate called */
 	mdev->devfreq->last_status.current_frequency = mdev->current_freq;
 
@@ -267,6 +274,7 @@ int mali_devfreq_init(struct mali_device *mdev)
 		if (IS_ERR_OR_NULL(mdev->devfreq_cooling)) {
 			err = PTR_ERR(mdev->devfreq_cooling);
 			MALI_PRINT_ERROR(("Failed to register cooling device (%d)\n", err));
+			mdev->devfreq_cooling = NULL;
 			goto cooling_failed;
 		} else {
 			MALI_DEBUG_PRINT(2, ("Mali GPU Thermal Cooling installed \n"));
@@ -297,14 +305,17 @@ void mali_devfreq_term(struct mali_device *mdev)
 	MALI_DEBUG_PRINT(2, ("Term Mali devfreq\n"));
 
 #ifdef CONFIG_DEVFREQ_THERMAL
-	devfreq_cooling_unregister(mdev->devfreq_cooling);
+	if (mdev->devfreq_cooling)
+		devfreq_cooling_unregister(mdev->devfreq_cooling);
 #endif
 
-	devfreq_unregister_opp_notifier(mdev->dev, mdev->devfreq);
+	if (mdev->devfreq) {
+		devfreq_unregister_opp_notifier(mdev->dev, mdev->devfreq);
 
-	err = devfreq_remove_device(mdev->devfreq);
-	if (err)
-		MALI_PRINT_ERROR(("Failed to terminate devfreq (%d)\n", err));
-	else
-		mdev->devfreq = NULL;
+		err = devfreq_remove_device(mdev->devfreq);
+		if (err)
+			MALI_PRINT_ERROR(("Failed to terminate devfreq (%d)\n", err));
+		else
+			mdev->devfreq = NULL;
+	}
 }

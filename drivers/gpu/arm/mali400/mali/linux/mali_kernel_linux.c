@@ -575,8 +575,7 @@ static int mali_probe(struct platform_device *pdev)
 	}
 
 	if (mali_devfreq_init(mdev) < 0) {
-		MALI_DEBUG_PRINT(2, ("mali devfreq init failed\n"));
-		goto devfreq_init_failed;
+		MALI_DEBUG_PRINT(2, ("Continuing without devfreq\n"));
 	}
 #endif
 
@@ -610,7 +609,6 @@ static int mali_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_MALI_DEVFREQ
 	mali_devfreq_term(mdev);
-devfreq_init_failed:
 	mali_pm_metrics_term(mdev);
 pm_metrics_init_failed:
 	clk_disable_unprepare(mdev->clock);
