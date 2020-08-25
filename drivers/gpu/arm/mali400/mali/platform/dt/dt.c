@@ -757,16 +757,18 @@ struct resource *mali_create_mp2_resources(unsigned long address,
 
 struct resource *mali_create_mali450_mp3_resources(unsigned long address,
 						   int irq_gp, int irq_gpmmu,
-						   int irq_pp_bcast, int irq_pmu,
-						   int *irq_pp, int *irq_ppmmu,
+						   int irq_pp_bcast,
+						   int irq_pp0, int irq_ppmmu0,
+						   int irq_pp1, int irq_ppmmu1,
+						   int irq_pp2, int irq_ppmmu2,
 						   int *len)
 {
 	struct resource target[] = {
 		MALI_GPU_RESOURCES_MALI450_MP3_PMU(address,
 						   irq_gp, irq_gpmmu,
-						   irq_pp[0], irq_ppmmu[0],
-						   irq_pp[1], irq_ppmmu[1],
-						   irq_pp[2], irq_ppmmu[2],
+						   irq_pp0, irq_ppmmu0,
+						   irq_pp1, irq_ppmmu1,
+						   irq_pp2, irq_ppmmu2,
 						   irq_pp_bcast)
 	};
 	struct resource *res;
@@ -947,8 +949,10 @@ int meson_mali_platform_device_register(void)
 
 	mali_res = mali_create_mali450_mp3_resources(res.start,
 						irq_gp, irq_gpmmu,
-						irq_pp_bcast, irq_pmu,
-						irq_pp, irq_ppmmu,
+						irq_pp_bcast,
+						irq_pp[0], irq_ppmmu[0],
+						irq_pp[1], irq_ppmmu[1],
+						irq_pp[2], irq_ppmmu[2],
 						&len);
 	if (!mali_res) {
 		pr_err("Couldn't create target resources\n");
@@ -1198,6 +1202,16 @@ int sunxi_mali_platform_device_register(void)
 							     irq_pp1, irq_ppmmu1,
 							     irq_pp2, irq_ppmmu2,
 							     irq_pp3, irq_ppmmu3,
+							     &len);
+	else if (of_device_is_compatible(np, "arm,mali-450") &&
+	    (irq_pp >= 0) &&
+	    (irq_pp2 >= 0) && (irq_ppmmu2 >= 0))
+		mali_res = mali_create_mali450_mp3_resources(res.start,
+							     irq_gp, irq_gpmmu,
+							     irq_pp,
+							     irq_pp0, irq_ppmmu0,
+							     irq_pp1, irq_ppmmu1,
+							     irq_pp2, irq_ppmmu2,
 							     &len);
 	else if ((irq_pp1 >= 0) && (irq_ppmmu1 >= 0))
 		mali_res = mali_create_mp2_resources(res.start,
