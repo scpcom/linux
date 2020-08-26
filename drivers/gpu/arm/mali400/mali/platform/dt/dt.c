@@ -82,8 +82,6 @@ struct mali_plat_context *mali;
 
 #define DEFAULT_UTILISATION_PERIOD_IN_MS (100)
 
-#define MESON_MALI_MAX_PP	3
-
 /*
  * rk_platform_context_of_mali_device.
  */
@@ -823,200 +821,6 @@ static const struct of_device_id meson_mali_matches[] = {
 };
 MODULE_DEVICE_TABLE(of, meson_mali_matches);
 
-static struct mali_gpu_device_data meson_mali_gpu_data = {
-	.fb_start = 0x0,
-	.fb_size = 0xFFFFF000,
-	.shared_mem_size = 256 * 1024 * 1024,
-	.control_interval = 200, /* 1000ms */
-	.pmu_domain_config = {
-		0x1, 0x2, 0x4, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x2, 0x0
-	},
-	.pmu_switch_delay = 0xFFFF,
-};
-
-int meson_mali_platform_device_register(void)
-{
-	struct device *dev;
-	struct resource *mali_res;
-	struct device_node *np;
-	struct resource res;
-	struct clk *core;
-	int irq_gp, irq_gpmmu, irq_pp_bcast, irq_pmu;
-	int irq_pp[MESON_MALI_MAX_PP], irq_ppmmu[MESON_MALI_MAX_PP];
-	int ret, len;
-
-	np = of_find_matching_node(NULL, meson_mali_matches);
-	if (!np) {
-		pr_err("Couldn't find the mali node\n");
-		return -ENODEV;
-	}
-
-	mali = kzalloc(sizeof(*mali), GFP_KERNEL);
-	if (!mali) {
-		ret = -ENOMEM;
-		goto err_put_node;
-	}
-
-	mali->dev = platform_device_alloc("mali-utgard", 0);
-	if (!mali->dev) {
-		pr_err("Couldn't create platform device\n");
-		ret = -EINVAL;
-		goto err_free_mem;
-	}
-	dev = &mali->dev->dev;
-	dev_set_name(dev, "mali-utgard");
-	dev->of_node = np;
-	dev->dma_mask = &dev->coherent_dma_mask;
-	dev->coherent_dma_mask = DMA_BIT_MASK(32);
-	dev->bus = &platform_bus_type;
-
-	mali->reserved_mem = false;
-
-	core = of_clk_get_by_name(np, "core");
-	if (IS_ERR(core)) {
-		pr_err("Couldn't retrieve our module clock\n");
-		ret = PTR_ERR(core);
-		goto err_pdev;
-	}
-
-	mali->reset = NULL;
-
-	ret = of_address_to_resource(np, 0, &res);
-	if (ret) {
-		pr_err("Couldn't retrieve our base address\n");
-		goto err_put_clk;
-	}
-
-	irq_gp = of_irq_get_byname(np, "gp");
-	if (irq_gp < 0) {
-		pr_err("Couldn't get 'gp' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_gpmmu = of_irq_get_byname(np, "gpmmu");
-	if (irq_gpmmu < 0) {
-		pr_err("Couldn't get 'gpmmu' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_pp_bcast = of_irq_get_byname(np, "pp");
-	if (irq_pp_bcast < 0) {
-		pr_err("Couldn't get 'pp' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_pmu = of_irq_get_byname(np, "pmu");
-	if (irq_pmu < 0) {
-		pr_err("Couldn't get 'pmu' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_pp[0] = of_irq_get_byname(np, "pp0");
-	if (irq_pp[0] < 0) {
-		pr_err("Couldn't get 'pp0' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_ppmmu[0] = of_irq_get_byname(np, "ppmmu0");
-	if (irq_ppmmu[0] < 0) {
-		pr_err("Couldn't get 'ppmmu0' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_pp[1] = of_irq_get_byname(np, "pp1");
-	if (irq_pp[1] < 0) {
-		pr_err("Couldn't get 'pp1' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_ppmmu[1] = of_irq_get_byname(np, "ppmmu1");
-	if (irq_ppmmu[1] < 0) {
-		pr_err("Couldn't get 'ppmmu1' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_pp[2] = of_irq_get_byname(np, "pp2");
-	if (irq_pp[2] < 0) {
-		pr_err("Couldn't get 'pp2' interrupt\n");
-		goto err_put_clk;
-	}
-
-	irq_ppmmu[2] = of_irq_get_byname(np, "ppmmu2");
-	if (irq_ppmmu[2] < 0) {
-		pr_err("Couldn't get 'ppmmu2' interrupt\n");
-		goto err_put_clk;
-	}
-
-	mali_res = mali_create_mali450_mp3_resources(res.start,
-						irq_gp, irq_gpmmu,
-						irq_pp_bcast,
-						irq_pp[0], irq_ppmmu[0],
-						irq_pp[1], irq_ppmmu[1],
-						irq_pp[2], irq_ppmmu[2],
-						&len);
-	if (!mali_res) {
-		pr_err("Couldn't create target resources\n");
-		ret = -EINVAL;
-		goto err_put_clk;
-	}
-
-	ret = platform_device_add_resources(mali->dev, mali_res, len);
-	if (ret) {
-		pr_err("Couldn't add our resources\n");
-		goto err_free_resources;
-	}
-
-	ret = platform_device_add_data(mali->dev, &meson_mali_gpu_data, sizeof(meson_mali_gpu_data));
-	if (ret) {
-		pr_err("Couldn't add platform data\n");
-		goto err_free_resources;
-	}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-	of_dma_configure(dev, np, true);
-#else
-	of_dma_configure(dev, np);
-#endif
-
-	of_clk_set_defaults(np, false);
-
-	clk_prepare_enable(core);
-
-	pm_runtime_enable(dev);
-
-	ret = platform_device_add(mali->dev);
-	if (ret) {
-		pr_err("Couldn't add our device\n");
-		goto err_unprepare_clk;
-	}
-
-	mali->bus_clk = NULL;
-
-	mali->core_clk = core;
-
-	clk_register_clkdev(mali->core_clk, "clk_mali", NULL);
-
-	dev_info(dev, "Amlogic Mali glue initialized\n");
-
-	return 0;
-
-err_unprepare_clk:
-	clk_disable_unprepare(core);
-err_free_resources:
-	kfree(mali_res);
-err_put_clk:
-	clk_disable_unprepare(mali->core_clk);
-	clk_put(mali->core_clk);
-err_pdev:
-	platform_device_put(mali->dev);
-err_free_mem:
-	kfree(mali);
-err_put_node:
-	of_node_put(np);
-
-	return ret;
-}
-
 /* sunxi glue */
 
 static bool sunxi_mali_has_reset_line(struct device_node *np)
@@ -1026,6 +830,12 @@ static bool sunxi_mali_has_reset_line(struct device_node *np)
 		of_device_is_compatible(np, "allwinner,sun8i-h3-mali") ||
 		of_device_is_compatible(np, "allwinner,sun50i-a64-mali") ||
 		of_device_is_compatible(np, "allwinner,sun50i-h5-mali");
+}
+
+static bool sunxi_mali_has_low_memory(struct device_node *np)
+{
+	return of_device_is_compatible(np, "allwinner,sun4i-a10-mali") ||
+		of_device_is_compatible(np, "allwinner,sun7i-a20-mali");
 }
 
 static const struct of_device_id sunxi_mali_dt_ids[] = {
@@ -1038,12 +848,18 @@ static const struct of_device_id sunxi_mali_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, sunxi_mali_dt_ids);
 
-int sunxi_mali_platform_device_register(void)
+/* common glue */
+
+static struct mali_gpu_device_data dt_mali_gpu_data = {
+	.fb_start = 0x0,
+	.fb_size = 0xFFFFF000,
+	.shared_mem_size = 256 * 1024 * 1024,
+	.control_interval = 200, /* 1000ms */
+	.pmu_switch_delay = 0xFFFF,
+};
+
+int mali_platform_device_register(void)
 {
-	struct mali_gpu_device_data sunxi_mali_gpu_data = {
-		.fb_start		= 0,
-		.fb_size		= 0xfffff000,
-	};
 	int irq_gp, irq_gpmmu, irq_pp;
 	int irq_pp0, irq_ppmmu0;
 	int irq_pp1 = -EINVAL, irq_ppmmu1 = -EINVAL;
@@ -1055,7 +871,9 @@ int sunxi_mali_platform_device_register(void)
 	struct device *dev;
 	int ret, len;
 
-	np = of_find_matching_node(NULL, sunxi_mali_dt_ids);
+	np = of_find_matching_node(NULL, meson_mali_matches);
+	if (!np)
+		np = of_find_matching_node(NULL, sunxi_mali_dt_ids);
 	if (!np) {
 		pr_err("Couldn't find the mali node\n");
 		return -ENODEV;
@@ -1166,9 +984,7 @@ int sunxi_mali_platform_device_register(void)
 
 	irq_pmu = of_irq_get_byname(np, "pmu");
 	if (irq_pmu < 0) {
-		pr_err("Couldn't retrieve our PMU interrupt\n");
-		ret = irq_pmu;
-		goto err_put_reset;
+		pr_warn("Couldn't retrieve our PMU interrupt\n");
 	}
 
 	mali->dev = platform_device_alloc("mali-utgard", 0);
@@ -1189,7 +1005,10 @@ int sunxi_mali_platform_device_register(void)
 		pr_err("Couldn't claim our reserved memory region\n");
 		goto err_free_mem_region;
 	}
-	mali->reserved_mem = true;
+	mali->reserved_mem = (!ret);
+
+	if (sunxi_mali_has_low_memory(np))
+		dt_mali_gpu_data.shared_mem_size = 96 * 1024 * 1024;
 
 	if (of_device_is_compatible(np, "arm,mali-450") &&
 	    (irq_pp >= 0) &&
@@ -1249,8 +1068,8 @@ int sunxi_mali_platform_device_register(void)
 		goto err_free_mem_region;
 	}
 
-	ret = platform_device_add_data(mali->dev, &sunxi_mali_gpu_data,
-				       sizeof(sunxi_mali_gpu_data));
+	ret = platform_device_add_data(mali->dev, &dt_mali_gpu_data,
+				       sizeof(dt_mali_gpu_data));
 	if (ret) {
 		pr_err("Couldn't add our platform data\n");
 		goto err_free_mem_region;
@@ -1262,6 +1081,12 @@ int sunxi_mali_platform_device_register(void)
 		goto err_free_mem_region;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+	of_dma_configure(dev, np, true);
+#else
+	of_dma_configure(dev, np);
+#endif
+
 #ifdef CONFIG_PM_RUNTIME
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	pm_runtime_set_autosuspend_delay(dev, 1000);
@@ -1270,7 +1095,7 @@ int sunxi_mali_platform_device_register(void)
 	pm_runtime_enable(dev);
 #endif
 
-	dev_info(dev, "Allwinner sunXi mali glue initialized\n");
+	dev_info(dev, "DT mali glue initialized\n");
 
 	return 0;
 
@@ -1292,19 +1117,6 @@ err_free_mem:
 	kfree(mali);
 err_put_node:
 	of_node_put(np);
-	return ret;
-}
-
-/* common glue */
-
-int mali_platform_device_register(void)
-{
-	int ret;
-
-	ret = meson_mali_platform_device_register();
-	if (ret == -ENODEV)
-		ret = sunxi_mali_platform_device_register();
-
 	return ret;
 }
 
