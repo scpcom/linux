@@ -70,3 +70,7 @@ static struct platform_driver meson_gx_cpuinfo_driver = {
 	},
 };
 module_platform_driver(meson_gx_cpuinfo_driver);
+
+MODULE_DESCRIPTION("Amlogic Meson GX CPU info driver");
+MODULE_AUTHOR("SCP <scpcom@gmx.de>");
+MODULE_LICENSE("GPL");
