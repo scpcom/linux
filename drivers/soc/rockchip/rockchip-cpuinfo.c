@@ -74,3 +74,7 @@ static struct platform_driver rockchip_cpuinfo_driver = {
 	},
 };
 module_platform_driver(rockchip_cpuinfo_driver);
+
+MODULE_DESCRIPTION("Rockchip CPU info driver");
+MODULE_AUTHOR("Huang, Tao <huangtao@rock-chips.com>");
+MODULE_LICENSE("GPL");
