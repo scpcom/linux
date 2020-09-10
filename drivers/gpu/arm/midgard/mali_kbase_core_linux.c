@@ -3881,9 +3881,11 @@ static int power_control_init(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MALI_PLATFORM_THIRDPARTY
 	err = kbase_platform_rk_init_opp_table(kbdev);
 	if (err)
 		dev_err(kbdev->dev, "Failed to init_opp_table (%d)\n", err);
+#endif
 
 	return 0;
 
@@ -4367,9 +4369,11 @@ static int kbase_platform_device_remove(struct platform_device *pdev)
 extern void kbase_platform_rk_shutdown(struct kbase_device *kbdev);
 static void kbase_platform_device_shutdown(struct platform_device *pdev)
 {
+#ifdef CONFIG_MALI_PLATFORM_THIRDPARTY
 	struct kbase_device *kbdev = to_kbase_device(&pdev->dev);
 
 	kbase_platform_rk_shutdown(kbdev);
+#endif
 }
 
 /* Number of register accesses for the buffer that we allocate during
