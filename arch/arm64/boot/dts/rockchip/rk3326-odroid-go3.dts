@@ -121,6 +121,23 @@
 	default-brightness-level = <80>; /* default 50% */
 };
 
+/*
+	- HCP775474ZC Battery
+	Capacity : 3.7V 4000mAh, 14.8Wh
+	Rated Voltage = 3.7V
+	Charge Cut-Off Voltage : 4.25V
+	Discharge Cut-Off Voltage : 3.0V
+	Internal Impedance : 180 mOhm
+	Charging Voltage : 4.2V
+	Charging Voltage Max : 4.25V
+	Sample resister : 10 mohm (R12)
+*/
+&battery {
+	design_capacity = <4000>;
+	design_qmax = <4020>;
+	zero_algorithm_vol = <3850>;
+};
+
 /* f1 and f2 conflict with volume buttons */
 /delete-node/ &btn_f1;
 /delete-node/ &btn_f2;
