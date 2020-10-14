@@ -26,6 +26,7 @@
 #define PWM_INACTIVE_POSITIVE	(1 << 4)
 #define PWM_POLARITY_MASK	(PWM_DUTY_POSITIVE | PWM_INACTIVE_POSITIVE)
 #define PWM_OUTPUT_LEFT		(0 << 5)
+#define PWM_OUTPUT_CENTER	(1 << 5)
 #define PWM_LOCK_EN		(1 << 6)
 #define PWM_LP_DISABLE		(0 << 8)
 
@@ -35,6 +36,7 @@ struct rockchip_pwm_chip {
 	const struct rockchip_pwm_data *data;
 	void __iomem *base;
 	bool vop_pwm_en; /* indicate voppwm mirror register state */
+	bool center_aligned;
 };
 
 struct rockchip_pwm_regs {
@@ -183,6 +185,11 @@ static int rockchip_pwm_enable(struct pwm_chip *chip,
 
 	val = readl_relaxed(pc->base + pc->data->regs.ctrl);
 	val &= ~pc->data->enable_conf_mask;
+
+	if (PWM_OUTPUT_CENTER & pc->data->enable_conf_mask) {
+		if (pc->center_aligned)
+			val |= PWM_OUTPUT_CENTER;
+	}
 
 	if (enable)
 		val |= enable_conf;
@@ -370,6 +377,9 @@ static int rockchip_pwm_probe(struct platform_device *pdev)
 	enable_conf = pc->data->enable_conf;
 	ctrl = readl_relaxed(pc->base + pc->data->regs.ctrl);
 	enabled = (ctrl & enable_conf) == enable_conf;
+
+	pc->center_aligned =
+		device_property_read_bool(&pdev->dev, "center-aligned");
 
 	ret = pwmchip_add(chip);
 	if (ret < 0) {
