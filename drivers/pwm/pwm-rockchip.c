@@ -35,6 +35,7 @@ struct rockchip_pwm_chip {
 	struct clk *pclk;
 	const struct rockchip_pwm_data *data;
 	void __iomem *base;
+	unsigned long clk_rate;
 	bool vop_pwm_en; /* indicate voppwm mirror register state */
 	bool center_aligned;
 };
@@ -67,7 +68,6 @@ static int rockchip_pwm_get_state(struct pwm_chip *chip,
 {
 	struct rockchip_pwm_chip *pc = to_rockchip_pwm_chip(chip);
 	u32 enable_conf = pc->data->enable_conf;
-	unsigned long clk_rate;
 	u64 tmp;
 	u32 val;
 	int ret;
@@ -80,15 +80,13 @@ static int rockchip_pwm_get_state(struct pwm_chip *chip,
 	if (ret)
 		return ret;
 
-	clk_rate = clk_get_rate(pc->clk);
-
 	tmp = readl_relaxed(pc->base + pc->data->regs.period);
 	tmp *= pc->data->prescaler * NSEC_PER_SEC;
-	state->period = DIV_ROUND_CLOSEST_ULL(tmp, clk_rate);
+	state->period = DIV_ROUND_CLOSEST_ULL(tmp, pc->clk_rate);
 
 	tmp = readl_relaxed(pc->base + pc->data->regs.duty);
 	tmp *= pc->data->prescaler * NSEC_PER_SEC;
-	state->duty_cycle =  DIV_ROUND_CLOSEST_ULL(tmp, clk_rate);
+	state->duty_cycle =  DIV_ROUND_CLOSEST_ULL(tmp, pc->clk_rate);
 
 	val = readl_relaxed(pc->base + pc->data->regs.ctrl);
 	state->enabled = (val & enable_conf) == enable_conf;
@@ -110,21 +108,19 @@ static void rockchip_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	struct rockchip_pwm_chip *pc = to_rockchip_pwm_chip(chip);
 	unsigned long period, duty;
 	unsigned long flags;
-	u64 clk_rate, div;
+	u64 div;
 	u32 ctrl;
-
-	clk_rate = clk_get_rate(pc->clk);
 
 	/*
 	 * Since period and duty cycle registers have a width of 32
 	 * bits, every possible input period can be obtained using the
 	 * default prescaler value for all practical clock rate values.
 	 */
-	div = clk_rate * state->period;
+	div = (u64)pc->clk_rate * state->period;
 	period = DIV_ROUND_CLOSEST_ULL(div,
 				       pc->data->prescaler * NSEC_PER_SEC);
 
-	div = clk_rate * state->duty_cycle;
+	div = (u64)pc->clk_rate * state->duty_cycle;
 	duty = DIV_ROUND_CLOSEST_ULL(div, pc->data->prescaler * NSEC_PER_SEC);
 
 	local_irq_save(flags);
@@ -373,6 +369,7 @@ static int rockchip_pwm_probe(struct platform_device *pdev)
 
 	pc->data = device_get_match_data(&pdev->dev);
 	chip->ops = &rockchip_pwm_ops;
+	pc->clk_rate = clk_get_rate(pc->clk);
 
 	enable_conf = pc->data->enable_conf;
 	ctrl = readl_relaxed(pc->base + pc->data->regs.ctrl);
