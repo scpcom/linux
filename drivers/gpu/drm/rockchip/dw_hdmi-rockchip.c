@@ -59,12 +59,14 @@
 /**
  * struct rockchip_hdmi_chip_data - splite the grf setting of kind of chips
  * @lcdsel_grf_reg: grf register offset of lcdc select
+ * @ddc_en_reg: grf register offset of hdmi ddc enable
  * @lcdsel_big: reg value of selecting vop big for HDMI
  * @lcdsel_lit: reg value of selecting vop little for HDMI
  * @max_tmds_clock: maximum TMDS clock rate supported
  */
 struct rockchip_hdmi_chip_data {
 	int	lcdsel_grf_reg;
+	int	ddc_en_reg;
 	u32	lcdsel_big;
 	u32	lcdsel_lit;
 	int	max_tmds_clock;
@@ -520,6 +522,7 @@ static const struct dw_hdmi_plat_data rk3399_hdmi_drv_data = {
 static struct rockchip_hdmi_chip_data rk3568_chip_data = {
 	.lcdsel_grf_reg = -1,
 	.max_tmds_clock = 340000,
+	.ddc_en_reg = RK3568_GRF_VO_CON1,
 };
 
 static const struct dw_hdmi_plat_data rk3568_hdmi_drv_data = {
@@ -529,6 +532,7 @@ static const struct dw_hdmi_plat_data rk3568_hdmi_drv_data = {
 	.phy_config = rockchip_phy_config,
 	.phy_data = &rk3568_chip_data,
 	.use_drm_infoframe = true,
+	.ycbcr_420_allowed = true,
 };
 
 static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {
@@ -614,7 +618,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-	if (hdmi->chip_data == &rk3568_chip_data) {
+	if (hdmi->chip_data->ddc_en_reg == RK3568_GRF_VO_CON1) {
 		regmap_write(hdmi->regmap, RK3568_GRF_VO_CON1,
 			     HIWORD_UPDATE(RK3568_HDMI_SDAIN_MSK |
 					   RK3568_HDMI_SCLIN_MSK,
