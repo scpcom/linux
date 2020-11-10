@@ -76,7 +76,7 @@ struct rockchip_hdmi {
 	struct rockchip_encoder encoder;
 	const struct rockchip_hdmi_chip_data *chip_data;
 	const struct dw_hdmi_plat_data *plat_data;
-	struct clk *ref_clk;
+	struct clk *phyref_clk;
 	struct clk *grf_clk;
 	struct dw_hdmi *hdmi;
 	struct phy *phy;
@@ -209,15 +209,17 @@ static int rockchip_hdmi_parse_dt(struct rockchip_hdmi *hdmi)
 		return PTR_ERR(hdmi->regmap);
 	}
 
-	hdmi->ref_clk = devm_clk_get_optional_enabled(hdmi->dev, "ref");
-	if (!hdmi->ref_clk)
-		hdmi->ref_clk = devm_clk_get_optional_enabled(hdmi->dev, "vpll");
+	hdmi->phyref_clk = devm_clk_get_enabled(hdmi->dev, "vpll");
+	if (PTR_ERR(hdmi->phyref_clk) == -ENOENT)
+		hdmi->phyref_clk = devm_clk_get_enabled(hdmi->dev, "ref");
 
-	if (IS_ERR(hdmi->ref_clk)) {
-		ret = PTR_ERR(hdmi->ref_clk);
-		if (ret != -EPROBE_DEFER)
-			drm_err(hdmi, "failed to get reference clock\n");
-		return ret;
+	if (PTR_ERR(hdmi->phyref_clk) == -ENOENT) {
+		hdmi->phyref_clk = NULL;
+	} else if (PTR_ERR(hdmi->phyref_clk) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(hdmi->phyref_clk)) {
+		DRM_DEV_ERROR(hdmi->dev, "failed to get reference clock\n");
+		return PTR_ERR(hdmi->phyref_clk);
 	}
 
 	hdmi->grf_clk = devm_clk_get_optional(hdmi->dev, "grf");
@@ -288,7 +290,9 @@ static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
 
 	if (WARN_ON(!crtc || !crtc->state))
 		return;
-	clk_set_rate(hdmi->vpll_clk, crtc->state->adjusted_mode.clock * 1000);
+
+	clk_set_rate(hdmi->phyref_clk,
+		     crtc->state->adjusted_mode.crtc_clock * 1000);
 
 	if (hdmi->chip_data->lcdsel_grf_reg < 0)
 		return;
