@@ -2956,7 +2956,7 @@ static int s5p_jpeg_probe(struct platform_device *pdev)
 	jpeg->vfd_encoder->vfl_dir	= VFL_DIR_M2M;
 	jpeg->vfd_encoder->device_caps	= V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M;
 
-	ret = video_register_device(jpeg->vfd_encoder, VFL_TYPE_VIDEO, -1);
+	ret = video_register_device(jpeg->vfd_encoder, VFL_TYPE_VIDEO, 20);
 	if (ret) {
 		v4l2_err(&jpeg->v4l2_dev, "Failed to register video device\n");
 		video_device_release(jpeg->vfd_encoder);
@@ -2986,7 +2986,7 @@ static int s5p_jpeg_probe(struct platform_device *pdev)
 	jpeg->vfd_decoder->vfl_dir	= VFL_DIR_M2M;
 	jpeg->vfd_decoder->device_caps	= V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M;
 
-	ret = video_register_device(jpeg->vfd_decoder, VFL_TYPE_VIDEO, -1);
+	ret = video_register_device(jpeg->vfd_decoder, VFL_TYPE_VIDEO, 20);
 	if (ret) {
 		v4l2_err(&jpeg->v4l2_dev, "Failed to register video device\n");
 		video_device_release(jpeg->vfd_decoder);
