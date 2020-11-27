@@ -771,7 +771,7 @@ int simple_util_init_jack(struct snd_soc_card *card,
 
 	if (is_hp) {
 		snprintf(prop, sizeof(prop), "%shp-det", prefix);
-#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGO2
+#ifndef CONFIG_ARCH_ROCKCHIP_ODROIDGOA
 		pin_name	= pin ? pin : "Headphones";
 #else
 		pin_name	= pin ? pin : "Headphone Jack";

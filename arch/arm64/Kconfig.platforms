@@ -382,12 +382,14 @@ config ARCH_ROCKCHIP
 	  This enables support for the ARMv8 based Rockchip chipsets,
 	  like the RK3368.
 
-config ARCH_ROCKCHIP_ODROIDGO2
-	bool "Hardkkernel's ODROID-GO2 Board"
+config ARCH_ROCKCHIP_ODROIDGOA
+	bool "Hardkkernel's ODROID-GO Advanced Boards"
 	depends on ARCH_ROCKCHIP
 	help
-	  This enables support for Hardkernel ODROID-GO2
+	  This enables support for Hardkernel ODROID-GO Advanced Boards
 	  based on Rockchip RK3326.
+	  (ODROID-GO2 Rev 1.0, Rev 1.1 with built-in WIFI module
+	  and ODROID-GO3)
 
 config ARCH_SEATTLE
 	bool "AMD Seattle SoC Family"
