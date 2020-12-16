@@ -76,20 +76,21 @@
 
 	gpio-keys-vol {
 		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
 		autorepeat;
 		pinctrl-0 = <&btn_pins_vol>;
 		pinctrl-names = "default";
 
-		button-vol-down {
-			gpios = <&gpio2 RK_PA1 GPIO_ACTIVE_LOW>;
-			label = "VOLUMEDOWN";
-			linux,code = <KEY_VOLUMEDOWN>;
-		};
-
-		button-volume-up {
-			gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_LOW>;
-			label = "VOLUMEUP";
+		button@0 {
+			label = "GPIO BTN-VOLUP";
 			linux,code = <KEY_VOLUMEUP>;
+			gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_LOW>;
+		};
+		button@1 {
+			label = "GPIO BTN-VOLDN";
+			linux,code = <KEY_VOLUMEDOWN>;
+			gpios = <&gpio2 RK_PA1 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
@@ -180,16 +181,6 @@
 	abs_ry-p-tuning = <180>;
 	abs_ry-n-tuning = <170>;
 
-	button-sw9 {
-		gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_LOW>;
-		label = "GPIO BTN-VOLUP";
-		linux,code = <KEY_VOLUMEUP>; // 115, 0x73
-	};
-	button-sw10 {
-		gpios = <&gpio2 RK_PA1 GPIO_ACTIVE_LOW>;
-		label = "GPIO BTN-VOLDN";
-		linux,code = <KEY_VOLUMEDOWN>; // 114, 0x72
-	};
 	button-sw11 {
 		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
 		label = "TOP-RIGHT";
