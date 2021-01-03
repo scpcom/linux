@@ -38,6 +38,9 @@
 #include <linux/timer.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
+#ifdef CONFIG_ARCH_ROCKCHIP_ODROIDGOA
+#include <linux/reboot.h>
+#endif
 
 static int dbg_enable;
 
@@ -2363,6 +2366,11 @@ static void rk817_bat_lowpwr_check(struct rk817_battery_device *battery)
 				battery->dsoc -= 1000;
 			DBG("low power, soc=%d, current=%d\n",
 			    battery->dsoc, battery->current_avg);
+#ifdef CONFIG_ARCH_ROCKCHIP_ODROIDGOA
+			pr_info("battery voltage is under %dmV, voltage_avg=%dmV, power off!\n",
+				pwr_off_thresd, battery->voltage_avg);
+			orderly_poweroff(false);
+#endif
 		}
 	} else {
 		time = 0;
