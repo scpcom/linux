@@ -239,6 +239,13 @@ enum {
 	BIASEXTR_127_7,
 };
 
+enum soc_type {
+	PX30,
+	RK3288,
+	RK3399,
+	RK3568,
+};
+
 struct rockchip_dw_dsi_chip_data {
 	u32 reg;
 
@@ -258,6 +265,7 @@ struct rockchip_dw_dsi_chip_data {
 	int (*dphy_rx_power_on)(struct phy *phy);
 	int (*dphy_rx_power_off)(struct phy *phy);
 
+	enum soc_type soc_type;
 	unsigned int flags;
 	unsigned int max_data_lanes;
 };
@@ -790,6 +798,12 @@ dw_mipi_dsi_encoder_atomic_check(struct drm_encoder *encoder,
 	else
 		s->bus_format = MEDIA_BUS_FMT_RGB888_1X24;
 
+	/* rk356x series drive mipi pixdata on posedge */
+	if (dsi->cdata->soc_type == RK3568) {
+		s->bus_flags &= ~DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE;
+		s->bus_flags |= DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE;
+	}
+
 	s->output_type = DRM_MODE_CONNECTOR_DSI;
 	s->color_space = V4L2_COLORSPACE_DEFAULT;
 	s->output_if = dsi->id ? VOP_OUTPUT_IF_MIPI1 : VOP_OUTPUT_IF_MIPI0;
@@ -797,6 +811,10 @@ dw_mipi_dsi_encoder_atomic_check(struct drm_encoder *encoder,
 		s->output_flags |= ROCKCHIP_OUTPUT_DUAL_CHANNEL_LEFT_RIGHT_MODE;
 		s->output_if |= VOP_OUTPUT_IF_MIPI1;
 	}
+
+	/* dual link dsi for rk3399 */
+	if (dsi->id && dsi->cdata->soc_type == RK3399)
+		s->output_flags |= ROCKCHIP_OUTPUT_DATA_SWAP;
 
 	return 0;
 }
@@ -1491,6 +1509,7 @@ static const struct rockchip_dw_dsi_chip_data px30_chip_data[] = {
 					     PX30_DSI_FORCETXSTOPMODE),
 
 		.max_data_lanes = 4,
+		.soc_type = PX30,
 	},
 	{ /* sentinel */ }
 };
@@ -1515,6 +1534,7 @@ static const struct rockchip_dw_dsi_chip_data rk3288_chip_data[] = {
 		.lcdsel_lit = HIWORD_UPDATE(RK3288_DSI0_LCDC_SEL, RK3288_DSI0_LCDC_SEL),
 
 		.max_data_lanes = 4,
+		.soc_type = RK3288,
 	},
 	{
 		.reg = 0xff964000,
@@ -1523,6 +1543,7 @@ static const struct rockchip_dw_dsi_chip_data rk3288_chip_data[] = {
 		.lcdsel_lit = HIWORD_UPDATE(RK3288_DSI1_LCDC_SEL, RK3288_DSI1_LCDC_SEL),
 
 		.max_data_lanes = 4,
+		.soc_type = RK3288,
 	},
 	{ /* sentinel */ }
 };
@@ -1612,6 +1633,7 @@ static const struct rockchip_dw_dsi_chip_data rk3399_chip_data[] = {
 
 		.flags = DW_MIPI_NEEDS_PHY_CFG_CLK | DW_MIPI_NEEDS_GRF_CLK,
 		.max_data_lanes = 4,
+		.soc_type = RK3399,
 	},
 	{
 		.reg = 0xff968000,
@@ -1638,6 +1660,7 @@ static const struct rockchip_dw_dsi_chip_data rk3399_chip_data[] = {
 
 		.flags = DW_MIPI_NEEDS_PHY_CFG_CLK | DW_MIPI_NEEDS_GRF_CLK,
 		.max_data_lanes = 4,
+		.soc_type = RK3399,
 
 		.dphy_rx_init = rk3399_dphy_tx1rx1_init,
 		.dphy_rx_power_on = rk3399_dphy_tx1rx1_power_on,
@@ -1657,6 +1680,7 @@ static const struct rockchip_dw_dsi_chip_data rk3568_chip_data[] = {
 
 		.flags = DW_MIPI_NEEDS_HCLK,
 		.max_data_lanes = 4,
+		.soc_type = RK3568,
 	},
 	{
 		.reg = 0xfe070000,
@@ -1668,6 +1692,7 @@ static const struct rockchip_dw_dsi_chip_data rk3568_chip_data[] = {
 
 		.flags = DW_MIPI_NEEDS_HCLK,
 		.max_data_lanes = 4,
+		.soc_type = RK3568,
 	},
 	{ /* sentinel */ }
 };
