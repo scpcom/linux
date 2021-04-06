@@ -112,6 +112,7 @@ struct rk_iommu {
 	struct clk_bulk_data *clocks;
 	int num_clocks;
 	bool reset_disabled;
+	bool skip_read; /* rk3126/rk3128 can't read vop iommu registers */
 	struct iommu_device iommu;
 	struct list_head node; /* entry in rk_iommu_domain.iommus */
 	struct iommu_domain *domain; /* domain to which iommu is attached */
@@ -412,6 +413,9 @@ static int rk_iommu_enable_stall(struct rk_iommu *iommu)
 	int ret, i;
 	bool val;
 
+	if (iommu->skip_read)
+		goto read_wa;
+
 	if (rk_iommu_is_stall_active(iommu))
 		return 0;
 
@@ -419,7 +423,10 @@ static int rk_iommu_enable_stall(struct rk_iommu *iommu)
 	if (!rk_iommu_is_paging_enabled(iommu))
 		return 0;
 
+read_wa:
 	rk_iommu_command(iommu, RK_MMU_CMD_ENABLE_STALL);
+	if (iommu->skip_read)
+		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_stall_active, iommu, val,
 				 val, RK_MMU_POLL_PERIOD_US,
@@ -437,10 +444,16 @@ static int rk_iommu_disable_stall(struct rk_iommu *iommu)
 	int ret, i;
 	bool val;
 
+	if (iommu->skip_read)
+		goto read_wa;
+
 	if (!rk_iommu_is_stall_active(iommu))
 		return 0;
 
+read_wa:
 	rk_iommu_command(iommu, RK_MMU_CMD_DISABLE_STALL);
+	if (iommu->skip_read)
+		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_stall_active, iommu, val,
 				 !val, RK_MMU_POLL_PERIOD_US,
@@ -458,10 +471,16 @@ static int rk_iommu_enable_paging(struct rk_iommu *iommu)
 	int ret, i;
 	bool val;
 
+	if (iommu->skip_read)
+		goto read_wa;
+
 	if (rk_iommu_is_paging_enabled(iommu))
 		return 0;
 
+read_wa:
 	rk_iommu_command(iommu, RK_MMU_CMD_ENABLE_PAGING);
+	if (iommu->skip_read)
+		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_paging_enabled, iommu, val,
 				 val, RK_MMU_POLL_PERIOD_US,
@@ -479,10 +498,16 @@ static int rk_iommu_disable_paging(struct rk_iommu *iommu)
 	int ret, i;
 	bool val;
 
+	if (iommu->skip_read)
+		goto read_wa;
+
 	if (!rk_iommu_is_paging_enabled(iommu))
 		return 0;
 
+read_wa:
 	rk_iommu_command(iommu, RK_MMU_CMD_DISABLE_PAGING);
+	if (iommu->skip_read)
+		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_paging_enabled, iommu, val,
 				 !val, RK_MMU_POLL_PERIOD_US,
@@ -504,6 +529,9 @@ static int rk_iommu_force_reset(struct rk_iommu *iommu)
 	if (iommu->reset_disabled)
 		return 0;
 
+	if (iommu->skip_read)
+		goto read_wa;
+
 	/*
 	 * Check if register DTE_ADDR is working by writing DTE_ADDR_DUMMY
 	 * and verifying that upper 5 (v1) or 7 (v2) nybbles are read back.
@@ -518,7 +546,10 @@ static int rk_iommu_force_reset(struct rk_iommu *iommu)
 		}
 	}
 
+read_wa:
 	rk_iommu_command(iommu, RK_MMU_CMD_FORCE_RESET);
+	if (iommu->skip_read)
+		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_reset_done, iommu, val,
 				 val, RK_MMU_FORCE_RESET_TIMEOUT_US,
@@ -1231,6 +1262,8 @@ static int rk_iommu_probe(struct platform_device *pdev)
 
 	iommu->reset_disabled = device_property_read_bool(dev,
 					"rockchip,disable-mmu-reset");
+	iommu->skip_read = device_property_read_bool(dev,
+					"rockchip,skip-mmu-read");
 
 	iommu->num_clocks = ARRAY_SIZE(rk_iommu_clocks);
 	iommu->clocks = devm_kcalloc(iommu->dev, iommu->num_clocks,
@@ -1274,6 +1307,9 @@ static int rk_iommu_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(dev);
 
+	if (iommu->skip_read)
+		goto skip_request_irq;
+
 	for (i = 0; i < iommu->num_irq; i++) {
 		int irq = platform_get_irq(pdev, i);
 
@@ -1288,6 +1324,7 @@ static int rk_iommu_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
+skip_request_irq:
 	dma_set_mask_and_coherent(dev, rk_ops->dma_bit_mask);
 
 	return 0;
