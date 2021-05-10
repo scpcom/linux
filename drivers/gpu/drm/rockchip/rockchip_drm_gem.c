@@ -668,10 +668,12 @@ rockchip_gem_create_with_handle(struct drm_file *file_priv,
 	struct drm_gem_object *obj;
 	bool is_framebuffer;
 	int ret;
+	bool alloc_kmap;
 
 	is_framebuffer = drm->fb_helper && file_priv == drm->fb_helper->client.file;
+	alloc_kmap = flags & ROCKCHIP_BO_ALLOC_KMAP ? true : is_framebuffer;
 
-	rk_obj = rockchip_gem_create_object(drm, size, is_framebuffer, flags);
+	rk_obj = rockchip_gem_create_object(drm, size, alloc_kmap, flags);
 	if (IS_ERR(rk_obj))
 		return ERR_CAST(rk_obj);
 
