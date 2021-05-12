@@ -11,7 +11,7 @@
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_gem.h>
-
+#include <drm/rockchip_drm.h>
 #include <linux/bits.h>
 #include <linux/component.h>
 #include <linux/i2c.h>
@@ -20,6 +20,8 @@
 #define ROCKCHIP_MAX_FB_BUFFER	3
 #define ROCKCHIP_MAX_CONNECTOR	2
 #define ROCKCHIP_MAX_CRTC	4
+#define ROCKCHIP_MAX_LAYER	16
+
 
 /*
  * display output interface supported by rockchip lcdc
@@ -37,6 +39,10 @@
 
 /* output flags */
 #define ROCKCHIP_OUTPUT_DSI_DUAL	BIT(0)
+
+#define ROCKCHIP_OUTPUT_DUAL_CHANNEL_LEFT_RIGHT_MODE	BIT(0)
+#define ROCKCHIP_OUTPUT_DUAL_CHANNEL_ODD_EVEN_MODE	BIT(1)
+#define ROCKCHIP_OUTPUT_DATA_SWAP			BIT(2)
 
 struct drm_device;
 struct drm_connector;
@@ -62,6 +68,26 @@ struct rockchip_drm_sub_dev {
 #define VOP_OUTPUT_IF_HDMI0	BIT(11)
 #define VOP_OUTPUT_IF_HDMI1	BIT(12)
 
+struct rockchip_sdr2hdr_state {
+	int sdr2hdr_func;
+
+	bool bt1886eotf_pre_conv_en;
+	bool rgb2rgb_pre_conv_en;
+	bool rgb2rgb_pre_conv_mode;
+	bool st2084oetf_pre_conv_en;
+
+	bool bt1886eotf_post_conv_en;
+	bool rgb2rgb_post_conv_en;
+	bool rgb2rgb_post_conv_mode;
+	bool st2084oetf_post_conv_en;
+};
+
+struct rockchip_hdr_state {
+	bool pre_overlay;
+	bool hdr2sdr_en;
+	struct rockchip_sdr2hdr_state sdr2hdr_state;
+};
+
 struct rockchip_crtc_state {
 	struct drm_crtc_state base;
 	int output_type;
@@ -69,13 +95,78 @@ struct rockchip_crtc_state {
 	int output_bpc;
 	int output_flags;
 	bool enable_afbc;
-	bool yuv_overlay;
+
+	struct drm_tv_connector_state *tv_state;
+	int left_margin;
+	int right_margin;
+	int top_margin;
+	int bottom_margin;
+	int vdisplay;
+	int afbdc_win_format;
+	int afbdc_win_width;
+	int afbdc_win_height;
+	int afbdc_win_ptr;
+	int afbdc_win_id;
+	int afbdc_en;
+	int afbdc_win_vir_width;
+	int afbdc_win_xoffset;
+	int afbdc_win_yoffset;
+	int dsp_layer_sel;
+	u32 output_if;
 	u32 bus_format;
 	u32 bus_flags;
+	int yuv_overlay;
+	int post_r2y_en;
+	int post_y2r_en;
+	int post_csc_mode;
+	int bcsh_en;
 	int color_space;
+	int eotf;
+	u8 mode_update;
+	struct rockchip_hdr_state hdr;
 };
+
 #define to_rockchip_crtc_state(s) \
 		container_of(s, struct rockchip_crtc_state, base)
+
+struct rockchip_logo {
+	dma_addr_t dma_addr;
+	void *kvaddr;
+	phys_addr_t start;
+	phys_addr_t size;
+	int count;
+};
+
+struct loader_cubic_lut {
+	bool enable;
+	u32 offset;
+};
+
+/*
+ * Rockchip drm private crtc funcs.
+ * @loader_protect: protect loader logo crtc's power
+ * @enable_vblank: enable crtc vblank irq.
+ * @disable_vblank: disable crtc vblank irq.
+ * @bandwidth: report present crtc bandwidth consume.
+ */
+struct rockchip_crtc_funcs {
+	int (*loader_protect)(struct drm_crtc *crtc, bool on);
+	int (*enable_vblank)(struct drm_crtc *crtc);
+	void (*disable_vblank)(struct drm_crtc *crtc);
+	size_t (*bandwidth)(struct drm_crtc *crtc,
+			    struct drm_crtc_state *crtc_state,
+			    unsigned int *plane_num_total);
+	void (*cancel_pending_vblank)(struct drm_crtc *crtc,
+				      struct drm_file *file_priv);
+	int (*debugfs_init)(struct drm_minor *minor, struct drm_crtc *crtc);
+	int (*debugfs_dump)(struct drm_crtc *crtc, struct seq_file *s);
+	void (*regs_dump)(struct drm_crtc *crtc, struct seq_file *s);
+	enum drm_mode_status (*mode_valid)(struct drm_crtc *crtc,
+					   const struct drm_display_mode *mode,
+					   int output_type);
+	void (*crtc_close)(struct drm_crtc *crtc);
+	void (*crtc_send_mcu_cmd)(struct drm_crtc *crtc, u32 type, u32 value);
+};
 
 /*
  * Rockchip drm private structure.
@@ -89,6 +180,21 @@ struct rockchip_drm_private {
 	struct device *iommu_dev;
 	struct mutex mm_lock;
 	struct drm_mm mm;
+
+	struct drm_property *eotf_prop;
+	struct drm_property *color_space_prop;
+	struct drm_property *global_alpha_prop;
+	struct drm_property *blend_mode_prop;
+	struct drm_property *alpha_scale_prop;
+	struct drm_property *async_commit_prop;
+	struct drm_property *share_id_prop;
+	struct drm_property *connector_id_prop;
+
+	const struct rockchip_crtc_funcs *crtc_funcs[ROCKCHIP_MAX_CRTC];
+
+	dma_addr_t cubic_lut_dma_addr;
+	void *cubic_lut_kvaddr;
+	struct loader_cubic_lut cubic_lut[ROCKCHIP_MAX_CRTC];
 };
 
 struct rockchip_encoder {
@@ -103,6 +209,9 @@ void rockchip_drm_dma_detach_device(struct drm_device *drm_dev,
 void rockchip_drm_dma_init_device(struct drm_device *drm_dev,
 				  struct device *dev);
 int rockchip_drm_wait_vact_end(struct drm_crtc *crtc, unsigned int mstimeout);
+int rockchip_register_crtc_funcs(struct drm_crtc *crtc,
+				 const struct rockchip_crtc_funcs *crtc_funcs);
+void rockchip_unregister_crtc_funcs(struct drm_crtc *crtc);
 int rockchip_drm_encoder_set_crtc_endpoint_id(struct rockchip_encoder *rencoder,
 					      struct device_node *np, int port, int reg);
 void rockchip_drm_register_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
