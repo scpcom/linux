@@ -640,6 +640,8 @@ static int rockchip_drm_bind(struct device *dev)
 	if (ret)
 		goto err_free;
 
+	mutex_init(&private->commit_lock);
+
 	rockchip_attach_connector_property(drm_dev);
 	ret = rockchip_drm_init_iommu(drm_dev);
 	if (ret)

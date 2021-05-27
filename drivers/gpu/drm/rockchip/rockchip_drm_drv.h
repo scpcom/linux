@@ -189,6 +189,7 @@ struct rockchip_drm_private {
 	struct gen_pool *secure_buffer_pool;
 	struct mutex mm_lock;
 	struct drm_mm mm;
+	struct mutex commit_lock;
 
 	struct drm_property *eotf_prop;
 	struct drm_property *color_space_prop;
