@@ -195,6 +195,8 @@ static void rockchip_snd_xfer_reset_assert(struct rk_i2s_tdm_dev *i2s_tdm,
 		local_irq_restore(flags);
 		break;
 	}
+	/* delay for reset assert done */
+	udelay(10);
 }
 
 static void rockchip_snd_xfer_reset_deassert(struct rk_i2s_tdm_dev *i2s_tdm,
@@ -239,6 +241,8 @@ static void rockchip_snd_xfer_reset_deassert(struct rk_i2s_tdm_dev *i2s_tdm,
 		local_irq_restore(flags);
 		break;
 	}
+	/* delay for reset deassert done */
+	udelay(10);
 }
 
 /*
@@ -268,9 +272,6 @@ static void rockchip_snd_xfer_sync_reset(struct rk_i2s_tdm_dev *i2s_tdm)
 
 	rockchip_snd_xfer_reset_assert(i2s_tdm, tx_bank, tx_offset,
 				       rx_bank, rx_offset);
-
-	udelay(150);
-
 	rockchip_snd_xfer_reset_deassert(i2s_tdm, tx_bank, tx_offset,
 					 rx_bank, rx_offset);
 }
@@ -348,8 +349,11 @@ static void rockchip_snd_reset(struct reset_control *rc)
 		return;
 
 	reset_control_assert(rc);
-	udelay(1);
+	/* delay for reset assert done */
+	udelay(10);
 	reset_control_deassert(rc);
+	/* delay for reset deassert done */
+	udelay(10);
 }
 
 static void rockchip_snd_txctrl(struct rk_i2s_tdm_dev *i2s_tdm, int on)
