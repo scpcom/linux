@@ -720,6 +720,12 @@ config CHARGER_BQ2515X
 	  rail, ADC for battery and system monitoring, and push-button
 	  controller.
 
+config CHARGER_BQ25700
+	tristate "TI BQ25700 battery charger driver"
+	depends on REGMAP_I2C
+	help
+	  Say Y to enable support for the TI BQ25700 battery charger.
+
 config CHARGER_BQ25890
 	tristate "TI BQ25890 battery charger driver"
 	depends on I2C
@@ -748,11 +754,42 @@ config CHARGER_BQ256XX
 	  charge management and system power path management devices for single
 	  cell Li-ion and Li-polymer batteries.
 
-config CHARGER_RK817
-	tristate "Rockchip RK817 PMIC Battery Charger"
+config BATTERY_RK816
+	tristate "RK816 Battery driver"
 	depends on MFD_RK8XX
 	help
-	  Say Y to include support for Rockchip RK817 Battery Charger.
+	  If you say yes here you will get support for the battery of RK816 PMIC.
+	  This driver can give support for Rk816 Battery Charge Interface.
+
+config BATTERY_RK817
+	tristate "RK817 Battery driver"
+	depends on MFD_RK8XX
+	help
+	  If you say yes here you will get support for the battery of RK817 PMIC.
+	  This driver can give support for Rk817 Battery Interface.
+
+config CHARGER_RK817
+	tristate "RK817 Charger driver"
+	depends on MFD_RK8XX
+	help
+	  If you say yes here you will get support for the charger of RK817 PMIC.
+	  This driver can give support for Rk817 Charger Interface.
+
+config BATTERY_RK818
+	tristate "RK818 Battery driver"
+	depends on MFD_RK8XX
+	default n
+	help
+	  If you say yes here you will get support for the battery of RK818 PMIC.
+	  This driver can give support for Rk818 Battery Charge Interface.
+
+config CHARGER_RK818
+	tristate "RK818 Charger driver"
+	depends on MFD_RK8XX
+	default n
+	help
+	  If you say yes here you will get support for the charger of RK818 PMIC.
+	  This driver can give support for Rk818 Charger Interface.
 
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB3XX Battery Charger"
