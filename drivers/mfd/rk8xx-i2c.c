@@ -252,11 +252,6 @@ static int rk8xx_i2c_probe(struct i2c_client *client)
 	return rk8xx_probe(&client->dev, data->variant, client->irq, regmap);
 }
 
-static void rk8xx_i2c_shutdown(struct i2c_client *client)
-{
-	rk8xx_shutdown(&client->dev);
-}
-
 SIMPLE_DEV_PM_OPS(rk8xx_i2c_pm_ops, rk8xx_suspend, rk8xx_resume);
 
 static const struct of_device_id rk8xx_i2c_of_match[] = {
@@ -278,7 +273,6 @@ static struct i2c_driver rk8xx_i2c_driver = {
 		.pm = &rk8xx_i2c_pm_ops,
 	},
 	.probe = rk8xx_i2c_probe,
-	.shutdown  = rk8xx_i2c_shutdown,
 };
 
 #ifdef CONFIG_ROCKCHIP_THUNDER_BOOT

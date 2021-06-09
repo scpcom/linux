@@ -14,9 +14,11 @@
 #include <linux/mfd/rk808.h>
 #include <linux/mfd/core.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/property.h>
-#include <linux/regmap.h>
 #include <linux/reboot.h>
+#include <linux/regmap.h>
+#include <linux/syscore_ops.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/devinfo.h>
 
@@ -705,47 +707,19 @@ static struct device *rk8xx_dev;
 static struct rk808_reg_data *suspend_reg, *resume_reg;
 static int suspend_reg_num, resume_reg_num;
 
-static int rk808_power_off(struct sys_off_data *data)
+static void rk805_device_shutdown_prepare(void)
 {
-	struct rk808 *rk808 = data->cb_data;
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
 	int ret;
-	unsigned int reg, bit;
 
-	switch (rk808->variant) {
-	case RK805_ID:
-		reg = RK805_DEV_CTRL_REG;
-		bit = DEV_OFF;
-		break;
-	case RK806_ID:
-		reg = RK806_SYS_CFG3;
-		bit = DEV_OFF;
-		break;
-	case RK808_ID:
-		reg = RK808_DEVCTRL_REG,
-		bit = DEV_OFF_RST;
-		break;
-	case RK816_ID:
-		reg = RK816_DEV_CTRL_REG,
-		bit = DEV_OFF;
-		break;
-	case RK809_ID:
-	case RK817_ID:
-		reg = RK817_SYS_CFG(3);
-		bit = DEV_OFF;
-		break;
-	case RK816_ID:
-	case RK818_ID:
-		reg = RK818_DEVCTRL_REG;
-		bit = DEV_OFF;
-		break;
-	default:
-		return NOTIFY_DONE;
-	}
-	ret = regmap_update_bits(rk808->regmap, reg, bit, bit);
+	if (!rk808)
+		return;
+
+	ret = regmap_update_bits(rk808->regmap,
+				 RK805_GPIO_IO_POL_REG,
+				 SLP_SD_MSK, SHUTDOWN_FUN);
 	if (ret)
 		dev_err(rk808->dev, "Failed to shutdown device!\n");
-
-	return NOTIFY_DONE;
 }
 
 static int rk808_restart(struct sys_off_data *data)
@@ -816,10 +790,55 @@ static void rk817_shutdown_prepare(struct device *dev)
 	mdelay(2);
 }
 
-void rk8xx_shutdown(struct device *dev)
+static void rk8xx_device_shutdown(void)
 {
-	struct rk808 *rk808 = dev_get_drvdata(dev);
-	int ret = 0;
+	int ret;
+	unsigned int reg, bit;
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
+
+	switch (rk808->variant) {
+	case RK805_ID:
+		reg = RK805_DEV_CTRL_REG;
+		bit = DEV_OFF;
+		break;
+	case RK806_ID:
+		reg = RK806_SYS_CFG3;
+		bit = DEV_OFF;
+		break;
+	case RK808_ID:
+		reg = RK808_DEVCTRL_REG,
+		bit = DEV_OFF_RST;
+		break;
+	case RK816_ID:
+		reg = RK816_DEV_CTRL_REG;
+		bit = DEV_OFF;
+		break;
+	case RK809_ID:
+	case RK817_ID:
+		reg = RK817_SYS_CFG(3);
+		bit = DEV_OFF;
+		break;
+	case RK818_ID:
+		reg = RK818_DEVCTRL_REG;
+		bit = DEV_OFF;
+		break;
+	default:
+		return;
+	}
+
+	ret = regmap_update_bits(rk808->regmap, reg, bit, bit);
+	if (ret)
+		dev_err(rk808->dev, "Failed to shutdown device!\n");
+}
+
+/* Called in syscore shutdown */
+static void (*pm_shutdown)(void);
+
+static void rk8xx_syscore_shutdown(void)
+{
+	int ret;
+	struct device *dev = rk8xx_dev;
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
 
 	if (!rk808) {
 		dev_warn(dev,
@@ -834,26 +853,105 @@ void rk8xx_shutdown(struct device *dev)
 	regmap_update_bits(rk808->regmap,
 			   RK808_RTC_INT_REG,
 			   (0x3 << 2), (0x0 << 2));
+	/*
+	 * For PMIC that power off supplies by write register via i2c bus,
+	 * it's better to do power off at syscore shutdown here.
+	 *
+	 * Because when run to kernel's "pm_power_off" call, i2c may has
+	 * been stopped or PMIC may not be able to get i2c transfer while
+	 * there are too many devices are competiting.
+	 */
+	if (system_state == SYSTEM_POWER_OFF) {
+		if (rk808->variant == RK809_ID || rk808->variant == RK817_ID) {
+			ret = regmap_update_bits(rk808->regmap,
+						 RK817_SYS_CFG(3),
+						 RK817_SLPPIN_FUNC_MSK,
+						 SLPPIN_DN_FUN);
+			if (ret) {
+				dev_warn(rk808->dev,
+					 "Cannot switch to power down function\n");
+			}
+		}
 
-	switch (rk808->variant) {
-	case RK805_ID:
-		ret = regmap_update_bits(rk808->regmap,
-					 RK805_GPIO_IO_POL_REG,
-					 SLP_SD_MSK,
-					 SHUTDOWN_FUN);
+		if (pm_shutdown) {
+			dev_info(rk808->dev, "System power off\n");
+			pm_shutdown();
+			mdelay(10);
+			dev_info(rk808->dev,
+				 "Power off failed !\n");
+			while (1)
+				;
+		}
+	}
+}
+
+static struct syscore_ops rk808_syscore_ops = {
+	.shutdown = rk8xx_syscore_shutdown,
+};
+
+/*
+ * RK8xx PMICs would do real power off in syscore shutdown, if "pm_power_off"
+ * is not assigned(e.g. PSCI is not enabled), we have to provide a dummy
+ * callback for it, otherwise there comes a halt in Reboot system call:
+ *
+ * if ((cmd == LINUX_REBOOT_CMD_POWER_OFF) && !pm_power_off)
+ *		cmd = LINUX_REBOOT_CMD_HALT;
+ */
+static void rk808_pm_power_off_dummy(void)
+{
+	pr_info("Dummy power off for RK8xx PMICs, should never reach here!\n");
+
+	while (1)
+		;
+}
+
+static ssize_t rk8xx_dbg_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	int ret;
+	char cmd;
+	u32 input[2], addr, data;
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
+
+	ret = sscanf(buf, "%c ", &cmd);
+	if (ret != 1) {
+		pr_err("Unknown command\n");
+		goto out;
+	}
+	switch (cmd) {
+	case 'w':
+		ret = sscanf(buf, "%c %x %x ", &cmd, &input[0], &input[1]);
+		if (ret != 3) {
+			pr_err("error! cmd format: echo w [addr] [value]\n");
+			goto out;
+		};
+		addr = input[0] & 0xff;
+		data = input[1] & 0xff;
+		pr_info("cmd : %c %x %x\n\n", cmd, input[0], input[1]);
+		regmap_write(rk808->regmap, addr, data);
+		regmap_read(rk808->regmap, addr, &data);
+		pr_info("new: %x %x\n", addr, data);
 		break;
-	case RK809_ID:
-	case RK817_ID:
-		rk817_shutdown_prepare(dev);
+	case 'r':
+		ret = sscanf(buf, "%c %x ", &cmd, &input[0]);
+		if (ret != 2) {
+			pr_err("error! cmd format: echo r [addr]\n");
+			goto out;
+		};
+		pr_info("cmd : %c %x\n\n", cmd, input[0]);
+		addr = input[0] & 0xff;
+		regmap_read(rk808->regmap, addr, &data);
+		pr_info("%x %x\n", input[0], data);
 		break;
 	default:
-		return;
+		pr_err("Unknown command\n");
+		break;
 	}
-	if (ret)
-		dev_warn(dev,
-			 "Cannot switch to power down function\n");
+
+out:
+	return count;
 }
-EXPORT_SYMBOL_GPL(rk8xx_shutdown);
 
 static int rk817_pinctrl_init(struct device *dev, struct rk808 *rk808)
 {
@@ -1058,60 +1156,13 @@ static void rk817_of_property_prepare(struct rk808 *rk808, struct device *dev)
 		dev_err(dev, "failed to register reboot nb\n");
 }
 
-static ssize_t rk8xx_dbg_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	int ret;
-	char cmd;
-	u32 input[2], addr, data;
-	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
-
-	ret = sscanf(buf, "%c ", &cmd);
-	if (ret != 1) {
-		pr_err("Unknown command\n");
-		goto out;
-	}
-	switch (cmd) {
-	case 'w':
-		ret = sscanf(buf, "%c %x %x ", &cmd, &input[0], &input[1]);
-		if (ret != 3) {
-			pr_err("error! cmd format: echo w [addr] [value]\n");
-			goto out;
-		};
-		addr = input[0] & 0xff;
-		data = input[1] & 0xff;
-		pr_info("cmd : %c %x %x\n\n", cmd, input[0], input[1]);
-		regmap_write(rk808->regmap, addr, data);
-		regmap_read(rk808->regmap, addr, &data);
-		pr_info("new: %x %x\n", addr, data);
-		break;
-	case 'r':
-		ret = sscanf(buf, "%c %x ", &cmd, &input[0]);
-		if (ret != 2) {
-			pr_err("error! cmd format: echo r [addr]\n");
-			goto out;
-		};
-		pr_info("cmd : %c %x\n\n", cmd, input[0]);
-		addr = input[0] & 0xff;
-		regmap_read(rk808->regmap, addr, &data);
-		pr_info("%x %x\n", input[0], data);
-		break;
-	default:
-		pr_err("Unknown command\n");
-		break;
-	}
-
-out:
-	return count;
-}
-
 static struct kobject *rk8xx_kobj;
 static struct device_attribute rk8xx_attrs =
 		__ATTR(rk8xx_dbg, 0200, NULL, rk8xx_dbg_store);
 
 int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap *regmap)
 {
+	struct device_node *np = dev->of_node;
 	struct rk808 *rk808;
 	const struct rk808_reg_data *pre_init_reg;
 	const struct regmap_irq_chip *battery_irq_chip = NULL;
@@ -1119,14 +1170,15 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	u8 on_source = 0, off_source = 0;
 	unsigned int on, off;
 	int dual_support = 0;
+	int pm_off = 0;
 	int nr_pre_init_regs;
 	int nr_cells;
-
 	int ret;
 	int i;
 	void (*of_property_prepare_fn)(struct rk808 *rk808,
 				       struct device *dev) = NULL;
 	int (*pinctrl_init)(struct device *dev, struct rk808 *rk808) = NULL;
+	void (*device_shutdown_fn)(void) = NULL;
 
 	rk808 = devm_kzalloc(dev, sizeof(*rk808), GFP_KERNEL);
 	if (!rk808)
@@ -1150,6 +1202,8 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		suspend_reg_num = ARRAY_SIZE(rk805_suspend_reg);
 		resume_reg = rk805_resume_reg;
 		resume_reg_num = ARRAY_SIZE(rk805_resume_reg);
+		device_shutdown_fn = rk8xx_device_shutdown;
+		rk808->pm_pwroff_prep_fn = rk805_device_shutdown_prepare;
 		break;
 	case RK806_ID:
 		rk808->regmap_irq_chip = &rk806_irq_chip;
@@ -1165,6 +1219,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_pre_init_regs = ARRAY_SIZE(rk808_pre_init_reg);
 		cells = rk808s;
 		nr_cells = ARRAY_SIZE(rk808s);
+		device_shutdown_fn = rk8xx_device_shutdown;
 		break;
 	case RK816_ID:
 		rk808->regmap_irq_chip = &rk816_irq_chip;
@@ -1179,6 +1234,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		suspend_reg_num = ARRAY_SIZE(rk816_suspend_reg);
 		resume_reg = rk816_resume_reg;
 		resume_reg_num = ARRAY_SIZE(rk816_resume_reg);
+		device_shutdown_fn = rk8xx_device_shutdown;
 		break;
 	case RK818_ID:
 		rk808->regmap_irq_chip = &rk818_irq_chip;
@@ -1192,6 +1248,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		suspend_reg_num = ARRAY_SIZE(rk818_suspend_reg);
 		resume_reg = rk818_resume_reg;
 		resume_reg_num = ARRAY_SIZE(rk818_resume_reg);
+		device_shutdown_fn = rk8xx_device_shutdown;
 		break;
 	case RK809_ID:
 	case RK817_ID:
@@ -1202,6 +1259,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 		nr_cells = ARRAY_SIZE(rk817s);
 		on_source = RK817_ON_SOURCE_REG;
 		off_source = RK817_OFF_SOURCE_REG;
+		rk808->pm_pwroff_prep_fn = rk817_shutdown_prepare;
 		of_property_prepare_fn = rk817_of_property_prepare;
 		pinctrl_init = rk817_pinctrl_init;
 		break;
@@ -1235,9 +1293,9 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 
 	for (i = 0; i < nr_pre_init_regs; i++) {
 		ret = regmap_update_bits(rk808->regmap,
-					pre_init_reg[i].addr,
-					pre_init_reg[i].mask,
-					pre_init_reg[i].value);
+					 pre_init_reg[i].addr,
+					 pre_init_reg[i].mask,
+					 pre_init_reg[i].value);
 		if (ret) {
 			dev_err(dev,
 				"0x%x write err\n",
@@ -1276,14 +1334,16 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to add MFD devices\n");
 
-	if (device_property_read_bool(dev, "rockchip,system-power-controller") ||
-	    device_property_read_bool(dev, "system-power-controller")) {
-		ret = devm_register_sys_off_handler(dev,
-				    SYS_OFF_MODE_POWER_OFF_PREPARE, SYS_OFF_PRIO_HIGH,
-				    &rk808_power_off, rk808);
-		if (ret)
-			return dev_err_probe(dev, ret,
-					     "failed to register poweroff handler\n");
+	pm_off = of_property_read_bool(np, "rockchip,system-power-controller");
+	if (pm_off) {
+		if (!pm_power_off_prepare)
+			pm_power_off_prepare = rk808->pm_pwroff_prep_fn;
+
+		if (device_shutdown_fn) {
+			register_syscore_ops(&rk808_syscore_ops);
+			/* power off system in the syscore shutdown ! */
+			pm_shutdown = device_shutdown_fn;
+		}
 
 		switch (rk808->variant) {
 		case RK809_ID:
@@ -1307,13 +1367,39 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 			dev_err(dev, "create rk8xx sysfs error\n");
 	}
 
+	if (!pm_power_off)
+		pm_power_off = rk808_pm_power_off_dummy;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rk8xx_probe);
 
+void rk8xx_remove(struct device *dev)
+{
+	mfd_remove_devices(dev);
+
+	/**
+	 * pm_power_off may points to a function from another module.
+	 * Check if the pointer is set by us and only then overwrite it.
+	 */
+	if (pm_power_off == rk808_pm_power_off_dummy)
+		pm_power_off = NULL;
+
+	/**
+	 * As above, check if the pointer is set by us before overwrite.
+	 */
+	if (rk808->pm_pwroff_prep_fn &&
+	    pm_power_off_prepare == rk808->pm_pwroff_prep_fn)
+		pm_power_off_prepare = NULL;
+
+	if (pm_shutdown)
+		unregister_syscore_ops(&rk808_syscore_ops);
+}
+EXPORT_SYMBOL_GPL(rk8xx_remove);
+
 int rk8xx_suspend(struct device *dev)
 {
-	struct rk808 *rk808 = dev_get_drvdata(dev);
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
 	int i, ret = 0;
 	int value;
 
@@ -1377,9 +1463,9 @@ EXPORT_SYMBOL_GPL(rk8xx_suspend);
 
 int rk8xx_resume(struct device *dev)
 {
-	struct rk808 *rk808 = dev_get_drvdata(dev);
-	int value;
+	struct rk808 *rk808 = dev_get_drvdata(rk8xx_dev);
 	int i, ret = 0;
+	int value;
 
 	for (i = 0; i < resume_reg_num; i++) {
 		ret = regmap_update_bits(rk808->regmap,
