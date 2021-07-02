@@ -9,6 +9,7 @@
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 #include <linux/math64.h>
+#include <linux/media-bus-format.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -19,7 +20,7 @@
 #include <linux/regmap.h>
 
 #include <video/mipi_display.h>
-
+#include <uapi/linux/videodev2.h>
 #include <drm/bridge/dw_mipi_dsi.h>
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_of.h>
@@ -146,6 +147,7 @@
 
 #define DW_MIPI_NEEDS_PHY_CFG_CLK	BIT(0)
 #define DW_MIPI_NEEDS_GRF_CLK		BIT(1)
+#define DW_MIPI_NEEDS_HCLK		BIT(2)
 
 #define PX30_GRF_PD_VO_CON1		0x0438
 #define PX30_DSI_FORCETXSTOPMODE	(0xf << 7)
@@ -264,12 +266,14 @@ struct dw_mipi_dsi_rockchip {
 	struct device *dev;
 	struct rockchip_encoder encoder;
 	void __iomem *base;
+	int id;
 
 	struct regmap *grf_regmap;
 	struct clk *pclk;
 	struct clk *pllref_clk;
 	struct clk *grf_clk;
 	struct clk *phy_cfg_clk;
+	struct clk *hclk;
 
 	/* dual-channel */
 	bool is_slave;
@@ -760,6 +764,8 @@ dw_mipi_dsi_encoder_atomic_check(struct drm_encoder *encoder,
 {
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
 	struct dw_mipi_dsi_rockchip *dsi = to_dsi(encoder);
+	struct drm_connector *connector = conn_state->connector;
+	struct drm_display_info *info = &connector->display_info;
 
 	switch (dsi->format) {
 	case MIPI_DSI_FMT_RGB888:
@@ -776,9 +782,18 @@ dw_mipi_dsi_encoder_atomic_check(struct drm_encoder *encoder,
 		return -EINVAL;
 	}
 
+	if (info->num_bus_formats)
+		s->bus_format = info->bus_formats[0];
+	else
+		s->bus_format = MEDIA_BUS_FMT_RGB888_1X24;
+
 	s->output_type = DRM_MODE_CONNECTOR_DSI;
-	if (dsi->slave)
-		s->output_flags = ROCKCHIP_OUTPUT_DSI_DUAL;
+	s->color_space = V4L2_COLORSPACE_DEFAULT;
+	s->output_if = dsi->id ? VOP_OUTPUT_IF_MIPI1 : VOP_OUTPUT_IF_MIPI0;
+	if (dsi->slave) {
+		s->output_flags |= ROCKCHIP_OUTPUT_DUAL_CHANNEL_LEFT_RIGHT_MODE;
+		s->output_if |= VOP_OUTPUT_IF_MIPI1;
+	}
 
 	return 0;
 }
@@ -1313,6 +1328,7 @@ static int dw_mipi_dsi_rockchip_probe(struct platform_device *pdev)
 	while (cdata[i].reg) {
 		if (cdata[i].reg == res->start) {
 			dsi->cdata = &cdata[i];
+			dsi->id = i;
 			break;
 		}
 
@@ -1375,6 +1391,15 @@ static int dw_mipi_dsi_rockchip_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (dsi->cdata->flags & DW_MIPI_NEEDS_HCLK) {
+		dsi->hclk = devm_clk_get(dev, "hclk");
+		if (IS_ERR(dsi->hclk)) {
+			ret = PTR_ERR(dsi->hclk);
+			DRM_DEV_ERROR(dev, "Unable to get hclk: %d\n", ret);
+			return ret;
+		}
+	}
+
 	dsi->grf_regmap = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
 	if (IS_ERR(dsi->grf_regmap)) {
 		DRM_DEV_ERROR(dev, "Unable to get rockchip,grf\n");
@@ -1427,6 +1452,27 @@ static void dw_mipi_dsi_rockchip_remove(struct platform_device *pdev)
 
 	dw_mipi_dsi_remove(dsi->dmd);
 }
+
+static __maybe_unused int dw_mipi_dsi_runtime_suspend(struct device *dev)
+{
+	struct dw_mipi_dsi_rockchip *dsi = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(dsi->hclk);
+
+	return 0;
+}
+
+static __maybe_unused int dw_mipi_dsi_runtime_resume(struct device *dev)
+{
+	struct dw_mipi_dsi_rockchip *dsi = dev_get_drvdata(dev);
+
+	return clk_prepare_enable(dsi->hclk);
+}
+
+static const struct dev_pm_ops dw_mipi_dsi_rockchip_pm_ops = {
+	SET_RUNTIME_PM_OPS(dw_mipi_dsi_runtime_suspend,
+			   dw_mipi_dsi_runtime_resume, NULL)
+};
 
 static const struct rockchip_dw_dsi_chip_data px30_chip_data[] = {
 	{
@@ -1600,20 +1646,24 @@ static const struct rockchip_dw_dsi_chip_data rk3399_chip_data[] = {
 static const struct rockchip_dw_dsi_chip_data rk3568_chip_data[] = {
 	{
 		.reg = 0xfe060000,
+
 		.lanecfg1_grf_reg = RK3568_GRF_VO_CON2,
-		.lanecfg1 = HIWORD_UPDATE(0, RK3568_DSI0_SKEWCALHS |
-					  RK3568_DSI0_FORCETXSTOPMODE |
-					  RK3568_DSI0_TURNDISABLE |
-					  RK3568_DSI0_FORCERXMODE),
+		.lanecfg1 = HIWORD_UPDATE(0, RK3568_DSI0_TURNDISABLE |
+					     RK3568_DSI0_FORCERXMODE |
+					     RK3568_DSI0_FORCETXSTOPMODE),
+
+		.flags = DW_MIPI_NEEDS_HCLK,
 		.max_data_lanes = 4,
 	},
 	{
 		.reg = 0xfe070000,
+
 		.lanecfg1_grf_reg = RK3568_GRF_VO_CON3,
-		.lanecfg1 = HIWORD_UPDATE(0, RK3568_DSI1_SKEWCALHS |
-					  RK3568_DSI1_FORCETXSTOPMODE |
-					  RK3568_DSI1_TURNDISABLE |
-					  RK3568_DSI1_FORCERXMODE),
+		.lanecfg1 = HIWORD_UPDATE(0, RK3568_DSI1_TURNDISABLE |
+					     RK3568_DSI1_FORCERXMODE |
+					     RK3568_DSI1_FORCETXSTOPMODE),
+
+		.flags = DW_MIPI_NEEDS_HCLK,
 		.max_data_lanes = 4,
 	},
 	{ /* sentinel */ }
@@ -1660,6 +1710,7 @@ struct platform_driver dw_mipi_dsi_rockchip_driver = {
 	.remove_new	= dw_mipi_dsi_rockchip_remove,
 	.driver		= {
 		.of_match_table = dw_mipi_dsi_rockchip_dt_ids,
+		.pm = &dw_mipi_dsi_rockchip_pm_ops,
 		.name	= "dw-mipi-dsi-rockchip",
 		/*
 		 * For dual-DSI display, one DSI pokes at the other DSI's
