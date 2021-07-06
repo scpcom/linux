@@ -6,6 +6,7 @@ snd-soc-rockchip-pdm-y := rockchip_pdm.o
 snd-soc-rockchip-spdif-y := rockchip_spdif.o
 
 obj-$(CONFIG_SND_SOC_ROCKCHIP_I2S) += snd-soc-rockchip-i2s.o
+obj-$(CONFIG_SND_SOC_ROCKCHIP_PCM) += snd-soc-rockchip-pcm.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_PDM) += snd-soc-rockchip-pdm.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_SPDIF) += snd-soc-rockchip-spdif.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_I2S_TDM) += snd-soc-rockchip-i2s-tdm.o
