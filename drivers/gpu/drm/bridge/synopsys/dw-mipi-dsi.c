@@ -319,15 +319,10 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 	struct dw_mipi_dsi *dsi = host_to_dsi(host);
 	const struct dw_mipi_dsi_plat_data *pdata = dsi->plat_data;
 	struct drm_bridge *bridge;
+	int max_data_lanes = dsi->plat_data->max_data_lanes;
 	int ret;
 
-	if (device->lanes > dsi->plat_data->max_data_lanes) {
-		dev_err(dsi->dev, "the number of data lanes(%u) is too many\n",
-			device->lanes);
-		return -EINVAL;
-	}
-
-	dsi->lanes = device->lanes;
+	dsi->lanes = (device->lanes > max_data_lanes) ? device->lanes / 2 : device->lanes;
 	dsi->channel = device->channel;
 	dsi->format = device->format;
 	dsi->mode_flags = device->mode_flags;
