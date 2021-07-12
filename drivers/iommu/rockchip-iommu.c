@@ -18,6 +18,7 @@
 #include <linux/iopoll.h>
 #include <linux/list.h>
 #include <linux/mm.h>
+#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
@@ -1586,4 +1587,13 @@ static struct platform_driver rk_iommu_driver = {
 		   .suppress_bind_attrs = true,
 	},
 };
+#ifdef MODULE
+module_platform_driver(rk_iommu_driver);
+#else
 builtin_platform_driver(rk_iommu_driver);
+#endif
+
+MODULE_DESCRIPTION("IOMMU API for Rockchip");
+MODULE_AUTHOR("Simon Xue <xxm@rock-chips.com> and Daniel Kurtz <djkurtz@chromium.org>");
+MODULE_ALIAS("platform:rockchip-iommu");
+MODULE_LICENSE("GPL v2");
