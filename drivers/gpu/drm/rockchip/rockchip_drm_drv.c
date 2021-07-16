@@ -141,6 +141,24 @@ struct rockchip_drm_sub_dev *rockchip_drm_get_sub_dev(struct device_node *node)
 }
 EXPORT_SYMBOL(rockchip_drm_get_sub_dev);
 
+int rockchip_drm_get_sub_dev_type(void)
+{
+	int connector_type = DRM_MODE_CONNECTOR_Unknown;
+	struct rockchip_drm_sub_dev *sub_dev = NULL;
+
+	mutex_lock(&rockchip_drm_sub_dev_lock);
+	list_for_each_entry(sub_dev, &rockchip_drm_sub_dev_list, list) {
+		if (sub_dev->connector->encoder) {
+			connector_type = sub_dev->connector->connector_type;
+			break;
+		}
+	}
+	mutex_unlock(&rockchip_drm_sub_dev_lock);
+
+	return connector_type;
+}
+EXPORT_SYMBOL(rockchip_drm_get_sub_dev_type);
+
 /*
  * Attach a (component) device to the shared drm dma mapping from master drm
  * device.  This is used by the VOPs to map GEM buffers to a common DMA
