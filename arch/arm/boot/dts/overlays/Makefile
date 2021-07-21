@@ -9,6 +9,7 @@ dtbo-y += \
 	hktft35.dtbo		\
 	ads7846.dtbo		\
 	sx865x-i2c1.dtbo	\
+	onewire.dtbo		\
 	hktft-cs-ogst.dtbo
 
 targets += $(dtbo-y)
