@@ -281,6 +281,13 @@ dw_hdmi_rockchip_mode_valid(struct dw_hdmi *dw_hdmi, void *data,
 		if (abs(rpclk - pclk) > pclk / 1000)
 			return MODE_NOCLOCK;
 	}
+	/*
+	 * Pixel clocks we support are always < 2GHz and so fit in an
+	 * int.  We should make sure source rate does too so we don't get
+	 * overflow when we multiply by 1000.
+	 */
+	if (mode->clock > INT_MAX / 1000)
+		return MODE_BAD;
 
 	for (i = 0; mpll_cfg[i].mpixelclock != (~0UL); i++) {
 		if (pclk == mpll_cfg[i].mpixelclock)
