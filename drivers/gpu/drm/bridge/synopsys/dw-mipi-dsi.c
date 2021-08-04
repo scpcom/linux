@@ -247,6 +247,7 @@ struct dw_mipi_dsi {
 	struct device *dev;
 	void __iomem *base;
 
+	struct reset_control *apb_rst;
 	struct clk *pclk;
 
 	unsigned int lane_mbps; /* per lane */
@@ -980,6 +981,12 @@ static void dw_mipi_dsi_mode_set(struct dw_mipi_dsi *dsi,
 
 	clk_prepare_enable(dsi->pclk);
 
+	if (dsi->apb_rst) {
+		reset_control_assert(dsi->apb_rst);
+		usleep_range(10, 20);
+		reset_control_deassert(dsi->apb_rst);
+	}
+
 	ret = phy_ops->get_lane_mbps(priv_data, adjusted_mode, dsi->mode_flags,
 				     lanes, dsi->format, &dsi->lane_mbps);
 	if (ret)
@@ -1014,6 +1021,9 @@ static void dw_mipi_dsi_mode_set(struct dw_mipi_dsi *dsi,
 
 	if (phy_ops->power_on)
 		phy_ops->power_on(dsi->plat_data->priv_data);
+
+	DRM_DEV_INFO(dsi->dev, "final DSI-Link bandwidth: %u x %d Mbps\n",
+		     dsi->lane_mbps, dsi->slave ? dsi->lanes * 2 : dsi->lanes);
 }
 
 static void dw_mipi_dsi_bridge_atomic_pre_enable(struct drm_bridge *bridge,
@@ -1184,7 +1194,6 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 		    const struct dw_mipi_dsi_plat_data *plat_data)
 {
 	struct device *dev = &pdev->dev;
-	struct reset_control *apb_rst;
 	struct dw_mipi_dsi *dsi;
 	int ret;
 
@@ -1221,28 +1230,14 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 	 * Note that the reset was not defined in the initial device tree, so
 	 * we have to be prepared for it not being found.
 	 */
-	apb_rst = devm_reset_control_get_optional_exclusive(dev, "apb");
-	if (IS_ERR(apb_rst)) {
-		ret = PTR_ERR(apb_rst);
+	dsi->apb_rst = devm_reset_control_get_optional_exclusive(dev, "apb");
+	if (IS_ERR(dsi->apb_rst)) {
+		ret = PTR_ERR(dsi->apb_rst);
 
 		if (ret != -EPROBE_DEFER)
 			dev_err(dev, "Unable to get reset control: %d\n", ret);
 
 		return ERR_PTR(ret);
-	}
-
-	if (apb_rst) {
-		ret = clk_prepare_enable(dsi->pclk);
-		if (ret) {
-			dev_err(dev, "%s: Failed to enable pclk\n", __func__);
-			return ERR_PTR(ret);
-		}
-
-		reset_control_assert(apb_rst);
-		usleep_range(10, 20);
-		reset_control_deassert(apb_rst);
-
-		clk_disable_unprepare(dsi->pclk);
 	}
 
 	dw_mipi_dsi_debugfs_init(dsi);
@@ -1292,6 +1287,15 @@ struct drm_bridge *dw_mipi_dsi_get_bridge(struct dw_mipi_dsi *dsi)
 	return &dsi->bridge;
 }
 EXPORT_SYMBOL_GPL(dw_mipi_dsi_get_bridge);
+
+void dw_mipi_dsi_loader_protect(struct dw_mipi_dsi *dsi, bool on)
+{
+	if (on)
+		clk_prepare_enable(dsi->pclk);
+	else
+		clk_disable_unprepare(dsi->pclk);
+}
+EXPORT_SYMBOL_GPL(dw_mipi_dsi_loader_protect);
 
 /*
  * Probe/remove API, used from platforms based on the DRM bridge API.
