@@ -43,6 +43,8 @@
 #include <drm/drm_panel.h>
 #include <drm/drm_of.h>
 
+#include "panel-simple.h"
+
 struct panel_cmd_header {
 	u8 data_type;
 	u8 delay;
@@ -171,6 +173,7 @@ struct panel_desc {
 struct panel_simple {
 	struct drm_panel base;
 	struct mipi_dsi_device *dsi;
+	bool power_invert;
 
 	ktime_t unprepared_time;
 
@@ -424,6 +427,57 @@ static void panel_simple_wait(ktime_t start_ktime, unsigned int min_ms)
 		msleep(ktime_to_ms(ktime_sub(min_ktime, now_ktime)) + 1);
 }
 
+static int panel_simple_regulator_enable(struct panel_simple *p)
+{
+	int err;
+
+	if (p->power_invert) {
+		if (regulator_is_enabled(p->supply) > 0)
+			regulator_disable(p->supply);
+	} else {
+		err = regulator_enable(p->supply);
+		if (err < 0)
+			return err;
+	}
+
+	return 0;
+}
+
+static int panel_simple_regulator_disable(struct panel_simple *p)
+{
+	int err;
+
+	if (p->power_invert) {
+		if (!regulator_is_enabled(p->supply)) {
+			err = regulator_enable(p->supply);
+			if (err < 0)
+				return err;
+		}
+	} else {
+		regulator_disable(p->supply);
+	}
+
+	return 0;
+}
+
+int panel_simple_loader_protect(struct drm_panel *panel)
+{
+	struct panel_simple *p = to_panel_simple(panel);
+	int err;
+
+	err = panel_simple_regulator_enable(p);
+	if (err < 0) {
+		dev_err(panel->dev, "failed to enable supply: %d\n", err);
+		return err;
+	}
+
+	p->prepared = true;
+	p->enabled = true;
+
+	return 0;
+}
+EXPORT_SYMBOL(panel_simple_loader_protect);
+
 static int panel_simple_disable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
@@ -444,7 +498,7 @@ static int panel_simple_suspend(struct device *dev)
 
 	gpiod_set_value_cansleep(p->reset_gpio, 1);
 	gpiod_set_value_cansleep(p->enable_gpio, 0);
-	regulator_disable(p->supply);
+	panel_simple_regulator_disable(p);
 	p->unprepared_time = ktime_get_boottime();
 
 	drm_edid_free(p->drm_edid);
@@ -472,7 +526,7 @@ static int panel_simple_resume(struct device *dev)
 
 	panel_simple_wait(p->unprepared_time, p->desc->delay.unprepare);
 
-	err = regulator_enable(p->supply);
+	err = panel_simple_regulator_enable(p);
 	if (err < 0) {
 		dev_err(dev, "failed to enable supply: %d\n", err);
 		return err;
@@ -771,6 +825,8 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, err);
 		return err;
 	}
+
+	panel->power_invert = of_property_read_bool(dev->of_node, "power-invert");
 
 	ddc = of_parse_phandle(dev->of_node, "ddc-i2c-bus", 0);
 	if (ddc) {
