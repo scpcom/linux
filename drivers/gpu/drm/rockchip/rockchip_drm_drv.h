@@ -17,6 +17,8 @@
 #include <linux/i2c.h>
 #include <linux/module.h>
 
+#include "../panel/panel-simple.h"
+
 #define ROCKCHIP_MAX_FB_BUFFER	3
 #define ROCKCHIP_MAX_CONNECTOR	2
 #define ROCKCHIP_MAX_CRTC	4
@@ -52,6 +54,7 @@ struct rockchip_drm_sub_dev {
 	struct list_head list;
 	struct drm_connector *connector;
 	struct device_node *of_node;
+	void (*loader_protect)(struct drm_encoder *encoder, bool on);
 };
 
 #define VOP_OUTPUT_IF_RGB	BIT(0)
@@ -184,6 +187,7 @@ struct rockchip_crtc_funcs {
  * @mm_lock: protect drm_mm on multi-threads.
  */
 struct rockchip_drm_private {
+	struct rockchip_logo *logo;
 	struct iommu_domain *domain;
 	struct device *iommu_dev;
 	struct gen_pool *secure_buffer_pool;
@@ -203,6 +207,12 @@ struct rockchip_drm_private {
 	const struct rockchip_crtc_funcs *crtc_funcs[ROCKCHIP_MAX_CRTC];
 
 	struct rockchip_drm_vcnt vcnt[ROCKCHIP_MAX_CRTC];
+	/**
+	 * @loader_protect
+	 * ignore restore_fbdev_mode_atomic when in logo on state
+	 */
+	bool loader_protect;
+
 	dma_addr_t cubic_lut_dma_addr;
 	void *cubic_lut_kvaddr;
 	struct loader_cubic_lut cubic_lut[ROCKCHIP_MAX_CRTC];

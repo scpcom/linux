@@ -40,6 +40,7 @@
 #include "rockchip_drm_drv.h"
 #include "rockchip_drm_fb.h"
 #include "rockchip_drm_gem.h"
+#include "rockchip_drm_logo.h"
 
 #include "../drm_crtc_internal.h"
 
@@ -50,29 +51,6 @@
 #define DRIVER_MINOR	0
 
 static const struct drm_driver rockchip_drm_driver;
-
-struct rockchip_drm_mode_set {
-	struct list_head head;
-	struct drm_framebuffer *fb;
-	struct drm_connector *connector;
-	struct drm_crtc *crtc;
-	struct drm_display_mode *mode;
-	int hdisplay;
-	int vdisplay;
-	int vrefresh;
-	int flags;
-	int picture_aspect_ratio;
-	int crtc_hsync_end;
-	int crtc_vsync_end;
-
-	int left_margin;
-	int right_margin;
-	int top_margin;
-	int bottom_margin;
-
-	bool mode_changed;
-	int ratio;
-};
 
 /**
  * rockchip_drm_of_find_possible_crtcs - find the possible CRTCs for an active
@@ -662,6 +640,8 @@ static int rockchip_drm_bind(struct device *dev)
 	ret = of_reserved_mem_device_init(drm_dev->dev);
 	if (ret)
 		DRM_DEBUG_KMS("No reserved memory region assign to drm\n");
+
+	rockchip_drm_show_logo(drm_dev);
 
 	drm_dev->mode_config.allow_fb_modifiers = true;
 
