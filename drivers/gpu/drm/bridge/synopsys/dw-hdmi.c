@@ -306,6 +306,7 @@ struct dw_hdmi {
 
 	struct mutex cec_notifier_mutex;
 	struct cec_notifier *cec_notifier;
+	struct cec_adapter *cec_adap;
 
 	hdmi_codec_plugged_cb plugged_cb;
 	struct device *codec_dev;
@@ -383,7 +384,13 @@ static void repo_hpd_event(struct work_struct *p_work)
 	mutex_unlock(&hdmi->mutex);
 
 	if (hdmi->bridge.dev) {
-		drm_helper_hpd_irq_event(hdmi->bridge.dev);
+		bool change;
+
+		change = drm_helper_hpd_irq_event(hdmi->bridge.dev);
+		if (change && hdmi->cec_adap->devnode.registered)
+			cec_queue_pin_hpd_event(hdmi->cec_adap,
+						hdmi->hpd_state,
+						ktime_get());
 		drm_bridge_hpd_notify(&hdmi->bridge, status);
 	}
 
@@ -3566,6 +3573,12 @@ static const struct drm_bridge_funcs dw_hdmi_bridge_funcs = {
 	.detect = dw_hdmi_bridge_detect,
 	.edid_read = dw_hdmi_bridge_edid_read,
 };
+
+void dw_hdmi_set_cec_adap(struct dw_hdmi *hdmi, struct cec_adapter *adap)
+{
+	hdmi->cec_adap = adap;
+}
+EXPORT_SYMBOL_GPL(dw_hdmi_set_cec_adap);
 
 /* -----------------------------------------------------------------------------
  * IRQ Handling
