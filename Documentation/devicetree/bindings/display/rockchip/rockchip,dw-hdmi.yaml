@@ -78,6 +78,10 @@ properties:
   phy-names:
     const: hdmi
 
+  skip-check-420-mode:
+    description:
+      If need skip check yuv420 mode valid, set this property.
+
   hdcp1x-enable:
     description:
       enable hdcp1.x, enable if defined, disable if not defined
