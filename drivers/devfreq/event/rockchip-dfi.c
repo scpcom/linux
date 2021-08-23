@@ -950,7 +950,7 @@ static int rockchip_ddr_perf_init(struct rockchip_dfi *dfi)
 }
 #endif
 
-static int rk3399_dfi_init(struct rockchip_dfi *dfi)
+static __maybe_unused int rk3399_dfi_init(struct rockchip_dfi *dfi)
 {
 	struct regmap *regmap_pmu = dfi->regmap_pmu;
 	u32 val;
@@ -1042,9 +1042,9 @@ static int rk3588_dfi_init(struct rockchip_dfi *dfi)
 	return 0;
 };
 
-static __init int px30_dfi_init(struct platform_device *pdev,
-				  struct rockchip_dfi *data,
-				  struct devfreq_event_desc *desc)
+static __maybe_unused __init int px30_dfi_init(struct platform_device *pdev,
+					       struct rockchip_dfi *data,
+					       struct devfreq_event_desc *desc)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
 	struct resource *res;
@@ -1076,9 +1076,9 @@ static __init int px30_dfi_init(struct platform_device *pdev,
 	return 0;
 }
 
-static __init int rk3128_dfi_init(struct platform_device *pdev,
-				  struct rockchip_dfi *data,
-				  struct devfreq_event_desc *desc)
+static __maybe_unused __init int rk3128_dfi_init(struct platform_device *pdev,
+						 struct rockchip_dfi *data,
+						 struct devfreq_event_desc *desc)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
 
@@ -1094,9 +1094,9 @@ static __init int rk3128_dfi_init(struct platform_device *pdev,
 	return 0;
 }
 
-static __init int rk3288_dfi_init(struct platform_device *pdev,
-				  struct rockchip_dfi *data,
-				  struct devfreq_event_desc *desc)
+static __maybe_unused __init int rk3288_dfi_init(struct platform_device *pdev,
+						 struct rockchip_dfi *data,
+						 struct devfreq_event_desc *desc)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
 	u32 val;
@@ -1131,9 +1131,9 @@ static __init int rk3288_dfi_init(struct platform_device *pdev,
 	return 0;
 }
 
-static __init int rk3368_dfi_init(struct platform_device *pdev,
-				  struct rockchip_dfi *data,
-				  struct devfreq_event_desc *desc)
+static __maybe_unused __init int rk3368_dfi_init(struct platform_device *pdev,
+						 struct rockchip_dfi *data,
+						 struct devfreq_event_desc *desc)
 {
 	struct device *dev = &pdev->dev;
 
@@ -1149,9 +1149,9 @@ static __init int rk3368_dfi_init(struct platform_device *pdev,
 	return 0;
 }
 
-static __init int rk3328_dfi_init(struct platform_device *pdev,
-				  struct rockchip_dfi *data,
-				  struct devfreq_event_desc *desc)
+static __maybe_unused __init int rk3328_dfi_init(struct platform_device *pdev,
+						 struct rockchip_dfi *data,
+						 struct devfreq_event_desc *desc)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
 	struct resource *res;
@@ -1180,12 +1180,24 @@ static __init int rk3328_dfi_init(struct platform_device *pdev,
 }
 
 static const struct of_device_id rockchip_dfi_id_match[] = {
+#ifdef CONFIG_CPU_PX30
 	{ .compatible = "rockchip,px30-dfi", .data = px30_dfi_init },
+#endif
+#ifdef CONFIG_CPU_RK312X
 	{ .compatible = "rockchip,rk3128-dfi", .data = rk3128_dfi_init },
+#endif
+#ifdef CONFIG_CPU_RK3288
 	{ .compatible = "rockchip,rk3288-dfi", .data = rk3288_dfi_init },
+#endif
+#ifdef CONFIG_CPU_RK3328
 	{ .compatible = "rockchip,rk3328-dfi", .data = rk3328_dfi_init },
+#endif
+#ifdef CONFIG_CPU_RK3368
 	{ .compatible = "rockchip,rk3368-dfi", .data = rk3368_dfi_init },
+#endif
+#ifdef CONFIG_CPU_RK3399
 	{ .compatible = "rockchip,rk3399-dfi", .data = rk3399_dfi_init },
+#endif
 	{ .compatible = "rockchip,rk3568-dfi", .data = rk3568_dfi_init },
 	{ .compatible = "rockchip,rk3588-dfi", .data = rk3588_dfi_init },
 	{ },
