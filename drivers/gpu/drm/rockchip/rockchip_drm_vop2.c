@@ -622,6 +622,8 @@ static const struct drm_bus_format_enum_list drm_bus_format_enum_list[] = {
 	{ MEDIA_BUS_FMT_UYYVYY8_0_5X24, "UYYVYY8_0_5X24" },
 	{ MEDIA_BUS_FMT_YUV10_1X30, "YUV10_1X30" },
 	{ MEDIA_BUS_FMT_UYYVYY10_0_5X30, "UYYVYY10_0_5X30" },
+	{ MEDIA_BUS_FMT_RGB888_3X8, "RGB888_3X8" },
+	{ MEDIA_BUS_FMT_RGB888_DUMMY_4X8, "RGB888_DUMMY_4X8" },
 	{ MEDIA_BUS_FMT_RGB888_1X24, "RGB888_1X24" },
 	{ MEDIA_BUS_FMT_RGB888_1X7X4_SPWG, "RGB888_1X7X4_SPWG" },
 	{ MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA, "RGB888_1X7X4_JEIDA" },
@@ -1169,10 +1171,16 @@ static enum vop2_data_format vop2_convert_format(uint32_t format)
 		return VOP2_FMT_RGB565;
 	case DRM_FORMAT_NV12:
 		return VOP2_FMT_YUV420SP;
+	case DRM_FORMAT_NV15:
+		return VOP2_FMT_YUV420SP_10;
 	case DRM_FORMAT_NV16:
 		return VOP2_FMT_YUV422SP;
+	case DRM_FORMAT_NV20:
+		return VOP2_FMT_YUV422SP_10;
 	case DRM_FORMAT_NV24:
 		return VOP2_FMT_YUV444SP;
+	case DRM_FORMAT_NV30:
+		return VOP2_FMT_YUV444SP_10;
 	case DRM_FORMAT_YUYV:
 	case DRM_FORMAT_YVYU:
 		return VOP2_FMT_VYUY422;
@@ -1201,8 +1209,12 @@ static enum vop2_afbc_format vop2_convert_afbc_format(uint32_t format)
 		return VOP2_AFBC_FMT_RGB565;
 	case DRM_FORMAT_NV12:
 		return VOP2_AFBC_FMT_YUV420;
+	case DRM_FORMAT_NV15:
+		return VOP2_AFBC_FMT_YUV420_10BIT;
 	case DRM_FORMAT_NV16:
 		return VOP2_AFBC_FMT_YUV422;
+	case DRM_FORMAT_NV20:
+		return VOP2_AFBC_FMT_YUV422_10BIT;
 
 		/* either of the below should not be reachable */
 	default:
@@ -1255,6 +1267,7 @@ static bool vop2_afbc_rb_swap(uint32_t format)
 {
 	switch (format) {
 	case DRM_FORMAT_NV24:
+	case DRM_FORMAT_NV30:
 		return true;
 	default:
 		return false;
@@ -1266,6 +1279,8 @@ static bool vop2_afbc_uv_swap(uint32_t format)
 	switch (format) {
 	case DRM_FORMAT_NV12:
 	case DRM_FORMAT_NV16:
+	case DRM_FORMAT_NV15:
+	case DRM_FORMAT_NV20:
 		return true;
 	default:
 		return false;
@@ -1278,6 +1293,9 @@ static bool vop2_win_uv_swap(uint32_t format)
 	case DRM_FORMAT_NV12:
 	case DRM_FORMAT_NV16:
 	case DRM_FORMAT_NV24:
+	case DRM_FORMAT_NV15:
+	case DRM_FORMAT_NV20:
+	case DRM_FORMAT_NV30:
 		return true;
 	default:
 		return false;
@@ -1325,8 +1343,11 @@ static bool is_yuv_support(uint32_t format)
 {
 	switch (format) {
 	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV15:
 	case DRM_FORMAT_NV16:
+	case DRM_FORMAT_NV20:
 	case DRM_FORMAT_NV24:
+	case DRM_FORMAT_NV30:
 	case DRM_FORMAT_YUYV:
 	case DRM_FORMAT_YVYU:
 	case DRM_FORMAT_UYVY:
@@ -4144,6 +4165,8 @@ static void vop2_dither_setup(struct drm_crtc *crtc)
 		VOP_MODULE_SET(vop2, vp, dither_down_en, 0);
 		VOP_MODULE_SET(vop2, vp, pre_dither_down_en, 0);
 		break;
+	case MEDIA_BUS_FMT_RGB888_3X8:
+	case MEDIA_BUS_FMT_RGB888_DUMMY_4X8:
 	case MEDIA_BUS_FMT_RGB888_1X24:
 	case MEDIA_BUS_FMT_RGB888_1X7X4_SPWG:
 	case MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA:
