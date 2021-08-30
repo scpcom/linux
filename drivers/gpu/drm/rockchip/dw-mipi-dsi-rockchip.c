@@ -426,7 +426,7 @@ static inline unsigned int ns2ui(struct dw_mipi_dsi_rockchip *dsi, int ns)
 static int dw_mipi_dsi_phy_init(void *priv_data)
 {
 	struct dw_mipi_dsi_rockchip *dsi = priv_data;
-	int ret, i, vco;
+	int i, vco;
 
 	if (dsi->phy)
 		return 0;
@@ -451,12 +451,6 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
 			      "failed to get parameter for %dmbps clock\n",
 			      dsi->lane_mbps);
 		return i;
-	}
-
-	ret = clk_prepare_enable(dsi->phy_cfg_clk);
-	if (ret) {
-		DRM_DEV_ERROR(dsi->dev, "Failed to enable phy_cfg_clk\n");
-		return ret;
 	}
 
 	dw_mipi_dsi_phy_write(dsi, PLL_BIAS_CUR_SEL_CAP_VCO_CONTROL,
@@ -534,9 +528,7 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
 	dw_mipi_dsi_phy_write(dsi, HS_TX_DATA_LANE_EXIT_STATE_TIME_CONTROL,
 			      BIT(5) | ns2bc(dsi, 100));
 
-	clk_disable_unprepare(dsi->phy_cfg_clk);
-
-	return ret;
+	return 0;
 }
 
 static void dw_mipi_dsi_phy_power_on(void *priv_data)
@@ -858,7 +850,7 @@ dw_mipi_dsi_encoder_atomic_check(struct drm_encoder *encoder,
 static void dw_mipi_dsi_encoder_enable(struct drm_encoder *encoder)
 {
 	struct dw_mipi_dsi_rockchip *dsi = to_dsi(encoder);
-	int ret, mux;
+	int mux;
 
 	mux = drm_of_encoder_active_endpoint_id(dsi->dev->of_node,
 						&dsi->encoder.encoder);
@@ -869,22 +861,9 @@ static void dw_mipi_dsi_encoder_enable(struct drm_encoder *encoder)
 	if (dsi->slave)
 		pm_runtime_get_sync(dsi->slave->dev);
 
-	/*
-	 * For the RK3399, the clk of grf must be enabled before writing grf
-	 * register. And for RK3288 or other soc, this grf_clk must be NULL,
-	 * the clk_prepare_enable return true directly.
-	 */
-	ret = clk_prepare_enable(dsi->grf_clk);
-	if (ret) {
-		DRM_DEV_ERROR(dsi->dev, "Failed to enable grf_clk: %d\n", ret);
-		return;
-	}
-
 	dw_mipi_dsi_rockchip_config(dsi, mux);
 	if (dsi->slave)
 		dw_mipi_dsi_rockchip_config(dsi->slave, mux);
-
-	clk_disable_unprepare(dsi->grf_clk);
 }
 
 static void dw_mipi_dsi_encoder_disable(struct drm_encoder *encoder)
@@ -898,19 +877,18 @@ static void dw_mipi_dsi_encoder_disable(struct drm_encoder *encoder)
 
 static void dw_mipi_dsi_rockchip_loader_protect(struct dw_mipi_dsi_rockchip *dsi, bool on)
 {
-
-	dw_mipi_dsi_loader_protect(dsi->dmd, on);
-
 	if (on) {
 		pm_runtime_get_sync(dsi->dev);
 		phy_init(dsi->phy);
-		dsi->phy->power_count++;
 		dsi->phy_enabled = true;
+		if (dsi->phy)
+			dsi->phy->power_count++;
 	} else {
 		pm_runtime_put(dsi->dev);
 		phy_exit(dsi->phy);
-		dsi->phy->power_count--;
 		dsi->phy_enabled = false;
+		if (dsi->phy)
+			dsi->phy->power_count--;
 	}
 
 	if (dsi->slave)
@@ -1508,7 +1486,10 @@ static __maybe_unused int dw_mipi_dsi_runtime_suspend(struct device *dev)
 {
 	struct dw_mipi_dsi_rockchip *dsi = dev_get_drvdata(dev);
 
+	clk_disable_unprepare(dsi->grf_clk);
+	clk_disable_unprepare(dsi->pclk);
 	clk_disable_unprepare(dsi->hclk);
+	clk_disable_unprepare(dsi->phy_cfg_clk);
 
 	return 0;
 }
@@ -1517,7 +1498,12 @@ static __maybe_unused int dw_mipi_dsi_runtime_resume(struct device *dev)
 {
 	struct dw_mipi_dsi_rockchip *dsi = dev_get_drvdata(dev);
 
-	return clk_prepare_enable(dsi->hclk);
+	clk_prepare_enable(dsi->phy_cfg_clk);
+	clk_prepare_enable(dsi->hclk);
+	clk_prepare_enable(dsi->pclk);
+	clk_prepare_enable(dsi->grf_clk);
+
+	return 0;
 }
 
 static const struct dev_pm_ops dw_mipi_dsi_rockchip_pm_ops = {
