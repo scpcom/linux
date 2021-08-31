@@ -248,7 +248,6 @@ struct dw_mipi_dsi {
 	void __iomem *base;
 
 	struct reset_control *apb_rst;
-	struct clk *pclk;
 
 	unsigned int lane_mbps; /* per lane */
 	u32 channel;
@@ -948,12 +947,10 @@ static void dw_mipi_dsi_bridge_post_atomic_disable(struct drm_bridge *bridge,
 
 	if (dsi->slave) {
 		dw_mipi_dsi_disable(dsi->slave);
-		clk_disable_unprepare(dsi->slave->pclk);
 		pm_runtime_put(dsi->slave->dev);
 	}
 	dw_mipi_dsi_disable(dsi);
 
-	clk_disable_unprepare(dsi->pclk);
 	pm_runtime_put(dsi->dev);
 }
 
@@ -978,8 +975,6 @@ static void dw_mipi_dsi_mode_set(struct dw_mipi_dsi *dsi,
 	void *priv_data = dsi->plat_data->priv_data;
 	int ret;
 	u32 lanes = dw_mipi_dsi_get_lanes(dsi);
-
-	clk_prepare_enable(dsi->pclk);
 
 	if (dsi->apb_rst) {
 		reset_control_assert(dsi->apb_rst);
@@ -1219,13 +1214,6 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 		dsi->base = plat_data->base;
 	}
 
-	dsi->pclk = devm_clk_get(dev, "pclk");
-	if (IS_ERR(dsi->pclk)) {
-		ret = PTR_ERR(dsi->pclk);
-		dev_err(dev, "Unable to get pclk: %d\n", ret);
-		return ERR_PTR(ret);
-	}
-
 	/*
 	 * Note that the reset was not defined in the initial device tree, so
 	 * we have to be prepared for it not being found.
@@ -1287,15 +1275,6 @@ struct drm_bridge *dw_mipi_dsi_get_bridge(struct dw_mipi_dsi *dsi)
 	return &dsi->bridge;
 }
 EXPORT_SYMBOL_GPL(dw_mipi_dsi_get_bridge);
-
-void dw_mipi_dsi_loader_protect(struct dw_mipi_dsi *dsi, bool on)
-{
-	if (on)
-		clk_prepare_enable(dsi->pclk);
-	else
-		clk_disable_unprepare(dsi->pclk);
-}
-EXPORT_SYMBOL_GPL(dw_mipi_dsi_loader_protect);
 
 /*
  * Probe/remove API, used from platforms based on the DRM bridge API.
