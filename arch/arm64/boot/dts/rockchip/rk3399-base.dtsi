@@ -1871,6 +1871,7 @@
 		clock-names = "aclk", "iface";
 		power-domains = <&power RK3399_PD_VOPL>;
 		#iommu-cells = <0>;
+		rockchip,disable-device-link-resume;
 		status = "disabled";
 	};
 
@@ -1927,6 +1928,7 @@
 		clock-names = "aclk", "iface";
 		power-domains = <&power RK3399_PD_VOPB>;
 		#iommu-cells = <0>;
+		rockchip,disable-device-link-resume;
 		status = "disabled";
 	};
 
