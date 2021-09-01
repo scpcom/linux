@@ -771,7 +771,7 @@ static u32 dw_mipi_dsi_get_hcomponent_lbcc(struct dw_mipi_dsi *dsi,
 					   const struct drm_display_mode *mode,
 					   u32 hcomponent)
 {
-	u32 frac, lbcc, minimum_lbcc;
+	u32 lbcc, minimum_lbcc;
 	int bpp;
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
@@ -788,17 +788,17 @@ static u32 dw_mipi_dsi_get_hcomponent_lbcc(struct dw_mipi_dsi *dsi,
 		lbcc = div_u64((u64)hcomponent * mode->clock * bpp, dsi->lanes * 8);
 	}
 
-	frac = lbcc % mode->clock;
-	lbcc = lbcc / mode->clock;
-	if (frac)
-		lbcc++;
+	if (mode->clock == 0) {
+		DRM_ERROR("dsi mode clock is 0!\n");
+		return 0;
+	}
 
 	minimum_lbcc = dw_mipi_dsi_get_minimum_lbcc(dsi);
 
 	if (lbcc < minimum_lbcc)
 		lbcc = minimum_lbcc;
 
-	return lbcc;
+	return DIV_ROUND_CLOSEST_ULL(lbcc, mode->clock);
 }
 
 static void dw_mipi_dsi_line_timer_config(struct dw_mipi_dsi *dsi,
