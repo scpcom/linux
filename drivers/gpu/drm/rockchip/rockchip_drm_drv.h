@@ -179,6 +179,11 @@ struct rockchip_crtc_funcs {
 	void (*crtc_send_mcu_cmd)(struct drm_crtc *crtc, u32 type, u32 value);
 };
 
+struct rockchip_dclk_pll {
+	struct clk *pll;
+	unsigned int use_count;
+};
+
 /*
  * Rockchip drm private structure.
  *
@@ -206,6 +211,8 @@ struct rockchip_drm_private {
 
 	const struct rockchip_crtc_funcs *crtc_funcs[ROCKCHIP_MAX_CRTC];
 
+	struct rockchip_dclk_pll default_pll;
+	struct rockchip_dclk_pll hdmi_pll;
 	struct rockchip_drm_vcnt vcnt[ROCKCHIP_MAX_CRTC];
 	/**
 	 * @loader_protect
