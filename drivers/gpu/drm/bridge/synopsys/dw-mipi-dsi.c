@@ -643,8 +643,14 @@ static void dw_mipi_dsi_set_mode(struct dw_mipi_dsi *dsi,
 
 static void dw_mipi_dsi_disable(struct dw_mipi_dsi *dsi)
 {
+	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
+
+	if (phy_ops->power_off)
+		phy_ops->power_off(dsi->plat_data->priv_data);
+
 	dsi_write(dsi, DSI_PWR_UP, RESET);
 	dsi_write(dsi, DSI_PHY_RSTZ, PHY_RSTZ);
+	pm_runtime_put(dsi->dev);
 }
 
 static void dw_mipi_dsi_init(struct dw_mipi_dsi *dsi)
@@ -932,7 +938,6 @@ static void dw_mipi_dsi_bridge_post_atomic_disable(struct drm_bridge *bridge,
 						   struct drm_bridge_state *old_bridge_state)
 {
 	struct dw_mipi_dsi *dsi = bridge_to_dsi(bridge);
-	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
 
 	/*
 	 * Switch to command mode before panel-bridge post_disable &
@@ -941,17 +946,13 @@ static void dw_mipi_dsi_bridge_post_atomic_disable(struct drm_bridge *bridge,
 	 * before by the drm framework.
 	 */
 	dw_mipi_dsi_set_mode(dsi, 0);
+	if (dsi->slave)
+		dw_mipi_dsi_set_mode(dsi->slave, 0);
 
-	if (phy_ops->power_off)
-		phy_ops->power_off(dsi->plat_data->priv_data);
-
-	if (dsi->slave) {
+	if (dsi->slave)
 		dw_mipi_dsi_disable(dsi->slave);
-		pm_runtime_put(dsi->slave->dev);
-	}
-	dw_mipi_dsi_disable(dsi);
 
-	pm_runtime_put(dsi->dev);
+	dw_mipi_dsi_disable(dsi);
 }
 
 static unsigned int dw_mipi_dsi_get_lanes(struct dw_mipi_dsi *dsi)
