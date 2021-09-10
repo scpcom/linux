@@ -173,8 +173,11 @@ static void rk3568_init(void)
 	rockchip_soc_id = ROCKCHIP_SOC_RK3568;
 }
 
-static int __init rockchip_soc_id_init(void)
+int __init rockchip_soc_id_init(void)
 {
+	if (rockchip_soc_id)
+		return 0;
+
 	if (cpu_is_rk3288()) {
 		rk3288_init();
 	} else if (cpu_is_rk312x()) {
