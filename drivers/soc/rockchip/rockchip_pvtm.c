@@ -646,6 +646,7 @@ static const struct rockchip_pvtm_data rv1126_pmupvtm = {
 };
 
 static const struct of_device_id rockchip_pvtm_match[] = {
+#ifdef CONFIG_CPU_PX30
 	{
 		.compatible = "rockchip,px30-pvtm",
 		.data = (void *)&px30_pvtm,
@@ -654,6 +655,8 @@ static const struct of_device_id rockchip_pvtm_match[] = {
 		.compatible = "rockchip,px30-pmu-pvtm",
 		.data = (void *)&px30_pmupvtm,
 	},
+#endif
+#ifdef CONFIG_CPU_RK1808
 	{
 		.compatible = "rockchip,rk1808-pvtm",
 		.data = (void *)&rk1808_pvtm,
@@ -666,10 +669,14 @@ static const struct of_device_id rockchip_pvtm_match[] = {
 		.compatible = "rockchip,rk1808-npu-pvtm",
 		.data = (void *)&rk1808_npupvtm,
 	},
+#endif
+#ifdef CONFIG_CPU_RK3288
 	{
 		.compatible = "rockchip,rk3288-pvtm",
 		.data = (void *)&rk3288_pvtm,
 	},
+#endif
+#ifdef CONFIG_CPU_RK3308
 	{
 		.compatible = "rockchip,rk3308-pvtm",
 		.data = (void *)&px30_pvtm,
@@ -678,6 +685,8 @@ static const struct of_device_id rockchip_pvtm_match[] = {
 		.compatible = "rockchip,rk3308-pmu-pvtm",
 		.data = (void *)&rk3308_pmupvtm,
 	},
+#endif
+#ifdef CONFIG_CPU_RK3399
 	{
 		.compatible = "rockchip,rk3399-pvtm",
 		.data = (void *)&rk3399_pvtm,
@@ -686,6 +695,8 @@ static const struct of_device_id rockchip_pvtm_match[] = {
 		.compatible = "rockchip,rk3399-pmu-pvtm",
 		.data = (void *)&rk3399_pmupvtm,
 	},
+#endif
+#ifdef CONFIG_CPU_RK3568
 	{
 		.compatible = "rockchip,rK3568-core-pvtm",
 		.data = (void *)&rk3568_corepvtm,
@@ -710,6 +721,7 @@ static const struct of_device_id rockchip_pvtm_match[] = {
 		.compatible = "rockchip,rv1126-pmu-pvtm",
 		.data = (void *)&rv1126_pmupvtm,
 	},
+#endif
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, rockchip_pvtm_match);
