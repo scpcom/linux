@@ -21,11 +21,13 @@ obj-$(CONFIG_SND_SOC_ROCKCHIP_SPDIFRX) += snd-soc-rockchip-spdifrx.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_VAD) += snd-soc-rockchip-vad.o
 
 snd-soc-rockchip-max98090-y := rockchip_max98090.o
+snd-soc-rockchip-multicodecs-y := rockchip_multicodecs.o
 snd-soc-rockchip-rt5645-y := rockchip_rt5645.o
 snd-soc-rk3288-hdmi-analog-y := rk3288_hdmi_analog.o
 snd-soc-rk3399-gru-sound-y := rk3399_gru_sound.o
 
 obj-$(CONFIG_SND_SOC_ROCKCHIP_MAX98090) += snd-soc-rockchip-max98090.o
+obj-$(CONFIG_SND_SOC_ROCKCHIP_MULTICODECS) += snd-soc-rockchip-multicodecs.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_RT5645) += snd-soc-rockchip-rt5645.o
 obj-$(CONFIG_SND_SOC_RK3288_HDMI_ANALOG) += snd-soc-rk3288-hdmi-analog.o
 obj-$(CONFIG_SND_SOC_RK3399_GRU_SOUND) += snd-soc-rk3399-gru-sound.o
