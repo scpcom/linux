@@ -54,3 +54,6 @@ obj-$(CONFIG_RC_ATI_REMOTE) += ati_remote.o
 obj-$(CONFIG_RC_LOOPBACK) += rc-loopback.o
 obj-$(CONFIG_RC_ST) += st_rc.o
 obj-$(CONFIG_RC_XBOX_DVD) += xbox_remote.o
+obj-$(CONFIG_IR_RX_SUNXI) += sunxi-ir-rx.o
+obj-$(CONFIG_IR_TX_SUNXI) += sunxi-ir-tx.o
+sunxi-ir-rx-objs := rc-sunxi-keymaps.o sunxi-ir-dev.o

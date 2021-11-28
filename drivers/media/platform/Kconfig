@@ -28,6 +28,35 @@ config DVB_PLATFORM_DRIVERS
 	help
 	  Say Y here to enable support for platform-specific Digital TV drivers.
 
+config VIDEO_SUNXI_TVD
+	tristate "sunxi tvd driver"
+    depends on ARCH_SUNXI
+    select VIDEOBUF2_DMA_CONTIG
+	default n
+
+
+menuconfig SUNXI_PLATFORM_DRIVERS
+	bool "SUNXI platform devices"
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  Say Y here to enable support for platform-specific SUNXI drivers.
+
+if SUNXI_PLATFORM_DRIVERS
+
+config VIDEO_SUNXI_VIN
+	tristate "sunxi video input (camera csi/mipi isp vipp)driver"
+	default n
+
+if VIDEO_SUNXI_VIN
+source "drivers/media/platform/sunxi-vin/Kconfig"
+endif
+
+config SENSOR_POWER
+	tristate "sensor power in front of vin"
+	default n
+
+endif # SUNXI_VIN_PLATFORM_DRIVERS
+
 config V4L_MEM2MEM_DRIVERS
 	bool "Memory-to-memory multimedia devices"
 	depends on VIDEO_DEV

@@ -262,6 +262,8 @@ source "drivers/media/i2c/Kconfig"
 source "drivers/media/spi/Kconfig"
 source "drivers/media/tuners/Kconfig"
 source "drivers/media/dvb-frontends/Kconfig"
+source "drivers/media/cedar-ve/Kconfig"
+source "drivers/media/google-ve/Kconfig"
 
 endmenu
 

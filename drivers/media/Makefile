@@ -31,4 +31,5 @@ obj-$(CONFIG_CEC_CORE) += cec/
 
 obj-y += common/ platform/ pci/ usb/ mmc/ firewire/ spi/ test-drivers/
 obj-$(CONFIG_VIDEO_DEV) += radio/
-
+obj-$(CONFIG_VIDEO_ENCODER_DECODER_SUNXI) += cedar-ve/
+obj-$(CONFIG_VIDEO_GOOGLE_DECODER_SUNXI) += google-ve/
