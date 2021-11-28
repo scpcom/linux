@@ -431,6 +431,8 @@ config EXYNOS_GPIOMEM
 	  page to the user's pointer. This drvier can allow to access gpio
 	  memory area in user account.
 
+source "drivers/char/sunxi_g2d/Kconfig"
+source "drivers/char/sunxi-di/Kconfig"
 source "drivers/char/sunxi-sysinfo/Kconfig"
 
 endmenu
