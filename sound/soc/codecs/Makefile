@@ -405,6 +405,9 @@ snd-soc-tas2764-y := tas2764.o
 snd-soc-tas2780-y := tas2780.o
 # Mux
 snd-soc-simple-mux-y := simple-mux.o
+# Sunxi
+snd-soc-ac107-objs := ac107.o
+snd-soc-ac108-objs := ac108.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
@@ -822,3 +825,7 @@ obj-$(CONFIG_SND_SOC_LPASS_TX_MACRO)	+= snd-soc-lpass-tx-macro.o
 
 # Mux
 obj-$(CONFIG_SND_SOC_SIMPLE_MUX)	+= snd-soc-simple-mux.o
+
+# Sunxi
+obj-$(CONFIG_SND_SOC_AC107)	+= snd-soc-ac107.o
+obj-$(CONFIG_SND_SOC_AC108)	+= snd-soc-ac108.o
