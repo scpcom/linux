@@ -78,7 +78,18 @@ static struct snd_soc_dai_ops sunxi_cpudai_dai_ops = {
 	.shutdown = sunxi_cpudai_shutdown,
 };
 
+static int sunxi_cpudai_probe(struct snd_soc_dai *dai)
+{
+	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_dai_get_drvdata(dai);
+
+	/* pcm_new will using the dma_param about the cma and fifo params. */
+	snd_soc_dai_init_dma_data(dai, &sunxi_cpudai->playback_dma_param,
+				&sunxi_cpudai->capture_dma_param);
+	return 0;
+}
+
 static struct snd_soc_dai_driver sunxi_cpudai_dai = {
+	.probe = sunxi_cpudai_probe,
 	.suspend = sunxi_cpudai_suspend,
 	.resume = sunxi_cpudai_resume,
 	.playback = {
