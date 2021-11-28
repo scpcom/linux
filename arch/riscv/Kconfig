@@ -368,6 +368,12 @@ config AS_HAS_OPTION_ARCH
 	def_bool y
 	depends on $(as-instr, .option arch$(comma) +m)
 
+config SUNXI_SOC_NAME
+	string "The name of Sunxi SoC"
+	default ""
+	help
+	  Used for /proc/cpuinfo and /sys/.../sysinfo.
+
 source "arch/riscv/Kconfig.socs"
 source "arch/riscv/Kconfig.errata"
 
@@ -761,6 +767,15 @@ config FPU
 	default y
 	help
 	  Say N here if you want to disable all floating-point related procedure
+	  in the kernel.
+
+	  If you don't know what to do here, say Y.
+
+config VECTOR
+	bool "VECTOR support"
+	default n
+	help
+	  Say N here if you want to disable all vector related procedure
 	  in the kernel.
 
 	  If you don't know what to do here, say Y.
