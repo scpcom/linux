@@ -20,7 +20,7 @@
 #endif
 #include <linux/version.h>
 
-#ifdef CONFIG_ION
+#ifdef CONFIG_DISP2_SUNXI_ION
 #define FB_RESERVED_MEM
 #endif
 
@@ -168,7 +168,7 @@ struct disp_drv_info {
 	bool b_lcd_enabled[DISP_SCREEN_NUM];
 	bool inited;		/* indicate driver if init */
 	struct disp_bsp_init_para para;
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	struct disp_ion_mgr ion_mgr;
 #endif
 };

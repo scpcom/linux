@@ -9,8 +9,10 @@
  */
 
 #include "dev_disp.h"
+#if defined(CONFIG_DISP2_SUNXI_ION)
 #include <linux/ion.h>
 #include <uapi/linux/ion.h>
+#endif
 #include <linux/pm_runtime.h>
 #if defined(CONFIG_DEVFREQ_DRAM_FREQ_WITH_SOFT_NOTIFY)
 #include <linux/sunxi_dramfreq.h>
@@ -26,11 +28,13 @@
 #define CONFIG_PM_RUNTIME
 #endif
 
+#if defined(CONFIG_DISP2_SUNXI_ION)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 struct dma_buf *ion_alloc(size_t len, unsigned int heap_id_mask, unsigned int flags);
 int ion_free(struct ion_buffer *buffer);
 void *ion_heap_map_kernel(struct ion_heap *heap, struct ion_buffer *buffer);
 void ion_heap_unmap_kernel(struct ion_heap *heap, struct ion_buffer *buffer);
+#endif
 #endif
 
 #define DISP_MEM_NUM 10
@@ -1509,7 +1513,7 @@ void disp_free(void *virt_addr, void *phys_addr, u32 num_bytes)
 				  (dma_addr_t)phys_addr);
 }
 
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 static int init_disp_ion_mgr(struct disp_ion_mgr *ion_mgr)
 {
 	if (ion_mgr == NULL) {
@@ -2463,7 +2467,7 @@ static s32 disp_exit(void)
 static int disp_mem_request(int sel, u32 size)
 {
 
-#if IS_ENABLED(CONFIG_ION)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION)
 	if (sel >= DISP_MEM_NUM || !size) {
 		__wrn("invalid param\n");
 		return -EINVAL;
@@ -2543,7 +2547,7 @@ static int disp_mem_request(int sel, u32 size)
 
 static int disp_mem_release(int sel)
 {
-#if IS_ENABLED(CONFIG_ION)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION)
 	if (!g_disp_mm[sel].info_base) {
 		__wrn("invalid param\n");
 		return -EINVAL;
@@ -3084,7 +3088,7 @@ static int disp_probe(struct platform_device *pdev)
 	if (ret)
 		goto out_dispose_mapping;
 
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	init_disp_ion_mgr(&g_disp_drv.ion_mgr);
 #endif
 
@@ -3135,7 +3139,7 @@ static int disp_remove(struct platform_device *pdev)
 #endif
 	disp_exit();
 
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	deinit_disp_ion_mgr(&g_disp_drv.ion_mgr);
 #endif
 

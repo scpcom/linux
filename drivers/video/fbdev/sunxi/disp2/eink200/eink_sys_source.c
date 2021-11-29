@@ -10,8 +10,10 @@
 
 #include "asm/cacheflush.h"
 #include <linux/sunxi-gpio.h>
+#if defined(CONFIG_DISP2_SUNXI_ION)
 #include <linux/ion.h>
 #include <uapi/linux/ion.h>
+#endif
 #include "include/eink_sys_source.h"
 #include "include/eink_driver.h"
 
@@ -342,7 +344,7 @@ int eink_sys_script_get_item(char *main_name, char *sub_name, int value[],
 }
 EXPORT_SYMBOL(eink_sys_script_get_item);
 
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 static int __eink_ion_alloc_coherent(struct eink_ion_mem *mem)
 {
 	unsigned int flags = ION_FLAG_CACHED;
@@ -606,7 +608,7 @@ void eink_mem_free(void *virt_addr, void *phys_addr, u32 num_bytes)
 
 void *eink_malloc(u32 num_bytes, void *phys_addr)
 {
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	return eink_ion_malloc(num_bytes, phys_addr); /* cache */
 #else
 	return eink_mem_malloc(num_bytes, phys_addr); /* skip cache */
@@ -616,7 +618,7 @@ EXPORT_SYMBOL(eink_malloc);
 
 void eink_free(void *virt_addr, void *phys_addr, u32 num_bytes)
 {
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	return eink_ion_free(virt_addr, phys_addr, num_bytes);
 #else
 	return eink_mem_free(virt_addr, phys_addr, num_bytes);
@@ -626,7 +628,7 @@ EXPORT_SYMBOL(eink_free);
 
 void eink_cache_sync(void *startAddr, int size)
 {
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	/*
 	 * fix if add or not
 	dma_sync_single_for_cpu(g_eink_drvdata.device,

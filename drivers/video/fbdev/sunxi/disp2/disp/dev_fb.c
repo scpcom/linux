@@ -98,7 +98,7 @@ s32 fb_draw_gray_pictures(char *base, u32 width, u32 height,
 
 static int fb_map_video_memory(struct fb_info *info)
 {
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	g_fbi.mem[info->node] =
 	    disp_ion_malloc(info->fix.smem_len, (u32 *)(&info->fix.smem_start));
 	if (g_fbi.mem[info->node])
@@ -137,7 +137,7 @@ static inline void fb_unmap_video_memory(struct fb_info *info)
 	__inf("%s: screen_base=0x%p, smem=0x%p, len=0x%x\n", __func__,
 	      (void *)info->screen_base,
 	      (void *)info->fix.smem_start, info->fix.smem_len);
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	disp_ion_free((void *__force)info->screen_base,
 		  (void *)info->fix.smem_start, info->fix.smem_len);
 #else
@@ -801,15 +801,15 @@ static int sunxi_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 	unsigned int off = vma->vm_pgoff << PAGE_SHIFT;
 
 	if (off < info->fix.smem_len) {
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 		return g_fbi.mem[info->node]->p_item->dmabuf->ops->mmap(
 		    g_fbi.mem[info->node]->p_item->dmabuf, vma);
 
-#else /* CONFIG_ION */
+#else /* CONFIG_DISP2_SUNXI_ION */
 		return dma_mmap_writecombine(g_fbi.dev, vma, info->screen_base,
 				info->fix.smem_start,
 				info->fix.smem_len);
-#endif /* CONFIG_ION */
+#endif /* CONFIG_DISP2_SUNXI_ION */
 	}
 
 	return -EINVAL;
@@ -906,7 +906,7 @@ struct fb_dmabuf_export {
 #define FBIO_GET_PHY_ADDR       0x4633
 #define FBIOGET_DMABUF         _IOR('F', 0x21, struct fb_dmabuf_export)
 
-#if !defined(CONFIG_ION)
+#if !defined(CONFIG_DISP2_SUNXI_ION)
 
 struct sunxi_dmabuf_info {
 	struct sg_table *s_sg_table;
@@ -1068,7 +1068,7 @@ static struct dma_buf_ops sunxi_dma_buf_ops = {
 static struct dma_buf *sunxi_share_dma_buf(struct fb_info *info)
 {
 	struct dma_buf *dmabuf = NULL;
-#if !defined(CONFIG_ION)
+#if !defined(CONFIG_DISP2_SUNXI_ION)
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 	struct sunxi_dmabuf_info *s_info;
 #else
@@ -1077,10 +1077,10 @@ static struct dma_buf *sunxi_share_dma_buf(struct fb_info *info)
 	if (info->fix.smem_start == 0 || info->fix.smem_len == 0)
 		return NULL;
 
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	handle = g_fbi.mem[info->node%SUNXI_FB_MAX]->handle;
 	dmabuf = ion_share_dma_buf(g_disp_drv.ion_mgr.client, handle);
-#else /* CONFIG_ION */
+#else /* CONFIG_DISP2_SUNXI_ION */
 	s_info = sunxi_info[info->node%SUNXI_FB_MAX];
 	if (s_info == NULL) {
 		s_info = kzalloc(sizeof(struct sunxi_dmabuf_info), GFP_KERNEL);
@@ -1116,9 +1116,9 @@ static struct dma_buf *sunxi_share_dma_buf(struct fb_info *info)
 		kref_put(&s_info->ref, sunxi_info_free);
 		return dmabuf;
 	}
-#endif /* CONFIG_ION */
+#endif /* CONFIG_DISP2_SUNXI_ION */
 	return dmabuf;
-#if !defined(CONFIG_ION)
+#if !defined(CONFIG_DISP2_SUNXI_ION)
 ret_err:
 	__wrn("%s, alloc mem err...\n", __func__);
 
@@ -1133,7 +1133,7 @@ static int sunxi_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	long ret = 0;
 	void __user *argp = (void __user *)arg;
 	unsigned long karg[4];
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	void *get_phy_addr = NULL;
 #endif
 	switch (cmd) {
@@ -1249,7 +1249,7 @@ static int sunxi_fb_ioctl(struct fb_info *info, unsigned int cmd,
 				2 * sizeof(unsigned long)))
 			return -EFAULT;
 		}
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	if (argp == NULL) {
 		ret = disp_get_ion_fd((struct disp_ion_mem *)g_fbi.mem[info->node]);
 	} else {
@@ -1264,7 +1264,7 @@ static int sunxi_fb_ioctl(struct fb_info *info, unsigned int cmd,
 				sizeof(dma_addr_t)))
 			return -EFAULT;
 		}
-#if defined(CONFIG_ION)
+#if defined(CONFIG_DISP2_SUNXI_ION)
 	if (argp == NULL) {
 		get_phy_addr = disp_get_phy_addr((struct disp_ion_mem *)g_fbi.mem[info->node]);
 		return get_phy_addr == NULL ? -1 : 0;

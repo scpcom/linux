@@ -357,7 +357,7 @@ static int eink_probe(struct platform_device *pdev)
 */
 	platform_set_drvdata(pdev, (void *)drvdata);
 
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	init_eink_ion_mgr(&g_eink_drvdata.ion_mgr);
 #endif
 
@@ -961,7 +961,7 @@ static void __init eink_module_exit(void)
 
 	eink_exit();
 
-#if IS_ENABLED(CONFIG_ION) && defined(EINK_CACHE_MEM)
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	deinit_eink_ion_mgr(&g_eink_drvdata.ion_mgr);
 #endif
 	platform_driver_unregister(&eink_driver);
