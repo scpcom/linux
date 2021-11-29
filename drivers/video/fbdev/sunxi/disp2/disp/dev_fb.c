@@ -894,11 +894,6 @@ static int sunxi_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	return 0;
 }
 
-struct fb_dmabuf_export {
-	int fd;
-	__u32 flags;
-};
-
 /*custom ioctl command here*/
 #define FBIO_CACHE_SYNC         0x4630
 #define FBIO_ENABLE_CACHE       0x4631
