@@ -639,34 +639,6 @@ struct cfg80211_chan_def {
 };
 
 /**
- * struct cfg80211_tid_cfg - TID specific configuration
- * @config_override: Flag to notify driver to reset TID configuration
- *	of the peer.
- * @tids: bitmap of TIDs to modify
- * @mask: bitmap of attributes indicating which parameter changed,
- *	similar to &nl80211_tid_config_supp.
- * @noack: noack configuration value for the TID
- */
-struct cfg80211_tid_cfg {
-	bool config_override;
-	u8 tids;
-	u32 mask;
-	enum nl80211_tid_config noack;
-};
-
-/**
- * struct cfg80211_tid_config - TID configuration
- * @peer: Station's MAC address
- * @n_tid_conf: Number of TID specific configurations to be applied
- * @tid_conf: Configuration change info
- */
-struct cfg80211_tid_config {
-	const u8 *peer;
-	u32 n_tid_conf;
-	struct cfg80211_tid_cfg tid_conf[];
-};
-
-/**
  * cfg80211_get_chandef_type - return old channel type from chandef
  * @chandef: the channel definition
  *
@@ -4047,10 +4019,6 @@ struct cfg80211_ops {
 				   struct cfg80211_update_owe_info *owe_info);
 	int	(*probe_mesh_link)(struct wiphy *wiphy, struct net_device *dev,
 				   const u8 *buf, size_t len);
-	int     (*set_tid_config)(struct wiphy *wiphy, struct net_device *dev,
-				  struct cfg80211_tid_config *tid_conf);
-	int	(*reset_tid_config)(struct wiphy *wiphy, struct net_device *dev,
-				    const u8 *peer, u8 tids);
 };
 
 /*
@@ -5174,52 +5142,19 @@ ieee80211_channel_to_khz(const struct ieee80211_channel *chan)
 }
 
 /**
- * ieee80211_channel_to_freq_khz - convert channel number to frequency
- * @chan: channel number
- * @band: band, necessary due to channel number overlap
- * Return: The corresponding frequency (in KHz), or 0 if the conversion failed.
- */
-u32 ieee80211_channel_to_freq_khz(int chan, enum nl80211_band band);
-
-/**
  * ieee80211_channel_to_frequency - convert channel number to frequency
  * @chan: channel number
  * @band: band, necessary due to channel number overlap
  * Return: The corresponding frequency (in MHz), or 0 if the conversion failed.
  */
-static inline int
-ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
-{
-	return KHZ_TO_MHZ(ieee80211_channel_to_freq_khz(chan, band));
-}
-
-/**
- * ieee80211_freq_khz_to_channel - convert frequency to channel number
- * @freq: center frequency in KHz
- * Return: The corresponding channel, or 0 if the conversion failed.
- */
-int ieee80211_freq_khz_to_channel(u32 freq);
+int ieee80211_channel_to_frequency(int chan, enum nl80211_band band);
 
 /**
  * ieee80211_frequency_to_channel - convert frequency to channel number
  * @freq: center frequency in MHz
  * Return: The corresponding channel, or 0 if the conversion failed.
  */
-static inline int
-ieee80211_frequency_to_channel(int freq)
-{
-	return ieee80211_freq_khz_to_channel(MHZ_TO_KHZ(freq));
-}
-
-/**
- * ieee80211_get_channel_khz - get channel struct from wiphy for specified
- * frequency
- * @wiphy: the struct wiphy to get the channel for
- * @freq: the center frequency (in KHz) of the channel
- * Return: The channel struct from @wiphy at @freq.
- */
-struct ieee80211_channel *
-ieee80211_get_channel_khz(struct wiphy *wiphy, u32 freq);
+int ieee80211_frequency_to_channel(int freq);
 
 /**
  * ieee80211_get_channel - get channel struct from wiphy for specified frequency
@@ -5228,11 +5163,7 @@ ieee80211_get_channel_khz(struct wiphy *wiphy, u32 freq);
  * @freq: the center frequency (in MHz) of the channel
  * Return: The channel struct from @wiphy at @freq.
  */
-static inline struct ieee80211_channel *
-ieee80211_get_channel(struct wiphy *wiphy, int freq)
-{
-	return ieee80211_get_channel_khz(wiphy, MHZ_TO_KHZ(freq));
-}
+struct ieee80211_channel *ieee80211_get_channel(struct wiphy *wiphy, int freq);
 
 /**
  * cfg80211_channel_is_psc - Check if the channel is a 6 GHz PSC
