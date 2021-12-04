@@ -2003,7 +2003,7 @@ ieee80211_rx_h_amsdu(struct ieee80211_rx_data *rx)
 	if (ieee80211_data_to_8023_exthdr(skb, &ethhdr,
 					  rx->sdata->vif.addr,
 					  rx->sdata->vif.type,
-					  0))
+					  0, false))
 		return RX_DROP_UNUSABLE;
 
 	ieee80211_amsdu_to_8023s(skb, &frame_list, dev->dev_addr,

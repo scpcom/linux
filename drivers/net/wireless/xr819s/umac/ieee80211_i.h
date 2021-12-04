@@ -14,6 +14,7 @@
 #include <generated/uapi/linux/version.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
+#include <linux/ieee80211_xr.h>
 #include <linux/if_ether.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
