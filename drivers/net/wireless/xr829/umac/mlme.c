@@ -2237,7 +2237,7 @@ void mac80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 			switch (mgmt->u.action.category) {
 			case WLAN_CATEGORY_SPECTRUM_MGMT:
 				mac80211_sta_process_chanswitch(sdata,
-						&mgmt->u.action.u.chan_switch.sw_elem,
+						&mgmt->u.action.u.swe_chan_switch.sw_elem,
 						(void *)ifmgd->associated->priv,
 						rx_status->mactime);
 				break;
