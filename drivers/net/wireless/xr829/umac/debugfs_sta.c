@@ -225,9 +225,9 @@ static ssize_t sta_agg_status_write(struct file *file, const char __user *userbu
 
 	if (tx) {
 		if (start)
-			ret = mac80211_start_tx_ba_session(&sta->sta, tid, 5000);
+			ret = xr_mac80211_start_tx_ba_session(&sta->sta, tid, 5000);
 		else
-			ret = mac80211_stop_tx_ba_session(&sta->sta, tid);
+			ret = xr_mac80211_stop_tx_ba_session(&sta->sta, tid);
 	} else {
 		__mac80211_stop_rx_ba_session(sta, tid, WLAN_BACK_RECIPIENT,
 					       3, true);

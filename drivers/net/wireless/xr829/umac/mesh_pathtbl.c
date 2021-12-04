@@ -13,7 +13,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "wme.h"
 #include "ieee80211_i.h"
 #include "mesh.h"
@@ -597,7 +597,7 @@ int xrmac_mesh_path_add(u8 *dst, struct ieee80211_sub_if_data *sdata)
 	read_unlock_bh(&pathtbl_resize_lock);
 	if (grow) {
 		set_bit(MESH_WORK_GROW_MPATH_TABLE,  &ifmsh->wrkq_flags);
-		mac80211_queue_work(&local->hw, &sdata->work);
+		xr_mac80211_queue_work(&local->hw, &sdata->work);
 	}
 	return 0;
 
@@ -723,7 +723,7 @@ int xrmac_mpp_path_add(u8 *dst, u8 *mpp, struct ieee80211_sub_if_data *sdata)
 	read_unlock_bh(&pathtbl_resize_lock);
 	if (grow) {
 		set_bit(MESH_WORK_GROW_MPP_TABLE,  &ifmsh->wrkq_flags);
-		mac80211_queue_work(&local->hw, &sdata->work);
+		xr_mac80211_queue_work(&local->hw, &sdata->work);
 	}
 	return 0;
 

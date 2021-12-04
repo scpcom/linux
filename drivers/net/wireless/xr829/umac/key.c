@@ -17,7 +17,7 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 #include <crypto/arc4.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "debugfs_key.h"

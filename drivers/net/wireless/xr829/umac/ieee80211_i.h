@@ -29,7 +29,7 @@
 #include <linux/rhashtable.h>
 #include <net/ieee80211_radiotap.h>
 #include <net/cfg80211.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <net/fq.h>
 
 #include "key.h"
@@ -934,7 +934,7 @@ struct ieee80211_local {
 
 	/*
 	 * private workqueue to mac80211. mac80211 makes this accessible
-	 * via mac80211_queue_work()
+	 * via xr_mac80211_queue_work()
 	 */
 	struct workqueue_struct *workqueue;
 
@@ -965,7 +965,7 @@ struct ieee80211_local {
 
 	/*
 	 * Resuming is true while suspended, but when we're reprogramming the
-	 * hardware -- at that time it's allowed to use mac80211_queue_work()
+	 * hardware -- at that time it's allowed to use xr_mac80211_queue_work()
 	 * again even though some other parts of the stack are still suspended
 	 * and we still drop received frames to avoid waking the stack.
 	 */
@@ -1406,9 +1406,9 @@ mac80211_bss_info_update(struct ieee80211_local *local,
 			  struct ieee80211_channel *channel,
 			  bool beacon);
 struct ieee80211_bss *
-mac80211_rx_bss_get(struct ieee80211_local *local, u8 *bssid, int freq,
+xr_mac80211_rx_bss_get(struct ieee80211_local *local, u8 *bssid, int freq,
 		     u8 *ssid, u8 ssid_len);
-void mac80211_rx_bss_put(struct ieee80211_local *local,
+void xr_mac80211_rx_bss_put(struct ieee80211_local *local,
 			  struct ieee80211_bss *bss);
 
 /* scheduled scan handling */
@@ -1508,10 +1508,10 @@ void mac80211_process_addba_request(struct ieee80211_local *local,
 				     struct ieee80211_mgmt *mgmt,
 				     size_t len);
 
-int __mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+int __xr_mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
 				   enum ieee80211_back_parties initiator,
 				   bool tx);
-int ___mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
+int ___xr_mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
 				    enum ieee80211_back_parties initiator,
 				    bool tx);
 void mac80211_start_tx_ba_cb(struct ieee80211_vif *vif, u8 *ra, u16 tid);
@@ -1588,13 +1588,13 @@ void mac80211_sta_tx_notify(struct ieee80211_sub_if_data *sdata,
 			     struct ieee80211_hdr *hdr, bool ack);
 void mac80211_beacon_connection_loss_work(struct work_struct *work);
 
-void mac80211_wake_queues_by_reason(struct ieee80211_hw *hw,
+void xr_mac80211_wake_queues_by_reason(struct ieee80211_hw *hw,
 				     enum queue_stop_reason reason);
-void mac80211_stop_queues_by_reason(struct ieee80211_hw *hw,
+void xr_mac80211_stop_queues_by_reason(struct ieee80211_hw *hw,
 				     enum queue_stop_reason reason);
-void mac80211_wake_queue_by_reason(struct ieee80211_hw *hw, int queue,
+void xr_mac80211_wake_queue_by_reason(struct ieee80211_hw *hw, int queue,
 				    enum queue_stop_reason reason);
-void mac80211_stop_queue_by_reason(struct ieee80211_hw *hw, int queue,
+void xr_mac80211_stop_queue_by_reason(struct ieee80211_hw *hw, int queue,
 				    enum queue_stop_reason reason);
 void mac80211_propagate_queue_wake(struct ieee80211_local *local, int queue);
 void mac80211_add_pending_skb(struct ieee80211_local *local,

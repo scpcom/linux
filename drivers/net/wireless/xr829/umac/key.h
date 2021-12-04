@@ -15,7 +15,7 @@
 #include <linux/crypto.h>
 #include <linux/rcupdate.h>
 #include <crypto/arc4.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 
 #define NUM_DEFAULT_KEYS 4
 #define NUM_DEFAULT_MGMT_KEYS 2

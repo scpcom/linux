@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 #include <asm/unaligned.h>
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "wapi.h"
 

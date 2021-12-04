@@ -1387,13 +1387,13 @@ static int wsm_request_buffer_confirm(struct xradio_vif *priv,
 					   (sta_asleep_mask & mask) ? 1 : 0,
 					    priv->link_id_db[i].mac);
 				rcu_read_lock();
-				sta = mac80211_find_sta(priv->vif, priv->link_id_db[i].mac);
+				sta = xr_mac80211_find_sta(priv->vif, priv->link_id_db[i].mac);
 				if (!sta) {
 					wsm_printk(XRADIO_DBG_MSG,
 						   "WRBC - could not find sta %pM\n",
 						   priv->link_id_db[i].mac);
 				} else {
-					ret = mac80211_sta_ps_transition_ni(sta,
+					ret = xr_mac80211_sta_ps_transition_ni(sta,
 						 (sta_asleep_mask & mask) ? true : false);
 					wsm_printk(XRADIO_DBG_MSG, "PS State NOTIFIED %d\n", ret);
 					SYS_WARN(ret);
@@ -1558,7 +1558,7 @@ void wsm_send_deauth_to_self(struct xradio_common *hw_priv,
 				memcpy(deauth->bssid, priv->vif->addr, ETH_ALEN);
 				deauth->seq_ctrl = 0;
 				deauth->u.deauth.reason_code = WLAN_REASON_DEAUTH_LEAVING;
-				mac80211_rx_irqsafe(priv->hw, skb);
+				xr_mac80211_rx_irqsafe(priv->hw, skb);
 			}
 		}
 	} else if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
@@ -1581,7 +1581,7 @@ void wsm_send_deauth_to_self(struct xradio_common *hw_priv,
 		memcpy(deauth->bssid, priv->join_bssid, ETH_ALEN);
 		deauth->seq_ctrl = 0;
 		deauth->u.deauth.reason_code = WLAN_REASON_DEAUTH_LEAVING;
-		mac80211_rx_irqsafe(priv->hw, skb);
+		xr_mac80211_rx_irqsafe(priv->hw, skb);
 	}
 }
 
@@ -1614,7 +1614,7 @@ void wsm_send_disassoc_to_self(struct xradio_common *hw_priv,
 				disassoc->seq_ctrl = 0;
 				disassoc->u.disassoc.reason_code =
 				      WLAN_REASON_DISASSOC_STA_HAS_LEFT;
-				mac80211_rx_irqsafe(priv->hw, skb);
+				xr_mac80211_rx_irqsafe(priv->hw, skb);
 			}
 		}
 	} else if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
@@ -1638,7 +1638,7 @@ void wsm_send_disassoc_to_self(struct xradio_common *hw_priv,
 		disassoc->seq_ctrl = 0;
 		disassoc->u.disassoc.reason_code =
 		     WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY;
-		mac80211_rx_irqsafe(priv->hw, skb);
+		xr_mac80211_rx_irqsafe(priv->hw, skb);
 	}
 }
 
@@ -2980,7 +2980,7 @@ int wsm_handle_rx(struct xradio_common *hw_priv, u8 flags, struct sk_buff **skb_
 					if (!hw_priv->beacon_bkp)
 						hw_priv->beacon_bkp = \
 						skb_copy(hw_priv->beacon, GFP_ATOMIC);
-					mac80211_rx_irqsafe(hw_priv->hw, hw_priv->beacon);
+					xr_mac80211_rx_irqsafe(hw_priv->hw, hw_priv->beacon);
 					hw_priv->beacon = hw_priv->beacon_bkp;
 
 					hw_priv->beacon_bkp = NULL;

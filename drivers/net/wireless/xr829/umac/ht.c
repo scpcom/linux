@@ -15,7 +15,7 @@
 
 #include <linux/ieee80211.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "rate.h"
 
@@ -113,7 +113,7 @@ void mac80211_sta_tear_down_BA_sessions(struct sta_info *sta, bool tx)
 	cancel_work_sync(&sta->ampdu_mlme.work);
 
 	for (i = 0; i <  STA_TID_NUM; i++) {
-		__mac80211_stop_tx_ba_session(sta, i, WLAN_BACK_INITIATOR, tx);
+		__xr_mac80211_stop_tx_ba_session(sta, i, WLAN_BACK_INITIATOR, tx);
 		__mac80211_stop_rx_ba_session(sta, i, WLAN_BACK_RECIPIENT,
 					       WLAN_REASON_QSTA_LEAVE_QBSS, tx);
 	}
@@ -171,7 +171,7 @@ void mac80211_ba_session_work(struct work_struct *work)
 		tid_tx = rcu_dereference_protected_tid_tx(sta, tid);
 		if (tid_tx && test_and_clear_bit(HT_AGG_STATE_WANT_STOP,
 						 &tid_tx->state))
-			___mac80211_stop_tx_ba_session(sta, tid,
+			___xr_mac80211_stop_tx_ba_session(sta, tid,
 							WLAN_BACK_INITIATOR,
 							true);
 	}
@@ -240,7 +240,7 @@ void mac80211_process_delba(struct ieee80211_sub_if_data *sdata,
 		__mac80211_stop_rx_ba_session(sta, tid, WLAN_BACK_INITIATOR, 0,
 					       true);
 	else
-		__mac80211_stop_tx_ba_session(sta, tid, WLAN_BACK_RECIPIENT,
+		__xr_mac80211_stop_tx_ba_session(sta, tid, WLAN_BACK_RECIPIENT,
 					       true);
 }
 
@@ -315,7 +315,7 @@ void mac80211_request_smps(struct ieee80211_vif *vif,
 
 	sdata->u.mgd.driver_smps_mode = smps_mode;
 
-	mac80211_queue_work(&sdata->local->hw,
+	xr_mac80211_queue_work(&sdata->local->hw,
 			     &sdata->u.mgd.request_smps_work);
 }
 /* this might change ... don't want non-open drivers using it */

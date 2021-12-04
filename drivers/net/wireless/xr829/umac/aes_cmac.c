@@ -13,7 +13,7 @@
 #include <linux/err.h>
 #include <crypto/aes.h>
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "key.h"
 #include "aes_cmac.h"
 

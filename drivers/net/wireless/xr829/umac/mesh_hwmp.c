@@ -876,14 +876,14 @@ static void mesh_queue_preq(struct mesh_path *mpath, u8 flags)
 	spin_unlock_bh(&ifmsh->mesh_preq_queue_lock);
 
 	if (time_after(jiffies, ifmsh->last_preq + min_preq_int_jiff(sdata)))
-		mac80211_queue_work(&sdata->local->hw, &sdata->work);
+		xr_mac80211_queue_work(&sdata->local->hw, &sdata->work);
 
 	else if (time_before(jiffies, ifmsh->last_preq)) {
 		/* avoid long wait if did not send preqs for a long time
 		 * and jiffies wrapped around
 		 */
 		ifmsh->last_preq = jiffies - min_preq_int_jiff(sdata) - 1;
-		mac80211_queue_work(&sdata->local->hw, &sdata->work);
+		xr_mac80211_queue_work(&sdata->local->hw, &sdata->work);
 	} else
 		mod_timer(&ifmsh->xrmac_mesh_path_timer, ifmsh->last_preq +
 						min_preq_int_jiff(sdata));

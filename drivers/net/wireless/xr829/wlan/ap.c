@@ -13,7 +13,7 @@
 #include "sta.h"
 #include "ap.h"
 #include "bh.h"
-#include "net/mac80211.h"
+#include "net/mac80211_xr.h"
 
 #define XRADIO_LINK_ID_GC_TIMEOUT        ((unsigned long)(10 * HZ))
 #define XRADIO_ENABLE_ARP_FILTER_OFFLOAD  3
@@ -87,7 +87,7 @@ int xradio_sta_add(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	}
 	entry->status = XRADIO_LINK_HARD;
 	while ((skb = skb_dequeue(&entry->rx_queue)))
-		mac80211_rx_irqsafe(priv->hw, skb);
+		xr_mac80211_rx_irqsafe(priv->hw, skb);
 	spin_unlock_bh(&priv->ps_state_lock);
 
 #ifdef AP_AGGREGATE_FW_FIX
@@ -274,7 +274,7 @@ static int xradio_set_tim_impl(struct xradio_vif *priv, bool aid0_bit_set)
 	ap_printk(XRADIO_DBG_MSG, "%s mcast: %s.\n", __func__,
 		      aid0_bit_set ? "ena" : "dis");
 
-	skb = mac80211_beacon_get_tim(priv->hw, priv->vif, &tim_offset,
+	skb = xr_mac80211_beacon_get_tim(priv->hw, priv->vif, &tim_offset,
 				&tim_length);
 	if (!skb) {
 		__xradio_flush(hw_priv, true, priv->if_id);
@@ -821,7 +821,7 @@ void xradio_bss_info_changed(struct ieee80211_hw *dev,
 			priv->join_status == XRADIO_JOIN_STATUS_PASSIVE) {
 			changed &= ~BSS_CHANGED_ASSOC;
 			ap_printk(XRADIO_DBG_WARN, "BSS_CHANGED_ASSOC but driver is unjoined.\n");
-			mac80211_connection_loss(priv->vif);
+			xr_mac80211_connection_loss(priv->vif);
 		}
 		/* TODO: ibss_joined */
 		if (info->assoc && priv->join_status != XRADIO_JOIN_STATUS_PASSIVE) {
@@ -839,7 +839,7 @@ void xradio_bss_info_changed(struct ieee80211_hw *dev,
 
 			rcu_read_lock();
 			if (info->bssid)
-				sta = mac80211_find_sta(vif, info->bssid);
+				sta = xr_mac80211_find_sta(vif, info->bssid);
 			if (sta) {
 				/* TODO:COMBO:Change this once
 				 * mac80211 changes are available */
@@ -1629,7 +1629,7 @@ static int xradio_upload_proberesp(struct xradio_vif *priv)
 
 #endif
 
-	frame.skb = mac80211_proberesp_get(priv->hw, priv->vif);
+	frame.skb = xr_mac80211_proberesp_get(priv->hw, priv->vif);
 	if (SYS_WARN(!frame.skb))
 		return -ENOMEM;
 
@@ -1715,7 +1715,7 @@ static int xradio_upload_pspoll(struct xradio_vif *priv)
 	};
 	ap_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
-	frame.skb = mac80211_pspoll_get(priv->hw, priv->vif);
+	frame.skb = xr_mac80211_pspoll_get(priv->hw, priv->vif);
 	if (SYS_WARN(!frame.skb))
 		return -ENOMEM;
 	ret = wsm_set_template_frame(xrwl_vifpriv_to_hwpriv(priv),
@@ -1733,7 +1733,7 @@ static int xradio_upload_null(struct xradio_vif *priv)
 	};
 	ap_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
-	frame.skb = mac80211_nullfunc_get(priv->hw, priv->vif);
+	frame.skb = xr_mac80211_nullfunc_get(priv->hw, priv->vif);
 	if (SYS_WARN(!frame.skb))
 		return -ENOMEM;
 
@@ -1753,7 +1753,7 @@ static int xradio_upload_qosnull(struct xradio_vif *priv)
 	};
 	ap_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
-	frame.skb = ieee80211_qosnullfunc_get(priv->hw, priv->vif);
+	frame.skb = xr_ieee80211_qosnullfunc_get(priv->hw, priv->vif);
 	if (SYS_WARN(!frame.skb))
 		return -ENOMEM;
 

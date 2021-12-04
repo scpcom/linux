@@ -20,7 +20,7 @@
 #include <linux/etherdevice.h>
 #include <linux/crc32.h>
 #include <linux/slab.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <asm/unaligned.h>
 
 #include "ieee80211_i.h"
@@ -996,7 +996,7 @@ static void ieee80211_work_timer(struct timer_list *t)
 	if (local->quiescing)
 		return;
 
-	mac80211_queue_work(&local->hw, &local->work_work);
+	xr_mac80211_queue_work(&local->hw, &local->work_work);
 }
 
 static void ieee80211_work_work(struct work_struct *work)
@@ -1014,7 +1014,7 @@ static void ieee80211_work_work(struct work_struct *work)
 		return;
 
 	/*
-	 * mac80211_queue_work() should have picked up most cases,
+	 * xr_mac80211_queue_work() should have picked up most cases,
 	 * here we'll pick the rest.
 	 */
 	if (WARN(local->suspended, "work scheduled while going to suspend\n"))
@@ -1150,7 +1150,7 @@ static void ieee80211_work_work(struct work_struct *work)
 
 	if (list_empty(&local->work_list) && local->scan_req &&
 	    !local->scanning)
-		mac80211_queue_delayed_work(&local->hw,
+		xr_mac80211_queue_delayed_work(&local->hw,
 					     &local->scan_work,
 					     round_jiffies_relative(0));
 
@@ -1188,7 +1188,7 @@ void mac80211_add_work(struct ieee80211_work *wk)
 	list_add_tail(&wk->list, &local->work_list);
 	mutex_unlock(&local->mtx);
 
-	mac80211_queue_work(&local->hw, &local->work_work);
+	xr_mac80211_queue_work(&local->hw, &local->work_work);
 }
 
 void mac80211_work_init(struct ieee80211_local *local)
@@ -1261,7 +1261,7 @@ ieee80211_rx_result ieee80211_work_rx_mgmt(struct ieee80211_sub_if_data *sdata,
 		case IEEE80211_STYPE_REASSOC_RESP:
 		case IEEE80211_STYPE_BEACON:
 			skb_queue_tail(&local->work_skb_queue, skb);
-			mac80211_queue_work(&local->hw, &local->work_work);
+			xr_mac80211_queue_work(&local->hw, &local->work_work);
 			return RX_QUEUED;
 		}
 	}
@@ -1327,7 +1327,7 @@ int mac80211_wk_cancel_remain_on_channel(struct ieee80211_sub_if_data *sdata,
 	if (!found)
 		return -ENOENT;
 
-	mac80211_queue_work(&local->hw, &local->work_work);
+	xr_mac80211_queue_work(&local->hw, &local->work_work);
 
 	return 0;
 }

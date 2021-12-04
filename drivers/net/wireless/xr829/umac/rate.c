@@ -29,7 +29,7 @@ module_param(ieee80211_default_rc_algo, charp, 0644);
 MODULE_PARM_DESC(ieee80211_default_rc_algo,
 		 "Default rate control algorithm for mac80211 to use");
 
-int mac80211_rate_control_register(struct rate_control_ops *ops)
+int xr_mac80211_rate_control_register(struct rate_control_ops *ops)
 {
 	struct rate_control_alg *alg;
 
@@ -59,7 +59,7 @@ int mac80211_rate_control_register(struct rate_control_ops *ops)
 	return 0;
 }
 
-void mac80211_rate_control_unregister(struct rate_control_ops *ops)
+void xr_mac80211_rate_control_unregister(struct rate_control_ops *ops)
 {
 	struct rate_control_alg *alg;
 

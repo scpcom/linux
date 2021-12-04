@@ -14,7 +14,7 @@
 #include <linux/skbuff.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "rate.h"
 #include "mesh.h"
 #include "rc80211_pid.h"
@@ -467,10 +467,10 @@ static struct rate_control_ops mac80211_rcpid = {
 
 int __init xrmac_rc80211_pid_init(void)
 {
-	return mac80211_rate_control_register(&mac80211_rcpid);
+	return xr_mac80211_rate_control_register(&mac80211_rcpid);
 }
 
 void xrmac_rc80211_pid_exit(void)
 {
-	mac80211_rate_control_unregister(&mac80211_rcpid);
+	xr_mac80211_rate_control_unregister(&mac80211_rcpid);
 }

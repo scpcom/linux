@@ -13,7 +13,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-trace.h"
 #include "driver-ops.h"
@@ -277,7 +277,7 @@ static void ieee80211_hw_roc_start(struct work_struct *work)
 	mutex_unlock(&local->mtx);
 }
 
-void mac80211_ready_on_channel(struct ieee80211_hw *hw)
+void xr_mac80211_ready_on_channel(struct ieee80211_hw *hw)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 
@@ -285,7 +285,7 @@ void mac80211_ready_on_channel(struct ieee80211_hw *hw)
 
 	trace_api_ready_on_channel(local);
 
-	mac80211_queue_work(hw, &local->hw_roc_start);
+	xr_mac80211_queue_work(hw, &local->hw_roc_start);
 }
 
 void mac80211_start_next_roc(struct ieee80211_local *local)
@@ -325,13 +325,13 @@ void mac80211_start_next_roc(struct ieee80211_local *local)
 			 * queue the work struct again to avoid recursion
 			 * when multiple failures occur
 			 */
-			mac80211_remain_on_channel_expired(&local->hw,
+			xr_mac80211_remain_on_channel_expired(&local->hw,
 					(roc->mgmt_tx_cookie ? roc->mgmt_tx_cookie : roc->cookie));
 		} else
 			local->hw_roc_channel = roc->chan;
 	} else {
 		/* delay it a bit */
-		mac80211_queue_delayed_work(&local->hw, &roc->work,
+		xr_mac80211_queue_delayed_work(&local->hw, &roc->work,
 					     round_jiffies_relative(HZ/2));
 	}
 }
@@ -409,7 +409,7 @@ void mac80211_sw_roc_work(struct work_struct *work)
 			goto finish;
 
 		roc->started = true;
-		mac80211_queue_delayed_work(&local->hw, &roc->work,
+		xr_mac80211_queue_delayed_work(&local->hw, &roc->work,
 					     msecs_to_jiffies(roc->duration));
 	} else {
 		/* finish this ROC */
@@ -475,7 +475,7 @@ static void ieee80211_hw_roc_done(struct work_struct *work)
 	mutex_unlock(&local->mtx);
 }
 
-void mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie)
+void xr_mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 	/*struct ieee80211_roc_work *roc;*/
@@ -483,7 +483,7 @@ void mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie)
 
 	trace_api_remain_on_channel_expired(local);
 
-	mac80211_queue_work(hw, &local->hw_roc_done);
+	xr_mac80211_queue_work(hw, &local->hw_roc_done);
 }
 
 void mac80211_hw_roc_setup(struct ieee80211_local *local)
@@ -520,7 +520,7 @@ void mac80211_roc_purge(struct ieee80211_sub_if_data *sdata)
 			list_del(&roc->list);
 			mac80211_roc_notify_destroy(roc);
 		} else {
-			mac80211_queue_delayed_work(&local->hw, &roc->work, 0);
+			xr_mac80211_queue_delayed_work(&local->hw, &roc->work, 0);
 
 			/* work will clean up etc */
 			flush_delayed_work(&roc->work);

@@ -17,7 +17,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rcupdate.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <net/ieee80211_radiotap.h>
 
 #include "ieee80211_i.h"
@@ -834,7 +834,7 @@ static void ieee80211_rx_reorder_ampdu(struct ieee80211_rx_data *rx)
 	if (sc & IEEE80211_SCTL_FRAG) {
 		skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
 		skb_queue_tail(&rx->sdata->skb_queue, skb);
-		mac80211_queue_work(&local->hw, &rx->sdata->work);
+		xr_mac80211_queue_work(&local->hw, &rx->sdata->work);
 		return;
 	}
 
@@ -1222,7 +1222,7 @@ static void ap_sta_ps_end(struct sta_info *sta)
 	mac80211_sta_ps_deliver_wakeup(sta);
 }
 
-int mac80211_sta_ps_transition(struct ieee80211_sta *sta, bool start)
+int xr_mac80211_sta_ps_transition(struct ieee80211_sta *sta, bool start)
 {
 	struct sta_info *sta_inf = container_of(sta, struct sta_info, sta);
 	bool in_ps;
@@ -2332,7 +2332,7 @@ ieee80211_rx_h_mgmt_check(struct ieee80211_rx_data *rx)
 	if (status->rx_flags & IEEE80211_RX_ERP_BEACON) {
 		rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
 		skb_queue_tail(&sdata->skb_queue, rx->skb);
-		mac80211_queue_work(&rx->local->hw, &sdata->work);
+		xr_mac80211_queue_work(&rx->local->hw, &sdata->work);
 		return RX_QUEUED;
 	}
 
@@ -2500,7 +2500,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
  queue:
 	rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
 	skb_queue_tail(&sdata->skb_queue, rx->skb);
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 	if (rx->sta)
 		rx->sta->rx_packets++;
 	return RX_QUEUED;
@@ -2629,7 +2629,7 @@ ieee80211_rx_h_mgmt(struct ieee80211_rx_data *rx)
 	/* queue up frame and kick off work to process it */
 	rx->skb->pkt_type = IEEE80211_SDATA_QUEUE_TYPE_FRAME;
 	skb_queue_tail(&sdata->skb_queue, rx->skb);
-	mac80211_queue_work(&rx->local->hw, &sdata->work);
+	xr_mac80211_queue_work(&rx->local->hw, &sdata->work);
 	if (rx->sta)
 		rx->sta->rx_packets++;
 
@@ -3135,7 +3135,7 @@ static void __ieee80211_rx_handle_packet(struct ieee80211_hw *hw,
  * This is the receive path handler. It is called by a low level driver when an
  * 802.11 MPDU is received from the hardware.
  */
-void mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
+void xr_mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 	struct ieee80211_rate *rate = NULL;
@@ -3241,7 +3241,7 @@ void mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
 
 /* This is a version of the rx handler that can be called from hard irq
  * context. Post the skb on the queue and schedule the tasklet */
-void mac80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb)
+void xr_mac80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 

@@ -24,7 +24,7 @@
 #include <linux/crc32.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <asm/unaligned.h>
 
 #include "ieee80211_i.h"
@@ -244,7 +244,7 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 		 * 40MHz intolerant or etc., it would be safer to stop tx
 		 * queues before doing hw config to avoid buffer overflow.
 		 */
-		mac80211_stop_queues_by_reason(&sdata->local->hw,
+		xr_mac80211_stop_queues_by_reason(&sdata->local->hw,
 				IEEE80211_QUEUE_STOP_REASON_CHTYPE_CHANGE);
 
 		/* flush out all packets */
@@ -266,7 +266,7 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 		rcu_read_unlock();
 
 		if (beacon_htcap_ie)
-			mac80211_wake_queues_by_reason(&sdata->local->hw,
+			xr_mac80211_wake_queues_by_reason(&sdata->local->hw,
 				IEEE80211_QUEUE_STOP_REASON_CHTYPE_CHANGE);
 	}
 
@@ -341,7 +341,7 @@ void mac80211_send_pspoll(struct ieee80211_local *local,
 	struct ieee80211_pspoll *pspoll;
 	struct sk_buff *skb;
 
-	skb = mac80211_pspoll_get(&local->hw, &sdata->vif);
+	skb = xr_mac80211_pspoll_get(&local->hw, &sdata->vif);
 	if (!skb)
 		return;
 
@@ -360,7 +360,7 @@ void mac80211_send_nullfunc(struct ieee80211_local *local,
 	struct ieee80211_hdr_3addr *nullfunc;
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 
-	skb = mac80211_nullfunc_get(&local->hw, &sdata->vif);
+	skb = xr_mac80211_nullfunc_get(&local->hw, &sdata->vif);
 	if (!skb)
 		return;
 
@@ -434,7 +434,7 @@ static void ieee80211_chswitch_work(struct work_struct *work)
 	/* XXX: shouldn't really modify cfg80211-owned data! */
 	ifmgd->associated->channel = chan_state->oper_channel;
 
-	mac80211_wake_queues_by_reason(&sdata->local->hw,
+	xr_mac80211_wake_queues_by_reason(&sdata->local->hw,
 					IEEE80211_QUEUE_STOP_REASON_CSA);
  out:
 	ifmgd->flags &= ~IEEE80211_STA_CSA_RECEIVED;
@@ -462,7 +462,7 @@ void mac80211_chswitch_done(struct ieee80211_vif *vif, bool success)
 		chan_state->csa_channel = chan_state->oper_channel;
 	}
 
-	mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
+	xr_mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
 }
 
 static void ieee80211_chswitch_timer(struct timer_list *t)
@@ -476,7 +476,7 @@ static void ieee80211_chswitch_timer(struct timer_list *t)
 		return;
 	}
 
-	mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
+	xr_mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
 }
 
 void mac80211_sta_process_chanswitch(struct ieee80211_sub_if_data *sdata,
@@ -519,7 +519,7 @@ void mac80211_sta_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 		ch_switch.timestamp = timestamp;
 		if (sw_elem->mode) {
 			ch_switch.block_tx = true;
-			mac80211_stop_queues_by_reason(&sdata->local->hw,
+			xr_mac80211_stop_queues_by_reason(&sdata->local->hw,
 					IEEE80211_QUEUE_STOP_REASON_CSA);
 		}
 		ch_switch.channel = new_ch;
@@ -531,10 +531,10 @@ void mac80211_sta_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 
 	/* channel switch handled in software */
 	if (sw_elem->count <= 1) {
-		mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
+		xr_mac80211_queue_work(&sdata->local->hw, &ifmgd->chswitch_work);
 	} else {
 		if (sw_elem->mode)
-			mac80211_stop_queues_by_reason(&sdata->local->hw,
+			xr_mac80211_stop_queues_by_reason(&sdata->local->hw,
 					IEEE80211_QUEUE_STOP_REASON_CSA);
 		ifmgd->flags |= IEEE80211_STA_CSA_RECEIVED;
 		mod_timer(&ifmgd->chswitch_timer,
@@ -591,7 +591,7 @@ void mac80211_disable_dyn_ps(struct ieee80211_vif *vif)
 	sdata->disable_dynamic_ps = true;
 	conf->dynamic_ps_timeout = 0;
 	del_timer_sync(&sdata->dynamic_ps_timer);
-	mac80211_queue_work(&local->hw,
+	xr_mac80211_queue_work(&local->hw,
 			     &sdata->dynamic_ps_enable_work);
 }
 
@@ -780,7 +780,7 @@ void mac80211_dynamic_ps_disable_work(struct work_struct *work)
 	}
 
 	/* XXX: with queue patches this should be updated:*/
-	mac80211_wake_queues_by_reason(&sdata->local->hw,
+	xr_mac80211_wake_queues_by_reason(&sdata->local->hw,
 					IEEE80211_QUEUE_STOP_REASON_PS);
 }
 
@@ -868,7 +868,7 @@ void mac80211_dynamic_ps_timer(struct timer_list *t)
 	if (local->quiescing || local->suspended)
 		return;
 
-	mac80211_queue_work(&local->hw, &sdata->dynamic_ps_enable_work);
+	xr_mac80211_queue_work(&local->hw, &sdata->dynamic_ps_enable_work);
 }
 
 #define MAX_P2P_NOA_DESC 4
@@ -1387,7 +1387,7 @@ void mac80211_sta_tx_notify(struct ieee80211_sub_if_data *sdata,
 			sdata->u.mgd.probe_send_count = 0;
 		else
 			sdata->u.mgd.nullfunc_failed = true;
-		mac80211_queue_work(&sdata->local->hw, &sdata->work);
+		xr_mac80211_queue_work(&sdata->local->hw, &sdata->work);
 	}
 }
 
@@ -1511,7 +1511,7 @@ struct sk_buff *mac80211_ap_probereq_get(struct ieee80211_hw *hw,
 	return skb;
 }
 
-static void __mac80211_connection_loss(struct ieee80211_sub_if_data *sdata)
+static void __xr_mac80211_connection_loss(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 	struct ieee80211_local *local = sdata->local;
@@ -1551,7 +1551,7 @@ void mac80211_beacon_connection_loss_work(struct work_struct *work)
 			     u.mgd.beacon_connection_loss_work);
 
 	if (sdata->local->hw.flags & IEEE80211_HW_CONNECTION_MONITOR)
-		__mac80211_connection_loss(sdata);
+		__xr_mac80211_connection_loss(sdata);
 	else
 		ieee80211_mgd_probe_ap(sdata, true);
 }
@@ -1564,10 +1564,10 @@ void mac80211_beacon_loss(struct ieee80211_vif *vif)
 	trace_api_beacon_loss(sdata);
 
 	WARN_ON(hw->flags & IEEE80211_HW_CONNECTION_MONITOR);
-	mac80211_queue_work(hw, &sdata->u.mgd.beacon_connection_loss_work);
+	xr_mac80211_queue_work(hw, &sdata->u.mgd.beacon_connection_loss_work);
 }
 
-void mac80211_connection_loss(struct ieee80211_vif *vif)
+void xr_mac80211_connection_loss(struct ieee80211_vif *vif)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 	struct ieee80211_hw *hw = &sdata->local->hw;
@@ -1575,7 +1575,7 @@ void mac80211_connection_loss(struct ieee80211_vif *vif)
 	trace_api_connection_loss(sdata);
 
 	WARN_ON(!(hw->flags & IEEE80211_HW_CONNECTION_MONITOR));
-	mac80211_queue_work(hw, &sdata->u.mgd.beacon_connection_loss_work);
+	xr_mac80211_queue_work(hw, &sdata->u.mgd.beacon_connection_loss_work);
 }
 
 static enum rx_mgmt_action __must_check
@@ -1881,7 +1881,7 @@ static void ieee80211_rx_bss_info(struct ieee80211_sub_if_data *sdata,
 	bss = mac80211_bss_info_update(local, rx_status, mgmt, len, elems,
 					channel, beacon);
 	if (bss)
-		mac80211_rx_bss_put(local, bss);
+		xr_mac80211_rx_bss_put(local, bss);
 
 	if (!sdata->u.mgd.associated)
 		return;
@@ -2044,7 +2044,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_sub_if_data *sdata,
 		if (sig < thold &&
 		    (last_event == 0 || sig < last_event - hyst)) {
 			ifmgd->last_cqm_event_signal = sig;
-			mac80211_cqm_rssi_notify(
+			xr_mac80211_cqm_rssi_notify(
 				&sdata->vif,
 				NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
 				sig,
@@ -2052,7 +2052,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_sub_if_data *sdata,
 		} else if (sig > thold &&
 			   (last_event == 0 || sig > last_event + hyst)) {
 			ifmgd->last_cqm_event_signal = sig;
-			mac80211_cqm_rssi_notify(
+			xr_mac80211_cqm_rssi_notify(
 				&sdata->vif,
 				NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
 				sig,
@@ -2331,7 +2331,7 @@ static void ieee80211_sta_timer(struct timer_list *t)
 		return;
 	}
 
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 static void ieee80211_sta_connection_lost(struct ieee80211_sub_if_data *sdata,
@@ -2456,7 +2456,7 @@ static void ieee80211_sta_bcn_mon_timer(struct timer_list *t)
 	if (local->quiescing)
 		return;
 
-	mac80211_queue_work(&sdata->local->hw,
+	xr_mac80211_queue_work(&sdata->local->hw,
 			     &sdata->u.mgd.beacon_connection_loss_work);
 }
 
@@ -2470,7 +2470,7 @@ static void ieee80211_sta_conn_mon_timer(struct timer_list *t)
 	if (local->quiescing)
 		return;
 
-	mac80211_queue_work(&local->hw, &ifmgd->monitor_work);
+	xr_mac80211_queue_work(&local->hw, &ifmgd->monitor_work);
 }
 
 static void ieee80211_sta_monitor_work(struct work_struct *work)
@@ -2490,11 +2490,11 @@ static void ieee80211_restart_sta_timer(struct ieee80211_sub_if_data *sdata, boo
 					IEEE80211_STA_CONNECTION_POLL);
 
 			/* let's probe the connection once */
-			mac80211_queue_work(&sdata->local->hw,
+			xr_mac80211_queue_work(&sdata->local->hw,
 				   &sdata->u.mgd.monitor_work);
 		}
 		/* and do all the other regular work too */
-		mac80211_queue_work(&sdata->local->hw, &sdata->work);
+		xr_mac80211_queue_work(&sdata->local->hw, &sdata->work);
 	}
 }
 
@@ -2556,7 +2556,7 @@ void mac80211_sta_restart(struct ieee80211_sub_if_data *sdata)
 		add_timer(&ifmgd->chswitch_timer);
 	mac80211_sta_reset_beacon_monitor(sdata);
 	ieee80211_restart_sta_timer(sdata, true);
-	mac80211_queue_work(&sdata->local->hw, &sdata->u.mgd.monitor_work);
+	xr_mac80211_queue_work(&sdata->local->hw, &sdata->u.mgd.monitor_work);
 }
 #endif
 
@@ -3101,7 +3101,7 @@ int mac80211_mgd_disassoc(struct ieee80211_sub_if_data *sdata,
 	return 0;
 }
 
-void mac80211_cqm_rssi_notify(struct ieee80211_vif *vif,
+void xr_mac80211_cqm_rssi_notify(struct ieee80211_vif *vif,
 			       enum nl80211_cqm_rssi_threshold_event rssi_event,
 			       s32 rssi_level, gfp_t gfp)
 {

@@ -18,7 +18,7 @@
 #include <net/sch_generic.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 
 #include "ieee80211_i.h"
 #include "driver-ops.h"
@@ -29,7 +29,7 @@
 #define IEEE80211_PASSIVE_CHANNEL_TIME (HZ / 8)
 
 struct ieee80211_bss *
-mac80211_rx_bss_get(struct ieee80211_local *local, u8 *bssid, int freq,
+xr_mac80211_rx_bss_get(struct ieee80211_local *local, u8 *bssid, int freq,
 		     u8 *ssid, u8 ssid_len)
 {
 	struct cfg80211_bss *cbss;
@@ -50,7 +50,7 @@ static void ieee80211_rx_bss_free(struct cfg80211_bss *cbss)
 	kfree(bss_mesh_cfg(bss));
 }
 #endif
-void mac80211_rx_bss_put(struct ieee80211_local *local,
+void xr_mac80211_rx_bss_put(struct ieee80211_local *local,
 			  struct ieee80211_bss *bss)
 {
 	if (!bss)
@@ -226,7 +226,7 @@ mac80211_scan_rx(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb)
 					mgmt, skb->len, &elems,
 					channel, beacon);
 	if (bss)
-		mac80211_rx_bss_put(sdata->local, bss);
+		xr_mac80211_rx_bss_put(sdata->local, bss);
 
 	dev_kfree_skb(skb);
 	return RX_QUEUED;
@@ -267,7 +267,7 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local)
 	return true;
 }
 
-static void __mac80211_scan_completed(struct ieee80211_hw *hw, bool aborted,
+static void __xr_mac80211_scan_completed(struct ieee80211_hw *hw, bool aborted,
 				       bool was_hw_scan)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -325,10 +325,10 @@ static void __mac80211_scan_completed(struct ieee80211_hw *hw, bool aborted,
 	mac80211_ibss_notify_scan_completed(local);
 	mac80211_mesh_notify_scan_completed(local);
 	mac80211_start_next_roc(local);
-	mac80211_queue_work(&local->hw, &local->work_work);
+	xr_mac80211_queue_work(&local->hw, &local->work_work);
 }
 
-void mac80211_scan_completed(struct ieee80211_hw *hw,
+void xr_mac80211_scan_completed(struct ieee80211_hw *hw,
 			      struct cfg80211_scan_info *info)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -339,7 +339,7 @@ void mac80211_scan_completed(struct ieee80211_hw *hw,
 	if (info->aborted)
 		set_bit(SCAN_ABORTED, &local->scanning);
 	memcpy(&local->scan_info, info, sizeof(*info));
-	mac80211_queue_delayed_work(&local->hw, &local->scan_work, 0);
+	xr_mac80211_queue_delayed_work(&local->hw, &local->scan_work, 0);
 }
 
 static int ieee80211_start_sw_scan(struct ieee80211_local *local)
@@ -372,7 +372,7 @@ static int ieee80211_start_sw_scan(struct ieee80211_local *local)
 	/* We need to set power level at maximum rate for scanning. */
 	mac80211_hw_config(local, 0);
 
-	mac80211_queue_delayed_work(&local->hw,
+	xr_mac80211_queue_delayed_work(&local->hw,
 				     &local->scan_work,
 				     IEEE80211_CHANNEL_TIME);
 
@@ -760,12 +760,12 @@ void mac80211_scan_work(struct work_struct *work)
 		}
 	} while (next_delay == 0);
 
-	mac80211_queue_delayed_work(&local->hw, &local->scan_work, next_delay);
+	xr_mac80211_queue_delayed_work(&local->hw, &local->scan_work, next_delay);
 	goto out;
 
 out_complete:
 	hw_scan = test_bit(SCAN_HW_SCANNING, &local->scanning);
-	__mac80211_scan_completed(&local->hw, aborted, hw_scan);
+	__xr_mac80211_scan_completed(&local->hw, aborted, hw_scan);
 out:
 	mutex_unlock(&local->mtx);
 }
@@ -839,16 +839,16 @@ void mac80211_scan_cancel(struct ieee80211_local *local)
 	 * yet really started (see __ieee80211_start_scan ).
 	 *
 	 * Regarding hardware scan:
-	 * - we can not call  __mac80211_scan_completed() as when
+	 * - we can not call  __xr_mac80211_scan_completed() as when
 	 *   SCAN_HW_SCANNING bit is set this function change
 	 *   local->hw_scan_req to operate on 5G band, what race with
 	 *   driver which can use local->hw_scan_req
 	 *
 	 * - we can not cancel scan_work since driver can schedule it
-	 *   by mac80211_scan_completed(..., true) to finish scan
+	 *   by xr_mac80211_scan_completed(..., true) to finish scan
 	 *
 	 * Hence we only call the cancel_hw_scan() callback, but the low-level
-	 * driver is still responsible for calling mac80211_scan_completed()
+	 * driver is still responsible for calling xr_mac80211_scan_completed()
 	 * after the scan was completed/aborted.
 	 */
 
@@ -869,7 +869,7 @@ void mac80211_scan_cancel(struct ieee80211_local *local)
 	 */
 	cancel_delayed_work(&local->scan_work);
 	/* and clean up */
-	__mac80211_scan_completed(&local->hw, true, false);
+	__xr_mac80211_scan_completed(&local->hw, true, false);
 out:
 	mutex_unlock(&local->mtx);
 }
@@ -1000,5 +1000,5 @@ void mac80211_sched_scan_stopped(struct ieee80211_hw *hw)
 
 	trace_api_sched_scan_stopped(local);
 
-	mac80211_queue_work(&local->hw, &local->sched_scan_stopped_work);
+	xr_mac80211_queue_work(&local->hw, &local->sched_scan_stopped_work);
 }

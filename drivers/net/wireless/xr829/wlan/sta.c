@@ -32,7 +32,7 @@
 #include <net/netlink.h>
 #endif /* CONFIG_XRADIO_TESTMODE */
 
-#include "net/mac80211.h"
+#include "net/mac80211_xr.h"
 
 #ifdef TES_P2P_0002_ROC_RESTART
 #include <linux/time.h>
@@ -281,7 +281,7 @@ int xradio_add_interface(struct ieee80211_hw *dev, struct ieee80211_vif *vif)
 	if (XRADIO_POWEROFF_SUSP == atomic_read(&hw_priv->suspend_state)) {
 		sta_printk(XRADIO_DBG_WARN, "%s: driver has not finish resume "
 			"from poweroff standby\n", __func__);
-		/*we do nothing because mac80211_restart_hw will do it again.*/
+		/*we do nothing because xr_mac80211_restart_hw will do it again.*/
 		return 0;
 	}
 #endif
@@ -1566,7 +1566,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 		queue_delayed_work(hw_priv->spare_workqueue, &hw_priv->rem_chan_timeout,
 				   duration * HZ / 1000);
 		priv->join_status = XRADIO_JOIN_STATUS_MONITOR;
-		mac80211_ready_on_channel(hw);
+		xr_mac80211_ready_on_channel(hw);
 	} else {
 		hw_priv->roc_if_id = -1;
 		up(&hw_priv->scan.lock);
@@ -1719,7 +1719,7 @@ void xradio_event_handler(struct work_struct *work)
 					NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW :
 					NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH;
 				sta_printk(XRADIO_DBG_NIY, "[CQM] RSSI event: %d", rcpiRssi);
-				mac80211_cqm_rssi_notify(priv->vif, cqm_evt, rcpiRssi, GFP_KERNEL);
+				xr_mac80211_cqm_rssi_notify(priv->vif, cqm_evt, rcpiRssi, GFP_KERNEL);
 				break;
 			}
 		case WSM_EVENT_BT_INACTIVE:
@@ -1807,7 +1807,7 @@ void xradio_event_handler(struct work_struct *work)
 								    IEEE80211_STYPE_DEAUTH);
 				deauth->u.deauth.reason_code = WLAN_REASON_DEAUTH_LEAVING;
 				deauth->seq_ctrl = 0;
-				mac80211_rx_irqsafe(priv->hw, skb);
+				xr_mac80211_rx_irqsafe(priv->hw, skb);
 				sta_printk(XRADIO_DBG_WARN, "Inactivity Deauth Frame sent" \
 					   " for MAC SA %pM and DA %pM\n",
 					   deauth->sa, deauth->da);
@@ -1897,7 +1897,7 @@ void xradio_connection_loss_work(struct work_struct *work)
 	  container_of(work, struct xradio_vif, connection_loss_work.work);
 	sta_printk(XRADIO_DBG_ERROR, "[CQM] if%d Reporting connection loss.\n",
 		   priv->if_id);
-	mac80211_connection_loss(priv->vif);
+	xr_mac80211_connection_loss(priv->vif);
 }
 
 void xradio_tx_failure_work(struct work_struct *work)
@@ -2105,7 +2105,7 @@ void xradio_offchannel_work(struct work_struct *work)
 		wsm_unlock_tx(hw_priv);
 		LOG_FILE(1, "xradio_offchannel_work error\n");
 		/*up(&hw_priv->scan.lock);*/
-		mac80211_connection_loss(priv->vif);
+		xr_mac80211_connection_loss(priv->vif);
 		sta_printk(XRADIO_DBG_ERROR, "lock %d\n", hw_priv->scan.lock.count);
 
 		return;
@@ -3018,7 +3018,7 @@ void xradio_rem_chan_timeout(struct work_struct *work)
 	if (atomic_read(&hw_priv->remain_on_channel) == 0) {
 		return;
 	}
-	mac80211_remain_on_channel_expired(hw_priv->hw, hw_priv->roc_cookie);
+	xr_mac80211_remain_on_channel_expired(hw_priv->hw, hw_priv->roc_cookie);
 
 	down(&hw_priv->conf_lock);
 	if_id = hw_priv->roc_if_id;

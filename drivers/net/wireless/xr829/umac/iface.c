@@ -16,7 +16,7 @@
 #include <linux/if_arp.h>
 #include <linux/netdevice.h>
 #include <linux/rtnetlink.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <net/ieee80211_radiotap.h>
 #include "ieee80211_i.h"
 #include "sta_info.h"
@@ -670,7 +670,7 @@ static void ieee80211_set_multicast_list(struct net_device *dev)
 			&dev->mc_list, &dev->mc_count);
 #endif
 	spin_unlock_bh(&local->filter_lock);
-	mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
+	xr_mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
 }
 
 /*
@@ -798,7 +798,7 @@ static void ieee80211_iface_work(struct work_struct *work)
 		return;
 
 	/*
-	 * mac80211_queue_work() should have picked up most cases,
+	 * xr_mac80211_queue_work() should have picked up most cases,
 	 * here we'll pick the rest.
 	 */
 	if (WARN(local->suspended,
@@ -1137,7 +1137,7 @@ int mac80211_if_change_type(struct ieee80211_sub_if_data *sdata,
 
 	ASSERT_RTNL();
 
-	if (type == ieee80211_vif_type_p2p(&sdata->vif))
+	if (type == xr_ieee80211_vif_type_p2p(&sdata->vif))
 		return 0;
 
 	if (ieee80211_sdata_running(sdata)) {

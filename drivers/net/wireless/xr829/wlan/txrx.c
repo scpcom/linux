@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/etherdevice.h>
 #include <linux/skbuff.h>
 
@@ -1816,7 +1816,7 @@ void xradio_tx(struct ieee80211_hw *dev, struct sk_buff *skb)
 
 #if defined(CONFIG_XRADIO_USE_EXTENSIONS)
 	if (tid_update && sta)
-		mac80211_sta_set_buffered(sta,
+		xr_mac80211_sta_set_buffered(sta,
 				t.txpriv.tid, true);
 #endif /* CONFIG_XRADIO_USE_EXTENSIONS */
 
@@ -1857,7 +1857,7 @@ static int xradio_handle_pspoll(struct xradio_vif *priv,
 		goto done;
 
 	rcu_read_lock();
-	sta = mac80211_find_sta(priv->vif, pspoll->ta);
+	sta = xr_mac80211_find_sta(priv->vif, pspoll->ta);
 	if (sta) {
 		struct xradio_sta_priv *sta_priv;
 		sta_priv = (struct xradio_sta_priv *)&sta->drv_priv;
@@ -2519,9 +2519,9 @@ static void xradio_notify_buffered_tx(struct xradio_vif *priv,
 		if (!still_buffered && tid < XRADIO_MAX_TID) {
 			hdr = (struct ieee80211_hdr *) skb->data;
 			rcu_read_lock();
-			sta = mac80211_find_sta(priv->vif, hdr->addr1);
+			sta = xr_mac80211_find_sta(priv->vif, hdr->addr1);
 			if (sta) {
-				mac80211_sta_set_buffered(sta, tid, false);
+				xr_mac80211_sta_set_buffered(sta, tid, false);
 				xradio_set_skb_eosp(skb);
 			}
 			rcu_read_unlock();
@@ -2546,7 +2546,7 @@ void xradio_skb_dtor(struct xradio_common *hw_priv,
 	}
 	if (likely(!xradio_is_itp(hw_priv))) {
 		down(&hw_priv->dtor_lock);
-		mac80211_tx_status(hw_priv->hw, skb);
+		xr_mac80211_tx_status(hw_priv->hw, skb);
 		up(&hw_priv->dtor_lock);
 	}
 }
@@ -3191,10 +3191,10 @@ void xradio_rx_cb(struct xradio_vif *priv,
 			skb_queue_tail(&entry->rx_queue, skb);
 			txrx_printk(XRADIO_DBG_WARN, "***skb_queue_tail\n");
 		} else
-			mac80211_rx_irqsafe(priv->hw, skb);
+			xr_mac80211_rx_irqsafe(priv->hw, skb);
 		spin_unlock_bh(&priv->ps_state_lock);
 	} else {
-		mac80211_rx_irqsafe(priv->hw, skb);
+		xr_mac80211_rx_irqsafe(priv->hw, skb);
 	}
 	*skb_p = NULL;
 	PERF_INFO_STAMP(&upper_rx_time, &mac_rx, upper_rx_size);

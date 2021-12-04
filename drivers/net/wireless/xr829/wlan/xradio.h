@@ -17,7 +17,7 @@
 #include <linux/workqueue.h>
 #include <linux/sched.h>
 #include <linux/atomic.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <asm/bitops.h>
 
 /*Macroses for Driver parameters.*/
