@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
+if ARM64 || ARM
 source "drivers/gpu/arm/mali400/mali/Kconfig"
 source "drivers/gpu/arm/mali400/ump/Kconfig"
+endif
 
+if ARM64 || X86_64 || !64BIT
 choice
 	prompt "Mali Midgard driver"
 
@@ -27,3 +30,4 @@ config MALI_BIFROST_FOR_LINUX
 endchoice
 
 source "drivers/gpu/arm/bifrost/Kconfig"
+endif
