@@ -25,6 +25,7 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
+#include <asm/system_info.h>
 
 #include "sunxi-sysinfo-user.h"
 
@@ -216,6 +217,8 @@ static struct class info_class = {
 static int __init sunxi_sys_info_init(void)
 {
 	s32 ret = 0, i;
+	int databuf[4] = {0};
+	char tmpbuf[129] = {0};
 
 	ret = class_register(&info_class);
 	if (ret != 0)
@@ -233,6 +236,20 @@ static int __init sunxi_sys_info_init(void)
 		class_unregister(&info_class);
 		return ret;
 	}
+
+	/* serial */
+	sunxi_get_serial((u8 *)databuf);
+	for (i = 0; i < 4; i++)
+		sprintf(tmpbuf + i*8, "%08x", databuf[i]);
+	tmpbuf[128] = 0;
+
+	system_serial = kasprintf(GFP_KERNEL, "%s", tmpbuf);
+
+	dev_info(soc_info_device.this_device, "Serial\t\t: %s\n", system_serial);
+
+	/* socbatch number */
+	system_rev = sunxi_get_soc_ver();
+
 	return ret;
 out_class_create_file_failed:
 	class_unregister(&info_class);
