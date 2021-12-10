@@ -18,6 +18,21 @@
 #include <asm/pgtable.h>
 #include <asm/vendor_extensions.h>
 
+const char *machine_name;
+EXPORT_SYMBOL(machine_name);
+
+unsigned int system_rev;
+EXPORT_SYMBOL(system_rev);
+
+const char *system_serial;
+EXPORT_SYMBOL(system_serial);
+
+unsigned int system_serial_low;
+EXPORT_SYMBOL(system_serial_low);
+
+unsigned int system_serial_high;
+EXPORT_SYMBOL(system_serial_high);
+
 bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 {
 	return phys_id == cpuid_to_hartid_map(cpu);
@@ -305,6 +320,18 @@ static void print_mmu(struct seq_file *f)
 	seq_printf(f, "mmu\t\t: %s\n", sv_type);
 }
 
+static void print_sys(struct seq_file *f)
+{
+	if (!system_serial)
+		system_serial = kasprintf(GFP_KERNEL, "%08x%08x",
+					  system_serial_high,
+					  system_serial_low);
+
+	seq_printf(f, "Hardware\t: %s\n", machine_name);
+	seq_printf(f, "Revision\t: %04x\n", system_rev);
+	seq_printf(f, "Serial\t\t: %s\n", system_serial);
+}
+
 static void *c_start(struct seq_file *m, loff_t *pos)
 {
 	if (*pos == nr_cpu_ids)
@@ -366,6 +393,7 @@ static int c_show(struct seq_file *m, void *v)
 	 */
 	seq_puts(m, "hart isa\t: ");
 	print_isa(m, hart_isa[cpu_id].isa, cpu_id);
+	print_sys(m);
 	seq_puts(m, "\n");
 
 	return 0;
