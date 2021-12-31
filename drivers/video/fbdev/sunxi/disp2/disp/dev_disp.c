@@ -1164,6 +1164,11 @@ unsigned int disp_boot_para_parse(const char *name)
 {
 	unsigned int value = 0;
 
+	if (!g_disp_drv.dev) {
+	    pr_err("disp_boot_para_parse failed, dev is NULL!\n");
+	    return 0;
+	}
+
 	if (!g_disp_drv.dev->of_node) {
 	    pr_err("disp_boot_para_parse failed, of node is NULL!\n");
 	    return 0;
