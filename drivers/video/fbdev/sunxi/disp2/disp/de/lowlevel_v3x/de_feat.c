@@ -661,6 +661,9 @@ static const struct de_feat sun8iw11_de_features = {
 
 int de_feat_get_num_screens(void)
 {
+	if (!de_cur_features)
+		return 0;
+
 	return de_cur_features->num_screens;
 }
 
