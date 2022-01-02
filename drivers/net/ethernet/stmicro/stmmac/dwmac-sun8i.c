@@ -663,11 +663,25 @@ static void sun8i_dwmac_set_umac_addr(struct mac_device_info *hw,
 	}
 }
 
+#if IS_ENABLED(CONFIG_SUNXI_ADDR_MGT) && IS_ENABLED(CONFIG_SUNXI_SID)
+extern int get_custom_mac_address(int fmt, char *name, char *addr);
+#endif
+
 static void sun8i_dwmac_get_umac_addr(struct mac_device_info *hw,
 				      unsigned char *addr,
 				      unsigned int reg_n)
 {
 	void __iomem *ioaddr = hw->pcsr;
+
+#if IS_ENABLED(CONFIG_SUNXI_ADDR_MGT) && IS_ENABLED(CONFIG_SUNXI_SID)
+	if (reg_n == 0) {
+		int ret = get_custom_mac_address(1, "eth", addr);
+		if ((ret >= 0) && is_valid_ether_addr(addr))
+			return;
+	} else {
+		pr_info("reg: %d\n", reg_n);
+	}
+#endif
 
 	stmmac_get_mac_addr(ioaddr, addr, EMAC_MACADDR_HI(reg_n),
 			    EMAC_MACADDR_LO(reg_n));
