@@ -71,7 +71,7 @@
 #define SID_RDKEY			0x60
 #define SID_OP_LOCK			0xAC
 
-#define SRAM_CTRL_BASE		"allwinner,sram_ctrl"
+#define SRAM_CTRL_BASE		"allwinner,sun50i-a64-system-control"
 #define EFUSE_SID_BASE		"allwinner,sunxi-sid"
 
 #define sunxi_efuse_read(key_name, read_buf) \
