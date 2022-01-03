@@ -2040,6 +2040,8 @@ static int sunxi_daudio_dev_probe(struct platform_device *pdev)
 		dts_info = &sunxi_daudio->dts_info;
 		pdata_info = &dts_info->pdata_info;
 		regulator_info = &sunxi_daudio->regulator_info;
+
+		spin_lock_init(&sunxi_daudio->global_spinlock.lock);
 	} else {
 		dev_err(&pdev->dev, "node match failed\n");
 		return -EINVAL;
