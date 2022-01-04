@@ -173,6 +173,7 @@ static void *Fb_map_kernel(unsigned long phys_addr, unsigned long size)
 	return vaddr;
 }
 
+#ifndef MODULE
 static void *Fb_map_kernel_cache(unsigned long phys_addr, unsigned long size)
 {
 	int npages = PAGE_ALIGN(size) / PAGE_SIZE;
@@ -195,6 +196,7 @@ static void *Fb_map_kernel_cache(unsigned long phys_addr, unsigned long size)
 	vfree(pages);
 	return vaddr;
 }
+#endif
 
 static void Fb_unmap_kernel(void *vaddr)
 {
@@ -1327,6 +1329,7 @@ static struct fb_ops dispfb_ops = {
 
 };
 
+#ifndef MODULE
 static int Fb_copy_boot_fb(u32 sel, struct fb_info *info)
 {
 	enum {
@@ -1526,6 +1529,7 @@ static int Fb_copy_boot_fb(u32 sel, struct fb_info *info)
 	memblock_free((unsigned long)src_phy_addr, src_stride * fb_height);
 	return 0;
 }
+#endif
 
 #if defined(SUPPORT_ROTATE)
 static int rgb24_to_rgb32(const void *psrc, struct bmp_header *bmp_header,
@@ -1800,7 +1804,11 @@ static int Fb_map_kernel_logo(u32 sel, struct fb_info *info)
 	paddr = bootlogo_addr;
 	if (paddr == 0) {
 		__inf("Fb_map_kernel_logo failed!");
+#ifndef MODULE
 		return Fb_copy_boot_fb(sel, info);
+#else
+		return -1;
+#endif
 	}
 
 	/* parser bmp header */
