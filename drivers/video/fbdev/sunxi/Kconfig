@@ -22,6 +22,14 @@ config DISP2_SUNXI
 	---help---
 	  Display driver for sunxi based boards.
 
+config DISP2_SUNXI_ION
+	bool "DISP Driver ION Support"
+	depends on (DISP2_SUNXI)
+	depends on ION
+	default n
+	---help---
+	  Enable DISP driver ION support.
+
 choice
     prompt "DISP2 Framebuffer rotation support"
 	default SUNXI_DISP2_FB_DISABLE_ROTATE
