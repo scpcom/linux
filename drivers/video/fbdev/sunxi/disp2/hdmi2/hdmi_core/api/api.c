@@ -379,7 +379,7 @@ static int api_Configure(videoParams_t *video,
 	dev_write(dev, 0x40018, 0xc0);
 	dev_write(dev, 0x4001c, 0x80);
 
-	success = phy_configure(dev, phy_model, video->mEncodingOut);
+	success = hdmi_tx_phy_configure(dev, phy_model, video->mEncodingOut);
 	if (success == false)
 		pr_err("ERROR:Could not configure PHY\n");
 #endif

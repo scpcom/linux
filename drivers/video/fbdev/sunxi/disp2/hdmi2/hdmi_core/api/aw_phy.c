@@ -849,7 +849,7 @@ static int phy_aw_configure(hdmi_tx_dev_t *dev, u32 pClk, color_depth_t color,
 	return FALSE;
 }
 
-int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
+int hdmi_tx_phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
 {
 	LOG_TRACE();
 	return phy_aw_configure(dev, dev->snps_hdmi_ctrl.pixel_clock,

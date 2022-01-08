@@ -1927,7 +1927,7 @@ int phy_initialize(hdmi_tx_dev_t *dev, u16 phy_model)
 	return TRUE;
 }
 
-int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
+int hdmi_tx_phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
 {
 	LOG_TRACE();
 	EncodingOut;

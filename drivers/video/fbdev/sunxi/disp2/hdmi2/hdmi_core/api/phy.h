@@ -263,7 +263,7 @@ int phy_initialize(hdmi_tx_dev_t *dev, u16 phy_model);
  * return TRUE if success, FALSE if not success and -1 if PHY configurations
  * are not supported.
  */
-int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut);
+int hdmi_tx_phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut);
 
 /**
  * Set PHY to standby mode - turn off all interrupts
