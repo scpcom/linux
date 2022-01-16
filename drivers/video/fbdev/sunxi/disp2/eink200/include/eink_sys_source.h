@@ -15,7 +15,9 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/uaccess.h>
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
 #include <asm/memory.h>
+#endif
 #include <asm/unistd.h>
 #include <linux/vmalloc.h>
 #include <linux/pinctrl/consumer.h>
