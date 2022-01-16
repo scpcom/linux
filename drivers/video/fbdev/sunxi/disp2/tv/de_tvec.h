@@ -34,10 +34,16 @@
 #define TVE_TOP_DEVIVE_NUM      1
 #define TVE_DAC_NUM             1
 #define USE_V40_DRIVER
-#else
+#elif defined(CONFIG_ARCH_SUN8IW7)
 #define TVE_DEVICE_NUM 1
 #define TVE_TOP_DEVIVE_NUM 1
 #define TVE_DAC_NUM 1
+#else
+#define TVE_TOP_SUPPORT
+#define TVE_DEVICE_NUM 1
+#define TVE_TOP_DEVIVE_NUM 1
+#define TVE_DAC_NUM 1
+#define USE_V40_DRIVER
 #endif
 
 /* tv encoder registers offset */
