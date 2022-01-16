@@ -11,6 +11,7 @@
 #include "tv_ac200_lowlevel.h"
 #if defined(CONFIG_EXTCON)
 #include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 #endif
 #include <linux/sunxi-sid.h>
 
@@ -639,7 +640,7 @@ static int tv_init(struct platform_device *pdev)
 		devm_extcon_dev_allocate(&pdev->dev, ac200_tv_cable);
 	if (IS_ERR_OR_NULL(cvbs_extcon_dev))
 		goto err_register;
-	cvbs_extcon_dev->name = "cvbs";
+/*	cvbs_extcon_dev->name = "cvbs"; */ /* fix me */
 	devm_extcon_dev_register(&pdev->dev, cvbs_extcon_dev);
 #endif
 
