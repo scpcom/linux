@@ -548,7 +548,7 @@ static s32 edp_init(struct platform_device *pdev)
 		edp_wrn("devm_extcon_dev_allocate fail:%d", sel);
 		goto OUT;
 	}
-	extcon_edp[sel]->name = switch_name;
+/*	extcon_edp[sel]->name = switch_name; */ /* fix me */
 	ret = devm_extcon_dev_register(&pdev->dev, extcon_edp[sel]);
 #endif
 OUT:

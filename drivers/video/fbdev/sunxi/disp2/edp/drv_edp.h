@@ -19,6 +19,7 @@
 #endif
 #if defined(CONFIG_EXTCON)
 #include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 #endif
 
 #define EDP_NUM_MAX 2
