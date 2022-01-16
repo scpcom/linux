@@ -18,6 +18,8 @@
 #include <linux/sunxi-clk-prepare.h>
 #if defined(CONFIG_EXTCON)
 #include <linux/extcon.h>
+#include <linux/extcon-provider.h>
+#define extcon_set_cable_state_ extcon_set_state_sync
 #endif
 #include <linux/sunxi-sid.h>
 
@@ -863,7 +865,7 @@ s32 hdmi_init(struct platform_device *pdev)
 
 #if defined(CONFIG_EXTCON)
 	extcon_hdmi = devm_extcon_dev_allocate(&pdev->dev, hdmi_cable);
-	extcon_hdmi->name = "hdmi";
+/*	extcon_hdmi->name = "hdmi"; */ /* fix me */
 	devm_extcon_dev_register(&pdev->dev, extcon_hdmi);
 #endif
 	ret = disp_sys_script_get_item("hdmi", "hdmi_io_regulator",
