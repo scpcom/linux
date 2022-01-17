@@ -1701,6 +1701,20 @@ static int hdmi_tx_exit(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_HDMI2_HDCP22_SUNXI
+	dma_free_coherent(hdmi_drv->parent_dev,
+				HDCP22_DATA_SIZE,
+				&hdmi_drv->hdmi_core->mode.pHdcp.esm_data_phy_addr,
+				GFP_KERNEL | __GFP_ZERO);
+	dma_free_coherent(hdmi_drv->parent_dev,
+					HDCP22_FIRMWARE_SIZE,
+					&hdmi_drv->hdmi_core->mode.pHdcp.esm_firm_phy_addr,
+					GFP_KERNEL | __GFP_ZERO);
+#endif
+	hdmi_core_exit(hdmi_drv->hdmi_core);
+
+	kfree(hdmi_drv);
+
 	return 0;
 }
 
@@ -3273,22 +3287,6 @@ static int __init hdmi_module_init(void)
 static void __exit hdmi_module_exit(void)
 {
 	pr_info("hdmi_module_exit\n");
-
-	hdmi_tx_exit(hdmi_drv->pdev);
-
-#ifdef CONFIG_HDMI2_HDCP22_SUNXI
-	dma_free_coherent(hdmi_drv->parent_dev,
-				HDCP22_DATA_SIZE,
-				&hdmi_drv->hdmi_core->mode.pHdcp.esm_data_phy_addr,
-				GFP_KERNEL | __GFP_ZERO);
-	dma_free_coherent(hdmi_drv->parent_dev,
-					HDCP22_FIRMWARE_SIZE,
-					&hdmi_drv->hdmi_core->mode.pHdcp.esm_firm_phy_addr,
-					GFP_KERNEL | __GFP_ZERO);
-#endif
-	hdmi_core_exit(hdmi_drv->hdmi_core);
-
-	kfree(hdmi_drv);
 
 #ifdef MODULE
 	platform_driver_unregister(&dwc_hdmi_tx_pdrv);
