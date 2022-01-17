@@ -1476,6 +1476,9 @@ static void drv_global_value_init(void)
 	hdcp_encrypt_status = HDCP_DISABLE;
 }
 
+static int hdmi_class_init(void);
+static void hdmi_class_exit(void);
+
 static int hdmi_tx_init(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -1493,6 +1496,7 @@ static int hdmi_tx_init(struct platform_device *pdev)
 	LOG_TRACE();
 
 	pr_info("HDMI 2.0 driver init start!\n");
+	ret = hdmi_class_init();
 	drv_global_value_init();
 
 	hdmi_drv = kzalloc(sizeof(struct hdmi_tx_drv), GFP_KERNEL);
@@ -1714,6 +1718,8 @@ static int hdmi_tx_exit(struct platform_device *pdev)
 	hdmi_core_exit(hdmi_drv->hdmi_core);
 
 	kfree(hdmi_drv);
+
+	hdmi_class_exit();
 
 	return 0;
 }
@@ -3243,7 +3249,7 @@ static struct attribute_group hdmi_attribute_group = {
 	.attrs = hdmi_attributes
 };
 
-static int __init hdmi_module_init(void)
+static int hdmi_class_init(void)
 {
 	int ret = 0, err;
 
@@ -3273,6 +3279,13 @@ static int __init hdmi_module_init(void)
 	if (ret)
 		pr_err("Error: hdmi sysfs_create_group failed!\n");
 
+	return ret;
+}
+
+static int __init hdmi_module_init(void)
+{
+	int ret = 0;
+
 #ifdef MODULE
 	ret = platform_driver_register(&dwc_hdmi_tx_pdrv);
 	if (ret)
@@ -3291,7 +3304,10 @@ static void __exit hdmi_module_exit(void)
 #ifdef MODULE
 	platform_driver_unregister(&dwc_hdmi_tx_pdrv);
 #endif
+}
 
+static void hdmi_class_exit(void)
+{
 	sysfs_remove_group(&hdev->kobj, &hdmi_attribute_group);
 	device_destroy(hdmi_class, devid);
 
