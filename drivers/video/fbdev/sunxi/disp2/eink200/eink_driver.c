@@ -451,6 +451,10 @@ static int eink_remove(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 
+#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
+	deinit_eink_ion_mgr(&g_eink_drvdata.ion_mgr);
+#endif
+
 	eink_shutdown(pdev);
 
 	pm_runtime_set_suspended(g_eink_drvdata.device);
@@ -963,9 +967,6 @@ static void __init eink_module_exit(void)
 
 	eink_exit();
 
-#if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
-	deinit_eink_ion_mgr(&g_eink_drvdata.ion_mgr);
-#endif
 #ifdef MODULE
 	platform_driver_unregister(&eink_driver);
 #endif
