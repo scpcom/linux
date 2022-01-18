@@ -109,6 +109,13 @@ static int fb_map_video_memory(struct fb_info *info)
 					(u32 *) (&info->fix.smem_start));
 #endif
 	if (info->screen_base) {
+		info->apertures = alloc_apertures(1);
+		if (info->apertures) {
+			__wrn("%s(reserve),set apertures\n", __func__);
+			info->apertures->ranges[0].base = info->fix.smem_start;
+			info->apertures->ranges[0].size = info->fix.smem_len;
+		}
+
 		__inf("%s(reserve),va=0x%p, pa=0x%p size:0x%x\n", __func__,
 		      (void *)info->screen_base,
 		      (void *)info->fix.smem_start,
