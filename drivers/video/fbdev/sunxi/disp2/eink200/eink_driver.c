@@ -298,6 +298,9 @@ static void eink_exit(void)
 	return;
 }
 
+static int eink_class_init(void);
+static void eink_class_exit(void);
+
 //static u64 eink_dmamask = DMA_BIT_MASK(32);
 static int eink_probe(struct platform_device *pdev)
 {
@@ -309,6 +312,8 @@ static int eink_probe(struct platform_device *pdev)
 		pr_err("EINK device is not configed!\n");
 		return -ENODEV;
 	}
+
+	ret = eink_class_init();
 
 	drvdata = &g_eink_drvdata;
 
@@ -467,6 +472,8 @@ static int eink_remove(struct platform_device *pdev)
 		platform_set_drvdata(pdev, NULL);
 	} else
 		pr_err("%s:drvdata is NULL!\n", __func__);
+
+	eink_class_exit();
 
 	pr_info("%s finish!\n", __func__);
 
@@ -915,6 +922,17 @@ struct platform_driver eink_driver = {
 static int __init eink_module_init(void)
 {
 	int ret = 0;
+
+#ifdef MODULE
+        ret = platform_driver_register(&eink_driver);
+#endif
+
+	return ret;
+}
+
+static int eink_class_init(void)
+{
+	int ret = 0;
 	struct eink_driver_info *drvdata = NULL;
 
 	pr_info("[EINK] %s:\n", __func__);
@@ -944,9 +962,6 @@ static int __init eink_module_init(void)
 		ret = PTR_ERR(drvdata->eink_dev);
 		return ret;
 	}
-#ifdef MODULE
-	platform_driver_register(&eink_driver);
-#endif
 
 	ret = sysfs_create_group(&drvdata->eink_dev->kobj, &eink_attribute_group);
 	if (ret < 0)
@@ -959,17 +974,22 @@ static int __init eink_module_init(void)
 
 static void __init eink_module_exit(void)
 {
-	struct eink_driver_info *drvdata = NULL;
-
 	pr_info("[EINK]%s:\n", __func__);
-
-	drvdata = &g_eink_drvdata;
 
 	eink_exit();
 
 #ifdef MODULE
 	platform_driver_unregister(&eink_driver);
 #endif
+}
+
+static void eink_class_exit(void)
+{
+	struct eink_driver_info *drvdata = NULL;
+
+	drvdata = &g_eink_drvdata;
+
+	sysfs_remove_group(&drvdata->eink_dev->kobj, &eink_attribute_group);
 	device_destroy(drvdata->pclass, drvdata->devt);
 	class_destroy(drvdata->pclass);
 	cdev_del(drvdata->pcdev);
