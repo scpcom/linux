@@ -903,6 +903,7 @@ static int sunxi_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 #define FBIO_GET_PHY_ADDR       0x4633
 #define FBIOGET_DMABUF         _IOR('F', 0x21, struct fb_dmabuf_export)
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 #if !defined(CONFIG_DISP2_SUNXI_ION)
 
 struct sunxi_dmabuf_info {
@@ -1061,7 +1062,6 @@ static struct dma_buf_ops sunxi_dma_buf_ops = {
 };
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 static struct dma_buf *sunxi_share_dma_buf(struct fb_info *info)
 {
 	struct dma_buf *dmabuf = NULL;
