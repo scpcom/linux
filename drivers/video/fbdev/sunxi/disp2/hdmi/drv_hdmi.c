@@ -1310,9 +1310,13 @@ static ssize_t hdmi_hdcp_enable_store(struct device *dev,
 static DEVICE_ATTR(hdcp_enable, S_IRUGO|S_IWUSR|S_IWGRP,
 		hdmi_hdcp_enable_show, hdmi_hdcp_enable_store);
 
+static int hdmi_class_init(void);
+static void hdmi_class_exit(void);
+
 static int hdmi_probe(struct platform_device *pdev)
 {
 	hdmi_inf("hdmi_probe call\n");
+	hdmi_class_init();
 	memset(&ghdmi, 0, sizeof(hdmi_info_t));
 	ghdmi.dev = &pdev->dev;
 	hdmi_init(pdev);
@@ -1324,6 +1328,7 @@ static int hdmi_remove(struct platform_device *pdev)
 {
 	hdmi_inf("hdmi_remove call\n");
 	hdmi_exit();
+	hdmi_class_exit();
 	return 0;
 }
 
@@ -1405,7 +1410,7 @@ static struct attribute_group hdmi_attribute_group = {
 	.attrs = hdmi_attributes
 };
 
-static int __init hdmi_module_init(void)
+static int hdmi_class_init(void)
 {
 	int ret = 0, err;
 
@@ -1429,6 +1434,13 @@ static int __init hdmi_module_init(void)
 
 	ret = sysfs_create_group(&ghdmi.dev->kobj, &hdmi_attribute_group);
 
+	return ret;
+}
+
+static int __init hdmi_module_init(void)
+{
+	int ret = 0;
+
 #ifndef CONFIG_OF
 	ret = platform_device_register(&hdmi_device);
 #endif
@@ -1450,6 +1462,12 @@ static void __exit hdmi_module_exit(void)
 #ifndef CONFIG_OF
 	platform_device_unregister(&hdmi_device);
 #endif
+}
+
+static void hdmi_class_exit(void)
+{
+	sysfs_remove_group(&ghdmi.dev->kobj, &hdmi_attribute_group);
+	device_destroy(hdmi_class, devid);
 	class_destroy(hdmi_class);
 	cdev_del(my_cdev);
 }
