@@ -1590,7 +1590,10 @@ err_iomap:
 
 static int tv_remove(struct platform_device *pdev)
 {
+	if (!g_tv_info.tv_number)
+		return 0;
 	tv_exit();
+	g_tv_info.tv_number = 0;
 	return 0;
 }
 
