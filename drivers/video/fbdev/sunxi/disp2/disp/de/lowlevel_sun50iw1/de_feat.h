@@ -26,9 +26,13 @@
 
 /*#define SUPPORT_DSI*/
 /*#define SUPPORT_SMBL*/
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_HDMI
 #define SUPPORT_HDMI
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_TV
 #define SUPPORT_TV
 #define TV_UGLY_CLK_RATE 216000000
+#endif
 #if defined(TV_UGLY_CLK_RATE)
 #define TV_COMPOSITE_CLK_RATE 27000000
 #endif
@@ -46,13 +50,19 @@
 #define DE_CORE_CLK "de"
 #define DE_CORE_CLK_RATE 432000000  /*288000000*/
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_DSI
 #define SUPPORT_DSI
+#endif
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 #define SUPPORT_SMBL
 #endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_HDMI
 #define SUPPORT_HDMI
+#endif
 #define DSI_VERSION_40
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LVDS
 #define SUPPORT_LVDS
+#endif
 /* #define SUPPORT_TV */
 /* #define LVDS_REVERT */
 /*common macro define*/
@@ -73,6 +83,9 @@
 #define DEVICE_DSI_NUM 1
 #endif /*endif DEVICE_DSI_NUM */
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LCD
+#define SUPPORT_LCD
+#endif
 
 struct de_feat {
 	const int num_screens;/* indicate layer manager number */

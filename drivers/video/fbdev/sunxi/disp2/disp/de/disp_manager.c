@@ -12,7 +12,9 @@
 #include "disp_manager.h"
 #include "disp_display.h"
 #include "../disp_trace.h"
+#if defined(SUPPORT_RTWB)
 #include "disp_rtwb.h"
+#endif
 
 #define MAX_LAYERS 16
 #define DMABUF_CACHE_MAX_EACH 10

@@ -50,14 +50,18 @@
 
 #define SUPPORT_AUTO_GATE
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_DSI
 #define SUPPORT_DSI
+#endif
 /* #define SUPPORT_HDMI */
 #define DSI_VERSION_28
 #define CLK_NUM_PER_DSI 2
 
 #define DEVICE_DSI_NUM 2
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_EDP
 #define SUPPORT_EDP
+#endif
 
 #define HAVE_DEVICE_COMMON_MODULE
 #define DEVICE_COMMON_VERSION2
@@ -65,7 +69,9 @@
 /* #define SUPPORT_VGA */
 #if defined(CONFIG_FPGA_V4_PLATFORM) \
 	|| defined(CONFIG_FPGA_V7_PLATFORM)
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LVDS
 #define SUPPORT_LVDS
+#endif
 #endif
 #define LVDS_REVERT
 
@@ -94,11 +100,15 @@
 #define SUPPORT_CDC
 /* databit & yuv format conversion(yuv444/422/420) */
 #define SUPPORT_FORMATTER
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_HDMI
 #define SUPPORT_HDMI
+#endif
 /* #define DSI_VERSION_40 */
 #define HAVE_DEVICE_COMMON_MODULE
 #define DEVICE_COMMON_VERSION2
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_TV
 #define SUPPORT_TV
+#endif
 /* #define SUPPORT_VGA */
 /* #define SUPPORT_LVDS */
 /* #define LVDS_REVERT */
@@ -118,7 +128,9 @@
 /* the number of TCON_LCD */
 #define DEVICE_LCD_NUM 2
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_DSI
 #define SUPPORT_DSI
+#endif
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 #define SUPPORT_SMBL
 #endif
@@ -128,12 +140,20 @@
 #define SUPPORT_CDC
 /* databit & yuv format conversion(yuv444/422/420) */
 #define SUPPORT_FORMATTER
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_HDMI
 #define SUPPORT_HDMI
+#endif
 #define DSI_VERSION_40
 #define HAVE_DEVICE_COMMON_MODULE
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_TV
 #define SUPPORT_TV
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_VGA
 #define SUPPORT_VGA
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LVDS
 #define SUPPORT_LVDS
+#endif
 /* #define LVDS_REVERT */
 
 #endif
@@ -160,6 +180,9 @@
 /* total number of DSI clk */
 #define CLK_DSI_NUM  (CLK_NUM_PER_DSI * DEVICE_DSI_NUM)
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LCD
+#define SUPPORT_LCD
+#endif
 
 
 struct de_feat {

@@ -19,7 +19,9 @@
 #define RTWB_USE_RCQ (1)
 #define WB_HAS_CSC
 #ifdef CONFIG_ARCH_SUN50IW9
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_RTWB
 #define SUPPORT_RTWB
+#endif
 #endif
 
 #define DE_NUM (2)

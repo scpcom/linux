@@ -65,6 +65,7 @@ config SUNXI_DISP2_FB_DECOMPRESS_LZMA
 config HDMI_DISP2_SUNXI
 	tristate "HDMI Driver Support(sunxi-disp2)"
 	depends on (DISP2_SUNXI)
+	depends on DISP2_SUNXI_SUPPORT_HDMI
 	default n
 	---help---
 	  Hdmi driver for sunxi based boards.
@@ -72,6 +73,7 @@ config HDMI_DISP2_SUNXI
 menuconfig HDMI2_DISP2_SUNXI
   tristate "HDMI2.0 Driver Support(sunxi-disp2)"
   depends on (DISP2_SUNXI)
+  depends on DISP2_SUNXI_SUPPORT_HDMI
   default n
   ---help---
   Say Y here if you want to have support for HDMI2.0 controller
@@ -96,6 +98,7 @@ endchoice
 config HDMI_EP952_DISP2_SUNXI
 	tristate "HDMI EP952 Driver Support(sunxi-disp2)"
 	depends on (DISP2_SUNXI)
+	depends on DISP2_SUNXI_SUPPORT_HDMI
 	default n
 	---help---
 	  Hdmi ep952 driver for sunxi based boards.
@@ -148,6 +151,7 @@ config HDMI2_FREQ_SPREAD_SPECTRUM
 config TV_DISP2_SUNXI
 	 tristate "TV Driver Support(sunxi-disp2)"
 	 depends on (DISP2_SUNXI)
+	 depends on DISP2_SUNXI_SUPPORT_TV
 	 default n
 	 ---help---
 	  TV driver for sunxi based boards.
@@ -167,6 +171,7 @@ config DISP2_TV_GM7121
 config EDP_DISP2_SUNXI
 	tristate "EDP Driver Support(sunxi-disp2)"
 	depends on (DISP2_SUNXI)
+	depends on DISP2_SUNXI_SUPPORT_EDP
 	default n
 	---help---
       EDP 1.2 driver for sunxi. Embedded Display Port is
@@ -178,6 +183,7 @@ config EDP_DISP2_SUNXI
 config DISP2_TV_AC200
 	tristate "AC200 TV module Support(sunxi-disp2)"
 	depends on (DISP2_SUNXI && MFD_ACX00)
+	depends on DISP2_SUNXI_SUPPORT_TV
 	default n
 	---help---
 	  TV AC200 support for Allwinner platforms.
@@ -247,6 +253,7 @@ config LCD_FB_ENABLE_DEFERRED_IO
 
 menu "LCD panels select"
 	depends on DISP2_SUNXI
+	depends on DISP2_SUNXI_SUPPORT_LCD
 
 source "drivers/video/fbdev/sunxi/disp2/disp/lcd/Kconfig"
 endmenu

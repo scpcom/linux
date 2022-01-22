@@ -10,20 +10,42 @@ disp-objs += disp_sys_intf.o
 disp-objs += disp_trace.o
 disp-$(CONFIG_DISP2_SUNXI_COMPOSER) += dev_composer.o
 disp-objs += de/disp_display.o de/disp_features.o de/disp_device.o \
-	     de/disp_lcd.o de/disp_manager.o de/disp_private.o \
-	     de/disp_smart_backlight.o de/disp_enhance.o de/disp_capture.o \
-	     de/disp_hdmi.o de/disp_tv.o de/disp_vdevice.o \
-	     de/disp_vga.o \
-	     de/disp_vdpo.o de/disp_edp.o de/disp_rtwb.o
+	     de/disp_manager.o de/disp_private.o \
+	     de/disp_capture.o \
+	     de/disp_vdevice.o
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_SMBL),y)
+disp-objs += de/disp_smart_backlight.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE),y)
+disp-objs += de/disp_enhance.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_HDMI),y)
+disp-objs += de/disp_hdmi.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_TV),y)
+disp-objs += de/disp_tv.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_VGA),y)
+disp-objs += de/disp_vga.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_EDP),y)
+disp-objs += de/disp_edp.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_RTWB),y)
+disp-objs += de/disp_rtwb.o
+endif
 disp-$(CONFIG_EINK_PANEL_USED) += de/disp_eink_manager.o \
 		de/eink_buffer_manager.o de/eink_pipeline_manager.o \
 		de/disp_format_convert.o
 
-disp-objs += de/disp_vga.o \
-	     de/disp_vdpo.o de/disp_edp.o
+ifeq ($(CONFIG_VDPO_DISP2_SUNXI),y)
+disp-objs += de/disp_vdpo.o
+endif
 disp-$(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT) += de/disp_rotation_sw.o
 disp-$(CONFIG_SUNXI_DISP2_FB_HW_ROTATION_SUPPORT) += fb_g2d_rot.o
 
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_LCD),y)
+disp-objs += de/disp_lcd.o
 disp-objs += lcd/panels.o lcd/lcd_source.o lcd/default_panel.o
 
 
@@ -70,4 +92,5 @@ disp-objs += lcd/panels.o lcd/lcd_source.o lcd/default_panel.o \
 		lcd/he0801a068.o lcd/inet_dsi_panel.o lcd/lq101r1sx03.o  \
 		lcd/WilliamLcd.o lcd/bp101wx1-206.o lcd/k101im2qa04.o  lcd/fx070.o \
 		lcd/CC08021801_310_800X1280.o lcd/K080_IM2HYL802R_800X1280.o lcd/K101_IM2BYL02_L_800X1280.o
+endif
 disp-objs += $(obj_low)

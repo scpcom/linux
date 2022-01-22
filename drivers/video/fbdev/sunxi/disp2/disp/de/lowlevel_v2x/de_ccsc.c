@@ -22,7 +22,11 @@
 #include "de_csc_type.h"
 #include "de_vep_table.h"
 #include "de_csc.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_enhance.h"
+#else
+#define FCE_OFST  0xA0000	/* FCE offset based on RTMX */
+#endif
 
 #define CCSC00_OFST	0xAA050
 /* device0 channel0 (or device1 channel0 support vep) */

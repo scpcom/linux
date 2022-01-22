@@ -15,7 +15,9 @@
  */
 
 #include "disp_display.h"
+#if defined(SUPPORT_RTWB)
 #include "disp_rtwb.h"
+#endif
 #include "../disp_trace.h"
 
 struct disp_dev_t gdisp;
@@ -40,7 +42,9 @@ s32 bsp_disp_init(struct disp_bsp_init_para *para)
 #if defined (DE_VERSION_V33X)
 	disp_al_init_tcon(para);
 #endif
+#if defined(SUPPORT_LCD)
 	disp_init_lcd(para);
+#endif
 #if defined(SUPPORT_HDMI)
 	disp_init_hdmi(para);
 #endif
@@ -110,7 +114,9 @@ s32 bsp_disp_exit(u32 mode)
 #if defined(SUPPORT_VDPO)
 	disp_exit_vdpo();
 #endif
+#if defined(SUPPORT_LCD)
 	disp_exit_lcd();
+#endif
 	disp_exit_al();
 
 	disp_exit_feat();
@@ -904,6 +910,7 @@ s32 bsp_disp_get_vb_time(void)
 
 	num_screens = bsp_disp_feat_get_num_screens();
 	for (screen_id = 0; screen_id < num_screens; screen_id++) {
+#if defined(SUPPORT_LCD)
 		if (bsp_disp_get_output_type(screen_id)
 		    == DISP_OUTPUT_TYPE_LCD) {
 			struct disp_device *lcd;
@@ -931,6 +938,7 @@ s32 bsp_disp_get_vb_time(void)
 				vb_time = (start_delay) * time_per_line;
 			}
 		}
+#endif
 		/* add hdmi support ? */
 	}
 	return vb_time;
@@ -946,6 +954,7 @@ s32 bsp_disp_get_next_vb_time(void)
 
 	num_screens = bsp_disp_feat_get_num_screens();
 	for (screen_id = 0; screen_id < num_screens; screen_id++) {
+#if defined(SUPPORT_LCD)
 		if (bsp_disp_get_output_type(screen_id)
 		    == DISP_OUTPUT_TYPE_LCD) {
 			struct disp_device *lcd;
@@ -980,6 +989,7 @@ s32 bsp_disp_get_next_vb_time(void)
 				}
 			}
 		}
+#endif
 		/* add hdmi support ? */
 	}
 	return next_time;
@@ -992,6 +1002,7 @@ s32 bsp_disp_is_in_vb(void)
 
 	num_screens = bsp_disp_feat_get_num_screens();
 	for (screen_id = 0; screen_id < num_screens; screen_id++) {
+#if defined(SUPPORT_LCD)
 		if (bsp_disp_get_output_type(screen_id)
 		    == DISP_OUTPUT_TYPE_LCD) {
 			struct disp_device *lcd;
@@ -1007,7 +1018,9 @@ s32 bsp_disp_is_in_vb(void)
 			ret =
 			    disp_al_lcd_query_irq(screen_id, LCD_IRQ_TCON0_VBLK,
 						  &info);
-		} else if (bsp_disp_get_output_type(screen_id) ==
+		} else
+#endif
+		if (bsp_disp_get_output_type(screen_id) ==
 			   DISP_OUTPUT_TYPE_HDMI) {
 			/* FIXME: add hdmi */
 		}
@@ -1582,6 +1595,7 @@ s32 bsp_disp_tv_register(struct disp_tv_func *func)
 
 s32 bsp_disp_lcd_set_panel_funs(char *name, struct disp_lcd_panel_fun *lcd_cfg)
 {
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 	u32 num_screens;
 	u32 screen_id;
@@ -1598,10 +1612,12 @@ s32 bsp_disp_lcd_set_panel_funs(char *name, struct disp_lcd_panel_fun *lcd_cfg)
 			}
 		}
 	}
+#endif
 
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 void LCD_OPEN_FUNC(u32 disp, LCD_FUNC func, u32 delay)
 {
 	struct disp_device *lcd;
@@ -1621,6 +1637,7 @@ void LCD_CLOSE_FUNC(u32 disp, LCD_FUNC func, u32 delay)
 	if (lcd && lcd->set_close_func)
 		lcd->set_close_func(lcd, func, delay);
 }
+#endif
 
 s32 bsp_disp_get_lcd_registered(u32 disp)
 {
@@ -1637,6 +1654,7 @@ s32 bsp_disp_get_tv_registered(void)
 	return gdisp.tv_registered;
 }
 
+#if defined(SUPPORT_LCD)
 s32 bsp_disp_lcd_backlight_enable(u32 disp)
 {
 	s32 ret = -1;
@@ -1891,6 +1909,7 @@ s32 bsp_disp_get_panel_info(u32 disp, struct disp_panel_para *info)
 
 	return DIS_FAIL;
 }
+#endif
 
 int bsp_disp_get_display_size(u32 disp, unsigned int *width,
 			      unsigned int *height)

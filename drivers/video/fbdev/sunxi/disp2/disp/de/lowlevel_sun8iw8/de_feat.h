@@ -49,6 +49,10 @@
 /* total number of DSI clk */
 #define CLK_DSI_NUM  (CLK_NUM_PER_DSI * DEVICE_DSI_NUM)
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_LCD
+#define SUPPORT_LCD
+#endif
+
 struct de_feat {
 	const int num_screens;
 	const int num_devices;

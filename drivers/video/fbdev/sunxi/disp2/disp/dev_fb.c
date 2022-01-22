@@ -16,7 +16,9 @@
 #if defined(SUPPORT_EDP)
 #include "de/disp_edp.h"
 #endif /*endif defined(SUPPORT_EDP) */
+#if defined(CONFIG_SUNXI_DISP2_FB_HW_ROTATION_SUPPORT)
 #include "fb_g2d_rot.h"
+#endif
 #include <linux/decompress/unlzma.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>

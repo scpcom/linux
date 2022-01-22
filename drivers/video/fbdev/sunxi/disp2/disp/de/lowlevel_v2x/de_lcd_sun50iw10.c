@@ -11,7 +11,9 @@
 
 #include "de_lcd_type.h"
 #include "de_lcd.h"
+#if defined(SUPPORT_DSI)
 #include "de_dsi.h"
+#endif
 
 static volatile struct __de_lcd_dev_t *lcd_dev[DEVICE_NUM];
 #if defined(HAVE_DEVICE_COMMON_MODULE)
@@ -387,6 +389,7 @@ s32 tcon_vdpo_clk_enable(u32 sel, u32 en)
 }
 #endif
 
+#if defined(SUPPORT_LVDS)
 s32 lvds_open(u32 sel, struct disp_panel_para *panel)
 {
 	lcd_dev[sel]->tcon0_lvds_ctl.bits.tcon0_lvds_en = 1;
@@ -531,6 +534,7 @@ s32 lvds_close(u32 sel)
 
 	return 0;
 }
+#endif
 
 u32 tcon_get_cur_field(u32 sel, u32 tcon_index)
 {

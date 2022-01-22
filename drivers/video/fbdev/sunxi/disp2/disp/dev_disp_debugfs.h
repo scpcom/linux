@@ -15,7 +15,9 @@
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include "de/bsp_display.h"
+#ifdef CONFIG_TV_DISP2_SUNXI
 #include "de/disp_tv.h"
+#endif
 #include "dev_disp.h"
 
 int dispdbg_init(void);

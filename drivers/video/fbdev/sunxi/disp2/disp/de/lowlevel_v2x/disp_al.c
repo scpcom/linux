@@ -561,6 +561,7 @@ int disp_al_manager_disable_irq(unsigned int disp)
 	return de_al_enable_irq(disp, 0);
 }
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 int disp_al_enhance_apply(unsigned int disp, struct disp_enhance_config *config)
 {
 	if (config->flags & ENH_MODE_DIRTY) {
@@ -588,6 +589,7 @@ int disp_al_enhance_tasklet(unsigned int disp)
 {
 	return de_enhance_tasklet(disp);
 }
+#endif
 
 #if !IS_ENABLED(CONFIG_EINK200_SUNXI)
 int disp_al_capture_init(unsigned int disp)
@@ -669,6 +671,7 @@ int disp_al_write_back_clk_exit(unsigned int disp)
 }
 #endif
 
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
 int disp_al_smbl_apply(unsigned int disp, struct disp_smbl_info *info)
 {
 	return de_smbl_apply(disp, info);
@@ -693,6 +696,7 @@ int disp_al_smbl_get_status(unsigned int disp)
 {
 	return de_smbl_get_status(disp);
 }
+#endif
 
 #ifdef CONFIG_FPGA_V4_PLATFORM
 static struct lcd_clk_info clk_tbl[] = {
@@ -888,7 +892,9 @@ int disp_al_lcd_enable(u32 screen_id, struct disp_panel_para *panel)
 
 	tcon0_open(screen_id, panel);
 	if (panel->lcd_if == LCD_IF_LVDS) {
+#if defined(SUPPORT_LVDS)
 		lvds_open(screen_id, panel);
+#endif
 	} else if (panel->lcd_if == LCD_IF_DSI) {
 #if defined(SUPPORT_DSI)
 		dsi_open(screen_id, panel);
@@ -916,7 +922,9 @@ int disp_al_lcd_disable(u32 screen_id, struct disp_panel_para *panel)
 #if !defined(TCON1_DRIVE_PANEL)
 
 	if (panel->lcd_if == LCD_IF_LVDS) {
+#if defined(SUPPORT_LVDS)
 		lvds_close(screen_id);
+#endif
 	} else if (panel->lcd_if == LCD_IF_DSI) {
 #if defined(SUPPORT_DSI)
 		dsi_close(screen_id);
@@ -1430,7 +1438,7 @@ int disp_al_device_disable_irq(u32 screen_id)
 int disp_al_lcd_get_status(u32 screen_id, struct disp_panel_para *panel)
 {
 	int ret = 0;
-#if defined(DSI_VERSION_40)
+#if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
 	if (panel->lcd_if == LCD_IF_DSI)
 		ret = dsi_get_status(screen_id);
 	else
@@ -1463,7 +1471,9 @@ int disp_init_al(struct disp_bsp_init_para *para)
 
 	memset(&al_priv, 0, sizeof(struct disp_al_private_data));
 	de_al_init(para);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	de_enhance_init(para);
+#endif
 	de_ccsc_init(para);
 	de_dcsc_init(para);
 #if IS_ENABLED(CONFIG_EINK_PANEL_USED) || IS_ENABLED(CONFIG_EINK200_SUNXI)
@@ -1479,6 +1489,7 @@ int disp_init_al(struct disp_bsp_init_para *para)
 	for (i = 0; i < DEVICE_NUM; i++)
 		tcon_set_reg_base(i, para->reg_base[DISP_MOD_LCD0 + i]);
 
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
 	for (i = 0; i < DE_NUM; i++) {
 		if (de_feat_is_support_smbl(i))
 #if defined(CONFIG_INDEPENDENT_DE)
@@ -1487,6 +1498,7 @@ int disp_init_al(struct disp_bsp_init_para *para)
 			de_smbl_init(i, para->reg_base[DISP_MOD_DE]);
 #endif
 	}
+#endif
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
 #if defined(CONFIG_INDEPENDENT_DE)
@@ -1558,7 +1570,9 @@ int disp_exit_al(void)
 #endif /*endif SUPPORT_SMBL */
 
 	de_al_exit();
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	de_enhance_exit();
+#endif
 	de_ccsc_exit();
 	de_dcsc_exit();
 #if IS_ENABLED(CONFIG_EINK_PANEL_USED) || IS_ENABLED(CONFIG_EINK200_SUNXI)

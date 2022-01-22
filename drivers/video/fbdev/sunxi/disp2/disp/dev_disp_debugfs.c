@@ -95,6 +95,7 @@ static void dispdbg_process(void)
 				dispdbg_priv.name);
 			return;
 		}
+#if defined(SUPPORT_LCD)
 	} else if (!strncmp(dispdbg_priv.name, "lcd", 3)) {
 		char *p = dispdbg_priv.name + 3;
 		unsigned int disp;
@@ -144,6 +145,7 @@ static void dispdbg_process(void)
 				dispdbg_priv.name);
 			return;
 		}
+#endif
 	} else if (!strncmp(dispdbg_priv.name, "disp", 4)) {
 		char *p = dispdbg_priv.name + 4;
 		unsigned int disp;

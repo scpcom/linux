@@ -720,9 +720,11 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 		de_rtmx_set_blend_mode(screen_id, i, DE_BLD_SRCOVER);
 	/* de_rtmx_set_colorkey(screen_id,); */
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	/* set enhance size */
 	de_enhance_set_size(screen_id, dispsize);
 	de_enhance_set_format(screen_id, (chn_is_yuv[0]) ? DE_YUV : DE_RGB);
+#endif
 
 	return 0;
 }

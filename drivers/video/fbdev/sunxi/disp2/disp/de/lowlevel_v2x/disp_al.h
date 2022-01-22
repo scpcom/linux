@@ -14,9 +14,13 @@
 #include "../include.h"
 #include "de_feat.h"
 #include "de_hal.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_enhance.h"
+#endif
 #include "de_wb.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 #include "de_smbl.h"
+#endif
 #include "de_csc.h"
 #include "de_lcd.h"
 #if defined(SUPPORT_DSI)

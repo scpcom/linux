@@ -2445,7 +2445,9 @@ static s32 disp_init(struct platform_device *pdev)
 #if defined(SUPPORT_EINK)
 	g_disp_drv.eink_manager[0] = disp_get_eink_manager(0);
 #endif
+#if defined(SUPPORT_LCD)
 	lcd_init();
+#endif
 	bsp_disp_open();
 
 #ifndef MODULE
@@ -2605,6 +2607,7 @@ static int disp_mem_release(int sel)
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops)
 {
 	memset((void *)src_ops, 0, sizeof(struct sunxi_disp_source_ops));
@@ -2639,6 +2642,7 @@ int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops)
 
 	return 0;
 }
+#endif
 
 int disp_mmap(struct file *file, struct vm_area_struct *vma)
 {
