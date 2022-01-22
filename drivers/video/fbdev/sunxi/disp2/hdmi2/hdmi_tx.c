@@ -1711,12 +1711,14 @@ static const struct of_device_id dw_hdmi_tx[] = {
 	{ .compatible =	"allwinner,sunxi-hdmi" },
 	{ }
 };
+#ifdef MODULE
 MODULE_DEVICE_TABLE(of, dw_hdmi_tx);
+#endif
 
 /**
  * @short Platform driver structure
  */
-static struct platform_driver __refdata dwc_hdmi_tx_pdrv = {
+struct platform_driver __refdata dwc_hdmi_tx_pdrv = {
 	.remove = hdmi_tx_exit,
 	.probe = hdmi_tx_init,
 	.driver = {
@@ -3257,9 +3259,11 @@ static int __init hdmi_module_init(void)
 	if (ret)
 		pr_err("Error: hdmi sysfs_create_group failed!\n");
 
+#ifdef MODULE
 	ret = platform_driver_register(&dwc_hdmi_tx_pdrv);
 	if (ret)
 		pr_err("Error: hdmi driver register fail\n");
+#endif
 
 	pr_info("HDMI2.0 module init end\n");
 
@@ -3286,7 +3290,9 @@ static void __exit hdmi_module_exit(void)
 
 	kfree(hdmi_drv);
 
+#ifdef MODULE
 	platform_driver_unregister(&dwc_hdmi_tx_pdrv);
+#endif
 
 	sysfs_remove_group(&hdev->kobj, &hdmi_attribute_group);
 	device_destroy(hdmi_class, devid);

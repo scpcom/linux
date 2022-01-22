@@ -1605,7 +1605,7 @@ static int tv_remove(struct platform_device *pdev)
 *	return 0;
 *}
 */
-static struct platform_driver tv_driver = {
+struct platform_driver tv_driver = {
 
 	.probe	  = tv_probe,
 	.remove	 = tv_remove,
@@ -1688,7 +1688,9 @@ int __init tv_module_init(void)
 	ret = platform_device_register(&tv_device);
 #endif
 	if (ret == 0) {
+#ifdef MODULE
 		ret = platform_driver_register(&tv_driver);
+#endif
 		if (!ret) {
 #if defined(CONFIG_EXTCON)
 			ret = sysfs_create_group(&tv_dev->kobj,
@@ -1718,7 +1720,9 @@ int __init tv_module_init(void)
 
 static void __exit tv_module_exit(void)
 {
+#ifdef MODULE
 	platform_driver_unregister(&tv_driver);
+#endif
 #if !defined(CONFIG_OF)
 	platform_device_unregister(&tv_device);
 #endif

@@ -762,7 +762,7 @@ static int  tv_remove(struct platform_device *pdev) /* delete __devexit */
 	return 0;
 }
 
-static struct platform_driver tv_ac200_driver = {
+struct platform_driver tv_ac200_driver = {
 	.driver = {
 		.name = "tv",
 		.owner = THIS_MODULE,
@@ -788,9 +788,11 @@ static int tv_ac200_init(void)
 		return -1;
 	}
 
+#ifdef MODULE
 	ret = platform_driver_register(&tv_ac200_driver);
 	if (ret)
 		return -EINVAL;
+#endif
 
 	return ret;
 }

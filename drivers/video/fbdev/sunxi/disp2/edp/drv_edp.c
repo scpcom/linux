@@ -715,7 +715,7 @@ static const struct of_device_id sunxi_edp_match[] = {
 	{},
 };
 
-static struct platform_driver edp_driver = {
+struct platform_driver edp_driver = {
 	.probe = edp_probe,
 	.remove = edp_remove,
 	.driver = {
@@ -729,14 +729,18 @@ s32 __init edp_module_init(void)
 {
 	s32 ret = 0;
 
+#ifdef MODULE
 	ret = platform_driver_register(&edp_driver);
+#endif
 
 	return ret;
 }
 
 static void __exit edp_module_exit(void)
 {
+#ifdef MODULE
 	platform_driver_unregister(&edp_driver);
+#endif
 }
 
 

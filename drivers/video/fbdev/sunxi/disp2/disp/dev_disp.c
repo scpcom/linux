@@ -101,6 +101,12 @@ int composer_init(struct disp_drv_info *p_disp_drv);
 int hwc_dump(char *buf);
 #endif
 
+#ifndef MODULE
+#define MAX_SUNXI_SUB_DRIVERS 16
+static struct platform_driver *sunxi_sub_drivers[MAX_SUNXI_SUB_DRIVERS];
+static int num_sunxi_sub_drivers;
+#endif
+
 void disp_set_suspend_output_type(u8 disp, u8 output_type)
 {
 	suspend_output_type[disp] = output_type;
@@ -1795,11 +1801,11 @@ static void start_work(struct work_struct *work)
 	int count = 0;
 
 	num_screens = bsp_disp_feat_get_num_screens();
-	while ((g_disp_drv.inited == 0) && (count < 5)) {
+	while ((g_disp_drv.inited == 0) && (count < 10)) {
 		count++;
 		msleep(20);
 	}
-	if (count >= 5)
+	if (count >= 10)
 		pr_warn("%s, timeout\n", __func__);
 	if (g_disp_drv.para.boot_info.sync == 0) {
 		for (screen_id = 0; screen_id < num_screens; screen_id++) {
@@ -2280,6 +2286,9 @@ static s32 disp_init(struct platform_device *pdev)
 {
 	struct disp_bsp_init_para *para;
 	int i, disp, num_screens;
+#ifndef MODULE
+	int ret;
+#endif
 	unsigned int value, value1, value2, output_type, output_mode;
 	unsigned int output_format, output_bits, output_eotf, output_cs;
 
@@ -2438,6 +2447,11 @@ static s32 disp_init(struct platform_device *pdev)
 #endif
 	lcd_init();
 	bsp_disp_open();
+
+#ifndef MODULE
+	ret = platform_register_drivers(sunxi_sub_drivers,
+					num_sunxi_sub_drivers);
+#endif
 
 	fb_init(pdev);
 #if defined(CONFIG_DISP2_SUNXI_COMPOSER)
@@ -2924,9 +2938,44 @@ static void disp_reset_control_put_wrap(struct disp_drv_info *disp_drv)
 #endif
 }
 
+#ifndef MODULE
+static void sunxi_disp_match_remove(struct device *dev)
+{
+	struct device_link *link;
+
+	list_for_each_entry(link, &dev->links.consumers, s_node)
+		device_link_del(link);
+}
+
+static void sunxi_disp_match_add(struct device *dev)
+{
+	int i;
+
+	for (i = 0; i < num_sunxi_sub_drivers; i++) {
+		struct platform_driver *drv = sunxi_sub_drivers[i];
+		struct device *p = NULL, *d;
+
+		do {
+			d = bus_find_device(&platform_bus_type, p, &drv->driver,
+					    (void *)platform_bus_type.match);
+			put_device(p);
+			p = d;
+
+			if (!d)
+				break;
+
+			device_link_add(dev, d, DL_FLAG_STATELESS);
+		} while (true);
+	}
+}
+#endif
+
 static u64 disp_dmamask = DMA_BIT_MASK(32);
 static int disp_probe(struct platform_device *pdev)
 {
+#ifndef MODULE
+	struct device *dev = &pdev->dev;
+#endif
 	int i;
 	int ret;
 	int counter = 0;
@@ -3114,6 +3163,10 @@ static int disp_probe(struct platform_device *pdev)
 
 	atomic_set(&g_driver_ref_count, 0);
 
+#ifndef MODULE
+	sunxi_disp_match_add(dev);
+#endif
+
 	__inf("[DISP]disp_probe finish\n");
 
 	return ret;
@@ -3135,6 +3188,10 @@ static int disp_remove(struct platform_device *pdev)
 	int i;
 
 	pr_info("disp_remove call\n");
+
+#ifndef MODULE
+	sunxi_disp_match_remove(&pdev->dev);
+#endif
 
 	disp_shutdown(pdev);
 #if defined(CONFIG_PM_RUNTIME)
@@ -4596,6 +4653,14 @@ static struct dramfreq_vb_time_ops dramfreq_ops = {
 extern int dramfreq_set_vb_time_ops(struct dramfreq_vb_time_ops *ops);
 #endif
 
+#ifndef MODULE
+#define ADD_SUNXI_SUB_DRIVER(drv, cond) { \
+	if (IS_ENABLED(cond) && \
+	    !WARN_ON(num_sunxi_sub_drivers >= MAX_SUNXI_SUB_DRIVERS)) \
+		sunxi_sub_drivers[num_sunxi_sub_drivers++] = &drv; \
+}
+#endif
+
 static int __init disp_module_init(void)
 {
 	int ret = 0, err;
@@ -4620,6 +4685,17 @@ static int __init disp_module_init(void)
 
 	display_dev = device_create(disp_class, NULL, devid, NULL, "disp");
 	
+#ifndef MODULE
+	num_sunxi_sub_drivers = 0;
+	ADD_SUNXI_SUB_DRIVER(edp_driver, CONFIG_EDP_DISP2_SUNXI);
+	ADD_SUNXI_SUB_DRIVER(eink_driver, CONFIG_EINK200_SUNXI);
+	ADD_SUNXI_SUB_DRIVER(hdmi_driver, CONFIG_HDMI_DISP2_SUNXI);
+	ADD_SUNXI_SUB_DRIVER(dwc_hdmi_tx_pdrv, CONFIG_HDMI2_DISP2_SUNXI);
+	ADD_SUNXI_SUB_DRIVER(tv_driver, CONFIG_TV_DISP2_SUNXI);
+	ADD_SUNXI_SUB_DRIVER(tv_ac200_driver, CONFIG_DISP2_TV_AC200);
+	ADD_SUNXI_SUB_DRIVER(vdpo_driver, CONFIG_VDPO_DISP2_SUNXI);
+#endif
+
 #ifndef CONFIG_OF
 	ret = platform_device_register(&disp_device);
 #endif

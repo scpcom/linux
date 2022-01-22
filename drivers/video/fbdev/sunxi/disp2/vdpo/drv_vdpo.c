@@ -547,7 +547,7 @@ static const struct of_device_id sunxi_vdpo_match[] = {
 	{},
 };
 
-static struct platform_driver vdpo_driver = {
+struct platform_driver vdpo_driver = {
 	.probe = vdpo_probe,
 	.remove = vdpo_remove,
 	.driver = {
@@ -582,14 +582,18 @@ s32 __init vdpo_module_init(void)
 #if !defined(CONFIG_OF)
 	ret = platform_device_register(&vdpo_device);
 #endif
+#ifdef MODULE
 	if (ret == 0)
 		ret = platform_driver_register(&vdpo_driver);
+#endif
 	return ret;
 }
 
 static void __exit vdpo_module_exit(void)
 {
+#ifdef MODULE
 	platform_driver_unregister(&vdpo_driver);
+#endif
 #if !defined(CONFIG_OF)
 	platform_device_unregister(&vdpo_device);
 #endif

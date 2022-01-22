@@ -339,4 +339,14 @@ void disp_ion_free(void *virt_addr, void *phys_addr, u32 num_bytes);
 void disp_ion_flush_cache(void *startAddr, int size);
 int disp_get_ion_fd(struct disp_ion_mem *mem);
 void *disp_get_phy_addr(struct disp_ion_mem *mem);
+
+#ifndef MODULE
+extern struct platform_driver edp_driver;
+extern struct platform_driver eink_driver;
+extern struct platform_driver hdmi_driver;
+extern struct platform_driver dwc_hdmi_tx_pdrv;
+extern struct platform_driver tv_driver;
+extern struct platform_driver tv_ac200_driver;
+extern struct platform_driver vdpo_driver;
+#endif
 #endif

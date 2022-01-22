@@ -1327,7 +1327,7 @@ static int hdmi_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver hdmi_driver = {
+struct platform_driver hdmi_driver = {
 
 	.probe	  = hdmi_probe,
 	.remove	 = hdmi_remove,
@@ -1432,8 +1432,10 @@ static int __init hdmi_module_init(void)
 #ifndef CONFIG_OF
 	ret = platform_device_register(&hdmi_device);
 #endif
+#ifdef MODULE
 	if (ret == 0)
 		ret = platform_driver_register(&hdmi_driver);
+#endif
 
 	hdmi_inf("hdmi_module_init\n");
 	return ret;
@@ -1442,7 +1444,9 @@ static int __init hdmi_module_init(void)
 static void __exit hdmi_module_exit(void)
 {
 	hdmi_inf("hdmi_module_exit\n");
+#ifdef MODULE
 	platform_driver_unregister(&hdmi_driver);
+#endif
 #ifndef CONFIG_OF
 	platform_device_unregister(&hdmi_device);
 #endif

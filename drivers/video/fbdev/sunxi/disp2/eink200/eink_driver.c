@@ -895,7 +895,7 @@ static const struct of_device_id sunxi_eink_match[] = {
 	{},
 };
 
-static struct platform_driver eink_driver = {
+struct platform_driver eink_driver = {
 	.probe = eink_probe,
 	.remove = eink_remove,
 	.shutdown = eink_shutdown,
@@ -940,7 +940,9 @@ static int __init eink_module_init(void)
 		ret = PTR_ERR(drvdata->eink_dev);
 		return ret;
 	}
+#ifdef MODULE
 	platform_driver_register(&eink_driver);
+#endif
 
 	ret = sysfs_create_group(&drvdata->eink_dev->kobj, &eink_attribute_group);
 	if (ret < 0)
@@ -964,7 +966,9 @@ static void __init eink_module_exit(void)
 #if IS_ENABLED(CONFIG_DISP2_SUNXI_ION) && defined(EINK_CACHE_MEM)
 	deinit_eink_ion_mgr(&g_eink_drvdata.ion_mgr);
 #endif
+#ifdef MODULE
 	platform_driver_unregister(&eink_driver);
+#endif
 	device_destroy(drvdata->pclass, drvdata->devt);
 	class_destroy(drvdata->pclass);
 	cdev_del(drvdata->pcdev);
@@ -977,7 +981,9 @@ module_exit(eink_module_exit);
 
 /* module_platform_driver(eink_driver); */
 
+#ifdef MODULE
 MODULE_DEVICE_TABLE(of, sunxi_eink_match);
+#endif
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("liuli@allwinnertech.com");
 MODULE_DESCRIPTION("Sunxi Eink");
