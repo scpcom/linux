@@ -1513,11 +1513,17 @@ err_iomap:
 }
 #endif
 
+int tv_class_init(void);
+static void tv_class_exit(void);
+
 static int tv_probe(struct platform_device *pdev)
 {
 	int index = 0;
 	const char *str;
 	s32 ret = 0;
+
+	if (!g_tv_info.tv_number)
+		ret = tv_class_init();
 
 	tv_fake_detect = 0;
 	if (!g_tv_info.tv_number)
@@ -1593,6 +1599,7 @@ static int tv_remove(struct platform_device *pdev)
 	if (!g_tv_info.tv_number)
 		return 0;
 	tv_exit();
+	tv_class_exit();
 	g_tv_info.tv_number = 0;
 	return 0;
 }
@@ -1664,11 +1671,10 @@ static const struct file_operations tv_fops = {
 	.mmap	   = tv_mmap,
 };
 
-int __init tv_module_init(void)
+int tv_class_init(void)
 {
 	int ret = 0;
 	int err = -1;
-	struct disp_tv_func disp_func;
 
 	alloc_chrdev_region(&tv_devid, 0, 1, "disp");
 	tv_cdev = cdev_alloc();
@@ -1687,6 +1693,22 @@ int __init tv_module_init(void)
 	}
 
 	tv_dev = device_create(tv_class, NULL, tv_devid, NULL, "tv");
+
+#if defined(CONFIG_EXTCON)
+	ret = sysfs_create_group(&tv_dev->kobj,
+				 &tv_attribute_group);
+	if (ret)
+		TV_ERR("sysfs_create_group fail!\n");
+#endif
+
+	return ret;
+}
+
+int __init tv_module_init(void)
+{
+	int ret = 0;
+	struct disp_tv_func disp_func;
+
 #if !defined(CONFIG_OF)
 	ret = platform_device_register(&tv_device);
 #endif
@@ -1695,12 +1717,6 @@ int __init tv_module_init(void)
 		ret = platform_driver_register(&tv_driver);
 #endif
 		if (!ret) {
-#if defined(CONFIG_EXTCON)
-			ret = sysfs_create_group(&tv_dev->kobj,
-						 &tv_attribute_group);
-			if (ret)
-				TV_ERR("sysfs_create_group fail!\n");
-#endif
 			memset(&disp_func, 0, sizeof(struct disp_tv_func));
 			disp_func.tv_enable = tv_enable;
 			disp_func.tv_disable = tv_disable;
@@ -1728,6 +1744,13 @@ static void __exit tv_module_exit(void)
 #endif
 #if !defined(CONFIG_OF)
 	platform_device_unregister(&tv_device);
+#endif
+}
+
+static void tv_class_exit(void)
+{
+#if defined(CONFIG_EXTCON)
+	sysfs_remove_group(&tv_dev->kobj, &tv_attribute_group);
 #endif
 	device_destroy(tv_class,  tv_devid);
 	class_destroy(tv_class);
