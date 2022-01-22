@@ -1521,6 +1521,7 @@ static int tv_probe(struct platform_device *pdev)
 	int index = 0;
 	const char *str;
 	s32 ret = 0;
+	struct disp_tv_func disp_func;
 
 	if (!g_tv_info.tv_number)
 		ret = tv_class_init();
@@ -1578,6 +1579,24 @@ static int tv_probe(struct platform_device *pdev)
 	ret = tv_init(pdev);
 	if (ret)
 		goto err_iomap;
+
+	if (!g_tv_info.tv_number) {
+		memset(&disp_func, 0, sizeof(struct disp_tv_func));
+		disp_func.tv_enable = tv_enable;
+		disp_func.tv_disable = tv_disable;
+		disp_func.tv_resume = tv_resume;
+		disp_func.tv_suspend = tv_suspend;
+		disp_func.tv_get_mode = tv_get_mode;
+		disp_func.tv_set_mode = tv_set_mode;
+		disp_func.tv_get_video_timing_info =
+		    tv_get_video_timing_info;
+		disp_func.tv_get_input_csc = tv_get_input_csc;
+		disp_func.tv_mode_support = tv_mode_support;
+		disp_func.tv_hot_plugging_detect =
+		    tv_hot_plugging_detect;
+		disp_func.tv_set_enhance_mode = tv_set_enhance_mode;
+		disp_tv_register(&disp_func);
+	}
 
 	g_tv_info.tv_number++;
 
@@ -1707,33 +1726,14 @@ int tv_class_init(void)
 int __init tv_module_init(void)
 {
 	int ret = 0;
-	struct disp_tv_func disp_func;
 
 #if !defined(CONFIG_OF)
 	ret = platform_device_register(&tv_device);
 #endif
-	if (ret == 0) {
 #ifdef MODULE
+	if (ret == 0)
 		ret = platform_driver_register(&tv_driver);
 #endif
-		if (!ret) {
-			memset(&disp_func, 0, sizeof(struct disp_tv_func));
-			disp_func.tv_enable = tv_enable;
-			disp_func.tv_disable = tv_disable;
-			disp_func.tv_resume = tv_resume;
-			disp_func.tv_suspend = tv_suspend;
-			disp_func.tv_get_mode = tv_get_mode;
-			disp_func.tv_set_mode = tv_set_mode;
-			disp_func.tv_get_video_timing_info =
-			    tv_get_video_timing_info;
-			disp_func.tv_get_input_csc = tv_get_input_csc;
-			disp_func.tv_mode_support = tv_mode_support;
-			disp_func.tv_hot_plugging_detect =
-			    tv_hot_plugging_detect;
-			disp_func.tv_set_enhance_mode = tv_set_enhance_mode;
-			disp_tv_register(&disp_func);
-		}
-	}
 	return ret;
 }
 
