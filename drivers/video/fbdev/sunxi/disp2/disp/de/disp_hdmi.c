@@ -38,6 +38,9 @@ struct disp_device_private_data {
 	struct clk *parent_clk;
 
 	struct reset_control *rst_bus_clk;
+
+	bool clk_enabled;
+	bool bus_clk_enabled;
 };
 
 static u32 hdmi_used;
@@ -199,6 +202,8 @@ static s32 hdmi_clk_enable(struct disp_device *hdmi)
 		ret = clk_prepare_enable(hdmip->bus_clk);
 		if (ret != 0)
 			DE_WRN("fail enable hdmi's bus clock!\n");
+		else
+			hdmip->bus_clk_enabled = true;
 	}
 
 	hdmi_clk_config(hdmi);
@@ -206,6 +211,8 @@ static s32 hdmi_clk_enable(struct disp_device *hdmi)
 		ret = clk_prepare_enable(hdmip->clk);
 		if (ret != 0)
 			DE_WRN("fail enable hdmi's clock!\n");
+		else
+			hdmip->clk_enabled = true;
 	}
 
 	return ret;
@@ -220,11 +227,19 @@ static s32 hdmi_clk_disable(struct disp_device *hdmi)
 		return DIS_FAIL;
 	}
 
-	if (hdmip->clk && (__clk_is_enabled(hdmip->clk)))
-		clk_disable_unprepare(hdmip->clk);
+	if (hdmip->clk && (__clk_is_enabled(hdmip->clk))) {
+		if (hdmip->clk_enabled) {
+			clk_disable_unprepare(hdmip->clk);
+			hdmip->clk_enabled = false;
+		}
+	}
 
-	if (hdmip->bus_clk && (__clk_is_enabled(hdmip->bus_clk)))
-		clk_disable_unprepare(hdmip->bus_clk);
+	if (hdmip->bus_clk && (__clk_is_enabled(hdmip->bus_clk))) {
+		if (hdmip->bus_clk_enabled) {
+			clk_disable_unprepare(hdmip->bus_clk);
+			hdmip->bus_clk_enabled = false;
+		}
+	}
 
 	if (hdmip->rst_bus_clk) {
 		if (reset_control_assert(hdmip->rst_bus_clk) != 0)
@@ -1114,6 +1129,8 @@ s32 disp_init_hdmi(struct disp_bsp_init_para *para)
 		hdmi->get_resolution = disp_device_get_resolution;
 		hdmi->get_timings = disp_device_get_timings;
 		hdmi->is_interlace = disp_device_is_interlace;
+		hdmip->clk_enabled = false;
+		hdmip->bus_clk_enabled = false;
 
 		hdmi->init = disp_hdmi_init;
 		hdmi->exit = disp_hdmi_exit;
