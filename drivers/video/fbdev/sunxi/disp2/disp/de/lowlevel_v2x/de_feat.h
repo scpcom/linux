@@ -312,7 +312,7 @@
 #endif
 #define DE_WB_RESET_SHARE
 /* #define LVDS_REVERT */
-#ifdef COFNIG_VDPO_DISP2_SUNXI
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 #define SUPPORT_VDPO
 #define DEVICE_VDPO_NUM 1
 #endif
@@ -357,7 +357,7 @@
 #define DE_WB_RESET_SHARE
 /* #define LVDS_REVERT */
 
-#ifdef COFNIG_VDPO_DISP2_SUNXI
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 #define SUPPORT_VDPO
 #define DEVICE_VDPO_NUM 1
 #endif
@@ -392,7 +392,7 @@
 #define DE_WB_RESET_SHARE
 /* #define LVDS_REVERT */
 
-#ifdef COFNIG_VDPO_DISP2_SUNXI
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 #define SUPPORT_VDPO
 #define DEVICE_VDPO_NUM 1
 #endif
