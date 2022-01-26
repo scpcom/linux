@@ -28,6 +28,12 @@ config DISP2_SUNXI_SUPPORT_TV
 	---help---
 		If you want to support TV, select it.
 
+config DISP2_SUNXI_SUPPORT_VDEVICE
+	bool "Support VDEVICE"
+	default y
+	---help---
+		If you want to support VDEVICE, select it.
+
 config DISP2_SUNXI_SUPPORT_VGA
 	bool "Support VGA"
 	default y

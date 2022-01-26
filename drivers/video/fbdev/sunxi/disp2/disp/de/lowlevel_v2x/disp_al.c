@@ -1298,6 +1298,7 @@ int disp_al_vga_irq_disable(u32 screen_id)
 
 #endif
 
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_VDEVICE)
 int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info,
 			struct disp_vdevice_interface_para *para,
 			u8 config_tcon_only)
@@ -1382,6 +1383,7 @@ int disp_al_vdevice_disable(u32 screen_id)
 
 	return 0;
 }
+#endif
 
 /* screen_id: used for index of manager */
 int disp_al_device_get_cur_line(u32 screen_id)

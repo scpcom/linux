@@ -11,8 +11,7 @@ disp-objs += disp_trace.o
 disp-$(CONFIG_DISP2_SUNXI_COMPOSER) += dev_composer.o
 disp-objs += de/disp_display.o de/disp_features.o de/disp_device.o \
 	     de/disp_manager.o de/disp_private.o \
-	     de/disp_capture.o \
-	     de/disp_vdevice.o
+	     de/disp_capture.o
 ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_SMBL),y)
 disp-objs += de/disp_smart_backlight.o
 endif
@@ -24,6 +23,9 @@ disp-objs += de/disp_hdmi.o
 endif
 ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_TV),y)
 disp-objs += de/disp_tv.o
+endif
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_VDEVICE),y)
+disp-objs += de/disp_vdevice.o
 endif
 ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_VGA),y)
 disp-objs += de/disp_vga.o
