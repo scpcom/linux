@@ -38,15 +38,17 @@ ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_SMBL),y)
 smbl_obj:=$(mydir)/de_smbl.o
 endif
 ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE),y)
-enhance_obj:=$(mydir)/de_enhance.o
+enhance_obj:=$(mydir)/de_fcc.o \
+		$(mydir)/de_peak.o \
+		$(mydir)/de_lti.o $(mydir)/de_fce.o \
+		$(mydir)/de_ase.o $(mydir)/de_bws.o \
+		$(mydir)/de_enhance.o
 endif
 
-obj_low = $(mydir)/de_fcc.o $(mydir)/de_gsu.o $(mydir)/de_hal.o $(mydir)/disp_al.o \
-		$(mydir)/de_peak.o $(mydir)/de_rtmx.o $(mydir)/de_scaler_table.o\
+obj_low = $(mydir)/de_gsu.o $(mydir)/de_hal.o $(mydir)/disp_al.o \
+		$(mydir)/de_rtmx.o $(mydir)/de_scaler_table.o \
 		$(mydir)/de_vep_table.o $(mydir)/de_vsu.o $(mydir)/de_feat.o \
-		$(mydir)/de_lti.o $(mydir)/de_fce.o \
-		$(mydir)/de_ase.o $(mydir)/de_bws.o $(enhance_obj) \
-		$(smbl_obj) $(mydir)/de_ccsc.o $(mydir)/de_dcsc.o \
+		$(enhance_obj) $(smbl_obj) $(mydir)/de_ccsc.o $(mydir)/de_dcsc.o \
 		$(wb_obj) $(mydir)/de_clock.o $(eink_obj) $(dsi_obj) $(de_lcd_obj)
 
 ccflags-y += -DDE_VERSION_V2X
