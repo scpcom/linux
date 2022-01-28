@@ -11,7 +11,9 @@
 #ifndef __DEV_DISP_H__
 #define __DEV_DISP_H__
 
+#ifdef CONFIG_DISP2_SUNXI_DEBUG
 #include "dev_disp_debugfs.h"
+#endif
 #include "de/bsp_display.h"
 #include "de/disp_display.h"
 #include "de/disp_manager.h"

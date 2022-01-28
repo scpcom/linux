@@ -5,7 +5,10 @@ CFLAGS_disp_trace.o := -I$(src)
 
 obj-$(CONFIG_DISP2_SUNXI) += disp.o
 
-disp-objs :=  dev_disp.o dev_fb.o dev_disp_debugfs.o
+disp-objs :=  dev_disp.o dev_fb.o
+ifeq ($(CONFIG_DISP2_SUNXI_DEBUG),y)
+disp-objs += dev_disp_debugfs.o
+endif
 disp-objs += disp_sys_intf.o
 disp-objs += disp_trace.o
 disp-$(CONFIG_DISP2_SUNXI_COMPOSER) += dev_composer.o
