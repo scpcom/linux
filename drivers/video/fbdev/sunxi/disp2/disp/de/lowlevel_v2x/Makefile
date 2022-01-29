@@ -18,8 +18,10 @@ eink_obj:=$(mydir)/de_eink.o $(mydir)/disp_eink_data.o \
 		$(mydir)/disp_waveform.o $(mydir)/rtmx_eink.o
 endif
 
+ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE),y)
 ifneq ($(CONFIG_EINK200_SUNXI),y)
 wb_obj:=$(mydir)/de_wb.o
+endif
 endif
 
 #ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_LCD),y)

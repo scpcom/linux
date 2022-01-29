@@ -73,7 +73,9 @@ s32 bsp_disp_init(struct disp_bsp_init_para *para)
 #if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
 	disp_init_smbl(para);
 #endif
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE)
 	disp_init_capture(para);
+#endif
 
 #if defined(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT)
 	disp_init_rotation_sw(para);
@@ -99,7 +101,9 @@ s32 bsp_disp_exit(u32 mode)
 #if defined(SUPPORT_WB)
 	disp_exit_format_convert_manager();
 #endif
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE)
 	disp_exit_capture();
+#endif
 #if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
 	disp_exit_smbl();
 #endif
@@ -463,7 +467,9 @@ s32 disp_init_connections(struct disp_bsp_init_para *para)
 #if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
 		struct disp_smbl *smbl = NULL;
 #endif
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE)
 		struct disp_capture *cptr = NULL;
+#endif
 #if defined(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT)
 		struct disp_rotation_sw *rot_sw = NULL;
 #endif
@@ -519,9 +525,11 @@ s32 disp_init_connections(struct disp_bsp_init_para *para)
 			smbl->set_manager(smbl, mgr);
 #endif
 
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE)
 		cptr = disp_get_capture(disp);
 		if (cptr && (cptr->set_manager))
 			cptr->set_manager(cptr, mgr);
+#endif
 
 #if defined(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT)
 		rot_sw = disp_get_rotation_sw(disp);

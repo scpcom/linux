@@ -983,6 +983,7 @@ static ssize_t disp_colorbar_store(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 static ssize_t disp_capture_dump_store(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t count)
@@ -1133,12 +1134,15 @@ OUT:
 #endif
 	return count;
 }
+#endif
 
 static DEVICE_ATTR(boot_para, 0660, disp_boot_para_show, NULL);
 static DEVICE_ATTR(xres, 0660, disp_xres_show, NULL);
 static DEVICE_ATTR(yres, 0660, disp_yres_show, NULL);
 static DEVICE_ATTR(colorbar, 0660, NULL, disp_colorbar_store);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 static DEVICE_ATTR(capture_dump, 0660, NULL, disp_capture_dump_store);
+#endif
 
 static struct attribute *disp_attributes[] = {
 	&dev_attr_sys.attr,
@@ -1157,7 +1161,9 @@ static struct attribute *disp_attributes[] = {
 	&dev_attr_xres.attr,
 	&dev_attr_yres.attr,
 	&dev_attr_colorbar.attr,
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	&dev_attr_capture_dump.attr,
+#endif
 	NULL
 };
 
@@ -3659,7 +3665,9 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct disp_device *dispdev = NULL;
 	struct disp_enhance *enhance = NULL;
 	struct disp_smbl *smbl = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	struct disp_capture *cptr = NULL;
+#endif
 #if defined(SUPPORT_EINK)
 	struct disp_eink_manager *eink_manager = NULL;
 #endif
@@ -3687,7 +3695,9 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dispdev = mgr->device;
 		enhance = mgr->enhance;
 		smbl = mgr->smbl;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 		cptr = mgr->cptr;
+#endif
 	}
 #if defined(SUPPORT_EINK)
 	eink_manager = g_disp_drv.eink_manager[0];
@@ -4375,6 +4385,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 		/* ---capture -- */
 	case DISP_CAPTURE_START:
 		{
@@ -4417,6 +4428,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = cptr->commmit2(cptr, &info);
 		break;
 	}
+#endif
 
 		/* ----for test---- */
 	case DISP_MEM_REQUEST:

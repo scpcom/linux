@@ -591,6 +591,7 @@ int disp_al_enhance_tasklet(unsigned int disp)
 }
 #endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 #if !IS_ENABLED(CONFIG_EINK200_SUNXI)
 int disp_al_capture_init(unsigned int disp)
 {
@@ -669,6 +670,7 @@ int disp_al_write_back_clk_exit(unsigned int disp)
 {
 	return 0;
 }
+#endif
 #endif
 
 #if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
@@ -1478,9 +1480,11 @@ int disp_init_al(struct disp_bsp_init_para *para)
 #endif
 	de_ccsc_init(para);
 	de_dcsc_init(para);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 #if IS_ENABLED(CONFIG_EINK_PANEL_USED) || IS_ENABLED(CONFIG_EINK200_SUNXI)
 #else
 	wb_ebios_init(para);
+#endif
 #endif
 	de_clk_set_reg_base(para->reg_base[DISP_MOD_DE]);
 #if defined(CONFIG_INDEPENDENT_DE)
@@ -1577,9 +1581,11 @@ int disp_exit_al(void)
 #endif
 	de_ccsc_exit();
 	de_dcsc_exit();
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 #if IS_ENABLED(CONFIG_EINK_PANEL_USED) || IS_ENABLED(CONFIG_EINK200_SUNXI)
 #else
 	wb_ebios_exit();
+#endif
 #endif
 
 #if defined(SUPPORT_SMBL)

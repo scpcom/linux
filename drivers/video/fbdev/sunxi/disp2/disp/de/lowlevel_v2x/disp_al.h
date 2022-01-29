@@ -17,7 +17,9 @@
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_enhance.h"
 #endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 #include "de_wb.h"
+#endif
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 #include "de_smbl.h"
 #endif
@@ -49,6 +51,7 @@ enum  {
 	DISP_AL_IRQ_STATE_MASK = DE_IRQ_STATE_MASK,
 };
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 enum {
 	DISP_AL_CAPTURE_IRQ_FLAG_FRAME_END = WB_IRQ_FLAG_INTR,
 	DISP_AL_CAPTURE_IRQ_FLAG_RCQ_ACCEPT = DE_WB_IRQ_FLAG_RCQ_ACCEPT,
@@ -68,6 +71,7 @@ enum {
 		| DISP_AL_CAPTURE_IRQ_STATE_RCQ_ACCEPT
 		| DISP_AL_CAPTURE_IRQ_STATE_RCQ_FINISH,
 };
+#endif
 
 struct lcd_clk_info {
 	enum disp_lcd_if lcd_if;

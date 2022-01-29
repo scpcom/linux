@@ -63,3 +63,9 @@ config DISP2_SUNXI_SUPPORT_ENAHNCE
 	default y
 	---help---
 		If you want to support video enhance process, select it.
+
+config DISP2_SUNXI_SUPPORT_CAPTURE
+	bool "Support capture"
+	default y
+	---help---
+		If you want to support capture, select it.
