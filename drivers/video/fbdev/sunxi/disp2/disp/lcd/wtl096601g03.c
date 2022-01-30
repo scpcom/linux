@@ -187,8 +187,6 @@ static void lcd_bl_close(u32 sel)
 
 static void lcd_panel_init(u32 sel)
 {
-	u32 i = 0;
-
 	sunxi_lcd_dsi_clk_enable(sel);
 	sunxi_lcd_delay_ms(10);
 
