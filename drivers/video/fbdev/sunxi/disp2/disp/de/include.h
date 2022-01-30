@@ -443,6 +443,7 @@ struct disp_clk_info {
 	bool enabled;
 };
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 struct disp_enhance_info {
 	/* basic adjust */
 	/*
@@ -497,7 +498,9 @@ struct disp_enhance_config {
 	struct disp_enhance_info info;
 	enum disp_enhance_dirty_flags flags;
 };
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 enum disp_smbl_dirty_flags {
 	SMBL_DIRTY_NONE = 0x00000000,
 	SMBL_DIRTY_ENABLE = 0x00000001,
@@ -515,6 +518,7 @@ struct disp_smbl_info {
 	u32 backlight_dimming;
 	enum disp_smbl_dirty_flags flags;
 };
+#endif
 
 struct disp_csc_config {
 	u32 in_fmt;
@@ -538,6 +542,7 @@ enum {
 	DE_YUV = 1,
 };
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 enum disp_capture_dirty_flags {
 	CAPTURE_DIRTY_ADDRESS = 0x00000001,
 	CAPTURE_DIRTY_WINDOW = 0x00000002,
@@ -582,6 +587,7 @@ struct disp_capture_config {
 	u32 disp;		/* which disp channel to be capture */
 	enum disp_capture_dirty_flags flags;
 };
+#endif
 
 enum disp_lcd_if {
 	LCD_IF_HV = 0,
@@ -747,6 +753,7 @@ struct disp_lcd_esd_info {
 	unsigned int rst_cnt;
 };
 
+#if defined(SUPPORT_LCD)
 struct disp_panel_para {
 	enum disp_lcd_if lcd_if;
 
@@ -831,6 +838,7 @@ struct disp_panel_para {
 	unsigned int lcd_hv_data_polarity;
 
 };
+#endif
 
 enum disp_mod_id {
 	DISP_MOD_DE = 0,
@@ -958,6 +966,7 @@ struct disp_lcd_panel_fun {
 	int (*set_esd_info)(struct disp_lcd_esd_info *p_info);
 };
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 struct disp_enhance_para {
 	/* basic adjust */
 	u32 bright;
@@ -975,6 +984,7 @@ struct disp_enhance_para {
 	struct disp_rect window;
 	u32 enable;
 };
+#endif
 
 struct disp_device {
 	struct list_head list;
@@ -1101,8 +1111,10 @@ struct disp_device {
 			      unsigned int io_index, u32 value);
 	int (*gpio_set_direction)(struct disp_device *dispdev,
 				  unsigned int io_index, u32 direction);
+#if defined(SUPPORT_LCD)
 	int (*get_panel_info)(struct disp_device *dispdev,
 			       struct disp_panel_para *info);
+#endif
 	void (*show_builtin_patten)(struct disp_device *dispdev, u32 patten);
 #if defined(CONFIG_DISP2_LCD_ESD_DETECT)
 	s32 (*get_esd_info)(struct disp_device *dispdev, struct disp_lcd_esd_info *p_esd_info);
@@ -1117,9 +1129,15 @@ struct disp_manager {
 	u32 num_chns;
 	u32 num_layers;
 	struct disp_device *device;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	struct disp_capture *cptr;
+#endif
 
 	struct list_head lyr_list;
 #if defined(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT)
@@ -1244,6 +1262,7 @@ struct disp_layer {
 	s32 (*dump)(struct disp_layer *layer, char *buf);
 };
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 struct disp_smbl {
 	/* static fields */
 	char *name;
@@ -1285,7 +1304,9 @@ struct disp_smbl {
 	s32 (*get_window)(struct disp_smbl *smbl, struct disp_rect *window);
 	s32 (*dump)(struct disp_smbl *smbl, char *buf);
 };
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 struct disp_enhance {
 	/* static fields */
 	char *name;
@@ -1354,7 +1375,9 @@ struct disp_enhance {
 	s32 (*demo_disable)(struct disp_enhance *enhance);
 	s32 (*dump)(struct disp_enhance *enhance, char *buf);
 };
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 struct disp_capture {
 	char name[16];
 	u32 disp;
@@ -1381,6 +1404,7 @@ struct disp_capture {
 	/* inner interface */
 	s32 (*apply)(struct disp_capture *cptr);
 };
+#endif
 
 #if defined(CONFIG_SUNXI_DISP2_FB_ROTATION_SUPPORT)
 struct disp_rotation_sw {

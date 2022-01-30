@@ -6,12 +6,14 @@ config DISP2_SUNXI_SUPPORT_LCD
 
 config DISP2_SUNXI_SUPPORT_DSI
 	bool "Support DSI"
+	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
 	---help---
 		If you want to support DSI, select it.
 
 config DISP2_SUNXI_SUPPORT_LVDS
 	bool "Support LVDS"
+	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
 	---help---
 		If you want to support LVDS, select it.
@@ -30,6 +32,7 @@ config DISP2_SUNXI_SUPPORT_TV
 
 config DISP2_SUNXI_SUPPORT_VDEVICE
 	bool "Support VDEVICE"
+	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
 	---help---
 		If you want to support VDEVICE, select it.

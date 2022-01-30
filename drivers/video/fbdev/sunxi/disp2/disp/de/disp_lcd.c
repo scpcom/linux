@@ -1469,7 +1469,9 @@ s32 disp_lcd_set_bright(struct disp_device *lcd, u32 bright)
 	unsigned long flags;
 	bool bright_update = false;
 	struct disp_manager *mgr = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
 
 	if ((lcd == NULL) || (lcdp == NULL)) {
 		DE_WRN("NULL hdl!\n");
@@ -1480,7 +1482,9 @@ s32 disp_lcd_set_bright(struct disp_device *lcd, u32 bright)
 		DE_WRN("NULL hdl!\n");
 		return DIS_FAIL;
 	}
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	smbl = mgr->smbl;
+#endif
 
 	spin_lock_irqsave(&lcd_data_lock, flags);
 	backlight_bright = (backlight_bright > 255) ? 255 : backlight_bright;
@@ -1489,8 +1493,10 @@ s32 disp_lcd_set_bright(struct disp_device *lcd, u32 bright)
 		lcdp->lcd_cfg.backlight_bright = backlight_bright;
 	}
 	spin_unlock_irqrestore(&lcd_data_lock, flags);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	if (bright_update && smbl)
 		smbl->update_backlight(smbl, backlight_bright);
+#endif
 
 	if (lcdp->pwm_info.dev) {
 		if (backlight_bright != 0)

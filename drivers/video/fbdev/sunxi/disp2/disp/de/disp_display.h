@@ -115,7 +115,9 @@ s32 bsp_disp_lcd_gpio_set_direction(u32 disp, unsigned int io_index,
 				    u32 direction);
 struct disp_lcd_flow *bsp_disp_lcd_get_open_flow(u32 disp);
 struct disp_lcd_flow *bsp_disp_lcd_get_close_flow(u32 disp);
+#if defined(SUPPORT_LCD)
 s32 bsp_disp_get_panel_info(u32 disp, struct disp_panel_para *info);
+#endif
 
 s32 bsp_disp_vsync_event_enable(u32 disp, bool enable);
 s32 bsp_disp_tv_suspend(void);

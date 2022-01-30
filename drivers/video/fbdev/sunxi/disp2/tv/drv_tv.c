@@ -715,6 +715,7 @@ static DEVICE_ATTR(resync_pixel, 0660,
 static DEVICE_ATTR(resync_line, 0660,
 			NULL, tv_resync_line_store);
 
+#if defined(CONFIG_EXTCON)
 static struct attribute *tv_attributes[] = {
 	&dev_attr_faketv.attr,
 	&dev_attr_resync_pixel.attr,
@@ -726,6 +727,7 @@ static struct attribute_group tv_attribute_group = {
   .name = "attr",
   .attrs = tv_attributes
 };
+#endif
 
 s32 tv_get_video_info(s32 mode)
 {

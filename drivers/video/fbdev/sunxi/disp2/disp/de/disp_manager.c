@@ -2342,9 +2342,15 @@ static s32 disp_mgr_sync(struct disp_manager *mgr, bool sync)
 {
 	unsigned long flags;
 	struct disp_manager_private_data *mgrp = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	struct disp_capture *cptr = NULL;
+#endif
 
 	if (mgr == NULL) {
 		DE_WRN("NULL hdl!\n");
@@ -2366,9 +2372,15 @@ static s32 disp_mgr_sync(struct disp_manager *mgr, bool sync)
 
 	mgrp->nosync_cnt = 0;
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	enhance = mgr->enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	smbl = mgr->smbl;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	cptr = mgr->cptr;
+#endif
 
 	spin_lock_irqsave(&mgr_data_lock, flags);
 	if (!mgrp->enabled) {
@@ -2392,17 +2404,23 @@ static s32 disp_mgr_sync(struct disp_manager *mgr, bool sync)
 	mgrp->applied = false;
 	spin_unlock_irqrestore(&mgr_data_lock, flags);
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	/* enhance */
 	if (enhance && enhance->sync)
 		enhance->sync(enhance);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	/* smbl */
 	if (smbl && smbl->sync)
 		smbl->sync(smbl);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	/* capture */
 	if (cptr && cptr->sync)
 		cptr->sync(cptr);
+#endif
 
 	return DIS_SUCCESS;
 }
@@ -2410,9 +2428,15 @@ static s32 disp_mgr_sync(struct disp_manager *mgr, bool sync)
 static s32 disp_mgr_tasklet(struct disp_manager *mgr)
 {
 	struct disp_manager_private_data *mgrp = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	struct disp_capture *cptr = NULL;
+#endif
 
 	if (mgr == NULL) {
 		DE_WRN("NULL hdl!\n");
@@ -2423,24 +2447,36 @@ static s32 disp_mgr_tasklet(struct disp_manager *mgr)
 		DE_WRN("get mgr %d's priv fail!!\n", mgr->disp);
 		return -1;
 	}
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	enhance = mgr->enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	smbl = mgr->smbl;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	cptr = mgr->cptr;
+#endif
 
 	if (!mgrp->enabled)
 		return -1;
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	/* enhance */
 	if (enhance && enhance->tasklet)
 		enhance->tasklet(enhance);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	/* smbl */
 	if (smbl && smbl->tasklet)
 		smbl->tasklet(smbl);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	/* capture */
 	if (cptr && cptr->tasklet)
 		cptr->tasklet(cptr);
+#endif
 
 	return DIS_SUCCESS;
 }
@@ -2527,16 +2563,24 @@ static s32 disp_mgr_force_apply(struct disp_manager *mgr)
 	unsigned long flags;
 	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
 	struct disp_layer *lyr = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
 
 	if ((mgr == NULL) || (mgrp == NULL)) {
 		DE_WRN("NULL hdl!\n");
 		return -1;
 	}
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	enhance = mgr->enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	smbl = mgr->smbl;
+#endif
 
 	spin_lock_irqsave(&mgr_data_lock, flags);
 	mgrp->cfg->flag |= MANAGER_ALL_DIRTY;
@@ -2548,13 +2592,17 @@ static s32 disp_mgr_force_apply(struct disp_manager *mgr)
 	disp_mgr_apply(mgr);
 	disp_mgr_update_regs(mgr);
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	/* enhance */
 	if (enhance && enhance->force_apply)
 		enhance->force_apply(enhance);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	/* smbl */
 	if (smbl && smbl->force_apply)
 		smbl->force_apply(smbl);
+#endif
 
 	return 0;
 }
@@ -2650,8 +2698,10 @@ static s32 disp_mgr_enable(struct disp_manager *mgr)
 
 	disp_mgr_force_apply(mgr);
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	if (mgr->enhance && mgr->enhance->enable)
 		mgr->enhance->enable(mgr->enhance);
+#endif
 	mutex_unlock(&mgr_mlock);
 
 	return 0;
@@ -2668,8 +2718,12 @@ static s32 disp_mgr_sw_enable(struct disp_manager *mgr)
 	unsigned int width = 0, height = 0;
 	unsigned int cs = 0, color_range = DISP_COLOR_RANGE_0_255;
 	struct disp_device_config dev_config;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
 	struct disp_layer *lyr = NULL;
 #if RTMX_USE_RCQ
 	struct disp_device *dispdev;
@@ -2798,19 +2852,29 @@ static s32 disp_mgr_sw_enable(struct disp_manager *mgr)
 	disp_mgr_apply(mgr);
 #endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	enhance = mgr->enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	smbl = mgr->smbl;
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	/* enhance */
 	if (enhance && enhance->force_apply)
 		enhance->force_apply(enhance);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	/* smbl */
 	if (smbl && smbl->force_apply)
 		smbl->force_apply(smbl);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	if (mgr->enhance && mgr->enhance->enable)
 		mgr->enhance->enable(mgr->enhance);
+#endif
 
 	return 0;
 }
@@ -2828,8 +2892,10 @@ static s32 disp_mgr_disable(struct disp_manager *mgr)
 	DE_INF("mgr %d disable\n", mgr->disp);
 
 	mutex_lock(&mgr_mlock);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	if (mgr->enhance && mgr->enhance->disable)
 		mgr->enhance->disable(mgr->enhance);
+#endif
 
 	spin_lock_irqsave(&mgr_data_lock, flags);
 	mgrp->enabled = 0;

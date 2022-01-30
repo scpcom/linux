@@ -62,7 +62,10 @@ static dev_t devid;
 static struct class *disp_class;
 static struct device *display_dev;
 
-static unsigned int g_disp = 0, g_enhance_mode = 0, g_cvbs_enhance_mode;
+static unsigned int g_disp = 0, g_cvbs_enhance_mode;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
+static unsigned int g_enhance_mode = 0;
+#endif
 static u32 DISP_print = 0xffff;	/* print cmd which eq DISP_print */
 static bool g_pm_runtime_enable;
 
@@ -284,6 +287,7 @@ static ssize_t disp_disp_store(struct device *dev,
 static DEVICE_ATTR(disp, 0660,
 		   disp_disp_show, disp_disp_store);
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 static ssize_t disp_enhance_mode_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
@@ -692,6 +696,7 @@ static ssize_t disp_enhance_denoise_store(struct device *dev,
 }
 static DEVICE_ATTR(enhance_denoise, 0660,
 	disp_enhance_denoise_show, disp_enhance_denoise_store);
+#endif
 
 static ssize_t disp_cvbs_enhance_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
@@ -1147,15 +1152,19 @@ static DEVICE_ATTR(capture_dump, 0660, NULL, disp_capture_dump_store);
 static struct attribute *disp_attributes[] = {
 	&dev_attr_sys.attr,
 	&dev_attr_disp.attr,
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	&dev_attr_enhance_mode.attr,
+#endif
 	&dev_attr_cvbs_enhacne_mode.attr,
 	&dev_attr_runtime_enable.attr,
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	&dev_attr_enhance_bright.attr,
 	&dev_attr_enhance_saturation.attr,
 	&dev_attr_enhance_contrast.attr,
 	&dev_attr_enhance_edge.attr,
 	&dev_attr_enhance_detail.attr,
 	&dev_attr_enhance_denoise.attr,
+#endif
 	&dev_attr_color_temperature.attr,
 	&dev_attr_boot_para.attr,
 	&dev_attr_xres.attr,
@@ -2153,6 +2162,7 @@ s32 drv_disp_vsync_event(u32 sel)
 		dispdev = mgr->device;
 	if (dispdev) {
 		if (dispdev->type == DISP_OUTPUT_TYPE_LCD) {
+#if defined(SUPPORT_LCD)
 			struct disp_panel_para panel;
 
 			if (dispdev->get_panel_info) {
@@ -2160,6 +2170,7 @@ s32 drv_disp_vsync_event(u32 sel)
 				cur_line = disp_al_lcd_get_cur_line(
 				    dispdev->hwdev_index, &panel);
 			}
+#endif
 		}
 #if defined(SUPPORT_EDP)
 		else if (dispdev->type == DISP_OUTPUT_TYPE_EDP) {
@@ -3663,8 +3674,12 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	int num_screens = 2;
 	struct disp_manager *mgr = NULL;
 	struct disp_device *dispdev = NULL;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 	struct disp_enhance *enhance = NULL;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 	struct disp_smbl *smbl = NULL;
+#endif
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 	struct disp_capture *cptr = NULL;
 #endif
@@ -3693,8 +3708,12 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		mgr = g_disp_drv.mgr[ubuffer[0]];
 	if (mgr) {
 		dispdev = mgr->device;
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 		enhance = mgr->enhance;
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 		smbl = mgr->smbl;
+#endif
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 		cptr = mgr->cptr;
 #endif
@@ -4313,6 +4332,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	}
 #endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 		/* ----enhance---- */
 	case DISP_ENHANCE_ENABLE:
 		{
@@ -4355,7 +4375,9 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = enhance->get_mode(enhance);
 			break;
 		}
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 		/* ---smart backlight -- */
 	case DISP_SMBL_ENABLE:
 		{
@@ -4384,6 +4406,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = smbl->set_window(smbl, &rect);
 			break;
 		}
+#endif
 
 #ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 		/* ---capture -- */

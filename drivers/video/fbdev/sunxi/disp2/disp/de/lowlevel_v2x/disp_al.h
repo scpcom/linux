@@ -73,6 +73,7 @@ enum {
 };
 #endif
 
+#if defined(SUPPORT_LCD)
 struct lcd_clk_info {
 	enum disp_lcd_if lcd_if;
 	int tcon_div;
@@ -80,6 +81,7 @@ struct lcd_clk_info {
 	int dsi_div;
 	int dsi_rate;
 };
+#endif
 
 int disp_al_de_clk_enable(unsigned int disp);
 int disp_al_de_clk_disable(unsigned int disp);
@@ -98,18 +100,23 @@ int disp_al_manager_query_irq(unsigned int disp);
 int disp_al_manager_enable_irq(unsigned int disp);
 int disp_al_manager_disable_irq(unsigned int disp);
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 int disp_al_enhance_apply(unsigned int disp,
 			  struct disp_enhance_config *config);
 int disp_al_enhance_update_regs(unsigned int disp);
 int disp_al_enhance_sync(unsigned int disp);
 int disp_al_enhance_tasklet(unsigned int disp);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
 int disp_al_smbl_apply(unsigned int disp, struct disp_smbl_info *info);
 int disp_al_smbl_update_regs(unsigned int disp);
 int disp_al_smbl_sync(unsigned int disp);
 int disp_al_smbl_get_status(unsigned int disp);
 int disp_al_smbl_tasklet(unsigned int disp);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 int disp_al_write_back_clk_init(unsigned int disp);
 int disp_al_write_back_clk_exit(unsigned int disp);
 int disp_al_capture_init(unsigned int disp);
@@ -117,10 +124,14 @@ int disp_al_capture_exit(unsigned int disp);
 int disp_al_capture_sync(u32 disp);
 int disp_al_capture_apply(unsigned int disp, struct disp_capture_config *cfg);
 int disp_al_capture_get_status(unsigned int disp);
+#endif
 
+#if defined(SUPPORT_LCD)
 int disp_al_lcd_cfg(u32 screen_id, struct disp_panel_para *panel,
 		    struct panel_extend_para *extend_panel);
+#endif
 int disp_al_lcd_cfg_ext(u32 screen_id, struct panel_extend_para *extend_panel);
+#if defined(SUPPORT_LCD)
 int disp_al_lcd_enable(u32 screen_id, struct disp_panel_para *panel);
 int disp_al_lcd_disable(u32 screen_id, struct disp_panel_para *panel);
 int disp_al_lcd_query_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
@@ -138,19 +149,24 @@ int disp_al_lcd_enable_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 			   struct disp_panel_para *panel);
 int disp_al_lcd_disable_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 			    struct disp_panel_para *panel);
+#endif
 
+#if defined(SUPPORT_HDMI)
 int disp_al_hdmi_enable(u32 screen_id);
 int disp_al_hdmi_disable(u32 screen_id);
 int disp_al_hdmi_cfg(u32 screen_id, struct disp_video_timings *video_info);
 int disp_al_hdmi_irq_enable(u32 screen_id);
 int disp_al_hdmi_irq_disable(u32 screen_id);
 int disp_al_hdmi_pad_sel(u32 screen_id, u32 pad);
+#endif
 
+#if defined(SUPPORT_TV)
 int disp_al_tv_enable(u32 screen_id);
 int disp_al_tv_disable(u32 screen_id);
 int disp_al_tv_cfg(u32 screen_id, struct disp_video_timings *video_info);
 int disp_al_tv_irq_enable(u32 screen_id);
 int disp_al_tv_irq_disable(u32 screen_id);
+#endif
 #if defined(SUPPORT_VGA)
 int disp_al_vga_enable(u32 screen_id);
 int disp_al_vga_disable(u32 screen_id);
@@ -158,11 +174,13 @@ int disp_al_vga_cfg(u32 screen_id, struct disp_video_timings *video_info);
 int disp_al_vga_irq_enable(u32 screen_id);
 int disp_al_vga_irq_disable(u32 screen_id);
 #endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_VDEVICE
 int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info,
 			struct disp_vdevice_interface_para *para,
 			u8 config_tcon_only);
 int disp_al_vdevice_enable(u32 screen_id);
 int disp_al_vdevice_disable(u32 screen_id);
+#endif
 
 int disp_al_device_get_cur_line(u32 screen_id);
 int disp_al_device_get_start_delay(u32 screen_id);
@@ -172,10 +190,12 @@ int disp_al_device_disable_irq(u32 screen_id);
 int disp_al_device_get_status(u32 screen_id);
 int disp_al_device_src_select(u32 screen_id, u32 src);
 bool disp_al_get_direct_show_state(unsigned int disp);
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 int disp_al_vdpo_disable(u32 screen_id);
 int disp_al_vdpo_enable(u32 screen_id, u32 vdpo_index);
 int disp_al_vdpo_cfg(u32 screen_id, u32 vdpo_index,
 		     struct disp_video_timings *video_info);
+#endif
 
 int disp_al_get_fb_info(unsigned int sel, struct disp_layer_info *info);
 int disp_al_get_display_size(unsigned int sel, unsigned int *width,
@@ -243,8 +263,11 @@ int disp_al_init_eink_ctrl_data_16(unsigned int disp, unsigned int wavedata_buf,
 void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten);
 void disp_al_update_de_clk_rate(u32 rate);
 
+#if defined(SUPPORT_LCD)
 int disp_al_lcd_get_status(u32 screen_id, struct disp_panel_para *panel);
+#endif
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CAPTURE
 static inline s32 disp_al_capture_set_rcq_update(u32 disp, u32 en) { return 0; }
 
 static inline u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state) { return 0; }
@@ -252,6 +275,7 @@ static inline u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state) { ret
 static inline s32 disp_al_capture_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
 
 static inline s32 disp_al_capture_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
+#endif
 
 static inline s32 disp_al_manager_set_rcq_update(u32 disp, u32 en) { return 0; }
 

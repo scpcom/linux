@@ -71,8 +71,10 @@ s32 tcon_de_attach(u32 tcon_index, u32 de_index);
 s32 tcon_get_attach_by_de_index(u32 de_index);
 s32 tcon_top_set_reg_base(u32 sel, uintptr_t base);
 uintptr_t tcon_top_get_reg_base(u32 sel);
+#if defined(SUPPORT_LVDS)
 s32 lvds_open(u32 sel, struct disp_panel_para *panel);
 s32 lvds_close(u32 sel);
+#endif
 u32 tcon_get_cur_field(u32 sel, u32 tcon_index);
 s32 tcon_irq_enable(u32 sel, enum __lcd_irq_id_t id);
 s32 tcon_irq_disable(u32 sel, enum __lcd_irq_id_t id);
@@ -87,8 +89,11 @@ u32 tcon_get_cur_line(u32 sel, u32 tcon_index);
 s32 tcon_gamma(u32 sel, u32 en, u32 *gamma_tbl);
 s32 tcon_get_status(u32 sel, u32 tcon_index);
 
+#if defined(SUPPORT_LCD)
 s32 tcon0_cfg(u32 sel, struct disp_panel_para *panel);
+#endif
 s32 tcon0_cfg_ext(u32 sel, struct panel_extend_para *extend_panel);
+#if defined(SUPPORT_LCD)
 s32 tcon0_src_select(u32 sel, enum __lcd_src_t src, u32 de_no);
 s32 tcon0_src_get(u32 sel);
 s32 tcon0_open(u32 sel, struct disp_panel_para *panel);
@@ -110,6 +115,7 @@ s32 tcon0_cpu_wr_16b(u32 sel, u32 index, u32 data);
 s32 tcon0_cpu_wr_16b_index(u32 sel, u32 index);
 s32 tcon0_cpu_wr_16b_data(u32 sel, u32 data);
 s32 tcon0_cpu_rd_16b(u32 sel, u32 index, u32 *data);
+#endif
 
 s32 tcon_pan_sel(u32 sel, u32 pad);
 u32 tcon_pad_get(u32 sel);
@@ -117,7 +123,9 @@ s32 tcon1_open(u32 sel);
 s32 tcon1_close(u32 sel);
 s32 tcon1_src_select(u32 sel, enum __lcd_src_t src, enum __de_perh_t de_no);
 s32 tcon1_src_get(u32 sel);
+#if defined(SUPPORT_LCD)
 s32 tcon1_cfg_ex(u32 sel, struct disp_panel_para *panel);
+#endif
 s32 tcon1_set_timming(u32 sel, struct disp_video_timings *timming);
 s32 tcon1_cfg(u32 sel, struct disp_video_timings *timing);
 #ifdef TCON_POL_CORRECT
@@ -126,12 +134,18 @@ u32 tcon1_cfg_correct(u32 sel, struct disp_video_timings *timing);
 s32 tcon1_set_tv_mode(u32 sel, enum disp_output_type mode);
 s32 hmdi_src_sel(u32 sel);
 s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff, u32 is_yuv);
+#if defined(SUPPORT_TV) || defined(CONFIG_DISP2_SUNXI_SUPPORT_VDEVICE)
 s32 tcon1_yuv_range(u32 sel, u32 onoff);
+#endif
+#if defined(SUPPORT_LCD)
 u32 tcon0_get_cpu_tri2_start_delay(u32 sel);
 s32 tcon_set_sync_pol(u32 sel, u32 ver_pol, u32 hor_pol);
+#endif
 s32 get_tcon_type_by_de_index(u32 de_index);
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 s32 tcon_vdpo_clk_enable(u32 sel, u32 en);
 s32 vdpo_src_sel(u32 sel, u32 src);
+#endif
 void tcon_show_builtin_patten(u32 sel, u32 patten);
 void tcon0_cpu_wr_16b_multi(u32 sel, u8 cmd, u8 *para, u32 para_num);
 void tcon0_cpu_wr_24b_multi(u32 sel, u8 cmd, u8 *para, u32 para_num);

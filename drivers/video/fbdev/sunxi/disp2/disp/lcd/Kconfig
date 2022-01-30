@@ -81,6 +81,7 @@ config LCD_SUPPORT_WTQ05027D01
 
 config LCD_SUPPORT_H245QBN02
 	bool "LCD support H245QBN02 panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support H245QBN02 panel for display driver, select it.
@@ -93,18 +94,21 @@ config LCD_SUPPORT_ST7789V
 
 config LCD_SUPPORT_ST7796S
 	bool "LCD support ST7796S panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support ST7796S panel for display driver, select it.
 
 config LCD_SUPPORT_ST7701S
 	bool "LCD support ST7701S panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support ST7701S panel for display driver, select it.
 
 config LCD_SUPPORT_T30P106
 	bool "LCD support T30P106 panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support T30P106 panel for display driver, select it.
@@ -117,6 +121,7 @@ config LCD_SUPPORT_TO20T20000
 
 config LCD_SUPPORT_FRD450H40014
 	bool "LCD support FRD450H40014 panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support FRD450H40014 panel for display driver, select it.
@@ -171,12 +176,14 @@ config LCD_SUPPORT_CC08021801_310_800X1280
 
 config LCD_SUPPORT_JD9366AB_3
 	bool "LCD support JD9366AB_3 panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support JD9366AB_3 panel for display driver, select it.
 
 config LCD_SUPPORT_TFT08006
 	bool "LCD support TFT08006 panel"
+	depends on DISP2_SUNXI_SUPPORT_DSI
 	default n
 	---help---
 		If you want to support tft08006 panel for display driver, select it.

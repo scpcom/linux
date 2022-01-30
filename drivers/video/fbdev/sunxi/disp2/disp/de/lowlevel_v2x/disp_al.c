@@ -700,6 +700,7 @@ int disp_al_smbl_get_status(unsigned int disp)
 }
 #endif
 
+#if defined(SUPPORT_LCD)
 #ifdef CONFIG_FPGA_V4_PLATFORM
 static struct lcd_clk_info clk_tbl[] = {
 	{LCD_IF_HV,    0x12, 1, 1, 0},
@@ -880,6 +881,7 @@ int disp_al_lcd_cfg(u32 screen_id, struct disp_panel_para *panel,
 #endif
 	return 0;
 }
+#endif
 
 int disp_al_lcd_cfg_ext(u32 screen_id, struct panel_extend_para *extend_panel)
 {
@@ -888,6 +890,7 @@ int disp_al_lcd_cfg_ext(u32 screen_id, struct panel_extend_para *extend_panel)
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 int disp_al_lcd_enable(u32 screen_id, struct disp_panel_para *panel)
 {
 #if !defined(TCON1_DRIVE_PANEL)
@@ -1090,7 +1093,9 @@ int disp_al_lcd_get_start_delay(u32 screen_id, struct disp_panel_para *panel)
 	return tcon_get_start_delay(screen_id,
 				    al_priv.tcon_type[screen_id]);
 }
+#endif
 
+#if defined(SUPPORT_HDMI)
 /* hdmi */
 int disp_al_hdmi_enable(u32 screen_id)
 {
@@ -1179,6 +1184,9 @@ int disp_al_hdmi_pad_sel(u32 screen_id, u32 pad)
 	return 0;
 }
 #endif
+#endif
+
+#if defined(SUPPORT_TV)
 /* tv */
 int disp_al_tv_enable(u32 screen_id)
 {
@@ -1243,6 +1251,7 @@ int disp_al_tv_irq_disable(u32 screen_id)
 
 	return 0;
 }
+#endif
 
 #if defined(SUPPORT_VGA)
 /* vga interface
@@ -1439,6 +1448,7 @@ int disp_al_device_disable_irq(u32 screen_id)
 	return ret;
 }
 
+#if defined(SUPPORT_LCD)
 int disp_al_lcd_get_status(u32 screen_id, struct disp_panel_para *panel)
 {
 	int ret = 0;
@@ -1451,6 +1461,7 @@ int disp_al_lcd_get_status(u32 screen_id, struct disp_panel_para *panel)
 
 	return ret;
 }
+#endif
 
 int disp_al_device_get_status(u32 screen_id)
 {
@@ -1607,6 +1618,7 @@ int disp_al_get_display_size(unsigned int screen_id, unsigned int *width,
 	return 0;
 }
 
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 /**
  * @name       :disp_al_vdpo_cfg
  * @brief      :config tcon(tcon_lcd or tcon_tv) and other data structure
@@ -1617,8 +1629,10 @@ int disp_al_get_display_size(unsigned int screen_id, unsigned int *width,
 int disp_al_vdpo_cfg(u32 screen_id, u32 vdpo_index,
 		     struct disp_video_timings *video_info)
 {
+#if defined(SUPPORT_LCD)
 	struct lcd_clk_info clk_info;
 	struct disp_panel_para panel;
+#endif
 
 	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_VDPO;
 	al_priv.output_mode[screen_id] = LCD_IF_HV;
@@ -1630,6 +1644,7 @@ int disp_al_vdpo_cfg(u32 screen_id, u32 vdpo_index,
 	de_update_device_fps(al_priv.de_id[screen_id],
 			     al_priv.output_fps[screen_id]);
 	/*judge output type:tcon_lcd or tcon_tv*/
+#if defined(SUPPORT_LCD)
 	if (de_feat_is_supported_output_types(screen_id,
 						    DISP_OUTPUT_TYPE_LCD)) {
 		al_priv.tcon_type[screen_id] = 0;
@@ -1665,13 +1680,16 @@ int disp_al_vdpo_cfg(u32 screen_id, u32 vdpo_index,
 		tcon0_src_select(screen_id, LCD_SRC_DE,
 				 al_priv.de_id[screen_id]);
 	} else {
+#endif
 		tcon_init(screen_id);
 		al_priv.tcon_type[screen_id] = 1;
 		tcon1_set_timming(screen_id, video_info);
 		vdpo_src_sel(vdpo_index, 1); /*use tcon_tv*/
 		tcon1_src_select(screen_id, LCD_SRC_DE,
 				 al_priv.de_id[screen_id]);
+#if defined(SUPPORT_LCD)
 	}
+#endif
 	return 0;
 }
 
@@ -1714,6 +1732,7 @@ int disp_al_vdpo_disable(u32 screen_id)
 	}
 	return 0;
 }
+#endif
 
 void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten)
 {

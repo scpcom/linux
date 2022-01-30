@@ -26,6 +26,7 @@ static volatile struct __de_lcd_top_dev_t *lcd_top[1];
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
 
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 /**
  * @name       vdpo_src_sel
  * @brief      select the video source of vdpo module
@@ -49,6 +50,7 @@ s32 vdpo_src_sel(u32 sel, u32 src)
 #endif
 	return 0;
 }
+#endif
 
 /**
  * @name       dsi_src_sel
@@ -172,6 +174,7 @@ s32 tcon1_hdmi_clk_enable(u32 sel, u32 en)
 	return 0;
 }
 
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 /**
  * @name       tcon_vdpo_clk_enable
  * @brief      releae vdpo gate in display if top
@@ -195,6 +198,7 @@ s32 tcon_vdpo_clk_enable(u32 sel, u32 en)
 #endif
 	return 0;
 }
+#endif
 
 /**
  * tcon0_dsi_clk_enable - enable tcon clk output to dsi
@@ -379,6 +383,7 @@ uintptr_t tcon_top_get_reg_base(u32 sel)
 {
 	return 0;
 }
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 s32 vdpo_src_sel(u32 sel, u32 src)
 {
 	return 0;
@@ -387,6 +392,7 @@ s32 tcon_vdpo_clk_enable(u32 sel, u32 en)
 {
 	return 0;
 }
+#endif
 #endif
 
 #if defined(SUPPORT_LVDS)
@@ -732,6 +738,7 @@ s32 tcon0_src_get(u32 sel)
 	return lcd_dev[sel]->tcon0_ctl.bits.src_sel;
 }
 
+#if defined(SUPPORT_LCD)
 s32 tcon0_open(u32 sel, struct disp_panel_para *panel)
 {
 	tcon0_out_to_gpio(sel);
@@ -793,6 +800,7 @@ s32 tcon0_close(u32 sel)
 
 	return 1;
 }
+#endif
 
 s32 tcon0_simple_close(u32 sel)
 {
@@ -815,6 +823,7 @@ s32 tcon0_simple_open(u32 sel)
 
 	return 1;
 }
+#if defined(SUPPORT_LCD)
 static s32 tcon0_cfg_mode_auto(u32 sel, struct disp_panel_para *panel)
 {
 	s32 start_delay;
@@ -969,9 +978,11 @@ s32 tcon0_cfg(u32 sel, struct disp_panel_para *panel)
 		panel->lcd_fresh_mode = 0;
 		lcd_dev[sel]->tcon0_hv_ctl.bits.ccir_csc_dis = panel->input_csc;
 		tcon0_cfg_mode_auto(sel, panel);
+#ifdef CONFIG_VDPO_DISP2_SUNXI
 		if (panel->lcd_if == LCD_IF_VDPO) {
 			vdpo_src_sel(0, 0); /*use tcon_lcd0*/
 		}
+#endif
 	} else if (panel->lcd_if == LCD_IF_LVDS) {
 		lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 0;
 		lcd_dev[sel]->tcon0_hv_ctl.bits.hv_mode = 0;
@@ -1160,6 +1171,7 @@ s32 tcon0_cfg(u32 sel, struct disp_panel_para *panel)
 
 	return 0;
 }
+#endif
 
 s32 tcon0_cfg_ext(u32 sel, struct panel_extend_para *extend_panel)
 {
@@ -1170,6 +1182,7 @@ s32 tcon0_cfg_ext(u32 sel, struct panel_extend_para *extend_panel)
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 s32 tcon0_tri_busy(u32 sel)
 {
 	return lcd_dev[sel]->tcon0_cpu_ctl.bits.trigger_start;
@@ -1405,6 +1418,7 @@ u32 tcon0_get_dclk_div(u32 sel)
 {
 	return lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_div;
 }
+#endif
 
 s32 tcon1_open(u32 sel)
 {
@@ -1421,6 +1435,7 @@ s32 tcon1_close(u32 sel)
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 s32 tcon_set_sync_pol(u32 sel, u32 ver_pol, u32 hor_pol)
 {
 #if defined(HAVE_DEVICE_COMMON_MODULE)
@@ -1431,6 +1446,7 @@ s32 tcon_set_sync_pol(u32 sel, u32 ver_pol, u32 hor_pol)
 #endif
 	return 0;
 }
+#endif
 
 s32 tcon1_cfg(u32 sel, struct disp_video_timings *timing)
 {
@@ -1479,6 +1495,7 @@ s32 tcon1_cfg(u32 sel, struct disp_video_timings *timing)
 	return 0;
 }
 
+#if defined(SUPPORT_LCD)
 s32 tcon1_cfg_ex(u32 sel, struct disp_panel_para *panel)
 {
 	struct disp_video_timings timing;
@@ -1500,6 +1517,7 @@ s32 tcon1_cfg_ex(u32 sel, struct disp_panel_para *panel)
 	tcon1_cfg(sel, &timing);
 	return 0;
 }
+#endif
 
 s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff, u32 is_yuv)
 {
@@ -1589,6 +1607,7 @@ s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff, u32 is_yuv)
 	return 0;
 }
 
+#if defined(SUPPORT_TV) || defined(CONFIG_DISP2_SUNXI_SUPPORT_VDEVICE)
 s32 tcon1_yuv_range(u32 sel, u32 onoff)
 {
 	/*
@@ -1626,6 +1645,7 @@ s32 tcon1_yuv_range(u32 sel, u32 onoff)
 
 	return 0;
 }
+#endif
 
 s32 tcon1_set_timming(u32 sel, struct disp_video_timings *timming)
 {
