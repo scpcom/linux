@@ -548,6 +548,11 @@ read_wa:
 	return ret;
 }
 
+static u32 rk_iommu_read_dte_addr(void __iomem *base)
+{
+	return rk_iommu_read(base, RK_MMU_DTE_ADDR);
+}
+
 static int rk_iommu_force_reset(struct rk_iommu *iommu)
 {
 	int ret, i;
@@ -568,7 +573,10 @@ static int rk_iommu_force_reset(struct rk_iommu *iommu)
 		dte_addr = rk_ops->pt_address(DTE_ADDR_DUMMY);
 		rk_iommu_write(iommu->bases[i], RK_MMU_DTE_ADDR, dte_addr);
 
-		if (dte_addr != rk_iommu_read(iommu->bases[i], RK_MMU_DTE_ADDR)) {
+		ret = readx_poll_timeout(rk_iommu_read_dte_addr, iommu->bases[i], dte_addr,
+					 dte_addr == (DTE_ADDR_DUMMY & address_mask),
+					 RK_MMU_POLL_PERIOD_US, RK_MMU_POLL_TIMEOUT_US);
+		if (ret) {
 			dev_err(iommu->dev, "Error during raw reset. MMU_DTE_ADDR is not functioning\n");
 			return -EFAULT;
 		}
@@ -580,8 +588,8 @@ read_wa:
 		return 0;
 
 	ret = readx_poll_timeout(rk_iommu_is_reset_done, iommu, val,
-				 val, RK_MMU_FORCE_RESET_TIMEOUT_US,
-				 RK_MMU_POLL_TIMEOUT_US);
+				 val, RK_MMU_POLL_TIMEOUT_US,
+				 RK_MMU_FORCE_RESET_TIMEOUT_US);
 	if (ret) {
 		dev_err(iommu->dev, "FORCE_RESET command timed out\n");
 		return ret;
