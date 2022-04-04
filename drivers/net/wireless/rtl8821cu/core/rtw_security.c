@@ -1575,7 +1575,7 @@ u32	rtw_aes_encrypt(_adapter *padapter, u8 *pxmitframe)
 	pframe = ((struct xmit_frame *)pxmitframe)->buf_addr + hw_hdr_offset;
 
 	/* 4 start to encrypt each fragment */
-	if ((pattrib->encrypt == _AES_)) {
+	if (pattrib->encrypt == _AES_) {
 		/*
 				if(pattrib->psta)
 				{
@@ -1930,7 +1930,7 @@ u32	rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 	u32	res = _SUCCESS;
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
 	/* 4 start to encrypt each fragment */
-	if ((prxattrib->encrypt == _AES_)) {
+	if (prxattrib->encrypt == _AES_) {
 
 		stainfo = rtw_get_stainfo(&padapter->stapriv , &prxattrib->ta[0]);
 		if (stainfo != NULL) {
@@ -3083,7 +3083,7 @@ int aes_siv_decrypt(const u8 *key, const u8 *iv_crypt, size_t iv_c_len,
 #endif /* CONFIG_RTW_MESH_AEK */
 
 #ifdef CONFIG_TDLS
-void wpa_tdls_generate_tpk(_adapter *padapter, PVOID sta)
+void wpa_tdls_generate_tpk(_adapter *padapter, void *sta)
 {
 	struct sta_info *psta = (struct sta_info *)sta;
 	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
