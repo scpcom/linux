@@ -269,7 +269,7 @@ int disp_al_smbl_get_status(unsigned int disp)
 }
 
 static struct lcd_clk_info clk_tbl[] = {
-	{LCD_IF_HV,     6, 1, 1, 0},
+	{LCD_IF_HV,    6, 1, 1, 0},
 	{LCD_IF_CPU,   12, 1, 1, 0},
 	{LCD_IF_LVDS,   7, 1, 1, 0},
 	{LCD_IF_DSI,    4, 1, 4, 148500000},

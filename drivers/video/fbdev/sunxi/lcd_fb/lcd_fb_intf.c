@@ -9,6 +9,7 @@
  */
 
 #include "lcd_fb_intf.h"
+#include <linux/pinctrl/pinctrl-sunxi.h>
 
 void *lcd_fb_malloc(u32 size)
 {

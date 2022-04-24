@@ -111,6 +111,13 @@ struct __lcd_panel *panel_array[] = {
 #ifdef CONFIG_LCD_SUPPORT_TFT08006
 	&tft08006_panel,
 #endif
+#ifdef CONFIG_LCD_SUPPORT_ST7701S_RGB
+        &st7701s_rgb_panel,
+#endif
+#ifdef CONFIG_LCD_SUPPORT_NV3052C_RGB
+        &nv3052c_rgb_panel,
+#endif
+
 	&bp101wx1_panel,
 	&k101im2qa04_panel,
 	&fx070_panel,

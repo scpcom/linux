@@ -1,3 +1,15 @@
+config LCD_SUPPORT_ST7701S_RGB
+        bool "LCD support ST7701S RGB panel"
+        default n
+        ---help---
+                If you want to support ST7701S_RGB panel for display driver, select it.
+
+config LCD_SUPPORT_NV3052C_RGB
+        bool "LCD support NV3052C RGB panel"
+        default n
+        ---help---
+                If you want to support NV3052C_RGB panel for display driver, select it.
+
 config LCD_SUPPORT_GG1P4062UTSW
 	bool "LCD support cpu_gg1p4062utsw panel"
 	default n

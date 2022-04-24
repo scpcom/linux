@@ -22,7 +22,7 @@
 #include "linux/semaphore.h"
 #include <asm/barrier.h>
 #include <asm/div64.h>
-#include <asm/memory.h>
+//#include <asm/memory.h>
 #include <asm/unistd.h>
 #include <linux/cdev.h>
 #include <linux/clk-provider.h>

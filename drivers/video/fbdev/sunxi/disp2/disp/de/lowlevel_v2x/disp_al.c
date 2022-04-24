@@ -710,7 +710,7 @@ static struct lcd_clk_info clk_tbl[] = {
 };
 #else
 static struct lcd_clk_info clk_tbl[] = {
-	{LCD_IF_HV, 6, 1, 1, 0},
+	{LCD_IF_HV, 16, 1, 1, 0},
 	{LCD_IF_CPU, 12, 1, 1, 0},
 	{LCD_IF_LVDS, 7, 1, 1, 0},
 #if defined(DSI_VERSION_40)

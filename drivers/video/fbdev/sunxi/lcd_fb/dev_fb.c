@@ -17,7 +17,11 @@
 #include "include.h"
 #include "dev_fb.h"
 #include "disp_display.h"
+#include <linux/pinctrl/pinctrl-sunxi.h>
 
+#ifndef dma_mmap_writecombine
+#define dma_mmap_writecombine dma_mmap_wc
+#endif
 
 struct fb_info_t {
 	struct device *dev;
