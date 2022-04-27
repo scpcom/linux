@@ -760,6 +760,7 @@ struct ieee80211_hw *xr_mac80211_alloc_hw(size_t priv_data_len,
 	wiphy->mgmt_stypes = ieee80211_default_mgmt_stypes;
 
 	wiphy->privid = xrmac_wiphy_privid;
+	wiphy->features |= NL80211_FEATURE_SAE;
 
 	wiphy->flags |= WIPHY_FLAG_NETNS_OK |
 			WIPHY_FLAG_4ADDR_AP |

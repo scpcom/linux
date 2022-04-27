@@ -1194,11 +1194,17 @@ xradio_tx_h_crypt(struct xradio_vif *priv,
 	size_t icv_len;
 	u8 *icv;
 	u8 *newhdr;
+	int is_multi_mfp = 0;
 	txrx_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
+	if (ieee80211_is_mgmt(t->hdr->frame_control) &&
+		 is_multicast_ether_addr(t->hdr->addr1) &&
+		 ieee80211_is_robust_mgmt_frame(t->skb))
+		 is_multi_mfp = 1;
+
 	if (!t->tx_info->control.hw_key ||
-	    !(t->hdr->frame_control &
-	     __cpu_to_le32(IEEE80211_FCTL_PROTECTED)))
+	    (!(t->hdr->frame_control &
+	     __cpu_to_le32(IEEE80211_FCTL_PROTECTED)) && (!is_multi_mfp)))
 		return 0;
 
 	iv_len = t->tx_info->control.hw_key->iv_len;
@@ -1240,6 +1246,12 @@ xradio_tx_h_crypt(struct xradio_vif *priv,
 	t->hdrlen += iv_len;
 	icv = skb_put(t->skb, icv_len);
 
+	if (t->tx_info->control.hw_key->cipher == WLAN_CIPHER_SUITE_AES_CMAC) {
+		struct ieee80211_mmie * mmie = (struct ieee80211_mmie *) icv;
+		memset(mmie, 0, sizeof(struct ieee80211_mmie));
+		mmie->element_id = WLAN_EID_MMIE;
+		mmie->length = sizeof(*mmie) - 2;
+	}
 	return 0;
 }
 #ifdef SUPPORT_HT40

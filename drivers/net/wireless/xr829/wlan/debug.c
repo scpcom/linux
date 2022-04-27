@@ -4401,12 +4401,20 @@ void xradio_parse_frame(u8 *mac_data, u8 iv_len, u16 flags, u8 if_id)
 		FRAME_PARSE(PF_MGMT, deauth);
 		FRAME_PARSE(PF_MGMT, assoc_req);
 		FRAME_PARSE(PF_MGMT, assoc_resp);
+		FRAME_PARSE(PF_MGMT, reassoc_req);
+		FRAME_PARSE(PF_MGMT, reassoc_resp);
 		FRAME_PARSE(PF_MGMT, disassoc);
 		FRAME_PARSE(PF_MGMT, atim);
 
 		/*for more information about action frames.*/
 		if (FRAME_TYPE(action)) {
+			u8* encrypt_frame = NULL;
 			struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)frame;
+			if (frame->frame_control & __cpu_to_le32(IEEE80211_FCTL_PROTECTED) && (flags & PF_RX))
+			{
+				encrypt_frame = (u8*)frame + IEEE80211_CCMP_256_HDR_LEN;
+				mgmt = (struct ieee80211_mgmt *)encrypt_frame;
+			}
 			FT_MSG_PUT(PF_MGMT, "%s", "action");
 
 			if (mgmt->u.action.category == WLAN_CATEGORY_PUBLIC) {
@@ -4425,6 +4433,14 @@ void xradio_parse_frame(u8 *mac_data, u8 iv_len, u16 flags, u8 if_id)
 				WLAN_ACTION_ADDBA_RESP) {
 				FT_MSG_PUT(PF_MGMT, "(ADDBA_RESP-%d)",
 					   mgmt->u.action.u.addba_resp.status);
+			} else if (mgmt->u.action.category == WLAN_CATEGORY_SA_QUERY &&
+				mgmt->u.action.u.sa_query.action ==
+				WLAN_ACTION_SA_QUERY_REQUEST) {
+				FT_MSG_PUT(PF_MGMT, "(SA_Query_Req)");
+			} else if (mgmt->u.action.category == WLAN_CATEGORY_SA_QUERY &&
+				mgmt->u.action.u.sa_query.action ==
+				WLAN_ACTION_SA_QUERY_RESPONSE) {
+				FT_MSG_PUT(PF_MGMT, "(SA_Query_Resp)");
 			} else {
 				FT_MSG_PUT(PF_MGMT, "(%d)", mgmt->u.action.category);
 			}

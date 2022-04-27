@@ -389,6 +389,85 @@ int wsm_etf_cmd(struct xradio_common *hw_priv, struct wsm_hdr *arg);
 int xradio_bh_suspend(struct xradio_common *hw_priv);
 int xradio_bh_resume(struct xradio_common *hw_priv);
 
+void etf_adapter_version_init(struct xradio_etf *priv)
+{
+	priv->version = 0;
+	priv->version |= ADAPTER_MAIN_VER << 24;
+	priv->version |= ADAPTER_SUB_VER  << 16;
+	priv->version |= ADAPTER_REV_VER  << 0;
+}
+
+static int  etf_check_version(u32 ver)
+{
+	u16 rev_ver  = (u16)((ver >> 0)  & 0xffff);
+	u8  sub_ver  = (u8)((ver >> 16) & 0xff);
+	u8  main_ver = (u8)((ver >> 24) & 0xff);
+
+	etf_printk(XRADIO_DBG_NIY, "[%s] version: %d.%d.%d\n",
+				    __func__, main_ver, sub_ver, rev_ver);
+	if (main_ver >= 128 || sub_ver >= 200 || rev_ver >= 512)
+		goto out;
+
+	if (main_ver > REF_ETF_MAIN_VER) {
+		return 1;
+	} else if (main_ver == REF_ETF_MAIN_VER && sub_ver > REF_ETF_SUB_VER) {
+		return 1;
+	} else if (main_ver == REF_ETF_MAIN_VER && sub_ver >= REF_ETF_SUB_VER &&
+				    rev_ver >= REF_ETF_REV_VER) {
+		return 1;
+	}
+
+out:
+	etf_printk(XRADIO_DBG_WARN, "*************************************\n");
+	etf_printk(XRADIO_DBG_WARN, "     etf cli version is too low\n");
+	etf_printk(XRADIO_DBG_WARN, "    %d.%d.%d or above is recommended.\n",
+			    REF_ETF_MAIN_VER, REF_ETF_SUB_VER, REF_ETF_REV_VER);
+	etf_printk(XRADIO_DBG_WARN, "*************************************\n");
+
+	return 0;
+}
+
+static int etf_alloc_cli_buffer(u32 req_len, struct xradio_etf *priv)
+{
+	int ret = 0;
+
+	if (req_len && req_len > priv->cli_data_len) {
+		if (priv->cli_data) {
+			kfree(priv->cli_data);
+			priv->cli_data = NULL;
+		}
+
+		priv->cli_data = kmalloc(req_len, GFP_KERNEL);
+		if (!priv->cli_data) {
+			ret = EBUSY;
+			etf_printk(XRADIO_DBG_ERROR,
+			    "%s: can't allocate cli_data buffer!\n", __func__);
+		}
+		memset(priv->cli_data, 0, req_len);
+		priv->cli_data_len = req_len;
+		ret = 0;
+	} else {
+		if (req_len && req_len <= priv->cli_data_len)
+			etf_printk(XRADIO_DBG_ALWY,
+				"%s: cli_data buffer is ready.\n", __func__);
+		else
+			etf_printk(XRADIO_DBG_WARN,
+				"%s: req_len = %d, priv->cli_data_len = %d.\n",
+				__func__, req_len, priv->cli_data_len);
+	}
+
+	return ret;
+}
+
+static void etf_free_cli_buffer(struct xradio_etf *priv)
+{
+	if (priv->cli_data) {
+		kfree(priv->cli_data);
+		priv->cli_data = NULL;
+		priv->cli_data_len = 0;
+	}
+}
+
 bool etf_is_connect(void)
 {
 	return (bool)(etf_priv.etf_state != ETF_STAT_NULL);
@@ -409,6 +488,17 @@ const char *etf_get_sddpath(void)
 	return (const char *)etf_priv.sdd_path;
 }
 
+void etf_set_fwpath(const char *fw_path)
+{
+	etf_priv.fw_path = fw_path;
+}
+
+void etf_set_sddpath(const char *sdd_path)
+{
+	etf_priv.sdd_path = sdd_path;
+}
+
+
 static int etf_get_sdd_param(u8 *sdd, int sdd_len, u8 ies, void **data)
 {
 	int ie_len = 0;
@@ -418,9 +508,6 @@ static int etf_get_sdd_param(u8 *sdd, int sdd_len, u8 ies, void **data)
 
 	/*parse SDD config.*/
 	pElement = (struct xradio_sdd *)sdd;
-	parsedLength += (FIELD_OFFSET(struct xradio_sdd, data) + \
-					 pElement->length);
-	pElement = FIND_NEXT_ELT(pElement);
 
 	while (parsedLength < sdd_len) {
 		if (pElement->id == ies) {
@@ -483,64 +570,6 @@ static void xradio_etf_disconnect(void)
 	etf_printk(XRADIO_DBG_ALWY, "%s end.\n", __func__);
 }
 
-ETFCLI_PAR_T g_etfcli_par;
-
-int xradio_etfcli_data_init(void)
-{
-	g_etfcli_par.bandwidth = ETF_CHANNEL_BANDWIDTH_20MHz;
-	g_etfcli_par.channel = 7;
-	g_etfcli_par.g_iGnModeForce = 0;
-	g_etfcli_par.g_iRateIndex = 16;
-	g_etfcli_par.mode = 0;
-	g_etfcli_par.reat = 0;
-	g_etfcli_par.subchannel = ETF_SUB_CHANNEL_UPPER;
-	return 0;
-}
-
-int xradio_set_etfcli_data(int value, int index)
-{
-	xradio_dbg(XRADIO_DBG_MSG, "value = %d, index = %d\n", value, index);
-
-	switch (index) {
-	case 0:
-		g_etfcli_par.g_iRateIndex = value;
-		break;
-
-	case 1:
-		g_etfcli_par.g_iGnModeForce = value;
-		break;
-
-	case 3:
-		g_etfcli_par.channel = value;
-		break;
-
-	case 4:
-		g_etfcli_par.mode = value;
-		break;
-
-	case 5:
-		g_etfcli_par.reat = value;
-		break;
-
-	case 6:
-		g_etfcli_par.bandwidth = value;
-		break;
-
-	case 7:
-		g_etfcli_par.subchannel = value;
-		break;
-
-	default:
-		{
-			etf_printk(XRADIO_DBG_ERROR,
-				"%s This setting is not supported.\n", __func__);
-			return -1;
-		}
-		break;
-	}
-
-	return 0;
-}
 
 #if DGB_XRADIO_HWT
 //HWT
@@ -635,8 +664,8 @@ static int xradio_etf_proc(void *data, int len)
 	case ETF_SOFT_RESET_REQ_ID:
 		etf_printk(XRADIO_DBG_ALWY, "SOFT_RESET\n");
 		xradio_etf_disconnect();
-		etf_priv.fw_path   = XR829_ETF_FIRMWARE;
-		etf_priv.sdd_path  = XR829_SDD_FILE;
+		etf_priv.fw_path   = NULL;
+		etf_priv.sdd_path  = NULL;
 		etf_priv.seq_send  = 0;
 		etf_priv.seq_recv  = 0;
 		memset(&context_save, 0, sizeof(context_save));
@@ -728,29 +757,44 @@ static int xradio_etf_proc(void *data, int len)
 		}
 		break;
 	case ETF_CONNECT_ID:
-		etf_printk(XRADIO_DBG_ALWY, "ETF_CONNECT_ID!\n");
-		etf_driver_resp(BOOT_COMPLETE, BOOT_SUCCESS);
-		ret = xradio_etf_connect();
-		if (ret)
-			etf_driver_resp(BOOT_STATE_NULL, ret);
+		{
+			ETF_CONNECT_REQ_T *connect_req = (ETF_CONNECT_REQ_T *)hdr_rev;
+
+			etf_printk(XRADIO_DBG_ALWY, "ETF_CONNECT_ID!\n");
+			etf_driver_resp(BOOT_COMPLETE, BOOT_SUCCESS);
+			ret = xradio_etf_connect();
+			if (ret)
+				etf_driver_resp(BOOT_STATE_NULL, ret);
+
+			if (etf_check_version(connect_req->version)) {
+				ret = etf_alloc_cli_buffer(connect_req->data_len, &etf_priv);
+				if (ret)
+					etf_driver_resp(BOOT_STATE_NULL, ret);
+			}
+		}
 		break;
 	case ETF_DISCONNECT_ID:
 		etf_printk(XRADIO_DBG_ALWY, "ETF_DISCONNECT_ID!\n");
 		xradio_etf_disconnect();
+		etf_free_cli_buffer(&etf_priv);
 		etf_driver_resp(BOOT_STATE_NULL, BOOT_SUCCESS);
 		break;
 	case ETF_RECONNECT_ID:
-		etf_printk(XRADIO_DBG_ALWY, "ETF_RECONNECT_ID!\n");
-		if (1/*TODO: is update files*/) {
+		{
+			ETF_CONNECT_REQ_T *reconnect_req = (ETF_CONNECT_REQ_T *)hdr_rev;
+
+			etf_printk(XRADIO_DBG_ALWY, "ETF_RECONNECT_ID!\n");
 			xradio_etf_disconnect();
 			etf_driver_resp(BOOT_COMPLETE, BOOT_SUCCESS);
 			ret = xradio_etf_connect();
 			if (ret)
 				etf_driver_resp(BOOT_STATE_NULL, ret);
-		} else {
-			ret = BOOT_ERR_BAD_OP;
-			etf_driver_resp(BOOT_STATE_NULL, ret);
-			etf_printk(XRADIO_DBG_ERROR, "No download files before!\n");
+
+			if (etf_check_version(reconnect_req->version)) {
+				ret = etf_alloc_cli_buffer(reconnect_req->data_len, &etf_priv);
+				if (ret)
+					etf_driver_resp(BOOT_STATE_NULL, ret);
+			}
 		}
 		break;
 	case ETF_GET_SDD_POWER_DEFT:  /* get default tx power */
@@ -842,30 +886,70 @@ static int xradio_etf_proc(void *data, int len)
 	case ETF_SET_CLI_PAR_DEFT:
 		{
 			CLI_PARAM_SAVE_T *hdr_data = (CLI_PARAM_SAVE_T *)hdr_rev;
+			ETF_PARAM0 hdr_ret;
 
-			etf_printk(XRADIO_DBG_MSG, "%s ETF_GET_CLI_PAR_DEFT!\n", __func__);
-			hdr_rev->id  = hdr_rev->id + ETF_CNF_BASE;
-			if (hdr_data)
-				ret = xradio_set_etfcli_data(hdr_data->value, hdr_data->index);
-			hdr_data->result = ret;
-			xradio_adapter_send(hdr_data, sizeof(*hdr_data));
+			etf_printk(XRADIO_DBG_NIY, "%s ETF_SET_CLI_PAR_DEFT!\n", __func__);
+			hdr_ret.MsgId = hdr_rev->id + ETF_CNF_BASE;
+			hdr_ret.MsgLen = sizeof(ETF_PARAM0);
+
+			if (etf_check_version(hdr_data->version)) {
+				if (etf_priv.cli_data && hdr_data->data_len == etf_priv.cli_data_len) {
+					memset(etf_priv.cli_data, 0, hdr_data->data_len);
+					memcpy(etf_priv.cli_data,
+						    hdr_data->data, hdr_data->data_len);
+					hdr_ret.result = BOOT_SUCCESS;
+				} else {
+					etf_printk(XRADIO_DBG_ALWY,
+						"%s support_len = %d req_len = %d\n",
+						__func__, etf_priv.cli_data_len, hdr_data->data_len);
+					hdr_ret.result = BOOT_ERR_BAD_OP;
+				}
+			} else {
+					hdr_ret.result = ETF_ERR_CHECK_VERSION;
+			}
+
+			xradio_adapter_send(&hdr_ret, hdr_ret.MsgLen);
 		}
 		break;
 	case ETF_GET_CLI_PAR_DEFT:
 		{
-			struct get_cli_data_req *param_req;
-			struct get_cli_data_result *param_ret;
+			struct get_cli_data_s *hdr_data;
 
-			param_req = (struct get_cli_data_req *)hdr_rev;
-			param_ret = (struct get_cli_data_result *)param_req;
-			etf_printk(XRADIO_DBG_MSG, "%s ETF_GET_CLI_PAR_DEFT!\n", __func__);
+			hdr_data = (struct get_cli_data_s *)hdr_rev;
+			etf_printk(XRADIO_DBG_NIY, "%s ETF_GET_CLI_PAR_DEFT!\n", __func__);
+			hdr_rev->id  = hdr_rev->id + ETF_CNF_BASE;
+			if (etf_check_version(hdr_data->version)) {
+				hdr_data->result   = BOOT_SUCCESS;
+				hdr_data->data_len = etf_priv.cli_data_len;
+				hdr_data->version  = etf_priv.version;
+				hdr_data->msg_len  = sizeof(struct get_cli_data_s) + hdr_data->data_len;
+				xradio_adapter_send_pkg(hdr_data, sizeof(struct get_cli_data_s),
+						(void *)etf_priv.cli_data, hdr_data->data_len);
+			} else {
+				hdr_data->result = ETF_ERR_CHECK_VERSION;
+				hdr_data->data_len = 0;
+				hdr_data->version  = etf_priv.version;
+				hdr_data->msg_len  = sizeof(struct get_cli_data_s);
+				xradio_adapter_send(hdr_data, hdr_data->msg_len);
+			}
+		}
+		break;
+	case ETF_GET_SDD_PATH_ID:
+		{
+			struct get_sdd_patch_req *param_req;
+			struct get_sdd_patch_ret *param_ret;
+			const char *sdd_path = etf_get_sddpath();
+
+			param_req = (struct get_sdd_patch_req *)hdr_rev;
+			param_ret = (struct get_sdd_patch_ret *)param_req;
+			etf_printk(XRADIO_DBG_NIY, "%s ETF_GET_SDD_PATH_ID!\n", __func__);
 
 			hdr_rev->id  = hdr_rev->id + ETF_CNF_BASE;
-			param_ret->result	= 0;
-			param_ret->length	= sizeof(g_etfcli_par);
+			param_ret->result = BOOT_SUCCESS;
+			param_ret->length = strlen(sdd_path);
 			hdr_rev->len = sizeof(*param_ret) + param_ret->length;
 			xradio_adapter_send_pkg(param_ret, sizeof(*param_ret),
-					(void *)&g_etfcli_par, param_ret->length);
+					(void *)sdd_path, param_ret->length);
 		}
 		break;
 	default:
@@ -896,7 +980,8 @@ static int xradio_etf_proc(void *data, int len)
 				struct xradio_common *hw_priv = etf_priv.core_priv;
 				struct etf_sdd_req *sdd_req = (struct etf_sdd_req *)hdr_rev;
 				u32 sdd_cmd = sdd_req->sdd_cmd;
-				etf_printk(XRADIO_DBG_WARN, "%s add sdd data, cmd=0x%08x!\n",
+
+				etf_printk(XRADIO_DBG_NIY, "%s add sdd data, cmd=0x%08x!\n",
 							__func__, sdd_cmd);
 				if (hw_priv->sdd) {
 					u8 *sdd_data = (u8 *)(hdr_rev + 1);
@@ -1009,10 +1094,10 @@ int xradio_etf_init(void)
 	etf_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 	sema_init(&etf_priv.etf_lock, 1);
 	etf_priv.etf_state = ETF_STAT_NULL;
-	etf_priv.fw_path  = XR829_ETF_FIRMWARE;
-	etf_priv.sdd_path = XR829_SDD_FILE;
-	xradio_etfcli_data_init();
+	etf_priv.fw_path  = NULL;
+	etf_priv.sdd_path = NULL;
 	etf_priv.adapter = xradio_adapter_init(&xradio_etf_proc);
+	etf_adapter_version_init(&etf_priv);
 	return ret;
 }
 
@@ -1021,6 +1106,7 @@ void xradio_etf_deinit(void)
 	etf_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 	/*ensure in disconnect state when etf deinit*/
 	xradio_etf_to_wlan(1);
+	etf_free_cli_buffer(&etf_priv);
 	xradio_adapter_deinit();
 	memset(&etf_priv, 0, sizeof(etf_priv));
 }

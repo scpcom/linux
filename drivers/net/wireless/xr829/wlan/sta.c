@@ -1100,6 +1100,7 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 	int ret = -EOPNOTSUPP;
 	struct xradio_common *hw_priv = dev->priv;
 	struct xradio_vif *priv = xrwl_get_vif_from_ieee80211(vif);
+	struct wsm_protected_mgmt_policy mgmt_policy;
 	int suspend_lock_state;
 	sta_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
@@ -1140,9 +1141,6 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 		if (sta)
 			peer_addr = sta->addr;
 
-		key->flags |= IEEE80211_KEY_FLAG_ALLOC_IV;
-
-		priv->cipherType = key->cipher;
 		switch (key->cipher) {
 		case WLAN_CIPHER_SUITE_WEP40:
 		case WLAN_CIPHER_SUITE_WEP104:
@@ -1240,6 +1238,31 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 			}
 			break;
 #endif /* CONFIG_XRADIO_WAPI_SUPPORT */
+		case WLAN_CIPHER_SUITE_AES_CMAC:
+			if (pairwise){
+				sta_printk(XRADIO_DBG_ERROR, "%s: WLAN_CIPHER_SUITE_AES_CMAC but pairwise %d\n",
+					__func__, pairwise);
+				ret = -EINVAL;
+				goto finally;
+			} else {
+				wsm_key->type = WSM_KEY_TYPE_IGTK_GROUP;
+				memcpy(wsm_key->igtkGroupKey.igtkKeyData, &key->key[0], 16);
+				wsm_key->igtkGroupKey.keyId = key->keyidx;
+				memset(wsm_key->igtkGroupKey.ipn, 0, 8);
+				memcpy(wsm_key->igtkGroupKey.ipn, &key->tx_pn, 6);
+				sta_printk(XRADIO_DBG_NIY, "%s: IGTK_GROUP keylen=%d!\n",
+				       __func__, key->keylen);
+
+				mgmt_policy.protectedMgmtEnable = 1;
+				mgmt_policy.unprotectedMgmtFramesAllowed = 1;
+				mgmt_policy.encryptionForAuthFrame = 1;
+				wsm_set_protected_mgmt_policy(hw_priv, &mgmt_policy, priv->if_id);
+
+				if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
+					priv->is_mfp_connect = true;
+				}
+			}
+			break;
 		default:
 			sta_printk(XRADIO_DBG_ERROR, "%s: key->cipher unknown(%d)!\n",
 				   __func__, key->cipher);
@@ -1252,6 +1275,10 @@ int xradio_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 			key->hw_key_idx = idx;
 		else
 			xradio_free_key(hw_priv, idx);
+
+		if (!ret && (pairwise || wsm_key->type == WSM_KEY_TYPE_WEP_DEFAULT)) {
+				priv->unicast_cipher_type = key->cipher;
+		}
 
 		if (!ret && (pairwise || wsm_key->type == WSM_KEY_TYPE_WEP_DEFAULT)
 		    && (priv->filter4.enable & 0x2))
@@ -2561,7 +2588,7 @@ void xradio_unjoin_work(struct work_struct *work)
 		SYS_WARN(wsm_set_output_power(hw_priv,
 			hw_priv->output_power * 10, priv->if_id));
 		priv->join_dtim_period = 0;
-		priv->cipherType = 0;
+		priv->unicast_cipher_type = 0;
 		SYS_WARN(xradio_setup_mac_pvif(priv));
 		xradio_free_event_queue(hw_priv);
 		cancel_work_sync(&hw_priv->event_handler);
@@ -2578,6 +2605,7 @@ void xradio_unjoin_work(struct work_struct *work)
 			sizeof(priv->firmware_ps_mode));
 		priv->powersave_mode.pmMode = WSM_PSM_ACTIVE; /*reset driver pm mode too.*/
 		priv->htcap = false;
+		priv->is_mfp_connect = false;
 		xradio_for_each_vif(hw_priv, tmp_priv, i) {
 #ifdef P2P_MULTIVIF
 			if ((i == (XRWL_MAX_VIFS - 1)) || !tmp_priv)
@@ -2953,7 +2981,7 @@ int xradio_vif_setup(struct xradio_vif *priv)
 
 		memset(priv->bssid, ~0, ETH_ALEN);
 		priv->wep_default_key_id = -1;
-		priv->cipherType = 0;
+		priv->unicast_cipher_type = 0;
 		priv->cqm_link_loss_count   = XRADIO_LINK_LOSS_THOLD_DEF;
 		priv->cqm_beacon_loss_count = XRADIO_BSS_LOSS_THOLD_DEF;
 
@@ -3365,8 +3393,8 @@ int xradio_set_arpreply(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 
 	framehdrlen = sizeof(*dot11hdr);
 	if ((priv->vif->type == NL80211_IFTYPE_AP) && priv->vif->p2p)
-		priv->cipherType = WLAN_CIPHER_SUITE_CCMP;
-	switch (priv->cipherType) {
+		priv->unicast_cipher_type = WLAN_CIPHER_SUITE_CCMP;
+	switch (priv->unicast_cipher_type) {
 
 	case WLAN_CIPHER_SUITE_WEP40:
 	case WLAN_CIPHER_SUITE_WEP104:
@@ -3578,8 +3606,8 @@ int xradio_set_na(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 
 	framehdrlen = sizeof(*dot11hdr);
 	if ((priv->vif->type == NL80211_IFTYPE_AP) && priv->vif->p2p)
-		priv->cipherType = WLAN_CIPHER_SUITE_CCMP;
-	switch (priv->cipherType) {
+		priv->unicast_cipher_type = WLAN_CIPHER_SUITE_CCMP;
+	switch (priv->unicast_cipher_type) {
 
 	case WLAN_CIPHER_SUITE_WEP40:
 	case WLAN_CIPHER_SUITE_WEP104:

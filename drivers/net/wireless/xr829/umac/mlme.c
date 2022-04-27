@@ -2685,11 +2685,14 @@ int mac80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	case NL80211_AUTHTYPE_NETWORK_EAP:
 		auth_alg = WLAN_AUTH_LEAP;
 		break;
+	case NL80211_AUTHTYPE_SAE:
+		auth_alg = WLAN_AUTH_SAE;
+		break;
 	default:
 		return -EOPNOTSUPP;
 	}
 
-	wk = kzalloc(sizeof(*wk) + req->ie_len, GFP_KERNEL);
+	wk = kzalloc(sizeof(*wk) + req->auth_data_len - 4 + req->ie_len, GFP_KERNEL);
 	if (!wk)
 		return -ENOMEM;
 
@@ -2698,6 +2701,12 @@ int mac80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	if (req->ie && req->ie_len) {
 		memcpy(wk->ie, req->ie, req->ie_len);
 		wk->ie_len = req->ie_len;
+	}else if (req->auth_data && req->auth_data_len) {
+		__le16 *pos = (__le16 *) req->auth_data;
+		wk->probe_auth.transaction = le16_to_cpu(pos[0]);
+
+		memcpy(wk->ie, req->auth_data + 4, req->auth_data_len - 4);
+		wk->ie_len = req->auth_data_len - 4;
 	}
 
 	if (req->key && req->key_len) {

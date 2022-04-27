@@ -97,10 +97,6 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 	switch (hw_priv->hw_revision) {
 	case XR829_HW_REV0:
 		sdd_path = XR829_SDD_FILE;
-#ifdef CONFIG_XRADIO_ETF
-		if (etf_is_connect())
-			sdd_path = etf_get_sddpath();
-#endif
 		break;
 	default:
 		xradio_dbg(XRADIO_DBG_ERROR,
@@ -108,6 +104,15 @@ static int xradio_parse_sdd(struct xradio_common *hw_priv, u32 *dpll)
 		return ret;
 	}
 
+#ifdef CONFIG_XRADIO_ETF
+	if (etf_is_connect()) {
+		const char *etf_sdd = etf_get_sddpath();
+		if (etf_sdd != NULL)
+			sdd_path = etf_sdd;
+		else
+			etf_set_sddpath(sdd_path);
+	}
+#endif
 	ret = request_firmware(&hw_priv->sdd, sdd_path, hw_priv->pdev);
 	if (unlikely(ret)) {
 		xradio_dbg(XRADIO_DBG_ERROR, "%s: can't load sdd file %s.\n",
@@ -271,8 +276,15 @@ static int xradio_firmware(struct xradio_common *hw_priv)
 	case XR829_HW_REV0:
 		fw_path = XR829_FIRMWARE;
 #ifdef CONFIG_XRADIO_ETF
-		if (etf_is_connect())
-			fw_path = etf_get_fwpath();
+		if (etf_is_connect()) {
+			const char *etf_fw = etf_get_fwpath();
+			if (etf_fw != NULL)
+				fw_path = etf_fw;
+			else {
+				fw_path = XR829_ETF_FIRMWARE;
+				etf_set_fwpath(fw_path);
+			}
+		}
 #endif
 		break;
 	default:

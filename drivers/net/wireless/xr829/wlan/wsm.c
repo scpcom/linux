@@ -1750,14 +1750,16 @@ static int wsm_receive_indication(struct xradio_common *hw_priv,
 			rx.rcpiRssi = 0;
 
 		if (!rx.status && unlikely(ieee80211_is_deauth(hdr->frame_control))) {
-			if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
-				/* Shedule unjoin work */
-				wsm_printk(XRADIO_DBG_WARN, \
-					"Issue unjoin command (RX).\n");
-				wsm_lock_tx_async(hw_priv);
-				if (queue_work(hw_priv->workqueue,
-						&priv->unjoin_work) <= 0)
-					wsm_unlock_tx(hw_priv);
+			if (ieee80211_has_protected(hdr->frame_control) || !priv->is_mfp_connect) {
+				if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
+					/* Shedule unjoin work */
+					wsm_printk(XRADIO_DBG_WARN, \
+						"Issue unjoin command (RX).\n");
+					wsm_lock_tx_async(hw_priv);
+					if (queue_work(hw_priv->workqueue,
+							&priv->unjoin_work) <= 0)
+						wsm_unlock_tx(hw_priv);
+				}
 			}
 		}
 		hw_priv->wsm_cbc.rx(priv, &rx, skb_p);

@@ -25,9 +25,6 @@
 #define  ETF_QUEUEMODE  1
 #define  ETF_QUEUE_TIMEOUT 50 /* about 2s.*/
 
-int xradio_set_etfcli_data(int value, int index);
-int xradio_etfcli_data_init(void);
-
 #define  ADAPTER_RX_BUF_LEN  (528*3) /* pay respect for SDIO_BLOCK_SIZE*/
 #if (ETF_QUEUEMODE)
 #define  ADAPTER_ITEM_MAX    (32)
@@ -62,6 +59,15 @@ struct xradio_adapter {
 #define ETF_STAT_NULL        0
 #define ETF_STAT_CONNECTING  1
 #define ETF_STAT_CONNECTED   2
+
+#define ADAPTER_MAIN_VER 1
+#define ADAPTER_SUB_VER  1
+#define ADAPTER_REV_VER  2
+
+#define REF_ETF_MAIN_VER 2
+#define REF_ETF_SUB_VER  0
+#define REF_ETF_REV_VER  5
+
 struct xradio_etf {
 	int    etf_state;
 	int    is_wlan;
@@ -70,8 +76,11 @@ struct xradio_etf {
 	struct xradio_adapter *adapter;
 	int    seq_send;
 	int    seq_recv;
-	u8    *fw_path;
-	u8    *sdd_path;
+	const u8    *fw_path;
+	const u8    *sdd_path;
+	u8 *cli_data;
+	u8 cli_data_len;
+	u32 version;
 };
 
 /* ETF fw cmd defines*/
@@ -88,32 +97,30 @@ struct etf_sdd_req {
 };
 
 typedef enum {
-	ETF_CHANNEL_BANDWIDTH_20MHz,
-	ETF_CHANNEL_BANDWIDTH_10MHz,
-	ETF_CHANNEL_BANDWIDTH_40MHz
+    ETF_CHANNEL_BANDWIDTH_20MHz,
+    ETF_CHANNEL_BANDWIDTH_10MHz,
+    ETF_CHANNEL_BANDWIDTH_40MHz
 } ETF_CHANNEL_BANDWIDTH_T;
 
 typedef enum {
-	ETF_SUB_CHANNEL_UPPER,
-	ETF_SUB_CHANNEL_LOWER
+    ETF_SUB_CHANNEL_UPPER,
+    ETF_SUB_CHANNEL_LOWER
 } ETF_SUB_CHANNEL_T;
 
-typedef struct ETFCLI_PAR_S {
-	int g_iRateIndex;       //0
-	int g_iGnModeForce;     //1
-	int channel;            //3
-	int mode;               //4
-	int reat;               //5
-	int bandwidth;          //6
-	int subchannel;         //7
-} ETFCLI_PAR_T;
+typedef struct ETF_CONNECT_REQ {
+	u16 MsgLen;
+	u16 MsgId;
+	u32 version;
+	u32 data_len;
+} ETF_CONNECT_REQ_T;
 
 typedef struct CLI_PARAM_SAVE_REQ {
 	u16 Msglen;
 	u16 MsgID;
-	int result;
-	int value;
-	int index;
+	u32 result;
+	u32 data_len;
+	u32 version;
+	u8  data[1];
 } CLI_PARAM_SAVE_T;
 
 /* ETF driver cmd defines */
@@ -130,8 +137,28 @@ typedef struct CLI_PARAM_SAVE_REQ {
 #define  ETF_GET_SDD_POWER_DEFT   (ETF_REQ_BASE + 0x1FFF)
 #define  ETF_SET_CLI_PAR_DEFT     (ETF_REQ_BASE + 0x03E2)
 #define  ETF_GET_CLI_PAR_DEFT     (ETF_REQ_BASE + 0x03E1)
+#define  ETF_GET_SDD_PATH_ID      (ETF_REQ_BASE + 0x03E3)
 
 #define  FLAG_GET_SDD_ALL         0x1
+
+typedef struct {
+    u16 MsgLen;
+    u16 MsgId;
+    u32 result;
+} ETF_PARAM0;
+
+struct get_sdd_patch_req {
+	u16    len;
+	u16    id;
+	u32    result;
+};
+struct get_sdd_patch_ret {
+	u16    len;
+	u16    id;
+	u32    result;
+	u32    length;
+	/* sdd patch follow */
+};
 struct get_sdd_param_req {
 	u16    len;
 	u16    id;
@@ -150,13 +177,15 @@ struct get_cli_data_req {
 	u16    len;
 	u16    id;
 	u32    result;
+	u32    version;
 };
 
-struct get_cli_data_result {
-	u16          len;
+struct get_cli_data_s {
+	u16          msg_len;
 	u16          id;
 	u32          result;
-	u32          length;
+	u32          data_len;
+	u32          version;
 };
 
 struct etf_api_context_req {
@@ -201,6 +230,7 @@ struct etf_api_context {
 #define ETF_ERR_NOT_CONNECT          (7)
 #define ETF_ERR_IO_FAILED            (8)
 #define ETF_ERR_DRIVER_HANG          (9)
+#define ETF_ERR_CHECK_VERSION        (10)
 
 struct drv_resp {
 	u16    len;
@@ -222,13 +252,13 @@ struct drv_download {
 	/* data followed, max size is HI_MEM_BLK_BYTES */
 };
 
-#define XR829_ETF_FIRMWARE  "etf_xr829.bin"
-
 /* ETF interfaces called by WLAN core */
 int xradio_etf_init(void);
 void xradio_etf_deinit(void);
 const char *etf_get_fwpath(void);
 const char *etf_get_sddpath(void);
+void etf_set_fwpath(const char *fw_path);
+void etf_set_sddpath(const char *sdd_path);
 bool etf_is_connect(void);
 void etf_set_core(void *core_priv);
 int xradio_etf_from_device(struct sk_buff **skb);
