@@ -22,6 +22,7 @@ obj-$(CONFIG_WLAN_VENDOR_ST) += st/
 obj-$(CONFIG_WLAN_VENDOR_TI) += ti/
 obj-$(CONFIG_WLAN_VENDOR_ZYDAS) += zydas/
 obj-$(CONFIG_XR829_WLAN)   += xr829/
+obj-$(CONFIG_XR819S_WLAN)   += xr819s/
 obj-$(CONFIG_SPARD_WLAN_SUPPORT) += uwe5622/
 obj-$(CONFIG_BCMDHD) += bcmdhd/
 obj-$(CONFIG_AIC_WLAN_SUPPORT) += aic8800/
