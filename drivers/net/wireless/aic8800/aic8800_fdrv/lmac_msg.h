@@ -28,39 +28,41 @@
 /////////////////////////////////////////////////////////////////////////////////
 /* Task identifiers for communication between LMAC and DRIVER */
 enum {
-    TASK_NONE = (u8_l) -1,
+	TASK_NONE = (u8_l) -1,
 
-    // MAC Management task.
-    TASK_MM = 0,
-    // DEBUG task
-    TASK_DBG,
-    /// SCAN task
-    TASK_SCAN,
-    /// TDLS task
-    TASK_TDLS,
-    /// SCANU task
-    TASK_SCANU,
-    /// ME task
-    TASK_ME,
-    /// SM task
-    TASK_SM,
-    /// APM task
-    TASK_APM,
-    /// BAM task
-    TASK_BAM,
-    /// MESH task
-    TASK_MESH,
-    /// RXU task
-    TASK_RXU,
+	// MAC Management task.
+	TASK_MM = 0,
+	// DEBUG task
+	TASK_DBG,
+	/// SCAN task
+	TASK_SCAN,
+	/// TDLS task
+	TASK_TDLS,
+	/// SCANU task
+	TASK_SCANU,
+	/// ME task
+	TASK_ME,
+	/// SM task
+	TASK_SM,
+	/// APM task
+	TASK_APM,
+	/// BAM task
+	TASK_BAM,
+	/// MESH task
+	TASK_MESH,
+	/// RXU task
+	TASK_RXU,
+	/// RM_task
+	TASK_RM,
 #if defined CONFIG_RWNX_FULLMAC || defined CONFIG_RWNX_FHOST
-    // This is used to define the last task that is running on the EMB processor
-    TASK_LAST_EMB = TASK_RXU,
+	// This is used to define the last task that is running on the EMB processor
+	TASK_LAST_EMB = TASK_RM,
 #else
 #error "Need to define SOFTMAC or FULLMAC"
 #endif
-    // nX API task
-    TASK_API,
-    TASK_MAX,
+	// nX API task
+	TASK_API,
+	TASK_MAX,
 };
 
 
@@ -359,8 +361,17 @@ enum mm_msg_tag {
 	MM_GET_MAC_ADDR_REQ,
 	MM_GET_MAC_ADDR_CFM,
 
-	MM_GET_STA_TXINFO_REQ,
-	MM_GET_STA_TXINFO_CFM,
+	MM_GET_STA_INFO_REQ,
+	MM_GET_STA_INFO_CFM,
+
+	MM_SET_TXPWR_IDX_REQ,
+	MM_SET_TXPWR_IDX_CFM,
+
+	MM_SET_TXPWR_OFST_REQ,
+	MM_SET_TXPWR_OFST_CFM,
+
+	MM_SET_STACK_START_REQ,
+	MM_SET_STACK_START_CFM,
 
 	/// MAX number of messages
 	MM_MAX,
@@ -1161,13 +1172,58 @@ struct mm_get_mac_addr_cfm {
 	u8_l mac_addr[6];
 };
 
-struct mm_get_sta_txinfo_req {
+struct mm_get_sta_info_req {
 	u8_l sta_idx;
 };
 
-struct mm_get_sta_txinfo_cfm {
+struct mm_get_sta_info_cfm {
 	u32_l rate_info;
 	u32_l txfailed;
+	u8    rssi;
+};
+
+typedef struct {
+	u8_l enable;
+	u8_l dsss;
+	u8_l ofdmlowrate_2g4;
+	u8_l ofdm64qam_2g4;
+	u8_l ofdm256qam_2g4;
+	u8_l ofdm1024qam_2g4;
+	u8_l ofdmlowrate_5g;
+	u8_l ofdm64qam_5g;
+	u8_l ofdm256qam_5g;
+	u8_l ofdm1024qam_5g;
+} txpwr_idx_conf_t;
+
+struct mm_set_txpwr_idx_req {
+	txpwr_idx_conf_t txpwr_idx;
+};
+
+typedef struct {
+	u8_l enable;
+	s8_l chan_1_4;
+	s8_l chan_5_9;
+	s8_l chan_10_13;
+	s8_l chan_36_64;
+	s8_l chan_100_120;
+	s8_l chan_122_140;
+	s8_l chan_142_165;
+} txpwr_ofst_conf_t;
+
+struct mm_set_txpwr_ofst_req {
+	txpwr_ofst_conf_t txpwr_ofst;
+};
+
+struct mm_set_stack_start_req {
+	u8_l is_stack_start;
+	u8_l efuse_valid;
+	u8_l set_vendor_info;
+	u8_l fwtrace_redir;
+};
+
+struct mm_set_stack_start_cfm {
+	u8_l is_5g_support;
+	u8_l vendor_info;
 };
 
 /// Structure containing the parameters of the @ref MM_SET_P2P_OPPPS_REQ message.
@@ -2106,7 +2162,7 @@ struct mesh_stop_req {
 struct mesh_stop_cfm {
 	/// Index of the VIF for which the MP has to be stopped
 	u8_l vif_idx;
-   /// Status
+	/// Status
 	u8_l status;
 };
 
@@ -2421,7 +2477,10 @@ struct dbg_start_app_cfm {
 
 enum {
 	HOST_START_APP_AUTO = 1,
-	HOST_START_APP_CUSTOM
+	HOST_START_APP_CUSTOM,
+#ifdef CONFIG_USB_BT
+	HOST_START_APP_REBOOT,
+#endif // (CONFIG_USB_BT)
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -115,11 +115,10 @@ extern const int nx_tid_prio[NX_NB_TID_PER_STA];
  *            less than @len_start packets ready.
  */
 struct rwnx_hwq {
-    struct list_head list;
-    u8 credits[CONFIG_USER_MAX];
-    u8 size;
-    u8 id;
-    bool need_processing;
+	struct list_head list;
+	u8 size;
+	u8 id;
+	bool need_processing;
 };
 
 /**
@@ -217,10 +216,10 @@ struct rwnx_txq {
 	unsigned long nb_ready_mac80211;
 #endif
 #ifdef CONFIG_RWNX_FULLMAC
-    struct rwnx_sta *sta;
-    u8 ps_id;
-    u16 ndev_idx;
-    struct net_device *ndev;
+	struct rwnx_sta *sta;
+	u8 ps_id;
+	u16 ndev_idx;
+	struct net_device *ndev;
 #ifdef CONFIG_RWNX_AMSDUS_TX
 	struct rwnx_sw_txhdr *amsdu;
 	u16 amsdu_len;
@@ -257,25 +256,6 @@ static inline bool rwnx_txq_is_full(struct rwnx_txq *txq)
 static inline bool rwnx_txq_is_scheduled(struct rwnx_txq *txq)
 {
 	return (txq->status & RWNX_TXQ_IN_HWQ_LIST);
-}
-
-/**
- * rwnx_txq_is_ready_for_push - Check if a TXQ is ready for push
- *
- * @txq: txq pointer
- *
- * if
- * - txq is not stopped
- * - and hwq has credits
- * - and there is no buffer queued
- * then a buffer can be immediately pushed without having to queue it first
- * @return: true if the 3 conditions are met and false otherwise.
- */
-static inline bool rwnx_txq_is_ready_for_push(struct rwnx_txq *txq)
-{
-	return (!rwnx_txq_is_stopped(txq) &&
-			txq->hwq->credits[RWNX_TXQ_POS_ID(txq)] > 0 &&
-			skb_queue_empty(&txq->sk_list));
 }
 
 /**

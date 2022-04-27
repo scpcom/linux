@@ -30,10 +30,6 @@
 #include "aicwf_usb.h"
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
-#endif
-
 struct rwnx_plat *g_rwnx_plat;
 
 #ifdef CONFIG_RWNX_TL4
@@ -225,489 +221,212 @@ static int rwnx_plat_bin_fw_upload_2(struct rwnx_hw *rwnx_hw, u32 fw_addr,
 	return err;
 }
 #endif
-#endif /* !CONFIG_ROM_PATCH_EN */
 
-#if 0
-#ifndef CONFIG_RWNX_TL4
-#define IHEX_REC_DATA           0
-#define IHEX_REC_EOF            1
-#define IHEX_REC_EXT_SEG_ADD    2
-#define IHEX_REC_START_SEG_ADD  3
-#define IHEX_REC_EXT_LIN_ADD    4
-#define IHEX_REC_START_LIN_ADD  5
+typedef struct {
+	txpwr_idx_conf_t txpwr_idx;
+	txpwr_ofst_conf_t txpwr_ofst;
+} nvram_info_t;
 
-/**
- * rwnx_plat_ihex_fw_upload() - Load the requested intel hex 8 FW into embedded side.
- *
- * @rwnx_plat: pointer to platform structure
- * @fw_addr: Virtual address where the fw must be loaded
- * @filename: Name of the fw.
- *
- * Load a fw, stored as a ihex file, into the specified address.
- */
-static int rwnx_plat_ihex_fw_upload(struct rwnx_plat *rwnx_plat, u8 *fw_addr,
-									char *filename)
+nvram_info_t nvram_info = {
+	.txpwr_idx = {
+		.enable           = 1,
+		.dsss             = 9,
+		.ofdmlowrate_2g4  = 8,
+		.ofdm64qam_2g4    = 8,
+		.ofdm256qam_2g4   = 8,
+		.ofdm1024qam_2g4  = 8,
+		.ofdmlowrate_5g   = 11,
+		.ofdm64qam_5g     = 10,
+		.ofdm256qam_5g    = 9,
+		.ofdm1024qam_5g   = 9
+	},
+	.txpwr_ofst = {
+		.enable       = 1,
+		.chan_1_4     = 0,
+		.chan_5_9     = 0,
+		.chan_10_13   = 0,
+		.chan_36_64   = 0,
+		.chan_100_120 = 0,
+		.chan_122_140 = 0,
+		.chan_142_165 = 0,
+	},
+};
+
+void get_userconfig_txpwr_idx(txpwr_idx_conf_t *txpwr_idx)
 {
-	const struct firmware *fw;
-	struct device *dev = rwnx_platform_get_dev(rwnx_plat);
-	u8 const *src, *end;
-	u32 *dst;
-	u16 haddr, segaddr, addr;
-	u32 hwaddr;
-	u8 load_fw, byte_count, checksum, csum, rec_type;
-	int err, rec_idx;
-	char hex_buff[9];
-
-	err = request_firmware(&fw, filename, dev);
-	if (err) {
-		return err;
-	}
-
-	/* Copy the file on the Embedded side */
-	dev_dbg(dev, "\n### Now copy %s firmware, @ = %p\n", filename, fw_addr);
-
-	src = fw->data;
-	end = src + (unsigned int)fw->size;
-	haddr = 0;
-	segaddr = 0;
-	load_fw = 1;
-	err = -EINVAL;
-	rec_idx = 0;
-	hwaddr = 0;
-
-#define IHEX_READ8(_val, _cs) {                  \
-		hex_buff[2] = 0;                         \
-		strncpy(hex_buff, src, 2);               \
-		if (kstrtou8(hex_buff, 16, &_val))       \
-			goto end;                            \
-		src += 2;                                \
-		if (_cs)                                 \
-			csum += _val;                        \
-	}
-
-#define IHEX_READ16(_val) {                        \
-		hex_buff[4] = 0;                           \
-		strncpy(hex_buff, src, 4);                 \
-		if (kstrtou16(hex_buff, 16, &_val))        \
-			goto end;                              \
-		src += 4;                                  \
-		csum += (_val & 0xff) + (_val >> 8);       \
-	}
-
-#define IHEX_READ32(_val) {                              \
-		hex_buff[8] = 0;                                 \
-		strncpy(hex_buff, src, 8);                       \
-		if (kstrtouint(hex_buff, 16, &_val))             \
-			goto end;                                    \
-		src += 8;                                        \
-		csum += (_val & 0xff) + ((_val >> 8) & 0xff) +   \
-			((_val >> 16) & 0xff) + (_val >> 24);        \
-	}
-
-#define IHEX_READ32_PAD(_val, _nb) {                    \
-		memset(hex_buff, '0', 8);                       \
-		hex_buff[8] = 0;                                \
-		strncpy(hex_buff, src, (2 * _nb));              \
-		if (kstrtouint(hex_buff, 16, &_val))            \
-			goto end;                                   \
-		src += (2 * _nb);                               \
-		csum += (_val & 0xff) + ((_val >> 8) & 0xff) +  \
-			((_val >> 16) & 0xff) + (_val >> 24);       \
+	memcpy(txpwr_idx, &(nvram_info.txpwr_idx), sizeof(txpwr_idx_conf_t));
 }
 
-	/* loop until end of file is read*/
-	while (load_fw) {
-		rec_idx++;
-		csum = 0;
+void get_userconfig_txpwr_ofst(txpwr_ofst_conf_t *txpwr_ofst)
+{
+	memcpy(txpwr_ofst, &(nvram_info.txpwr_ofst), sizeof(txpwr_ofst_conf_t));
+}
 
-		/* Find next colon start code */
-		while (*src != ':') {
-			src++;
-			if ((src + 3) >= end) /* 3 = : + rec_len */
-				goto end;
-		}
-		src++;
+#define MATCH_NODE(type, node, cfg_key) {cfg_key, offsetof(type, node)}
 
-		/* Read record len */
-		IHEX_READ8(byte_count, 1);
-		if ((src + (byte_count * 2) + 8) >= end) /* 8 = rec_addr + rec_type + chksum */
-			goto end;
+struct parse_match_t {
+	char keyname[64];
+	int  offset;
+};
 
-		/* Read record addr */
-		IHEX_READ16(addr);
+static const char *parse_key_prefix[] = {
+	[0x01] = "module0_",
+	[0x21] = "module1_",
+};
 
-		/* Read record type */
-		IHEX_READ8(rec_type, 1);
+static const struct parse_match_t parse_match_tab[] = {
+	MATCH_NODE(nvram_info_t, txpwr_idx.enable,           "enable"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.dsss,             "dsss"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdmlowrate_2g4,  "ofdmlowrate_2g4"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm64qam_2g4,    "ofdm64qam_2g4"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm256qam_2g4,   "ofdm256qam_2g4"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm1024qam_2g4,  "ofdm1024qam_2g4"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdmlowrate_5g,   "ofdmlowrate_5g"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm64qam_5g,     "ofdm64qam_5g"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm256qam_5g,    "ofdm256qam_5g"),
+	MATCH_NODE(nvram_info_t, txpwr_idx.ofdm1024qam_5g,   "ofdm1024qam_5g"),
 
-		switch (rec_type) {
-		case IHEX_REC_DATA:
-		{
-			/* Update destination address */
-			dst = (u32 *) (fw_addr + hwaddr + addr);
+	MATCH_NODE(nvram_info_t, txpwr_ofst.enable,          "ofst_enable"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_1_4,        "ofst_chan_1_4"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_5_9,        "ofst_chan_5_9"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_10_13,      "ofst_chan_10_13"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_36_64,      "ofst_chan_36_64"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_100_120,    "ofst_chan_100_120"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_122_140,    "ofst_chan_122_140"),
+	MATCH_NODE(nvram_info_t, txpwr_ofst.chan_142_165,    "ofst_chan_142_165"),
+};
 
-			while (byte_count) {
-				u32 val;
-				if (byte_count >= 4) {
-					IHEX_READ32(val);
-					byte_count -= 4;
-				} else {
-					IHEX_READ32_PAD(val, byte_count);
-					byte_count = 0;
-				}
-				*dst++ = __swab32(val);
+static int parse_key_val(const char *str, const char *key, char *val)
+{
+	const char *p = NULL;
+	const char *dst = NULL;
+	int keysize = 0;
+	int bufsize = 0;
+
+	if (str == NULL || key == NULL || val == NULL)
+		return -1;
+
+	keysize = strlen(key);
+	bufsize = strlen(str);
+	if (bufsize <= keysize)
+		return -1;
+
+	p = str;
+	while (*p != 0 && *p == ' ')
+		p++;
+
+	if (*p == '#')
+		return -1;
+
+	if (str + bufsize - p <= keysize)
+		return -1;
+
+	if (strncmp(p, key, keysize) != 0)
+		return -1;
+
+	p += keysize;
+
+	while (*p != 0 && *p == ' ')
+		p++;
+
+	if (*p != '=')
+		return -1;
+
+	p++;
+	while (*p != 0 && *p == ' ')
+		p++;
+
+	if (*p == '"')
+		p++;
+
+	dst = p;
+	while (*p != 0)
+		p++;
+
+	p--;
+	while (*p == ' ')
+		p--;
+
+	if (*p == '"')
+		p--;
+
+	while (*p == '\r' || *p == '\n')
+		p--;
+
+	p++;
+	strncpy(val, dst, p -dst);
+	val[p - dst] = 0;
+	return 0;
+}
+
+void rwnx_plat_userconfig_parsing(struct rwnx_hw *rwnx_hw, char *buffer)
+{
+	char conf[100], keyname[64];
+	char *line;
+	int  i = 0, err;
+	long val;
+
+	if (rwnx_hw->vendor_info > (sizeof(parse_key_prefix) / sizeof(parse_key_prefix[0]) - 1)) {
+		pr_err("Unsuppor vendor info config\n");
+		return;
+	}
+
+	while (1) {
+		line = buffer;
+		while (*buffer != '\r' && *buffer != '\n' && *buffer != 0)
+			buffer++;
+
+		while (*buffer == '\r' || *buffer == '\n')
+			*buffer++ = 0;
+
+		// store value to data struct
+		for (i = 0; i < sizeof(parse_match_tab) / sizeof(parse_match_tab[0]); i++) {
+			sprintf(&keyname[0], "%s%s", parse_key_prefix[rwnx_hw->vendor_info], parse_match_tab[i].keyname);
+			if (parse_key_val(line, keyname, conf) == 0) {
+				err = kstrtol(conf, 0, &val);
+				*(unsigned long *)((unsigned long)&nvram_info + parse_match_tab[i].offset) = val;
+				printk("%s, %s = %ld\n",  __func__, parse_match_tab[i].keyname, val);
 			}
+		}
+
+		if (*buffer == 0)
 			break;
-		}
-		case IHEX_REC_EOF:
-		{
-			load_fw = 0;
-			err = 0;
-			break;
-		}
-		case IHEX_REC_EXT_SEG_ADD: /* Extended Segment Address */
-		{
-			IHEX_READ16(segaddr);
-			hwaddr = (haddr << 16) + (segaddr << 4);
-			break;
-		}
-		case IHEX_REC_EXT_LIN_ADD: /* Extended Linear Address */
-		{
-			IHEX_READ16(haddr);
-			hwaddr = (haddr << 16) + (segaddr << 4);
-			break;
-		}
-		case IHEX_REC_START_LIN_ADD: /* Start Linear Address */
-		{
-			u32 val;
-			IHEX_READ32(val); /* need to read for checksum */
-			break;
-		}
-		case IHEX_REC_START_SEG_ADD:
-		default:
-		{
-			dev_err(dev, "ihex: record type %d not supported\n", rec_type);
-			load_fw = 0;
-		}
-		}
-
-		/* Read and compare checksum */
-		IHEX_READ8(checksum, 0);
-		if (checksum != (u8)(~csum + 1))
-			goto end;
-	}
-
-#undef IHEX_READ8
-#undef IHEX_READ16
-#undef IHEX_READ32
-#undef IHEX_READ32_PAD
-
-  end:
-	release_firmware(fw);
-
-	if (err)
-		dev_err(dev, "%s: Invalid ihex record around line %d\n", filename, rec_idx);
-
-	return err;
-}
-#endif /* CONFIG_RWNX_TL4 */
-
-#ifndef CONFIG_RWNX_SDM
-/**
- * rwnx_plat_get_rf() - Retrun the RF used in the platform
- *
- * @rwnx_plat: pointer to platform structure
- */
-static u32 rwnx_plat_get_rf(struct rwnx_plat *rwnx_plat)
-{
-	u32 ver;
-	ver = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, MDM_HDMCONFIG_ADDR);
-
-	ver = __MDM_PHYCFG_FROM_VERS(ver);
-	WARN(((ver != MDM_PHY_CONFIG_TRIDENT) &&
-		  (ver != MDM_PHY_CONFIG_ELMA) &&
-		  (ver != MDM_PHY_CONFIG_KARST)),
-		 "bad phy version 0x%08x\n", ver);
-
-	return ver;
-}
-
-/**
- * rwnx_plat_stop_agcfsm() - Stop a AGC state machine
- *
- * @rwnx_plat: pointer to platform structure
- * @agg_reg: Address of the agccntl register (within RWNX_ADDR_SYSTEM)
- * @agcctl: Updated with value of the agccntl rgister before stop
- * @memclk: Updated with value of the clock register before stop
- * @agc_ver: Version of the AGC load procedure
- * @clkctrladdr: Indicates which AGC clock register should be accessed
- */
-static void rwnx_plat_stop_agcfsm(struct rwnx_plat *rwnx_plat, int agc_reg,
-								  u32 *agcctl, u32 *memclk, u8 agc_ver,
-								  u32 clkctrladdr)
-{
-	/* First read agcctnl and clock registers */
-	*memclk = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, clkctrladdr);
-
-	/* Stop state machine : xxAGCCNTL0[AGCFSMRESET]=1 */
-	*agcctl = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, agc_reg);
-	RWNX_REG_WRITE((*agcctl) | BIT(12), rwnx_plat, RWNX_ADDR_SYSTEM, agc_reg);
-
-	/* Force clock */
-	if (agc_ver > 0) {
-		/* CLKGATEFCTRL0[AGCCLKFORCE]=1 */
-		RWNX_REG_WRITE((*memclk) | BIT(29), rwnx_plat, RWNX_ADDR_SYSTEM,
-					   clkctrladdr);
-	} else {
-		/* MEMCLKCTRL0[AGCMEMCLKCTRL]=0 */
-		RWNX_REG_WRITE((*memclk) & ~BIT(3), rwnx_plat, RWNX_ADDR_SYSTEM,
-					   clkctrladdr);
 	}
 }
 
+#define FW_USERCONFIG_NAME       "aic_userconfig.txt"
 
-/**
- * rwnx_plat_start_agcfsm() - Restart a AGC state machine
- *
- * @rwnx_plat: pointer to platform structure
- * @agg_reg: Address of the agccntl register (within RWNX_ADDR_SYSTEM)
- * @agcctl: value of the agccntl register to restore
- * @memclk: value of the clock register to restore
- * @agc_ver: Version of the AGC load procedure
- * @clkctrladdr: Indicates which AGC clock register should be accessed
- */
-static void rwnx_plat_start_agcfsm(struct rwnx_plat *rwnx_plat, int agc_reg,
-								   u32 agcctl, u32 memclk, u8 agc_ver,
-								   u32 clkctrladdr)
+int rwnx_plat_userconfig_upload_android(struct rwnx_hw *rwnx_hw, char *filename)
 {
+	int size;
+	char *dst = NULL;
 
-	/* Release clock */
-	if (agc_ver > 0)
-		/* CLKGATEFCTRL0[AGCCLKFORCE]=0 */
-		RWNX_REG_WRITE(memclk & ~BIT(29), rwnx_plat, RWNX_ADDR_SYSTEM,
-					   clkctrladdr);
-	else
-		/* MEMCLKCTRL0[AGCMEMCLKCTRL]=1 */
-		RWNX_REG_WRITE(memclk | BIT(3), rwnx_plat, RWNX_ADDR_SYSTEM,
-					   clkctrladdr);
+	const struct firmware *fw = NULL;
+	int ret = request_firmware(&fw, filename, NULL);
 
-	/* Restart state machine: xxAGCCNTL0[AGCFSMRESET]=0 */
-	RWNX_REG_WRITE(agcctl & ~BIT(12), rwnx_plat, RWNX_ADDR_SYSTEM, agc_reg);
-}
-#endif
+	printk("userconfig file path:%s \r\n", filename);
 
-/**
- * rwnx_plat_fcu_load() - Load FCU (Fith Chain Unit) ucode
- *
- * @rwnx_hw: main driver data
- *
- * c.f Modem UM (AGC/CCA initialization)
- */
-static int rwnx_plat_fcu_load(struct rwnx_hw *rwnx_hw)
-{
-	int ret = 0;
-#ifndef CONFIG_RWNX_SDM
-	struct rwnx_plat *rwnx_plat = rwnx_hw->plat;
-	u32 agcctl, memclk;
-
-#ifndef CONFIG_RWNX_FHOST
-	/* By default, we consider that there is only one RF in the system */
-	rwnx_hw->phy.cnt = 1;
-#endif // CONFIG_RWNX_FHOST
-
-	if (rwnx_plat_get_rf(rwnx_plat) != MDM_PHY_CONFIG_ELMA)
-		/* No FCU for PHYs other than Elma */
-		return 0;
-
-	agcctl = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, RIU_RWNXAGCCNTL_ADDR);
-	if (!__RIU_FCU_PRESENT(agcctl))
-		/* No FCU present in this version */
-		return 0;
-
-#ifndef CONFIG_RWNX_FHOST
-	/* FCU is present */
-	#ifdef USE_5G
-	rwnx_hw->phy.cnt = 2;
-	rwnx_hw->phy.sec_chan.band = NL80211_BAND_5GHZ;
-	rwnx_hw->phy.sec_chan.type = PHY_CHNL_BW_20;
-	rwnx_hw->phy.sec_chan.prim20_freq = 5500;
-	rwnx_hw->phy.sec_chan.center_freq1 = 5500;
-	rwnx_hw->phy.sec_chan.center_freq2 = 0;
-	#endif
-#endif // CONFIG_RWNX_FHOST
-
-	rwnx_plat_stop_agcfsm(rwnx_plat, FCU_RWNXFCAGCCNTL_ADDR, &agcctl, &memclk, 0,
-						  MDM_MEMCLKCTRL0_ADDR);
-
-	ret = rwnx_plat_bin_fw_upload(rwnx_plat,
-							  RWNX_ADDR(rwnx_plat, RWNX_ADDR_SYSTEM, PHY_FCU_UCODE_ADDR),
-							  RWNX_FCU_FW_NAME);
-
-	rwnx_plat_start_agcfsm(rwnx_plat, FCU_RWNXFCAGCCNTL_ADDR, agcctl, memclk, 0,
-						   MDM_MEMCLKCTRL0_ADDR);
-#endif
-
-	return ret;
-}
-
-/**
- * rwnx_is_new_agc_load() - Return is new agc clock register should be used
- *
- * @rwnx_plat: platform data
- * @rf: rf in used
- *
- * c.f Modem UM (AGC/CCA initialization)
- */
-#ifndef CONFIG_RWNX_SDM
-static u8 rwnx_get_agc_load_version(struct rwnx_plat *rwnx_plat, u32 rf, u32 *clkctrladdr)
-{
-	u8 agc_load_ver = 0;
-	u32 agc_ver;
-	u32 regval;
-
-	/* Trident and Elma PHY use old method */
-	if (rf !=  MDM_PHY_CONFIG_KARST) {
-		*clkctrladdr = MDM_MEMCLKCTRL0_ADDR;
-		return 0;
+	if (ret < 0) {
+		printk("Load %s fail\n", filename);
+		return ret;
 	}
 
-	/* Get the FPGA signature */
-	regval = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, SYSCTRL_SIGNATURE_ADDR);
+	size = fw->size;
+	dst = (char *)fw->data;
 
-	if (__FPGA_TYPE(regval) == 0xC0CA)
-		*clkctrladdr = CRM_CLKGATEFCTRL0_ADDR;
-	else
-		*clkctrladdr = MDM_CLKGATEFCTRL0_ADDR;
-
-	/* Read RIU version register */
-	agc_ver = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, RIU_RWNXVERSION_ADDR);
-	agc_load_ver = __RIU_AGCLOAD_FROM_VERS(agc_ver);
-
-	return agc_load_ver;
-}
-#endif /* CONFIG_RWNX_SDM */
-
-/**
- * rwnx_plat_agc_load() - Load AGC ucode
- *
- * @rwnx_plat: platform data
- * c.f Modem UM (AGC/CCA initialization)
- */
-static int rwnx_plat_agc_load(struct rwnx_plat *rwnx_plat)
-{
-	int ret = 0;
-#ifndef CONFIG_RWNX_SDM
-	u32 agc = 0, agcctl, memclk;
-	u32 clkctrladdr;
-	u32 rf = rwnx_plat_get_rf(rwnx_plat);
-	u8 agc_ver;
-
-	switch (rf) {
-	case MDM_PHY_CONFIG_TRIDENT:
-		agc = AGC_RWNXAGCCNTL_ADDR;
-		break;
-	case MDM_PHY_CONFIG_ELMA:
-	case MDM_PHY_CONFIG_KARST:
-		agc = RIU_RWNXAGCCNTL_ADDR;
-		break;
-	default:
+	if (size <= 0) {
+		printk("wrong size of firmware file\n");
+		release_firmware(fw);
 		return -1;
 	}
 
-	agc_ver = rwnx_get_agc_load_version(rwnx_plat, rf, &clkctrladdr);
+	rwnx_plat_userconfig_parsing(rwnx_hw, (char *)dst);
 
-	rwnx_plat_stop_agcfsm(rwnx_plat, agc, &agcctl, &memclk, agc_ver, clkctrladdr);
-
-	ret = rwnx_plat_bin_fw_upload(rwnx_plat,
-							  RWNX_ADDR(rwnx_plat, RWNX_ADDR_SYSTEM, PHY_AGC_UCODE_ADDR),
-							  RWNX_AGC_FW_NAME);
-
-	if (!ret && (agc_ver == 1)) {
-		/* Run BIST to ensure that the AGC RAM was correctly loaded */
-		RWNX_REG_WRITE(BIT(28), rwnx_plat, RWNX_ADDR_SYSTEM,
-					   RIU_RWNXDYNAMICCONFIG_ADDR);
-		while (RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, RIU_RWNXDYNAMICCONFIG_ADDR) & BIT(28)) {
-			;
-		}
-
-		if (!(RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM,
-							RIU_AGCMEMBISTSTAT_ADDR) & BIT(0))) {
-			dev_err(rwnx_platform_get_dev(rwnx_plat),
-					"AGC RAM not loaded correctly 0x%08x\n",
-					RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM,
-								  RIU_AGCMEMSIGNATURESTAT_ADDR));
-			ret = -EIO;
-		}
-	}
-
-	rwnx_plat_start_agcfsm(rwnx_plat, agc, agcctl, memclk, agc_ver, clkctrladdr);
-
-#endif
-	return ret;
-}
-
-/**
- * rwnx_ldpc_load() - Load LDPC RAM
- *
- * @rwnx_hw: Main driver data
- * c.f Modem UM (LDPC initialization)
- */
-static int rwnx_ldpc_load(struct rwnx_hw *rwnx_hw)
-{
-#ifndef CONFIG_RWNX_SDM
-	struct rwnx_plat *rwnx_plat = rwnx_hw->plat;
-	u32 rf = rwnx_plat_get_rf(rwnx_plat);
-	u32 phy_feat = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, MDM_HDMCONFIG_ADDR);
-
-	if ((rf !=  MDM_PHY_CONFIG_KARST) ||
-		(phy_feat & (MDM_LDPCDEC_BIT | MDM_LDPCENC_BIT)) !=
-		(MDM_LDPCDEC_BIT | MDM_LDPCENC_BIT)) {
-		goto disable_ldpc;
-	}
-
-	if (rwnx_plat_bin_fw_upload(rwnx_plat,
-							RWNX_ADDR(rwnx_plat, RWNX_ADDR_SYSTEM, PHY_LDPC_RAM_ADDR),
-							RWNX_LDPC_RAM_NAME)) {
-		goto disable_ldpc;
-	}
+	release_firmware(fw);
 
 	return 0;
-
-  disable_ldpc:
-	rwnx_hw->mod_params->ldpc_on = false;
-
-#endif /* CONFIG_RWNX_SDM */
-	return 0;
 }
 
-/**
- * rwnx_plat_lmac_load() - Load FW code
- *
- * @rwnx_plat: platform data
- */
-static int rwnx_plat_lmac_load(struct rwnx_plat *rwnx_plat)
-{
-	int ret;
-
-	#ifdef CONFIG_RWNX_TL4
-	ret = rwnx_plat_tl4_fw_upload(rwnx_plat,
-								  RWNX_ADDR(rwnx_plat, RWNX_ADDR_CPU, RAM_LMAC_FW_ADDR),
-								  RWNX_MAC_FW_NAME);
-	#else
-	ret = rwnx_plat_ihex_fw_upload(rwnx_plat,
-								   RWNX_ADDR(rwnx_plat, RWNX_ADDR_CPU, RAM_LMAC_FW_ADDR),
-								   RWNX_MAC_FW_NAME);
-	if (ret == -ENOENT) {
-		ret = rwnx_plat_bin_fw_upload(rwnx_plat,
-									  RWNX_ADDR(rwnx_plat, RWNX_ADDR_CPU, RAM_LMAC_FW_ADDR),
-									  RWNX_MAC_FW_NAME2);
-	}
-	#endif
-
-	return ret;
-}
-#endif
-
-#ifndef CONFIG_ROM_PATCH_EN
 /**
  * rwnx_plat_fmac_load() - Load FW code
  *
@@ -718,42 +437,10 @@ static int rwnx_plat_fmac_load(struct rwnx_hw *rwnx_hw)
 	int ret = 0;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
-	#if defined(CONFIG_NANOPI_M4) || defined(CONFIG_PLATFORM_ALLWINNER)
-	//ret = rwnx_plat_bin_fw_upload_android(rwnx_hw, RAM_FMAC_FW_ADDR, RWNX_MAC_FW_NAME2);
-	#else
-	ret = rwnx_plat_bin_fw_upload_2(rwnx_hw,
-								  RAM_FMAC_FW_ADDR,
-								  RWNX_MAC_FW_NAME2);
-	#endif
+	ret = rwnx_plat_userconfig_upload_android(rwnx_hw, FW_USERCONFIG_NAME);
 	return ret;
 }
 #endif /* !CONFIG_ROM_PATCH_EN */
-
-#if 0
-/**
- * rwnx_plat_mpif_sel() - Select the MPIF according to the FPGA signature
- *
- * @rwnx_plat: platform data
- */
-static void rwnx_plat_mpif_sel(struct rwnx_plat *rwnx_plat)
-{
-#ifndef CONFIG_RWNX_SDM
-	u32 regval;
-	u32 type;
-
-	/* Get the FPGA signature */
-	regval = RWNX_REG_READ(rwnx_plat, RWNX_ADDR_SYSTEM, SYSCTRL_SIGNATURE_ADDR);
-	type = __FPGA_TYPE(regval);
-
-	/* Check if we need to switch to the old MPIF or not */
-	if ((type != 0xCAFE) && (type != 0XC0CA) && (regval & 0xF) < 0x3) {
-		/* A old FPGA A is used, so configure the FPGA B to use the old MPIF */
-		RWNX_REG_WRITE(0x3, rwnx_plat, RWNX_ADDR_SYSTEM, FPGAB_MPIF_SEL_ADDR);
-	}
-#endif
-}
-#endif
-
 
 /**
  * rwnx_platform_reset() - Reset the platform
@@ -852,16 +539,16 @@ static void rwnx_term_restore_config(struct rwnx_plat *rwnx_plat,
 #if 0
 static int rwnx_check_fw_compatibility(struct rwnx_hw *rwnx_hw)
 {
-    struct ipc_shared_env_tag *shared = rwnx_hw->ipc_env->shared;
-    #ifdef CONFIG_RWNX_FULLMAC
-    struct wiphy *wiphy = rwnx_hw->wiphy;
-    #endif //CONFIG_RWNX_FULLMAC
-    #ifdef CONFIG_RWNX_OLD_IPC
-    int ipc_shared_version = 10;
-    #else //CONFIG_RWNX_OLD_IPC
-    int ipc_shared_version = 11;
-    #endif //CONFIG_RWNX_OLD_IPC
-    int res = 0;
+	struct ipc_shared_env_tag *shared = rwnx_hw->ipc_env->shared;
+	#ifdef CONFIG_RWNX_FULLMAC
+	struct wiphy *wiphy = rwnx_hw->wiphy;
+	#endif //CONFIG_RWNX_FULLMAC
+	#ifdef CONFIG_RWNX_OLD_IPC
+	int ipc_shared_version = 10;
+	#else //CONFIG_RWNX_OLD_IPC
+	int ipc_shared_version = 11;
+	#endif //CONFIG_RWNX_OLD_IPC
+	int res = 0;
 
 	if (shared->comp_info.ipc_shared_version != ipc_shared_version) {
 		wiphy_err(wiphy, "Different versions of IPC shared version between driver and FW (%d != %d)\n ",
@@ -982,79 +669,21 @@ static int rwnx_check_fw_compatibility(struct rwnx_hw *rwnx_hw)
  */
 int rwnx_platform_on(struct rwnx_hw *rwnx_hw, void *config)
 {
-	#ifndef CONFIG_ROM_PATCH_EN
-	#ifdef CONFIG_DOWNLOAD_FW
 	int ret;
-	#endif
-	#endif
 	struct rwnx_plat *rwnx_plat = rwnx_hw->plat;
+	(void)ret;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	if (rwnx_plat->enabled)
 		return 0;
 
-	#if 0
-	if (rwnx_platform_reset(rwnx_plat))
-		return -1;
-
-	rwnx_plat_mpif_sel(rwnx_plat);
-
-	ret = rwnx_plat_fcu_load(rwnx_hw);
-	if (ret)
-		return ret;
-	ret = rwnx_plat_agc_load(rwnx_plat);
-	if (ret)
-		return ret;
-	ret = rwnx_ldpc_load(rwnx_hw);
-	if (ret)
-		return ret;
-	ret = rwnx_plat_lmac_load(rwnx_plat);
-	if (ret)
-		return ret;
-
-	shared_ram = RWNX_ADDR(rwnx_plat, RWNX_ADDR_SYSTEM, SHARED_RAM_START_ADDR);
-	ret = rwnx_ipc_init(rwnx_hw, shared_ram);
-	if (ret)
-		return ret;
-
-	ret = rwnx_plat->enable(rwnx_hw);
-	if (ret)
-		return ret;
-	RWNX_REG_WRITE(BOOTROM_ENABLE, rwnx_plat,
-				   RWNX_ADDR_SYSTEM, SYSCTRL_MISC_CNTL_ADDR);
-
-	#if 0
-	ret = rwnx_fw_trace_config_filters(rwnx_get_shared_trace_buf(rwnx_hw),
-											rwnx_ipc_fw_trace_desc_get(rwnx_hw),
-											rwnx_hw->mod_params->ftl);
-	if (ret)
-	#endif
-
-	#ifndef CONFIG_RWNX_FHOST
-	{
-		ret = rwnx_check_fw_compatibility(rwnx_hw);
-		if (ret) {
-			rwnx_hw->plat->disable(rwnx_hw);
-			tasklet_kill(&rwnx_hw->task);
-			rwnx_ipc_deinit(rwnx_hw);
-			return ret;
-		}
-	}
-	#endif /* !CONFIG_RWNX_FHOST */
-
-	if (config)
-		rwnx_term_restore_config(rwnx_plat, config);
-
-	rwnx_ipc_start(rwnx_hw);
-	#else
 	#ifndef CONFIG_ROM_PATCH_EN
 	#ifdef CONFIG_DOWNLOAD_FW
 	ret = rwnx_plat_fmac_load(rwnx_hw);
 	if (ret)
 		return ret;
 	#endif /* !CONFIG_ROM_PATCH_EN */
-	#endif
 	#endif
 
 	rwnx_plat->enabled = true;
@@ -1075,6 +704,7 @@ int rwnx_platform_on(struct rwnx_hw *rwnx_hw, void *config)
 void rwnx_platform_off(struct rwnx_hw *rwnx_hw, void **config)
 {
 #if defined(AICWF_USB_SUPPORT) || defined(AICWF_SDIO_SUPPORT)
+	tasklet_kill(&rwnx_hw->task);
 	rwnx_hw->plat->enabled = false;
 	return ;
 #endif
@@ -1085,22 +715,12 @@ void rwnx_platform_off(struct rwnx_hw *rwnx_hw, void **config)
 		return;
 	}
 
-#ifdef AICWF_PCIE_SUPPORT
-	rwnx_ipc_stop(rwnx_hw);
-#endif
-
 	if (config)
 		*config = rwnx_term_save_config(rwnx_hw->plat);
 
 	rwnx_hw->plat->disable(rwnx_hw);
 
 	tasklet_kill(&rwnx_hw->task);
-
-#ifdef AICWF_PCIE_SUPPORT
-	rwnx_ipc_deinit(rwnx_hw);
-#endif
-
-
 	rwnx_platform_reset(rwnx_hw->plat);
 
 	rwnx_hw->plat->enabled = false;
@@ -1124,7 +744,7 @@ int rwnx_platform_init(struct rwnx_plat *rwnx_plat, void **platform_data)
 	g_rwnx_plat = rwnx_plat;
 
 #if defined CONFIG_RWNX_FULLMAC
-    return rwnx_cfg80211_init(rwnx_plat, platform_data);
+	return rwnx_cfg80211_init(rwnx_plat, platform_data);
 #elif defined CONFIG_RWNX_FHOST
 	return rwnx_fhost_init(rwnx_plat, platform_data);
 #endif
@@ -1142,7 +762,7 @@ void rwnx_platform_deinit(struct rwnx_hw *rwnx_hw)
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 #if defined CONFIG_RWNX_FULLMAC
-    rwnx_cfg80211_deinit(rwnx_hw);
+	rwnx_cfg80211_deinit(rwnx_hw);
 #elif defined CONFIG_RWNX_FHOST
 	rwnx_fhost_deinit(rwnx_hw);
 #endif

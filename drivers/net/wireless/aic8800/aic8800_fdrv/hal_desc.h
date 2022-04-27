@@ -218,15 +218,15 @@ union rwnx_hw_txstatus {
  * @status: transmission status
  */
 struct tx_cfm_tag {
-    u16_l pn[4];
-    u16_l sn;
-    u16_l timestamp;
-    s8_l credits;
-    u8_l ampdu_size;
+	u16_l pn[4];
+	u16_l sn;
+	u16_l timestamp;
+	s8_l credits;
+	u8_l ampdu_size;
 #ifdef CONFIG_RWNX_SPLIT_TX_BUF
-    u16_l amsdu_size;
+	u16_l amsdu_size;
 #endif
-    union rwnx_hw_txstatus status;
+	union rwnx_hw_txstatus status;
 };
 
 /**
@@ -235,7 +235,7 @@ struct tx_cfm_tag {
  * @cfm: Information updated by fw/hardware after sending a frame
  */
 struct rwnx_hw_txhdr {
-    struct tx_cfm_tag cfm;
+	struct tx_cfm_tag cfm;
 };
 
 #endif /* CONFIG_RWNX_FULLMAC */

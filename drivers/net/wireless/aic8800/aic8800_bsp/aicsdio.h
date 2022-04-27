@@ -40,34 +40,14 @@
 #define SDIO_SLEEP_ST                    0
 #define SDIO_ACTIVE_ST                   1
 
-#define RAM_FW_ADDR                 0x00100000
-#define FW_BASE_NAME                "fw"
-#define FW_NAME2                    FW_BASE_NAME".bin"
-
-#define FW_RAM_ADID_BASE_ADDR       0x00161928
-#define FW_RAM_PATCH_BASE_ADDR      0x0016ad64
-#define FW_PATCH_TEST_BASE_ADDR     0x00100000
-#define FW_PATCH_BASE_NAME          "fw_patch"
-#define FW_PATCH_BIN_NAME           FW_PATCH_BASE_NAME".bin"
-#define FW_PATCH_BIN_BTONLY_NAME    FW_PATCH_BASE_NAME"_bt_only.bin"
-#define FW_PATCH_BIN_COMBO_NAME     FW_PATCH_BASE_NAME"_combo.bin"
-#define FW_ADID_BASE_NAME           "fw_adid"
-#define FW_ADID_BIN_NAME            FW_ADID_BASE_NAME".bin"
-#define FW_PATCH_TEST_NAME          "fw_patch_test"
-#define FW_PATCH_TEST_BIN_NAME       FW_PATCH_TEST_NAME".bin"
-
-#define FW_WIFI_RAM_ADDR            0x00110000
-#define FW_WIFI_BASE_NAME           "fmacfw"
-#define FW_WIFI_BIN_NAME            FW_WIFI_BASE_NAME".bin"
-
 typedef enum {
-	SDIO_TYPE_DATA         = 0X00,
-	SDIO_TYPE_CFG          = 0X10,
-	SDIO_TYPE_CFG_CMD_RSP  = 0X11,
-	SDIO_TYPE_CFG_DATA_CFM = 0X12
-} sdio_type;
+	PRIV_TYPE_DATA         = 0X00,
+	PRIV_TYPE_CFG          = 0X10,
+	PRIV_TYPE_CFG_CMD_RSP  = 0X11,
+	PRIV_TYPE_CFG_DATA_CFM = 0X12
+} priv_type;
 
-struct aic_sdio_dev {
+struct priv_dev {
 	struct rwnx_cmd_mgr cmd_mgr;
 	struct sdio_func *func;
 	struct device *dev;
@@ -86,28 +66,10 @@ struct aic_sdio_dev {
 	struct semaphore pwrctl_wakeup_sema;
 };
 
-int aicwf_sdio_writeb(struct aic_sdio_dev *sdiodev, uint regaddr, u8 val);
-void aicwf_sdio_hal_irqhandler(struct sdio_func *func);
-void aicwf_sdio_pwrctl_timer(struct aic_sdio_dev *sdiodev, uint duration);
-int aicwf_sdio_pwr_stctl(struct  aic_sdio_dev *sdiodev, uint target);
-int aicwf_sdio_func_init(struct aic_sdio_dev *sdiodev);
-void aicwf_sdio_func_deinit(struct aic_sdio_dev *sdiodev);
-int aicwf_sdio_flow_ctrl(struct aic_sdio_dev *sdiodev);
-int aicwf_sdio_recv_pkt(struct aic_sdio_dev *sdiodev, struct sk_buff *skbbuf, u32 size);
-int aicwf_sdio_send_pkt(struct aic_sdio_dev *sdiodev, u8 *buf, uint count);
-void *aicwf_sdio_bus_init(struct aic_sdio_dev *sdiodev);
-void aicwf_sdio_release(struct aic_sdio_dev *sdiodev);
-void aicbsp_sdio_exit(void);
-void aicbsp_sdio_init(void);
-void aicbsp_sdio_release(struct aic_sdio_dev *sdiodev);
-int aicwf_sdio_txpkt(struct aic_sdio_dev *sdiodev, struct sk_buff *pkt);
-int aicwf_sdio_bustx_thread(void *data);
-int aicwf_sdio_busrx_thread(void *data);
-int aicwf_sdio_aggr(struct aicwf_tx_priv *tx_priv, struct sk_buff *pkt);
-int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv);
-void aicwf_sdio_aggr_send(struct aicwf_tx_priv *tx_priv);
-void aicwf_sdio_aggrbuf_reset(struct aicwf_tx_priv *tx_priv);
-extern void aicwf_hostif_ready(void);
+int aicwf_sdio_writeb(struct priv_dev *aicdev, uint regaddr, u8 val);
+int aicwf_sdio_pwr_stctl(struct  priv_dev *aicdev, uint target);
+int aicwf_bustx_thread(void *data);
+int aicwf_busrx_thread(void *data);
 int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv);
 #endif /* AICWF_SDIO_SUPPORT */
 

@@ -294,7 +294,7 @@ int usb_bustx_thread(void *data)
 		}
 		if (!wait_for_completion_interruptible(&bus->bustx_trgg)) {
 			if (usbdev->bus_if->state == BUS_DOWN_ST)
-				break;
+				continue;
 			if (usbdev->tx_post_count > 0)
 				aicwf_usb_tx_process(usbdev);
 		}
@@ -315,7 +315,7 @@ int usb_busrx_thread(void *data)
 		}
 		if (!wait_for_completion_interruptible(&bus_if->busrx_trgg)) {
 			if (bus_if->state == BUS_DOWN_ST)
-				break;
+				continue;
 			aicwf_process_rxframes(rx_priv);
 		}
 	}
@@ -708,9 +708,9 @@ static int aicwf_parse_usb(struct aic_usb_dev *usb_dev, struct usb_interface *in
 		goto exit;
 	}
 
-    /* Check deviceclass */
+	/* Check deviceclass */
 #ifndef CONFIG_USB_BT
-    if (usb->descriptor.bDeviceClass != 0x00) {
+	if (usb->descriptor.bDeviceClass != 0x00) {
 		usb_err("DeviceClass %d not supported\n",
 		usb->descriptor.bDeviceClass);
 		ret = -ENODEV;
@@ -718,11 +718,11 @@ static int aicwf_parse_usb(struct aic_usb_dev *usb_dev, struct usb_interface *in
 	}
 #endif
 
-    /* Check interface number */
+	/* Check interface number */
 #ifdef CONFIG_USB_BT
-    if (usb->actconfig->desc.bNumInterfaces != 3) {
+	if (usb->actconfig->desc.bNumInterfaces != 3) {
 #else
-    if (usb->actconfig->desc.bNumInterfaces != 1) {
+	if (usb->actconfig->desc.bNumInterfaces != 1) {
 #endif
 	usb_err("Number of interfaces: %d not supported\n",
 		usb->actconfig->desc.bNumInterfaces);
@@ -915,11 +915,11 @@ static int aicwf_usb_reset_resume(struct usb_interface *intf)
 
 static struct usb_device_id aicwf_usb_id_table[] = {
 #ifndef CONFIG_USB_BT
-    {USB_DEVICE(USB_VENDOR_ID_AIC, USB_PRODUCT_ID_AIC)},
+	{USB_DEVICE(USB_VENDOR_ID_AIC, USB_PRODUCT_ID_AIC)},
 #else
-    {USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_AIC, USB_PRODUCT_ID_AIC, 0xff, 0xff, 0xff)},
+	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_AIC, USB_PRODUCT_ID_AIC, 0xff, 0xff, 0xff)},
 #endif
-    {}
+	{}
 };
 
 MODULE_DEVICE_TABLE(usb, aicwf_usb_id_table);
@@ -932,7 +932,7 @@ static struct usb_driver aicwf_usbdrvr = {
 	.suspend = aicwf_usb_suspend,
 	.resume = aicwf_usb_resume,
 	.reset_resume = aicwf_usb_reset_resume,
-	.supports_autosuspend = 1,
+	.supports_autosuspend = 0,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
 	.disable_hub_initiated_lpm = 1,
 #endif

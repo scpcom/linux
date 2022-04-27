@@ -175,20 +175,20 @@ int rwnx_v7_platform_init(struct pci_dev *pci_dev, struct rwnx_plat **rwnx_plat)
 
 	return 0;
 
-  out_bar1:
+out_bar1:
 	iounmap(rwnx_v7->pci_bar0_vaddr);
-  out_bar0:
+out_bar0:
 #ifdef CONFIG_PCI
 	pci_disable_msi(pci_dev);
-  out_msi:
+out_msi:
 #endif
 	pci_release_regions(pci_dev);
-  out_request:
+out_request:
 #ifdef CONFIG_PCI
 	pci_clear_master(pci_dev);
 #endif
 	pci_disable_device(pci_dev);
-  out_enable:
+out_enable:
 	kfree(*rwnx_plat);
 	return ret;
 }

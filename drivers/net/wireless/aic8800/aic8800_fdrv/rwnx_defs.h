@@ -29,6 +29,7 @@
 #include "rwnx_mu_group.h"
 #include "rwnx_platform.h"
 #include "rwnx_cmds.h"
+#include "rwnx_gki.h"
 
 #ifdef AICWF_SDIO_SUPPORT
 #include "aicwf_sdio.h"
@@ -202,8 +203,8 @@ struct rwnx_vif {
 									the AP */
 			struct rwnx_sta *tdls_sta; /* Pointer to the TDLS station */
 			bool external_auth;  /* Indicate if external authentication is in progress */
-			u8 group_cipher_type;
-			u8 paired_cipher_type;
+			u32 group_cipher_type;
+			u32 paired_cipher_type;
 		} sta;
 		struct {
 			u16 flags;                 /* see rwnx_ap_flags */
@@ -271,10 +272,8 @@ struct rwnx_rx_rate_stats {
  * @rx_rate: Statistics of the received rates
  */
 struct rwnx_sta_stats {
-#ifdef CONFIG_RWNX_DEBUGFS
 	struct hw_vect last_rx;
 	struct rwnx_rx_rate_stats rx_rate;
-#endif
 };
 
 /*
@@ -405,6 +404,24 @@ struct rwnx_phy_info {
 	bool limit_bw;
 };
 
+
+struct defrag_ctrl_info {
+	struct list_head list;
+	u8 sta_idx;
+	u8 tid;
+	u16 sn;
+	u8 next_fn;
+	u16 frm_len;
+	struct sk_buff *skb;
+	struct timer_list defrag_timer;
+};
+
+struct amsdu_subframe_hdr {
+	u8 da[6];
+	u8 sa[6];
+	u16 sublen;
+};
+
 struct rwnx_hw {
 	struct rwnx_mod_params *mod_params;
 	struct device *dev;
@@ -488,6 +505,12 @@ struct rwnx_hw {
 	struct timer_list p2p_alive_timer;
 	struct rwnx_vif *p2p_dev_vif;
 	atomic_t p2p_alive_timer_count;
+	bool band_5g_support;
+	u8_l vendor_info;
+	bool fwlog_en;
+
+	struct list_head defrag_list;
+	spinlock_t defrag_lock;
 };
 
 u8 *rwnx_build_bcn(struct rwnx_bcn *bcn, struct cfg80211_beacon_data *new);
@@ -510,11 +533,6 @@ static inline uint8_t master_vif_idx(struct rwnx_vif *vif)
 	} else {
 		return vif->vif_index;
 	}
-}
-
-static inline void *rwnx_get_shared_trace_buf(struct rwnx_hw *rwnx_hw)
-{
-	return (void *)&(rwnx_hw->debugfs.fw_trace.buf);
 }
 
 void rwnx_external_auth_enable(struct rwnx_vif *vif);

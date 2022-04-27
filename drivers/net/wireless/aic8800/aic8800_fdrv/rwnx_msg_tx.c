@@ -219,11 +219,11 @@ static void rwnx_msg_free(struct rwnx_hw *rwnx_hw, const void *msg_params)
 static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 						 int reqcfm, lmac_msg_id_t reqid, void *cfm)
 {
-    struct lmac_msg *msg;
-    struct rwnx_cmd *cmd;
-    bool nonblock;
-    int ret = 0;
-    u8_l empty = 0;
+	struct lmac_msg *msg;
+	struct rwnx_cmd *cmd;
+	bool nonblock;
+	int ret = 0;
+	u8_l empty = 0;
 
 	//RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -609,7 +609,7 @@ int rwnx_send_bcn(struct rwnx_hw *rwnx_hw, u8 *buf, u8 vif_idx, u16 bcn_len)
 	bcn_ie_req->vif_idx = vif_idx;
 	bcn_ie_req->bcn_ie_len = bcn_len;
 	memcpy(bcn_ie_req->bcn_ie, (u8 *)buf, bcn_len);
-    kfree(buf);
+	kfree(buf);
 
 	return rwnx_send_msg(rwnx_hw, bcn_ie_req, 1, APM_SET_BEACON_IE_CFM, NULL);
 }
@@ -646,7 +646,8 @@ int rwnx_send_bcn_change(struct rwnx_hw *rwnx_hw, u8 vif_idx, u32 bcn_addr,
 }
 
 int rwnx_send_roc(struct rwnx_hw *rwnx_hw, struct rwnx_vif *vif,
-				  struct ieee80211_channel *chan, unsigned  int duration)
+				  struct ieee80211_channel *chan, unsigned  int duration,
+				  struct mm_remain_on_channel_cfm *roc_cfm)
 {
 	struct mm_remain_on_channel_req *req;
 	struct cfg80211_chan_def chandef;
@@ -674,7 +675,7 @@ int rwnx_send_roc(struct rwnx_hw *rwnx_hw, struct rwnx_vif *vif,
 	req->tx_power     = chan_to_fw_pwr(chan->max_power);
 
 	/* Send the MM_REMAIN_ON_CHANNEL_REQ message to LMAC FW */
-	return rwnx_send_msg(rwnx_hw, req, 1, MM_REMAIN_ON_CHANNEL_CFM, NULL);
+	return rwnx_send_msg(rwnx_hw, req, 1, MM_REMAIN_ON_CHANNEL_CFM, roc_cfm);
 }
 
 int rwnx_send_cancel_roc(struct rwnx_hw *rwnx_hw)
@@ -692,8 +693,8 @@ int rwnx_send_cancel_roc(struct rwnx_hw *rwnx_hw)
 	/* Set parameters for the MM_REMAIN_ON_CHANNEL_REQ message */
 	req->op_code = MM_ROC_OP_CANCEL;
 
-    /* Send the MM_REMAIN_ON_CHANNEL_REQ message to LMAC FW */
-    return rwnx_send_msg(rwnx_hw, req, 1, MM_REMAIN_ON_CHANNEL_CFM, NULL);
+	/* Send the MM_REMAIN_ON_CHANNEL_REQ message to LMAC FW */
+	return rwnx_send_msg(rwnx_hw, req, 1, MM_REMAIN_ON_CHANNEL_CFM, NULL);
 }
 
 int rwnx_send_set_power(struct rwnx_hw *rwnx_hw, u8 vif_idx, s8 pwr,
@@ -857,11 +858,11 @@ int rwnx_send_coex_req(struct rwnx_hw *rwnx_hw, u8_l disable_coexnull, u8_l enab
 		return -ENOMEM;
 	}
 
-    coex_req->bt_on = 1;
-    coex_req->disable_coexnull = disable_coexnull;
-    coex_req->enable_nullcts = enable_nullcts;
-    coex_req->enable_periodic_timer = 0;
-    coex_req->coex_timeslot_set = 0;
+	coex_req->bt_on = 1;
+	coex_req->disable_coexnull = disable_coexnull;
+	coex_req->enable_nullcts = enable_nullcts;
+	coex_req->enable_periodic_timer = 0;
+	coex_req->coex_timeslot_set = 0;
 
 	/* Send the MM_SET_COEX_REQ message to UMAC FW */
 	error = rwnx_send_msg(rwnx_hw, coex_req, 1, MM_SET_COEX_CFM, NULL);
@@ -949,28 +950,130 @@ int rwnx_send_get_macaddr_req(struct rwnx_hw *rwnx_hw, struct mm_get_mac_addr_cf
 	return error;
 };
 
-int rwnx_send_get_sta_txinfo_req(struct rwnx_hw *rwnx_hw, u8_l sta_idx, struct mm_get_sta_txinfo_cfm *cfm)
+int rwnx_send_get_sta_info_req(struct rwnx_hw *rwnx_hw, u8_l sta_idx, struct mm_get_sta_info_cfm *cfm)
 {
-	struct mm_get_sta_txinfo_req *get_txinfo_req;
+	struct mm_get_sta_info_req *get_info_req;
 	int error;
 
 
-	/* Build the MM_GET_STA_TXINFO_REQ message */
-	get_txinfo_req = rwnx_msg_zalloc(MM_GET_STA_TXINFO_REQ, TASK_MM, DRV_TASK_ID,
-								  sizeof(struct mm_get_sta_txinfo_req));
+	/* Build the MM_GET_STA_INFO_REQ message */
+	get_info_req = rwnx_msg_zalloc(MM_GET_STA_INFO_REQ, TASK_MM, DRV_TASK_ID,
+						sizeof(struct mm_get_sta_info_req));
 
-	if (!get_txinfo_req) {
+	if (!get_info_req) {
 		return -ENOMEM;
 	}
 
-	get_txinfo_req->sta_idx = 1;
+	get_info_req->sta_idx = sta_idx;
 
-	/* Send the MM_GET_STA_TXINFO_REQ  message to UMAC FW */
-	error = rwnx_send_msg(rwnx_hw, get_txinfo_req, 1, MM_GET_STA_TXINFO_CFM, cfm);
+	/* Send the MM_GET_STA_INFO_REQ  message to UMAC FW */
+	error = rwnx_send_msg(rwnx_hw, get_info_req, 1, MM_GET_STA_INFO_CFM, cfm);
 
 	return error;
 };
 
+int rwnx_send_set_stack_start_req(struct rwnx_hw *rwnx_hw, u8_l on, u8_l efuse_valid, u8_l set_vendor_info,
+					u8_l fwtrace_redir_en, struct mm_set_stack_start_cfm *cfm)
+{
+	struct mm_set_stack_start_req *req;
+	int error;
+
+	/* Build the MM_SET_STACK_START_REQ message */
+	req = rwnx_msg_zalloc(MM_SET_STACK_START_REQ, TASK_MM, DRV_TASK_ID, sizeof(struct mm_set_stack_start_req));
+
+	if (!req) {
+		return -ENOMEM;
+	}
+
+	req->is_stack_start = on;
+	req->efuse_valid = efuse_valid;
+	req->set_vendor_info = set_vendor_info;
+	req->fwtrace_redir = fwtrace_redir_en;
+	/* Send the MM_SET_STACK_START_REQ  message to UMAC FW */
+	error = rwnx_send_msg(rwnx_hw, req, 1, MM_SET_STACK_START_CFM, cfm);
+
+	return error;
+}
+
+int rwnx_send_txpwr_idx_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_idx_req *txpwr_idx_req;
+	txpwr_idx_conf_t *txpwr_idx;
+	int error;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_IDX_REQ message */
+	txpwr_idx_req = rwnx_msg_zalloc(MM_SET_TXPWR_IDX_REQ, TASK_MM, DRV_TASK_ID,
+								  sizeof(struct mm_set_txpwr_idx_req));
+
+	if (!txpwr_idx_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_idx = &txpwr_idx_req->txpwr_idx;
+	txpwr_idx->enable = 1;
+	txpwr_idx->dsss = 9;
+	txpwr_idx->ofdmlowrate_2g4 = 8;
+	txpwr_idx->ofdm64qam_2g4 = 8;
+	txpwr_idx->ofdm256qam_2g4 = 8;
+	txpwr_idx->ofdm1024qam_2g4 = 8;
+	txpwr_idx->ofdmlowrate_5g = 11;
+	txpwr_idx->ofdm64qam_5g = 10;
+	txpwr_idx->ofdm256qam_5g = 9;
+	txpwr_idx->ofdm1024qam_5g = 9;
+
+	get_userconfig_txpwr_idx(txpwr_idx);
+
+	if (txpwr_idx->enable == 0) {
+		rwnx_msg_free(rwnx_hw, txpwr_idx_req);
+		return 0;
+	} else {
+		/* Send the MM_SET_TXPWR_IDX_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_idx_req, 1, MM_SET_TXPWR_IDX_CFM, NULL);
+
+		return error;
+	}
+};
+
+int rwnx_send_txpwr_ofst_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_ofst_req *txpwr_ofst_req;
+	txpwr_ofst_conf_t *txpwr_ofst;
+	int error;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_OFST_REQ message */
+	txpwr_ofst_req = rwnx_msg_zalloc(MM_SET_TXPWR_OFST_REQ, TASK_MM, DRV_TASK_ID,
+								  sizeof(struct mm_set_txpwr_ofst_req));
+
+	if (!txpwr_ofst_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_ofst = &txpwr_ofst_req->txpwr_ofst;
+	txpwr_ofst->enable       = 1;
+	txpwr_ofst->chan_1_4     = 0;
+	txpwr_ofst->chan_5_9     = 0;
+	txpwr_ofst->chan_10_13   = 0;
+	txpwr_ofst->chan_36_64   = 0;
+	txpwr_ofst->chan_100_120 = 0;
+	txpwr_ofst->chan_122_140 = 0;
+	txpwr_ofst->chan_142_165 = 0;
+
+	get_userconfig_txpwr_ofst(txpwr_ofst);
+
+	if (txpwr_ofst->enable == 0) {
+		rwnx_msg_free(rwnx_hw, txpwr_ofst_req);
+		return 0;
+	} else {
+		/* Send the MM_SET_TXPWR_OFST_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_ofst_req, 1, MM_SET_TXPWR_OFST_CFM, NULL);
+
+		return error;
+	}
+};
 
 /******************************************************************************
  *    Control messages handling functions (FULLMAC only)
@@ -984,13 +1087,9 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 	struct me_config_req *req;
 	struct wiphy *wiphy = rwnx_hw->wiphy;
 
-	#ifdef USE_5G
-	struct ieee80211_sta_ht_cap *ht_cap = &wiphy->bands[NL80211_BAND_5GHZ]->ht_cap;
-	struct ieee80211_sta_vht_cap *vht_cap = &wiphy->bands[NL80211_BAND_5GHZ]->vht_cap;
-	#else
-	struct ieee80211_sta_ht_cap *ht_cap = &wiphy->bands[NL80211_BAND_2GHZ]->ht_cap;
-	struct ieee80211_sta_vht_cap *vht_cap = &wiphy->bands[NL80211_BAND_2GHZ]->vht_cap;
-	#endif
+	struct ieee80211_sta_ht_cap *ht_cap;
+	struct ieee80211_sta_vht_cap *vht_cap;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 	struct ieee80211_sta_he_cap const *he_cap = NULL;
 #else
@@ -998,8 +1097,18 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 	struct ieee80211_sta_he_cap const *he_cap;
 	#endif
 #endif
-	uint8_t *ht_mcs = (uint8_t *)&ht_cap->mcs;
+	uint8_t *ht_mcs;
 	int i;
+
+	if (rwnx_hw->band_5g_support) {
+		ht_cap = &wiphy->bands[NL80211_BAND_5GHZ]->ht_cap;
+		vht_cap = &wiphy->bands[NL80211_BAND_5GHZ]->vht_cap;
+	} else {
+		ht_cap = &wiphy->bands[NL80211_BAND_2GHZ]->ht_cap;
+		vht_cap = &wiphy->bands[NL80211_BAND_2GHZ]->vht_cap;
+	}
+
+	ht_mcs = (uint8_t *)&ht_cap->mcs;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -1535,15 +1644,15 @@ int rwnx_send_apm_start_req(struct rwnx_hw *rwnx_hw, struct rwnx_vif *vif,
 							struct apm_start_cfm *cfm,
 							struct rwnx_ipc_elem_var *elem)
 {
-    struct apm_start_req *req;
-    struct rwnx_bcn *bcn = &vif->ap.bcn;
-    u8 *buf;
-    u32 flags = 0;
-    const u8 *rate_ie;
-    u8 rate_len = 0;
-    int var_offset = offsetof(struct ieee80211_mgmt, u.beacon.variable);
-    const u8 *var_pos;
-    int len, i;
+	struct apm_start_req *req;
+	struct rwnx_bcn *bcn = &vif->ap.bcn;
+	u8 *buf;
+	u32 flags = 0;
+	const u8 *rate_ie;
+	u8 rate_len = 0;
+	int var_offset = offsetof(struct ieee80211_mgmt, u.beacon.variable);
+	const u8 *var_pos;
+	int len, i;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -1693,7 +1802,7 @@ int rwnx_send_scanu_req(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_vif,
 		if (!memcmp(P2P_WILDCARD_SSID, param->ssids[i].ssid,
 			P2P_WILDCARD_SSID_LEN)) {
 			printk("p2p scanu:%d,%d,%d\n", rwnx_vif->vif_index, rwnx_vif->is_p2p_vif, rwnx_hw->is_p2p_alive);
-			if (rwnx_vif->is_p2p_vif && !rwnx_hw->is_p2p_alive) {
+			if (rwnx_vif == rwnx_hw->p2p_dev_vif && !rwnx_vif->up) {
 				err = rwnx_send_add_if (rwnx_hw, rwnx_vif->wdev.address,
 											  RWNX_VIF_TYPE(rwnx_vif), false, &add_if_cfm);
 				if (err)
@@ -2250,13 +2359,13 @@ void rwnx_send_bfmer_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 				const struct ieee80211_vht_cap *vht_cap)
 #endif /* CONFIG_RWNX_FULLMAC*/
 {
-    struct mm_bfmer_enable_req *bfmer_en_req;
+	struct mm_bfmer_enable_req *bfmer_en_req;
 #ifdef CONFIG_RWNX_FULLMAC
-    __le32 vht_capability;
-    u8 rx_nss = 0;
+	__le32 vht_capability;
+	u8 rx_nss = 0;
 #endif /* CONFIG_RWNX_FULLMAC */
 
-    RWNX_DBG(RWNX_FN_ENTRY_STR);
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 #ifdef CONFIG_RWNX_FULLMAC
 	if (!vht_cap) {
@@ -2265,7 +2374,7 @@ void rwnx_send_bfmer_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 	}
 
 #ifdef CONFIG_RWNX_FULLMAC
-    vht_capability = vht_cap->vht_cap_info;
+	vht_capability = vht_cap->vht_cap_info;
 #endif /* CONFIG_RWNX_FULLMAC */
 
 	if (!(vht_capability & IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE)) {
@@ -2273,7 +2382,7 @@ void rwnx_send_bfmer_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 	}
 
 #ifdef CONFIG_RWNX_FULLMAC
-    rx_nss = rwnx_bfmer_get_rx_nss(vht_cap);
+	rx_nss = rwnx_bfmer_get_rx_nss(vht_cap);
 #endif /* CONFIG_RWNX_FULLMAC */
 
 	/* Allocate a structure that will contain the beamforming report */
@@ -2294,13 +2403,13 @@ void rwnx_send_bfmer_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 		goto end;
 	}
 
-    /* Provide DMA address to the MAC */
-    bfmer_en_req->host_bfr_addr = rwnx_sta->bfm_report->dma_addr;
-    bfmer_en_req->host_bfr_size = RWNX_BFMER_REPORT_SPACE_SIZE;
-    bfmer_en_req->sta_idx = rwnx_sta->sta_idx;
+	/* Provide DMA address to the MAC */
+	bfmer_en_req->host_bfr_addr = rwnx_sta->bfm_report->dma_addr;
+	bfmer_en_req->host_bfr_size = RWNX_BFMER_REPORT_SPACE_SIZE;
+	bfmer_en_req->sta_idx = rwnx_sta->sta_idx;
 #ifdef CONFIG_RWNX_FULLMAC
-    bfmer_en_req->aid = rwnx_sta->aid;
-    bfmer_en_req->rx_nss = rx_nss;
+	bfmer_en_req->aid = rwnx_sta->aid;
+	bfmer_en_req->rx_nss = rx_nss;
 #endif /* CONFIG_RWNX_FULLMAC */
 
 	if (vht_capability & IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE) {
@@ -2592,3 +2701,16 @@ int rwnx_send_cfg_rssi_req(struct rwnx_hw *rwnx_hw, u8 vif_index, int rssi_thold
 	/* Send the MM_CFG_RSSI_REQ message to LMAC FW */
 	return rwnx_send_msg(rwnx_hw, req, 0, 0, NULL);
 }
+
+#ifdef CONFIG_USB_BT
+int rwnx_send_reboot(struct rwnx_hw *rwnx_hw)
+{
+	int ret = 0;
+	u32 delay = 2 *1000; //1s
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	ret = rwnx_send_dbg_start_app_req(rwnx_hw, delay, HOST_START_APP_REBOOT);
+	return ret;
+}
+#endif // CONFIG_USB_BT

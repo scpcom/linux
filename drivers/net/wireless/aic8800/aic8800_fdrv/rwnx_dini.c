@@ -285,13 +285,13 @@ int rwnx_dini_platform_init(struct pci_dev *pci_dev, struct rwnx_plat **rwnx_pla
 
 	return 0;
 
-  out_bar4:
+out_bar4:
 	iounmap(rwnx_dini->pci_bar0_vaddr);
-  out_bar0:
+out_bar0:
 	pci_release_regions(pci_dev);
-  out_request:
+out_request:
 	pci_disable_device(pci_dev);
-  out_enable:
+out_enable:
 	kfree(*rwnx_plat);
 	return ret;
 }

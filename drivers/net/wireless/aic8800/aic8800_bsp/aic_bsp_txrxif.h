@@ -12,6 +12,7 @@
 #include <linux/skbuff.h>
 #include <linux/sched.h>
 #include "aicsdio.h"
+#include "aicusb.h"
 
 #define CMD_BUF_MAX                 1536
 #define TXPKT_BLOCKSIZE             512
@@ -30,22 +31,16 @@
 
 #define DBG_LEVEL                   DEBUG_DEBUG_LEVEL
 
-#define txrx_err(fmt, ...)          pr_err("txrx_err:<%s,%d>: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define sdio_err(fmt, ...)          pr_err("sdio_err:<%s,%d>: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-#define usb_err(fmt, ...)           pr_err("usb_err:<%s,%d>: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+#define bsp_err(fmt, ...)           pr_err("aicbsp: err:<%s,%d>: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 #if DBG_LEVEL >= DEBUG_DEBUG_LEVEL
-#define sdio_dbg(fmt, ...)          printk("aicbsp: " fmt, ##__VA_ARGS__)
-#define usb_dbg(fmt, ...)           printk("aicbsp: " fmt, ##__VA_ARGS__)
+#define bsp_dbg(fmt, ...)           printk("aicbsp: " fmt, ##__VA_ARGS__)
 #else
-#define sdio_dbg(fmt, ...)
-#define usb_dbg(fmt, ...)
+#define bsp_dbg(fmt, ...)
 #endif
 #if DBG_LEVEL >= DEBUG_INFO_LEVEL
-#define sdio_info(fmt, ...)         printk("aicbsp: " fmt, ##__VA_ARGS__)
-#define usb_info(fmt, ...)          printk("aicbsp: " fmt, ##__VA_ARGS__)
+#define bsp_info(fmt, ...)          printk("aicbsp: " fmt, ##__VA_ARGS__)
 #else
-#define sdio_info(fmt, ...)
-#define usb_info(fmt, ...)
+#define bsp_info(fmt, ...)
 #endif
 
 enum aicwf_bus_state {
@@ -70,8 +65,7 @@ struct frame_queue {
 
 struct aicwf_bus {
 	union {
-		struct aic_sdio_dev *sdio;
-		struct aic_usb_dev *usb;
+		struct priv_dev *dev;
 	} bus_priv;
 	struct device *dev;
 	struct aicwf_bus_ops *ops;
@@ -84,8 +78,8 @@ struct aicwf_bus {
 };
 
 struct aicwf_tx_priv {
+	struct priv_dev *aicdev;
 #ifdef AICWF_SDIO_SUPPORT
-	struct aic_sdio_dev *sdiodev;
 	int fw_avail_bufcnt;
 	//for cmd tx
 	u8 *cmd_buf;
@@ -100,9 +94,6 @@ struct aicwf_tx_priv {
 	struct frame_queue txq;
 	spinlock_t txqlock;
 	struct semaphore txctl_sema;
-#endif
-#ifdef AICWF_USB_SUPPORT
-	struct aic_usb_dev *usbdev;
 #endif
 	struct sk_buff *aggr_buf;
 	atomic_t aggr_count;
@@ -148,7 +139,7 @@ struct recv_msdu {
 };
 
 struct aicwf_rx_priv {
-	struct aic_sdio_dev *sdiodev;
+	struct priv_dev *aicdev;
 	void *rwnx_vif;
 	atomic_t rx_cnt;
 	u32 data_len;

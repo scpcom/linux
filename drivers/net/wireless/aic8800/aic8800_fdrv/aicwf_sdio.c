@@ -24,6 +24,7 @@
 #ifdef CONFIG_INGENIC_T20
 #include "mach/jzmmc.h"
 #endif /* CONFIG_INGENIC_T20 */
+#include "aic_bsp_export.h"
 extern uint8_t scanning;
 
 int aicwf_sdio_readb(struct aic_sdio_dev *sdiodev, uint regaddr, u8 *val)
@@ -130,9 +131,9 @@ static irqreturn_t rwnx_hostwake_irq_handler(int irq, void *para)
 	static int wake_cnt;
 	wake_cnt++;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-	__pm_wakeup_event(ws, HZ / 5);
+	__pm_wakeup_event(ws, HZ / 20);
 #else
-	wake_lock_timeout(&irq_wakelock, HZ / 5);
+	wake_lock_timeout(&irq_wakelock, HZ / 20);
 #endif
 	printk("%s(%d): wake_irq_cnt = %d\n", __func__, __LINE__, wake_cnt);
 	return IRQ_HANDLED;
@@ -151,6 +152,11 @@ static int rwnx_register_hostwake_irq(struct device *dev)
 #endif
 
 	if (wakeup_enable) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+		ws = wakeup_source_register(dev, "wifisleep");
+#else
+		wake_lock_init(&irq_wakelock, WAKE_LOCK_SUSPEND, "wifisleep");
+#endif
 		ret = device_init_wakeup(dev, true);
 		if (ret < 0) {
 			pr_err("%s(%d): device init wakeup failed!\n", __func__, __LINE__);
@@ -171,11 +177,6 @@ static int rwnx_register_hostwake_irq(struct device *dev)
 			pr_err("%s(%d): request_irq fail! ret = %d\n", __func__, __LINE__, ret);
 			goto fail2;
 		}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-		ws = wakeup_source_register(dev, "wifisleep");
-#else
-		wake_lock_init(&irq_wakelock, WAKE_LOCK_SUSPEND, "wifisleep");
-#endif
 	}
 	disable_irq(hostwake_irq_num);
 	printk("%s(%d)\n", __func__, __LINE__);
@@ -185,6 +186,11 @@ fail2:
 	dev_pm_clear_wake_irq(dev);
 fail1:
 	device_init_wakeup(dev, false);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	wakeup_source_unregister(ws);
+#else
+	wake_lock_destroy(&irq_wakelock);
+#endif
 	return ret;
 }
 
@@ -256,7 +262,12 @@ static int aicwf_sdio_probe(struct sdio_func *func,
 		goto fail;
 	}
 
-	aicwf_sdio_bus_init(sdiodev);
+	if (aicwf_sdio_bus_init(sdiodev) == NULL) {
+		sdio_err("sdio bus init fail\n");
+		err = -1;
+		goto fail;
+	}
+
 	host->caps |= MMC_CAP_NONREMOVABLE;
 	aicwf_rwnx_sdio_platform_init(sdiodev);
 	aicwf_hostif_ready();
@@ -269,6 +280,7 @@ fail:
 	dev_set_drvdata(&func->dev, NULL);
 	kfree(sdiodev);
 	kfree(bus_if);
+	aicwf_hostif_fail();
 	return err;
 }
 
@@ -324,8 +336,8 @@ static int aicwf_sdio_suspend(struct device *dev)
 	}
 
 	while (sdiodev->state == SDIO_ACTIVE_ST) {
-	    if (down_interruptible(&sdiodev->tx_priv->txctl_sema))
-		    continue;
+		if (down_interruptible(&sdiodev->tx_priv->txctl_sema))
+			continue;
 		aicwf_sdio_pwr_stctl(sdiodev, SDIO_SLEEP_ST);
 		up(&sdiodev->tx_priv->txctl_sema);
 		break;
@@ -348,6 +360,11 @@ static int aicwf_sdio_resume(struct device *dev)
 			netif_device_attach(rwnx_vif->ndev);
 	}
 	aicwf_sdio_pwr_stctl(sdiodev, SDIO_ACTIVE_ST);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+	__pm_relax(ws);
+#else
+	wake_unlock(&irq_wakelock);
+#endif
 
 	return 0;
 }
@@ -415,6 +432,7 @@ void aicwf_sdio_exit(void)
 	if (g_rwnx_plat && g_rwnx_plat->enabled)
 		rwnx_platform_deinit(g_rwnx_plat->sdiodev->rwnx_hw);
 
+	udelay(500);
 	sdio_unregister_driver(&aicwf_sdio_driver);
 
 #ifdef CONFIG_PLATFORM_NANOPI
@@ -430,52 +448,44 @@ int aicwf_sdio_wakeup(struct aic_sdio_dev *sdiodev)
 		int write_retry = 20;
 
 	if (sdiodev->state == SDIO_SLEEP_ST) {
-		down(&sdiodev->pwrctl_wakeup_sema);
-		if (sdiodev->rwnx_hw->vif_started) {
-			if (sdiodev->state == SDIO_ACTIVE_ST) {
-				up(&sdiodev->pwrctl_wakeup_sema);
-				return 0;
-			}
-			sdio_info("w\n");
-			while (write_retry) {
-				ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_WAKEUP_REG, 1);
-				if (ret) {
-					txrx_err("sdio wakeup fail\n");
-					ret = -1;
-				} else {
-					read_retry = 10;
-					while (read_retry) {
-						u8 val;
-						ret = aicwf_sdio_readb(sdiodev, SDIOWIFI_SLEEP_REG, &val);
-						if ((ret == 0) && (val & 0x10)) {
-							break;
-						}
-						read_retry--;
-						udelay(200);
-					}
-					if (read_retry != 0)
+		sdio_info("w\n");
+		while (write_retry) {
+			ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_WAKEUP_REG, 1);
+			if (ret) {
+				txrx_err("sdio wakeup fail\n");
+				ret = -1;
+			} else {
+				read_retry = 10;
+				while (read_retry) {
+					u8 val;
+					ret = aicwf_sdio_readb(sdiodev, SDIOWIFI_SLEEP_REG, &val);
+					if (ret < 0)
+						txrx_err("sdio wakeup read fail\n");
+					else if (val & 0x10) {
 						break;
+					}
+					read_retry--;
+					udelay(200);
 				}
-				sdio_dbg("write retry:  %d \n", write_retry);
-				write_retry--;
-				udelay(100);
+				if (read_retry != 0)
+					break;
 			}
+			sdio_dbg("write retry:  %d \n", write_retry);
+			write_retry--;
+			udelay(100);
 		}
 
 		sdiodev->state = SDIO_ACTIVE_ST;
 		aicwf_sdio_pwrctl_timer(sdiodev, sdiodev->active_duration);
-		up(&sdiodev->pwrctl_wakeup_sema);
 	}
 	return ret;
 }
 
-extern u8 dhcped;
 int aicwf_sdio_sleep_allow(struct aic_sdio_dev *sdiodev)
 {
 	int ret = 0;
 	struct aicwf_bus *bus_if = sdiodev->bus_if;
 	struct rwnx_hw *rwnx_hw = sdiodev->rwnx_hw;
-	struct rwnx_vif *rwnx_vif, *tmp;
 
 	if (bus_if->state == BUS_DOWN_ST) {
 		ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_SLEEP_REG, 0x10);
@@ -486,36 +496,15 @@ int aicwf_sdio_sleep_allow(struct aic_sdio_dev *sdiodev)
 		return ret;
 	}
 
-	list_for_each_entry_safe(rwnx_vif, tmp, &rwnx_hw->vifs, list) {
-		if ((rwnx_hw->avail_idx_map & BIT(rwnx_vif->drv_vif_index)) == 0) {
-			switch (RWNX_VIF_TYPE(rwnx_vif)) {
-			case NL80211_IFTYPE_P2P_CLIENT:
-				rwnx_hw->is_p2p_alive = 1;
-				return ret;
-			case NL80211_IFTYPE_AP:
-				return ret;
-			case NL80211_IFTYPE_P2P_GO:
-				rwnx_hw->is_p2p_alive = 1;
-				return ret;
-			default:
-				break;
-			}
-		}
-	}
-
 	sdio_info("sleep: %d, %d\n", sdiodev->state, scanning);
 	if (sdiodev->state == SDIO_ACTIVE_ST  && !scanning && !rwnx_hw->is_p2p_alive \
-				&& !rwnx_hw->is_p2p_connected) {// && dhcped) {
-		down(&sdiodev->pwrctl_wakeup_sema);
-		if (rwnx_hw->vif_started) {
-			sdio_info("s\n");
-			ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_SLEEP_REG, 0x10);
-			if (ret)
-				sdio_err("Write sleep fail!\n");
-		}
+				&& !rwnx_hw->is_p2p_connected) {
+		sdio_info("s\n");
+		ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_SLEEP_REG, 0x10);
+		if (ret)
+			sdio_err("Write sleep fail!\n");
 		sdiodev->state = SDIO_SLEEP_ST;
 		aicwf_sdio_pwrctl_timer(sdiodev, 0);
-		up(&sdiodev->pwrctl_wakeup_sema);
 	} else {
 		aicwf_sdio_pwrctl_timer(sdiodev, sdiodev->active_duration);
 	}
@@ -531,10 +520,13 @@ int aicwf_sdio_pwr_stctl(struct aic_sdio_dev *sdiodev, uint target)
 		return -1;
 	}
 
+	down(&sdiodev->pwrctl_wakeup_sema);
+
 	if (sdiodev->state == target) {
 		if (target == SDIO_ACTIVE_ST) {
 			aicwf_sdio_pwrctl_timer(sdiodev, sdiodev->active_duration);
 		}
+		up(&sdiodev->pwrctl_wakeup_sema);
 		return ret;
 	}
 
@@ -547,6 +539,7 @@ int aicwf_sdio_pwr_stctl(struct aic_sdio_dev *sdiodev, uint target)
 		break;
 	}
 
+	up(&sdiodev->pwrctl_wakeup_sema);
 	return ret;
 }
 
@@ -596,27 +589,22 @@ static void aicwf_sdio_bus_stop(struct device *dev)
 	int ret;
 
 	aicwf_sdio_pwrctl_timer(sdiodev, 0);
-	if (timer_pending(&sdiodev->rwnx_hw->p2p_alive_timer)) {
-		ret = del_timer(&sdiodev->rwnx_hw->p2p_alive_timer);
-	}
 	sdio_dbg("%s\n", __func__);
-	if (sdiodev->pwrctl_tsk) {
-		complete(&sdiodev->pwrctrl_trgg);
-		kthread_stop(sdiodev->pwrctl_tsk);
-		sdiodev->pwrctl_tsk = NULL;
-	}
-
-	sdio_dbg("%s:pwrctl stopped\n", __func__);
 
 	bus_if->state = BUS_DOWN_ST;
-	ret = down_interruptible(&sdiodev->tx_priv->txctl_sema);
-	if (ret)
-	   sdio_err("down txctl_sema fail\n");
+	if (sdiodev->tx_priv) {
+		ret = down_interruptible(&sdiodev->tx_priv->txctl_sema);
+		if (ret)
+			sdio_err("down txctl_sema fail\n");
+	}
 
 	aicwf_sdio_pwr_stctl(sdiodev, SDIO_SLEEP_ST);
-	if (!ret)
-		up(&sdiodev->tx_priv->txctl_sema);
-	aicwf_frame_queue_flush(&sdiodev->tx_priv->txq);
+
+	if (sdiodev->tx_priv) {
+		if (!ret)
+			up(&sdiodev->tx_priv->txctl_sema);
+		aicwf_frame_queue_flush(&sdiodev->tx_priv->txq);
+	}
 	sdio_dbg("exit %s\n", __func__);
 }
 
@@ -675,7 +663,7 @@ static int aicwf_sdio_tx_msg(struct aic_sdio_dev *sdiodev)
 		len = payload_len;
 
 	buffer_cnt = aicwf_sdio_flow_ctrl(sdiodev);
-	while ((buffer_cnt <= 0 || (buffer_cnt > 0 && len > (buffer_cnt * BUFFER_SIZE))) && retry < 5) {
+	while ((buffer_cnt <= 0 || (buffer_cnt > 0 && len > (buffer_cnt * BUFFER_SIZE))) && retry < 10) {
 		retry++;
 		buffer_cnt = aicwf_sdio_flow_ctrl(sdiodev);
 		printk("buffer_cnt = %d\n", buffer_cnt);
@@ -823,11 +811,13 @@ static int aicwf_sdio_bus_txmsg(struct device *dev, u8 *msg, uint msglen)
 	return 0;
 }
 
+#define DATA_FLOW_CTRL_THRESH 1
+
 int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv)
 {
 	struct sk_buff *pkt;
 	struct aic_sdio_dev *sdiodev = tx_priv->sdiodev;
-    u32 aggr_len = 0;
+	u32 aggr_len = 0;
 	int retry_times = 0;
 	int max_retry_times = 5;
 
@@ -839,19 +829,20 @@ int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv)
 		goto done;
 	}
 
-	if (tx_priv->fw_avail_bufcnt <= 0) { //flow control failed
+	if (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH) { //flow control failed
 		tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
-		while (tx_priv->fw_avail_bufcnt <= 0 && retry_times < max_retry_times) {
+		while (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH && retry_times < max_retry_times) {
 			retry_times++;
 			tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
+			if (tx_priv->fw_avail_bufcnt == DATA_FLOW_CTRL_THRESH)
+				udelay(200);
 		}
-		if (tx_priv->fw_avail_bufcnt <= 0) {
-			sdio_err("fc retry %d fail\n", tx_priv->fw_avail_bufcnt);
+		if (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH) {
 			goto done;
 		}
 	}
 
-	if (atomic_read(&tx_priv->aggr_count) == tx_priv->fw_avail_bufcnt) {
+	if (atomic_read(&tx_priv->aggr_count) == (tx_priv->fw_avail_bufcnt - DATA_FLOW_CTRL_THRESH)) {
 		if (atomic_read(&tx_priv->aggr_count) > 0) {
 			tx_priv->fw_avail_bufcnt -= atomic_read(&tx_priv->aggr_count);
 			aicwf_sdio_aggr_send(tx_priv); //send and check the next pkt;
@@ -893,8 +884,9 @@ int aicwf_sdio_aggr(struct aicwf_tx_priv *tx_priv, struct sk_buff *pkt)
 	u8 *start_ptr = tx_priv->tail;
 	u8 sdio_header[4];
 	u8 adjust_str[4] = {0, 0, 0, 0};
-    u32 curr_len = 0;
+	u32 curr_len = 0;
 	int allign_len = 0;
+	int headroom;
 
 	sdio_header[0] = ((pkt->len - sizeof(struct rwnx_txhdr) + sizeof(struct txdesc_api)) & 0xff);
 	sdio_header[1] = (((pkt->len - sizeof(struct rwnx_txhdr) + sizeof(struct txdesc_api)) >> 8)&0x0f);
@@ -922,8 +914,9 @@ int aicwf_sdio_aggr(struct aicwf_tx_priv *tx_priv, struct sk_buff *pkt)
 	tx_priv->aggr_buf->dev = pkt->dev;
 
 	if (!txhdr->sw_hdr->need_cfm) {
+		headroom = txhdr->sw_hdr->headroom;
 		kmem_cache_free(txhdr->sw_hdr->rwnx_vif->rwnx_hw->sw_txhdr_cache, txhdr->sw_hdr);
-		skb_pull(pkt, txhdr->sw_hdr->headroom);
+		skb_pull(pkt, headroom);
 		consume_skb(pkt);
 	}
 
@@ -978,10 +971,10 @@ static int aicwf_sdio_bus_start(struct device *dev)
 #endif
 	//enable sdio interrupt
 	ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_INTR_CONFIG_REG, 0x07);
-	sdio_release_host(sdiodev->func);
-
 	if (ret != 0)
 		sdio_err("intr register failed:%d\n", ret);
+
+	sdio_release_host(sdiodev->func);
 
 	bus_if->state = BUS_UP_ST;
 
@@ -1000,7 +993,7 @@ int sdio_bustx_thread(void *data)
 		}
 		if (!wait_for_completion_interruptible(&bus->bustx_trgg)) {
 			if (sdiodev->bus_if->state == BUS_DOWN_ST)
-				break;
+				continue;
 
 			if ((int)(atomic_read(&sdiodev->tx_priv->tx_pktcnt) > 0) || (sdiodev->tx_priv->cmd_txstate == true))
 				aicwf_sdio_tx_process(sdiodev);
@@ -1022,7 +1015,7 @@ int sdio_busrx_thread(void *data)
 		}
 		if (!wait_for_completion_interruptible(&bus_if->busrx_trgg)) {
 			if (bus_if->state == BUS_DOWN_ST)
-				break;
+				continue;
 			aicwf_process_rxframes(rx_priv);
 		}
 	}
@@ -1041,16 +1034,12 @@ static int aicwf_sdio_pwrctl_thread(void *data)
 		}
 		if (!wait_for_completion_interruptible(&sdiodev->pwrctrl_trgg)) {
 			if (sdiodev->bus_if->state == BUS_DOWN_ST)
-				break;
-			if (sdiodev->state == SDIO_ACTIVE_ST) {
-				if ((int)(atomic_read(&sdiodev->tx_priv->tx_pktcnt) <= 0) && (sdiodev->tx_priv->cmd_txstate == false) && \
-						atomic_read(&sdiodev->rx_priv->rx_cnt) == 0)
-					aicwf_sdio_pwr_stctl(sdiodev, SDIO_SLEEP_ST);
-				else
-					aicwf_sdio_pwrctl_timer(sdiodev, sdiodev->active_duration);
-			}
-		} else {
-			continue;
+				continue;
+			if ((int)(atomic_read(&sdiodev->tx_priv->tx_pktcnt) <= 0) && (sdiodev->tx_priv->cmd_txstate == false) && \
+					atomic_read(&sdiodev->rx_priv->rx_cnt) == 0)
+				aicwf_sdio_pwr_stctl(sdiodev, SDIO_SLEEP_ST);
+			else
+				aicwf_sdio_pwrctl_timer(sdiodev, sdiodev->active_duration);
 		}
 	}
 
@@ -1168,7 +1157,6 @@ static struct aicwf_bus_ops aicwf_sdio_bus_ops = {
 void aicwf_sdio_release(struct aic_sdio_dev *sdiodev)
 {
 	struct aicwf_bus *bus_if;
-	struct aicwf_rx_priv *rx_priv = NULL;
 	int ret;
 	sdio_dbg("%s\n", __func__);
 
@@ -1187,11 +1175,22 @@ void aicwf_sdio_release(struct aic_sdio_dev *sdiodev)
 	if (sdiodev->dev)
 		aicwf_bus_deinit(sdiodev->dev);
 
-	aicwf_tx_deinit(sdiodev->tx_priv);
-	rx_priv = sdiodev->rx_priv;
-	if (rx_priv != NULL)
-		aicwf_rx_deinit(rx_priv);
-	rwnx_cmd_mgr_deinit(&sdiodev->cmd_mgr);
+	if (sdiodev->tx_priv)
+		aicwf_tx_deinit(sdiodev->tx_priv);
+
+	if (sdiodev->rx_priv)
+		aicwf_rx_deinit(sdiodev->rx_priv);
+
+	if (sdiodev->pwrctl_tsk) {
+		complete_all(&sdiodev->pwrctrl_trgg);
+		kthread_stop(sdiodev->pwrctl_tsk);
+		sdiodev->pwrctl_tsk = NULL;
+	}
+
+	sdio_dbg("%s:pwrctl stopped\n", __func__);
+
+	if (sdiodev->cmd_mgr.state == RWNX_CMD_MGR_STATE_INITED)
+		rwnx_cmd_mgr_deinit(&sdiodev->cmd_mgr);
 	sdio_dbg("exit %s\n", __func__);
 }
 
@@ -1201,9 +1200,22 @@ int aicwf_sdio_func_init(struct aic_sdio_dev *sdiodev)
 	u8 block_bit0 = 0x1;
 	u8 byte_mode_disable = 0x1;//1: no byte mode
 	int ret = 0;
+	struct aicbsp_feature_t feature;
+	u8 val = 0;
+
+#ifdef AICWF_BSP_CTRL
+	aicbsp_get_feature(&feature);
+#endif
 	host = sdiodev->func->card->host;
 
 	sdio_claim_host(sdiodev->func);
+	sdiodev->func->card->quirks |= MMC_QUIRK_LENIENT_FN0;
+	sdio_f0_writeb(sdiodev->func, feature.sdio_phase, 0x13, &ret);
+	if (ret < 0) {
+		sdio_err("write func0 fail %d\n", ret);
+		return ret;
+	}
+
 	ret = sdio_set_block_size(sdiodev->func, SDIOWIFI_FUNC_BLOCKSIZE);
 	if (ret < 0) {
 		sdio_err("set blocksize fail %d\n", ret);
@@ -1216,6 +1228,11 @@ int aicwf_sdio_func_init(struct aic_sdio_dev *sdiodev)
 		sdio_err("enable func fail %d.\n", ret);
 	}
 
+	if (feature.sdio_clock > 0) {
+		host->ios.clock = feature.sdio_clock;
+		host->ops->set_ios(host, &host->ios);
+		sdio_dbg("Set SDIO Clock %d MHz\n", host->ios.clock/1000000);
+	}
 	sdio_release_host(sdiodev->func);
 
 	ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_REGISTER_BLOCK, block_bit0);
@@ -1231,6 +1248,23 @@ int aicwf_sdio_func_init(struct aic_sdio_dev *sdiodev)
 		return ret;
 	}
 
+	ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_WAKEUP_REG, 1);
+	if (ret < 0) {
+		sdio_err("reg:%d write failed!\n", SDIOWIFI_WAKEUP_REG);
+		return ret;
+	}
+
+	mdelay(2);
+	ret = aicwf_sdio_readb(sdiodev, SDIOWIFI_SLEEP_REG, &val);
+	if (ret < 0) {
+		sdio_err("reg:%d read failed!\n", SDIOWIFI_SLEEP_REG);
+		return ret;
+	}
+
+	if(!(val & 0x10))
+		sdio_dbg("wakeup fail\n");
+	else
+		sdio_info("sdio ready\n");
 	return ret;
 }
 

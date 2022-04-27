@@ -33,18 +33,18 @@ void aicwf_sdio_host_init(struct sdio_host_env_tag *env,
  */
 volatile struct txdesc_host *aicwf_sdio_host_txdesc_get(struct sdio_host_env_tag *env, const int queue_idx)
 {
- //   struct ipc_shared_env_tag *shared_env_ptr = env->shared;
+	// struct ipc_shared_env_tag *shared_env_ptr = env->shared;
 	volatile struct txdesc_host *txdesc_free = NULL;
 	uint32_t used_idx = env->txdesc_used_idx[queue_idx];
 	uint32_t free_idx = env->txdesc_free_idx[queue_idx];
 
-   // ASSERT_ERR(queue_idx < SDIO_TXQUEUE_CNT);
-   // ASSERT_ERR((free_idx - used_idx) <= SDIO_TXDESC_CNT);
+	// ASSERT_ERR(queue_idx < SDIO_TXQUEUE_CNT);
+	// ASSERT_ERR((free_idx - used_idx) <= SDIO_TXDESC_CNT);
 
 	// Check if a free descriptor is available
 	if (free_idx != (used_idx + SDIO_TXDESC_CNT)) {
 		// Get the pointer to the first free descriptor
-	//    txdesc_free = shared_env_ptr->txdesc[queue_idx] + (free_idx % IPC_TXDESC_CNT);
+		// txdesc_free = shared_env_ptr->txdesc[queue_idx] + (free_idx % IPC_TXDESC_CNT);
 	} else {
 		txdesc_free = NULL;
 	}
@@ -78,7 +78,7 @@ void aicwf_sdio_host_tx_cfm_handler(struct sdio_host_env_tag *env, u32 *data)
 	struct rwnx_txhdr *txhdr;
 
 	// TX confirmation descriptors have been received
-   // REG_SW_SET_PROFILING(env->pthis, SW_PROF_IRQ_E2A_TXCFM);
+	// REG_SW_SET_PROFILING(env->pthis, SW_PROF_IRQ_E2A_TXCFM);
 	//while (1)
 	{
 		// Get the used index and increase it. We do the increase before knowing if the
@@ -86,7 +86,7 @@ void aicwf_sdio_host_tx_cfm_handler(struct sdio_host_env_tag *env, u32 *data)
 		// ipc_host_txdesc_get() in case flow control was enabled and the index has to be
 		// already at the good value to ensure that the test of FIFO full is correct
 		//uint32_t used_idx = env->txdesc_used_idx[queue_idx]++;
-	    uint32_t used_idx = data[1];
+		uint32_t used_idx = data[1];
 		uint64_t host_id = env->tx_host_id[queue_idx][used_idx % SDIO_TXDESC_CNT];
 
 		// Reset the host id in the array

@@ -188,9 +188,7 @@ rwnx_tdls_add_supp_channels(struct rwnx_hw *rwnx_hw, struct sk_buff *skb)
 	u8 *pos_subband;
 	u8 *pos = skb_put(skb, 2);
 	struct ieee80211_supported_band *rwnx_band_2GHz = rwnx_hw->wiphy->bands[NL80211_BAND_2GHZ];
-	#ifdef USE_5G
 	struct ieee80211_supported_band *rwnx_band_5GHz = rwnx_hw->wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
 
 	*pos++ = WLAN_EID_SUPPORTED_CHANNELS;
 
@@ -209,13 +207,13 @@ rwnx_tdls_add_supp_channels(struct rwnx_hw *rwnx_hw, struct sk_buff *skb)
 
 	/* 5GHz, with 20MHz spacing */
 	pos_subband = skb_put(skb, 2);
-	#ifdef USE_5G
-	if (rwnx_band_5GHz->n_channels > 0) {
-		*pos_subband++ = ieee80211_frequency_to_channel(rwnx_band_5GHz->channels[0].center_freq);
-		*pos_subband++ = rwnx_band_5GHz->n_channels;
-		subband_cnt++;
+	if (rwnx_hw->band_5g_support) {
+		if (rwnx_band_5GHz->n_channels > 0) {
+			*pos_subband++ = ieee80211_frequency_to_channel(rwnx_band_5GHz->channels[0].center_freq);
+			*pos_subband++ = rwnx_band_5GHz->n_channels;
+			subband_cnt++;
+		}
 	}
-	#endif
 	/* length */
 	*pos = 2 * subband_cnt;
 }
@@ -323,7 +321,7 @@ rwnx_tdls_add_oper_classes(struct rwnx_vif *rwnx_vif, struct sk_buff *skb)
 	chan_def.center_freq1 = rwnx_vif->sta.ap->center_freq1;
 	chan_def.center_freq2 = rwnx_vif->sta.ap->center_freq2;
 
-	if (!ieee80211_chandef_to_operating_class(&chan_def, &op_class))
+	if (!rwnx_ieee80211_chandef_to_operating_class(&chan_def, &op_class))
 		return;
 
 	pos = skb_put(skb, 4);
@@ -696,19 +694,17 @@ rwnx_tdls_send_mgmt_packet_data(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_v
 	struct sk_buff *skb;
 	int ret = 0;
 	struct ieee80211_supported_band *rwnx_band_2GHz = rwnx_hw->wiphy->bands[NL80211_BAND_2GHZ];
-	#ifdef USE_5G
 	struct ieee80211_supported_band *rwnx_band_5GHz = rwnx_hw->wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
+	int channels = rwnx_band_2GHz->n_channels;
+
+	if (rwnx_hw->band_5g_support)
+		channels += rwnx_band_5GHz->n_channels;
 
 	skb = netdev_alloc_skb(rwnx_vif->ndev,
 			  sizeof(struct ieee80211_tdls_data) + // ethhdr + TDLS info
 			  10 +  /* supported rates */
 			  6 +  /* extended supported rates */
-			  #ifdef USE_5G
-			  (2 + rwnx_band_2GHz->n_channels + rwnx_band_5GHz->n_channels) + /* supported channels */
-			  #else
-			  (2 + rwnx_band_2GHz->n_channels) + /* supported channels */
-			  #endif
+			  (2 + channels) + /* supported channels */
 			  sizeof(struct ieee_types_extcap) +
 			  sizeof(struct ieee80211_wmm_param_ie) +
 			  4 + /* oper classes */
@@ -778,7 +774,7 @@ rwnx_tdls_send_mgmt_packet_data(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_v
 	ret = rwnx_select_txq(rwnx_vif, skb);
 	ret = rwnx_start_xmit(skb, rwnx_vif->ndev);
 
-   return ret;
+	return ret;
 
 fail:
 	dev_kfree_skb(skb);

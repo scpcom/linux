@@ -659,7 +659,6 @@ TRACE_EVENT(
 		__entry->push_flag = push_flags;
 		__entry->hw_queue = sw_txhdr->txq->hwq->id;
 		__entry->txq_cred = sw_txhdr->txq->credits;
-		__entry->hwq_cred = sw_txhdr->txq->hwq->credits[RWNX_TXQ_POS_ID(sw_txhdr->txq)];
 #ifdef CONFIG_RWNX_SPLIT_TX_BUF
 		__entry->pkt_cnt =  sw_txhdr->desc.host.packet_cnt;
 #endif
@@ -817,10 +816,7 @@ TRACE_EVENT(
 		__array(u8, credits, CONFIG_USER_MAX)
 					 ),
 	TP_fast_assign(
-		int i;
 		__entry->hwq = hwq->id;
-		for (i = 0; i < CONFIG_USER_MAX; i++)
-			__entry->credits[i] = hwq->credits[i];
 				   ),
 	TP_printk("hw_queue=%s hw_credits=%s",
 			  __print_hwq(__entry->hwq), __print_hwq_cred(__entry->credits))
@@ -884,12 +880,9 @@ TRACE_EVENT(
 					 ),
 
 	TP_fast_assign(
-		int i;
 		__entry->skb = skb;
 		__entry->txq_idx = txq->idx;
 		__entry->hw_queue = hwq->id;
-		for (i = 0 ; i < CONFIG_USER_MAX ; i++)
-			__entry->hw_credit[i] = hwq->credits[i];
 		__entry->sw_credit = txq->credits;
 #if defined CONFIG_RWNX_FULLMAC
 		__entry->sw_credit_up = cfm->credits;

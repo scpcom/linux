@@ -150,7 +150,7 @@ void rwnx_txq_flush(struct rwnx_hw *rwnx_hw, struct rwnx_txq *txq)
 #ifdef CONFIG_RWNX_FULLMAC
 	dev_kfree_skb_any(skb);
 #endif /* CONFIG_RWNX_FULLMAC */
-    }
+	}
 }
 
 /**
@@ -216,8 +216,8 @@ void rwnx_txq_vif_deinit(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_vif)
 	struct rwnx_txq *txq;
 
 #ifdef CONFIG_RWNX_FULLMAC
-    txq = rwnx_txq_vif_get(rwnx_vif, NX_BCMC_TXQ_TYPE);
-    rwnx_txq_deinit(rwnx_hw, txq);
+	txq = rwnx_txq_vif_get(rwnx_vif, NX_BCMC_TXQ_TYPE);
+	rwnx_txq_deinit(rwnx_hw, txq);
 
 	txq = rwnx_txq_vif_get(rwnx_vif, NX_UNK_TXQ_TYPE);
 	rwnx_txq_deinit(rwnx_hw, txq);
@@ -246,8 +246,8 @@ void rwnx_txq_sta_init(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 	int tid, idx;
 
 #ifdef CONFIG_RWNX_FULLMAC
-    struct rwnx_vif *rwnx_vif = rwnx_hw->vif_table[rwnx_sta->vif_idx];
-    idx = rwnx_txq_sta_idx(rwnx_sta, 0);
+	struct rwnx_vif *rwnx_vif = rwnx_hw->vif_table[rwnx_sta->vif_idx];
+	idx = rwnx_txq_sta_idx(rwnx_sta, 0);
 
 	foreach_sta_txq(rwnx_sta, txq, tid, rwnx_hw) {
 		rwnx_txq_init(txq, idx, status, &rwnx_hw->hwq[rwnx_tid2hwq[tid]], tid,
@@ -257,7 +257,6 @@ void rwnx_txq_sta_init(struct rwnx_hw *rwnx_hw, struct rwnx_sta *rwnx_sta,
 	}
 
 #endif /* CONFIG_RWNX_FULLMAC*/
-    rwnx_ipc_sta_buffer_init(rwnx_hw, rwnx_sta->sta_idx);
 }
 
 /**
@@ -540,13 +539,13 @@ void rwnx_txq_sta_stop(struct rwnx_sta *rwnx_sta, u16 reason
 void rwnx_txq_tdls_sta_start(struct rwnx_vif *rwnx_vif, u16 reason,
 				struct rwnx_hw *rwnx_hw)
 {
-    trace_txq_vif_start(rwnx_vif->vif_index);
-    spin_lock_bh(&rwnx_hw->tx_lock);
+	trace_txq_vif_start(rwnx_vif->vif_index);
+	spin_lock_bh(&rwnx_hw->tx_lock);
 
 	if (rwnx_vif->sta.tdls_sta)
 		rwnx_txq_sta_start(rwnx_vif->sta.tdls_sta, reason, rwnx_hw);
 
-    spin_unlock_bh(&rwnx_hw->tx_lock);
+	spin_unlock_bh(&rwnx_hw->tx_lock);
 }
 #endif
 
@@ -554,14 +553,14 @@ void rwnx_txq_tdls_sta_start(struct rwnx_vif *rwnx_vif, u16 reason,
 void rwnx_txq_tdls_sta_stop(struct rwnx_vif *rwnx_vif, u16 reason,
 				struct rwnx_hw *rwnx_hw)
 {
-    trace_txq_vif_stop(rwnx_vif->vif_index);
+	trace_txq_vif_stop(rwnx_vif->vif_index);
 
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 	if (rwnx_vif->sta.tdls_sta)
 		rwnx_txq_sta_stop(rwnx_vif->sta.tdls_sta, reason, rwnx_hw);
 
-    spin_unlock_bh(&rwnx_hw->tx_lock);
+	spin_unlock_bh(&rwnx_hw->tx_lock);
 }
 #endif
 
@@ -658,8 +657,6 @@ void rwnx_txq_vif_stop(struct rwnx_vif *rwnx_vif, u16 reason,
 					   struct rwnx_hw *rwnx_hw)
 {
 	struct rwnx_txq *txq;
-
-	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	trace_txq_vif_stop(rwnx_vif->vif_index);
 	spin_lock_bh(&rwnx_hw->tx_lock);
@@ -772,14 +769,9 @@ int rwnx_txq_queue_skb(struct sk_buff *skb, struct rwnx_txq *txq,
 	if (!retry) {
 		/* add buffer in the sk_list */
 		skb_queue_tail(&txq->sk_list, skb);
-#ifdef CONFIG_RWNX_FULLMAC
-		// to update for SOFTMAC
-		rwnx_ipc_sta_buffer(rwnx_hw, txq->sta, txq->tid,
-							((struct rwnx_txhdr *)skb->data)->sw_hdr->frame_len);
-#endif
 	} else {
 		if (txq->last_retry_skb)
-			skb_append(txq->last_retry_skb, skb, &txq->sk_list);
+			rwnx_skb_append(txq->last_retry_skb, skb, &txq->sk_list);
 		else
 			skb_queue_head(&txq->sk_list, skb);
 
@@ -852,7 +844,6 @@ void rwnx_txq_confirm_any(struct rwnx_hw *rwnx_hw, struct rwnx_txq *txq,
 	if (txq->pkt_pushed[user])
 		txq->pkt_pushed[user]--;
 
-	hwq->credits[user]++;
 	hwq->need_processing = true;
 	rwnx_hw->stats.cfm_balance[hwq->id]--;
 }
@@ -1019,7 +1010,7 @@ bool rwnx_txq_get_skb_to_push(struct rwnx_hw *rwnx_hw, struct rwnx_hwq *hwq,
 							  struct sk_buff_head *sk_list_push)
 {
 	int nb_ready = skb_queue_len(&txq->sk_list);
-	int credits = min_t(int, rwnx_txq_get_credits(txq), hwq->credits[user]);
+	int credits = rwnx_txq_get_credits(txq);
 	bool res = false;
 
 	__skb_queue_head_init(sk_list_push);
@@ -1100,7 +1091,7 @@ bool rwnx_txq_select_user(struct rwnx_hw *rwnx_hw, bool mu_lock,
 	if (group_id > 0)
 		pos = rwnx_mu_group_sta_get_pos(rwnx_hw, sta, group_id);
 
-  check_user:
+check_user:
 	/* check that we can push on this user position */
 #if CONFIG_USER_MAX == 2
 	id = (pos + 1) & 0x1;
@@ -1118,7 +1109,7 @@ bool rwnx_txq_select_user(struct rwnx_hw *rwnx_hw, bool mu_lock,
 	}
 #endif
 
-  end:
+end:
 	rwnx_txq_set_mu_info(rwnx_hw, txq, group_id, pos);
 #endif /* CONFIG_RWNX_MUMIMO_TX */
 
@@ -1175,36 +1166,28 @@ void rwnx_hwq_process(struct rwnx_hw *rwnx_hw, struct rwnx_hwq *hwq)
 		bool txq_empty;
 
 		trace_process_txq(txq);
-
 		/* sanity check for debug */
 		BUG_ON(!(txq->status & RWNX_TXQ_IN_HWQ_LIST));
 		BUG_ON(txq->idx == TXQ_INACTIVE);
 		BUG_ON(txq->credits <= 0);
 		BUG_ON(!rwnx_txq_skb_ready(txq));
 
-		if (!rwnx_txq_select_user(rwnx_hw, mu_enable, txq, hwq, &user))
-			continue;
-
-		if (!hwq->credits[user]) {
-			credit_map |= BIT(user);
-			if (credit_map == ALL_HWQ_MASK)
-				break;
+		if (!rwnx_txq_select_user(rwnx_hw, mu_enable, txq, hwq, &user)) {
+			printk("select user:%d\n", user);
 			continue;
 		}
 
 		txq_empty = rwnx_txq_get_skb_to_push(rwnx_hw, hwq, txq, user,
 											 &sk_list_push);
-
 		while ((skb = __skb_dequeue(&sk_list_push)) != NULL) {
 			txhdr = (struct rwnx_txhdr *)skb->data;
 			rwnx_tx_push(rwnx_hw, txhdr, 0);
 		}
 
 		if (txq_empty) {
-		rwnx_txq_del_from_hw_list(txq);
-		txq->pkt_sent = 0;
-		} else if ((hwq->credits[user] == 0) &&
-				rwnx_txq_is_scheduled(txq)) {
+			rwnx_txq_del_from_hw_list(txq);
+			txq->pkt_sent = 0;
+		} else if (rwnx_txq_is_scheduled(txq)) {
 			/* txq not empty,
 			- To avoid starving need to process other txq in the list
 			- For better aggregation, need to send "as many consecutive
@@ -1272,16 +1255,14 @@ void rwnx_hwq_process_all(struct rwnx_hw *rwnx_hw)
  */
 void rwnx_hwq_init(struct rwnx_hw *rwnx_hw)
 {
-	int i, j;
+	int i;
 
 	for (i = 0; i < ARRAY_SIZE(rwnx_hw->hwq); i++) {
 		struct rwnx_hwq *hwq = &rwnx_hw->hwq[i];
 
-		for (j = 0 ; j < CONFIG_USER_MAX; j++)
-			hwq->credits[j] = nx_txdesc_cnt[i];
 		hwq->id = i;
 		hwq->size = nx_txdesc_cnt[i];
 		INIT_LIST_HEAD(&hwq->list);
 
-    }
+	}
 }

@@ -197,8 +197,8 @@ struct umacdesc {
 };
 
 struct txdesc_api {
-    /// Information provided by Host
-    struct hostdesc host;
+	/// Information provided by Host
+	struct hostdesc host;
 };
 
 

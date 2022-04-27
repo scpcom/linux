@@ -99,8 +99,9 @@ void aicwf_bus_deinit(struct device *dev)
 #endif
 #ifdef AICWF_SDIO_SUPPORT
 	sdiodev = bus_if->bus_priv.sdio;
-	if (g_rwnx_plat->enabled)
+	if (g_rwnx_plat && g_rwnx_plat->enabled) {
 		rwnx_platform_deinit(sdiodev->rwnx_hw);
+	}
 #endif
 
 	if (bus_if->cmd_buf) {
@@ -109,7 +110,7 @@ void aicwf_bus_deinit(struct device *dev)
 	}
 
 	if (bus_if->bustx_thread) {
-		complete(&bus_if->bustx_trgg);
+		complete_all(&bus_if->bustx_trgg);
 		kthread_stop(bus_if->bustx_thread);
 		bus_if->bustx_thread = NULL;
 	}
@@ -163,10 +164,10 @@ struct aicwf_tx_priv *aicwf_tx_init(void *arg)
 
 void aicwf_tx_deinit(struct aicwf_tx_priv *tx_priv)
 {
-	if (tx_priv && tx_priv->aggr_buf)
+	if (tx_priv && tx_priv->aggr_buf) {
 		dev_kfree_skb(tx_priv->aggr_buf);
-
-	kfree(tx_priv);
+		kfree(tx_priv);
+	}
 }
 
 #ifdef AICWF_SDIO_SUPPORT
@@ -191,14 +192,14 @@ static bool aicwf_another_ptk(struct sk_buff *skb)
 int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 {
 #ifdef AICWF_SDIO_SUPPORT
-    int ret = 0;
-    unsigned long flags = 0;
-    struct sk_buff *skb = NULL;
-    u16 pkt_len = 0;
-    struct sk_buff *skb_inblock = NULL;
-    u16 aggr_len = 0, adjust_len = 0;
-    u8 *data = NULL;
-    u8_l *msg = NULL;
+	int ret = 0;
+	unsigned long flags = 0;
+	struct sk_buff *skb = NULL;
+	u16 pkt_len = 0;
+	struct sk_buff *skb_inblock = NULL;
+	u16 aggr_len = 0, adjust_len = 0;
+	u8 *data = NULL;
+	u8_l *msg = NULL;
 
 	while (1) {
 		spin_lock_irqsave(&rx_priv->rxqlock, flags);
@@ -224,43 +225,47 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 				else
 					adjust_len = aggr_len;
 
-		skb_inblock = __dev_alloc_skb(aggr_len + CCMP_OR_WEP_INFO, GFP_KERNEL);
-		if (skb_inblock == NULL) {
-			txrx_err("no more space! skip\n");
-			skb_pull(skb, adjust_len);
-			continue;
+				skb_inblock = __dev_alloc_skb(aggr_len + CCMP_OR_WEP_INFO, GFP_KERNEL);
+				if (skb_inblock == NULL) {
+					txrx_err("no more space! skip\n");
+					skb_pull(skb, adjust_len);
+					continue;
+				}
+
+				skb_put(skb_inblock, aggr_len);
+				memcpy(skb_inblock->data, data, aggr_len);
+				rwnx_rxdataind_aicwf(rx_priv->sdiodev->rwnx_hw, skb_inblock, (void *)rx_priv);
+				skb_pull(skb, adjust_len);
+			} else {
+				//  type : config
+				aggr_len = pkt_len;
+
+				if (aggr_len & (RX_ALIGNMENT - 1))
+					adjust_len = roundup(aggr_len, RX_ALIGNMENT);
+				else
+					adjust_len = aggr_len;
+
+				msg = kmalloc(aggr_len+4, GFP_KERNEL);
+				if (msg == NULL) {
+					txrx_err("no more space for msg!\n");
+					aicwf_dev_skb_free(skb);
+					return -EBADE;
+				}
+
+				memcpy(msg, data, aggr_len + 4);
+				if ((*(msg + 2) & 0x7f) == SDIO_TYPE_CFG_CMD_RSP)
+					rwnx_rx_handle_msg(rx_priv->sdiodev->rwnx_hw, (struct ipc_e2a_msg *)(msg + 4));
+
+				if ((*(msg + 2) & 0x7f) == SDIO_TYPE_CFG_DATA_CFM)
+					aicwf_sdio_host_tx_cfm_handler(&(rx_priv->sdiodev->rwnx_hw->sdio_env), (u32 *)(msg + 4));
+
+				if ((*(msg + 2) & 0x7f) == SDIO_TYPE_CFG_PRINT)
+					rwnx_rx_handle_print(rx_priv->sdiodev->rwnx_hw, msg + 4, aggr_len);
+
+				skb_pull(skb, adjust_len+4);
+				kfree(msg);
+			}
 		}
-
-		skb_put(skb_inblock, aggr_len);
-		memcpy(skb_inblock->data, data, aggr_len);
-		rwnx_rxdataind_aicwf(rx_priv->sdiodev->rwnx_hw, skb_inblock, (void *)rx_priv);
-		skb_pull(skb, adjust_len);
-		} else {
-		//  type : config
-		aggr_len = pkt_len;
-
-		if (aggr_len & (RX_ALIGNMENT - 1))
-			adjust_len = roundup(aggr_len, RX_ALIGNMENT);
-		else
-			adjust_len = aggr_len;
-
-		msg = kmalloc(aggr_len+4, GFP_KERNEL);
-		if (msg == NULL) {
-			txrx_err("no more space for msg!\n");
-			aicwf_dev_skb_free(skb);
-			return -EBADE;
-		}
-
-		memcpy(msg, data, aggr_len + 4);
-		if ((*(msg + 2) & 0x7f) == SDIO_TYPE_CFG_CMD_RSP)
-			rwnx_rx_handle_msg(rx_priv->sdiodev->rwnx_hw, (struct ipc_e2a_msg *)(msg + 4));
-
-		if ((*(msg + 2) & 0x7f) == SDIO_TYPE_CFG_DATA_CFM)
-			aicwf_sdio_host_tx_cfm_handler(&(rx_priv->sdiodev->rwnx_hw->sdio_env), (u32 *)(msg + 4));
-		skb_pull(skb, adjust_len+4);
-		kfree(msg);
-		}
-	}
 
 		dev_kfree_skb(skb);
 		atomic_dec(&rx_priv->rx_cnt);
@@ -277,7 +282,7 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 	struct sk_buff *skb_inblock = NULL;
 	u16 aggr_len = 0, adjust_len = 0;
 	u8 *data = NULL;
-    u8_l *msg = NULL;
+	u8_l *msg = NULL;
 
 	while (1) {
 		spin_lock_irqsave(&rx_priv->rxqlock, flags);
@@ -308,12 +313,12 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 			else
 				adjust_len = aggr_len;
 
-		skb_inblock = __dev_alloc_skb(aggr_len + CCMP_OR_WEP_INFO, GFP_KERNEL);//8 is for ccmp mic or wep icv
-		if (skb_inblock == NULL) {
-			txrx_err("no more space! skip!\n");
-			skb_pull(skb, adjust_len);
-			continue;
-		}
+			skb_inblock = __dev_alloc_skb(aggr_len + CCMP_OR_WEP_INFO, GFP_KERNEL);//8 is for ccmp mic or wep icv
+			if (skb_inblock == NULL) {
+				txrx_err("no more space! skip!\n");
+				skb_pull(skb, adjust_len);
+				continue;
+			}
 
 			skb_put(skb_inblock, aggr_len);
 			memcpy(skb_inblock->data, data, aggr_len);
@@ -328,20 +333,20 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 			else
 				adjust_len = aggr_len;
 
-		    msg = kmalloc(aggr_len+4, GFP_KERNEL);
-		    if (msg == NULL) {
-			txrx_err("no more space for msg!\n");
-			aicwf_dev_skb_free(skb);
-			return -EBADE;
+			msg = kmalloc(aggr_len+4, GFP_KERNEL);
+			if (msg == NULL) {
+				txrx_err("no more space for msg!\n");
+				aicwf_dev_skb_free(skb);
+				return -EBADE;
 			}
-		memcpy(msg, data, aggr_len + 4);
-		if ((*(msg + 2) & 0x7f) == USB_TYPE_CFG_CMD_RSP)
-			rwnx_rx_handle_msg(rx_priv->usbdev->rwnx_hw, (struct ipc_e2a_msg *)(msg + 4));
+			memcpy(msg, data, aggr_len + 4);
+			if ((*(msg + 2) & 0x7f) == USB_TYPE_CFG_CMD_RSP)
+				rwnx_rx_handle_msg(rx_priv->usbdev->rwnx_hw, (struct ipc_e2a_msg *)(msg + 4));
 
-		if ((*(msg + 2) & 0x7f) == USB_TYPE_CFG_DATA_CFM)
-			aicwf_usb_host_tx_cfm_handler(&(rx_priv->usbdev->rwnx_hw->usb_env), (u32 *)(msg + 4));
-		skb_pull(skb, adjust_len + 4);
-		kfree(msg);
+			if ((*(msg + 2) & 0x7f) == USB_TYPE_CFG_DATA_CFM)
+				aicwf_usb_host_tx_cfm_handler(&(rx_priv->usbdev->rwnx_hw->usb_env), (u32 *)(msg + 4));
+			skb_pull(skb, adjust_len + 4);
+			kfree(msg);
 		}
 
 		dev_kfree_skb(skb);
@@ -430,17 +435,17 @@ void aicwf_rx_deinit(struct aicwf_rx_priv *rx_priv)
 	spin_unlock_bh(&rx_priv->stas_reord_lock);
 #endif
 
-	txrx_dbg("stio rx thread\n");
 #ifdef AICWF_SDIO_SUPPORT
+	txrx_dbg("sdio rx thread\n");
 	if (rx_priv->sdiodev->bus_if->busrx_thread) {
-		complete(&rx_priv->sdiodev->bus_if->busrx_trgg);
+		complete_all(&rx_priv->sdiodev->bus_if->busrx_trgg);
 		kthread_stop(rx_priv->sdiodev->bus_if->busrx_thread);
 		rx_priv->sdiodev->bus_if->busrx_thread = NULL;
 	}
 #endif
 #ifdef AICWF_USB_SUPPORT
 	if (rx_priv->usbdev->bus_if->busrx_thread) {
-		complete(&rx_priv->usbdev->bus_if->busrx_trgg);
+		complete_all(&rx_priv->usbdev->bus_if->busrx_trgg);
 		kthread_stop(rx_priv->usbdev->bus_if->busrx_thread);
 		rx_priv->usbdev->bus_if->busrx_thread = NULL;
 	}

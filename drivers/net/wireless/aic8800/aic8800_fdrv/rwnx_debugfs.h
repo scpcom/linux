@@ -17,6 +17,7 @@
 #include <linux/workqueue.h>
 #include <linux/if_ether.h>
 #include "rwnx_fw_trace.h"
+#include <linux/version.h>
 
 struct rwnx_hw;
 struct rwnx_sta;
@@ -62,6 +63,12 @@ struct rwnx_sta;
 	goto err;                                                   \
 } while (0)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+#define DEBUGFS_ADD_U32(name, parent, ptr, mode) do {           \
+	debugfs_create_u32(#name, mode,                             \
+			parent, ptr);                                       \
+} while (0)
+#else
 #define DEBUGFS_ADD_U32(name, parent, ptr, mode) do {           \
 	struct dentry *__tmp;                                       \
 	__tmp = debugfs_create_u32(#name, mode,                     \
@@ -69,6 +76,7 @@ struct rwnx_sta;
 	if (IS_ERR(__tmp) || !__tmp)                                \
 	goto err;                                                   \
 } while (0)
+#endif
 
 
 /* file operation */
@@ -138,13 +146,13 @@ struct rwnx_debugfs {
 	bool trace_prst;
 
 	char helper_cmd[64];
-	struct work_struct helper_work;
+	//struct work_struct helper_work;
 	bool helper_scheduled;
 	spinlock_t umh_lock;
 	bool unregistering;
 
 #ifndef CONFIG_RWNX_FHOST
-	struct rwnx_fw_trace fw_trace;
+	struct rwnx_fw_log fw_log;
 #endif /* CONFIG_RWNX_FHOST */
 
 #ifdef CONFIG_RWNX_FULLMAC
@@ -174,38 +182,19 @@ struct rwnx_rc_config_save {
 
 int rwnx_dbgfs_register(struct rwnx_hw *rwnx_hw, const char *name);
 void rwnx_dbgfs_unregister(struct rwnx_hw *rwnx_hw);
-int rwnx_um_helper(struct rwnx_debugfs *rwnx_debugfs, const char *cmd);
-int rwnx_trigger_um_helper(struct rwnx_debugfs *rwnx_debugfs);
 #ifdef CONFIG_RWNX_FULLMAC
 void rwnx_dbgfs_register_rc_stat(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta);
 void rwnx_dbgfs_unregister_rc_stat(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta);
 #endif
-
-int rwnx_dbgfs_register_fw_dump(struct rwnx_hw *rwnx_hw,
-								struct dentry *dir_drv,
-								struct dentry *dir_diags);
-void rwnx_dbgfs_trigger_fw_dump(struct rwnx_hw *rwnx_hw, char *reason);
-
-void rwnx_fw_trace_dump(struct rwnx_hw *rwnx_hw);
-void rwnx_fw_trace_reset(struct rwnx_hw *rwnx_hw);
-
 #else
-
 struct rwnx_debugfs {
 };
-
 static inline int rwnx_dbgfs_register(struct rwnx_hw *rwnx_hw, const char *name) { return 0; }
 static inline void rwnx_dbgfs_unregister(struct rwnx_hw *rwnx_hw) {}
-static inline int rwnx_um_helper(struct rwnx_debugfs *rwnx_debugfs, const char *cmd) { return 0; }
-static inline int rwnx_trigger_um_helper(struct rwnx_debugfs *rwnx_debugfs) {}
 #ifdef CONFIG_RWNX_FULLMAC
 static inline void rwnx_dbgfs_register_rc_stat(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta)  {}
 static inline void rwnx_dbgfs_unregister_rc_stat(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta)  {}
 #endif
-
-void rwnx_fw_trace_dump(struct rwnx_hw *rwnx_hw) {}
-void rwnx_fw_trace_reset(struct rwnx_hw *rwnx_hw) {}
-
 #endif /* CONFIG_RWNX_DEBUGFS */
 
 

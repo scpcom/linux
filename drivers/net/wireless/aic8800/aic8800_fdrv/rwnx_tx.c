@@ -29,7 +29,7 @@
  * @sta: Sta in PS mode
  * @available: whether traffic is buffered for the STA
  * @ps_id: type of PS data requested (@LEGACY_PS_ID or @UAPSD_ID)
-  */
+ */
 void rwnx_set_traffic_status(struct rwnx_hw *rwnx_hw,
 							 struct rwnx_sta *sta,
 							 bool available,
@@ -244,10 +244,10 @@ void rwnx_ps_bh_traffic_req(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 		}
 	}
 
-  done:
+done:
 	spin_unlock_bh(&rwnx_hw->tx_lock);
 	if (schedule)
-	tasklet_schedule(&rwnx_hw->task);
+		tasklet_schedule(&rwnx_hw->task);
 }
 
 /******************************************************************************
@@ -599,7 +599,7 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 	#if 0
 	if (txq->credits <= 0)
 		rwnx_txq_stop(txq, RWNX_TXQ_STOP_FULL);
-    #endif
+	#endif
 
 	if (txq->push_limit)
 		txq->push_limit--;
@@ -615,7 +615,14 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 		printk("need cfm ethertype:%8x,user_idx=%d, skb=%p\n", sw_txhdr->desc.host.ethertype, rwnx_hw->sdio_env.txdesc_free_idx[0], skb);
 	} else {
 		sw_txhdr->need_cfm = 0;
-		sw_txhdr->desc.host.status_desc_addr = 0;
+		if (sw_txhdr->raw_frame) {
+			sw_txhdr->desc.host.flags |= TXU_CNTRL_MGMT;
+		}
+		if (sw_txhdr->fixed_rate) {
+			sw_txhdr->desc.host.status_desc_addr = (0x01UL << 30) | sw_txhdr->rate_config;
+		} else {
+			sw_txhdr->desc.host.status_desc_addr = 0;
+		}
 
 		sw_txhdr->rwnx_vif->net_stats.tx_packets++;
 		sw_txhdr->rwnx_vif->net_stats.tx_bytes += sw_txhdr->frame_len;
@@ -626,13 +633,20 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 #ifdef AICWF_USB_SUPPORT
 	if (((sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) && ((*(skb->data+sw_txhdr->headroom) == 0xd0) || (*(skb->data+sw_txhdr->headroom) == 0x10))) || \
 		(sw_txhdr->desc.host.ethertype == 0x8e88)) {
-		printk("push need cfm flags 0x%x\n", sw_txhdr->desc.host.flags);
 		sw_txhdr->need_cfm = 1;
 		sw_txhdr->desc.host.status_desc_addr = ((1<<31) | rwnx_hw->usb_env.txdesc_free_idx[0]);
 		aicwf_usb_host_txdesc_push(&(rwnx_hw->usb_env), 0, (long)(skb));
+		printk("need cfm ethertype:%8x,user_idx=%d, skb=%p\n", sw_txhdr->desc.host.ethertype, rwnx_hw->usb_env.txdesc_free_idx[0], skb);
 	} else {
 		sw_txhdr->need_cfm = 0;
-		sw_txhdr->desc.host.status_desc_addr = 0;
+		if (sw_txhdr->raw_frame) {
+			sw_txhdr->desc.host.flags |= TXU_CNTRL_MGMT;
+		}
+		if (sw_txhdr->fixed_rate) {
+			sw_txhdr->desc.host.status_desc_addr = (0x01UL << 30) | sw_txhdr->rate_config;
+		} else {
+			sw_txhdr->desc.host.status_desc_addr = 0;
+		}
 
 		sw_txhdr->rwnx_vif->net_stats.tx_packets++;
 		sw_txhdr->rwnx_vif->net_stats.tx_bytes += sw_txhdr->frame_len;
@@ -867,9 +881,6 @@ static int rwnx_amsdu_add_subframe_header(struct rwnx_hw *rwnx_hw,
 	list_add_tail(&amsdu_txhdr->list, &amsdu->hdrs);
 	amsdu->len += map_len;
 
-	rwnx_ipc_sta_buffer(rwnx_hw, sw_txhdr->txq->sta,
-						sw_txhdr->txq->tid, msdu_len);
-
 	trace_amsdu_subframe(sw_txhdr);
 	return 0;
 }
@@ -975,7 +986,7 @@ static bool rwnx_amsdu_add_subframe(struct rwnx_hw *rwnx_hw, struct sk_buff *skb
 
 	res = true;
 
-  end:
+end:
 	spin_unlock_bh(&rwnx_hw->tx_lock);
 	return res;
 }
@@ -1044,7 +1055,7 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 #endif
 
 	/* Retrieve the pointer to the Ethernet data */
-   // eth = (struct ethhdr *)skb->data;
+	// eth = (struct ethhdr *)skb->data;
 
 	skb_pull(skb, 14);
 	//hdr_pads  = RWNX_SWTXHDR_ALIGN_PADS((long)eth);
@@ -1074,6 +1085,8 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	sw_txhdr->amsdu.len = 0;
 	sw_txhdr->amsdu.nb = 0;
 #endif
+	sw_txhdr->raw_frame = 0;
+	sw_txhdr->fixed_rate = 0;
 	// Fill-in the descriptor
 	memcpy(&desc->host.eth_dest_addr, eth_t.h_dest, ETH_ALEN);
 	memcpy(&desc->host.eth_src_addr, eth_t.h_source, ETH_ALEN);
@@ -1282,6 +1295,8 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 	sw_txhdr->amsdu.len = 0;
 	sw_txhdr->amsdu.nb = 0;
 #endif
+	sw_txhdr->raw_frame = 0;
+	sw_txhdr->fixed_rate = 0;
 	//----------------------------------------------------------------------
 
 	/* Fill the Descriptor to be provided to the MAC SW */
@@ -1344,6 +1359,7 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 	struct rwnx_sw_txhdr *sw_txhdr;
 	struct rwnx_hwq *hwq;
 	struct rwnx_txq *txq;
+	int headroom;
 	//int peek_off = offsetof(struct rwnx_hw_txhdr, cfm);
 	//int peek_len = sizeof(((struct rwnx_hw_txhdr *)0)->cfm);
 
@@ -1366,7 +1382,7 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 
 	/* Update txq and HW queue credits */
 	if (sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) {
-		trace_printk("done=%d retry_required=%d sw_retry_required=%d acknowledged=%d\n",
+		printk("done=%d retry_required=%d sw_retry_required=%d acknowledged=%d\n",
 					 rwnx_txst.tx_done, rwnx_txst.retry_required,
 					 rwnx_txst.sw_retry_required, rwnx_txst.acknowledged);
 
@@ -1433,18 +1449,14 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 		struct rwnx_amsdu_txhdr *amsdu_txhdr;
 		list_for_each_entry(amsdu_txhdr, &sw_txhdr->amsdu.hdrs, list) {
 			rwnx_amsdu_del_subframe_header(amsdu_txhdr);
-			 rwnx_ipc_sta_buffer(rwnx_hw, txq->sta, txq->tid,
-								 -amsdu_txhdr->msdu_len);
 			consume_skb(amsdu_txhdr->skb);
 		}
 	}
 #endif /* CONFIG_RWNX_AMSDUS_TX */
 
-	rwnx_ipc_sta_buffer(rwnx_hw, txq->sta, txq->tid,
-						-sw_txhdr->frame_len);
-
+	headroom = sw_txhdr->headroom;
 	kmem_cache_free(rwnx_hw->sw_txhdr_cache, sw_txhdr);
-	skb_pull(skb, sw_txhdr->headroom);
+	skb_pull(skb, headroom);
 	consume_skb(skb);
 
 	return 0;

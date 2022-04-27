@@ -1265,7 +1265,7 @@ static u16 rwnx_radar_get_center_freq(struct rwnx_hw *rwnx_hw, u8 chain)
 static void rwnx_radar_detected(struct rwnx_hw *rwnx_hw)
 {
 #ifdef CONFIG_RWNX_FULLMAC
-    struct cfg80211_chan_def chan_def;
+	struct cfg80211_chan_def chan_def;
 
 	if (!rwnx_chanctx_valid(rwnx_hw, rwnx_hw->cur_chanctx)) {
 		WARN(1, "Radar detected without channel information");

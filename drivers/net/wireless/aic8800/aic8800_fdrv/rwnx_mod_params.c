@@ -22,7 +22,7 @@
 
 #ifdef CONFIG_RWNX_FULLMAC
 #define COMMON_PARAM(name, default_softmac, default_fullmac)    \
-    .name = default_fullmac,
+	.name = default_fullmac,
 #define SOFTMAC_PARAM(name, default)
 #define FULLMAC_PARAM(name, default) .name = default,
 #endif /* CONFIG_RWNX_FULLMAC */
@@ -572,9 +572,7 @@ static int rwnx_check_fw_hw_feature(struct rwnx_hw *rwnx_hw,
 
 static void rwnx_set_vht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 {
-	#ifdef USE_5G
 	struct ieee80211_supported_band *band_5GHz = wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
 	struct ieee80211_supported_band *band_2GHz = wiphy->bands[NL80211_BAND_2GHZ];
 
 	int i;
@@ -588,132 +586,39 @@ static void rwnx_set_vht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	}
 
 	band_2GHz->vht_cap.vht_supported = true;
-		if (rwnx_hw->mod_params->sgi80)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_80;
-		if (rwnx_hw->mod_params->stbc_on)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXSTBC_1;
-		if (rwnx_hw->mod_params->ldpc_on)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXLDPC;
-		if (rwnx_hw->mod_params->bfmee) {
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
-		#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-			band_2GHz->vht_cap.cap |= 3 << IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT;
-		#else
-			band_2GHz->vht_cap.cap |= 3 << 13;
-		#endif
-		}
-		if (nss > 1)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
-
-		// Update the AMSDU max RX size (not shifted as located at offset 0 of the VHT cap)
-		band_2GHz->vht_cap.cap |= rwnx_hw->mod_params->amsdu_rx_max;
-
-		if (rwnx_hw->mod_params->bfmer) {
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
-			/* Set number of sounding dimensions */
-		#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-			band_2GHz->vht_cap.cap |= (nss - 1) << IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_SHIFT;
-		#else
-			band_2GHz->vht_cap.cap |= (nss - 1) << 16;
-		#endif
-		}
-		if (rwnx_hw->mod_params->murx)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
-		if (rwnx_hw->mod_params->mutx)
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE;
-
-		/*
-		 * MCS map:
-		 * This capabilities are filled according to the mcs_map module parameter.
-		 * However currently we have some limitations due to FPGA clock constraints
-		 * that prevent always using the range of MCS that is defined by the
-		 * parameter:
-		 *	 - in RX, 2SS, we support up to MCS7
-		 *	 - in TX, 2SS, we support up to MCS8
-		 */
-		// Get max supported BW
-		if (rwnx_hw->mod_params->use_80)
-			bw_max = PHY_CHNL_BW_80;
-		else if (rwnx_hw->mod_params->use_2040)
-			bw_max = PHY_CHNL_BW_40;
-		else
-			bw_max = PHY_CHNL_BW_20;
-
-		// Check if MCS map should be limited to MCS0_8 due to the standard. Indeed in BW20,
-		// MCS9 is not supported in 1 and 2 SS
-		if (rwnx_hw->mod_params->use_2040)
-			mcs_map_max = IEEE80211_VHT_MCS_SUPPORT_0_9;
-		else
-			mcs_map_max = IEEE80211_VHT_MCS_SUPPORT_0_8;
-
-		mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
-		band_2GHz->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0);
-		for (i = 0; i < nss; i++) {
-			band_2GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
-			band_2GHz->vht_cap.vht_mcs.rx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
-			mcs_map = IEEE80211_VHT_MCS_SUPPORT_0_7;
-		}
-		for (; i < 8; i++) {
-			band_2GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(
-				IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
-		}
-
-		mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
-		band_2GHz->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0);
-		for (i = 0; i < nss; i++) {
-			band_2GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
-			band_2GHz->vht_cap.vht_mcs.tx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
-			mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map,
-							IEEE80211_VHT_MCS_SUPPORT_0_8);
-		}
-		for (; i < 8; i++) {
-			band_2GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(
-				IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
-		}
-
-		if (!rwnx_hw->mod_params->use_80) {
-#ifdef CONFIG_VENDOR_RWNX_VHT_NO80
-			band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
-#endif
-			band_2GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_SHORT_GI_80;
-		}
-
-
-#ifdef USE_5G
-	band_5GHz->vht_cap.vht_supported = true;
 	if (rwnx_hw->mod_params->sgi80)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_80;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_80;
 	if (rwnx_hw->mod_params->stbc_on)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXSTBC_1;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXSTBC_1;
 	if (rwnx_hw->mod_params->ldpc_on)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXLDPC;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXLDPC;
 	if (rwnx_hw->mod_params->bfmee) {
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
-		#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-		band_5GHz->vht_cap.cap |= 3 << IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT;
-		#else
-		band_5GHz->vht_cap.cap |= 3 << 13;
-		#endif
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+		band_2GHz->vht_cap.cap |= 3 << IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT;
+	#else
+		band_2GHz->vht_cap.cap |= 3 << 13;
+	#endif
 	}
 	if (nss > 1)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
 
 	// Update the AMSDU max RX size (not shifted as located at offset 0 of the VHT cap)
-	band_5GHz->vht_cap.cap |= rwnx_hw->mod_params->amsdu_rx_max;
+	band_2GHz->vht_cap.cap |= rwnx_hw->mod_params->amsdu_rx_max;
 
 	if (rwnx_hw->mod_params->bfmer) {
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
 		/* Set number of sounding dimensions */
-		#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-		band_5GHz->vht_cap.cap |= (nss - 1) << IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_SHIFT;
-		#else
-		band_5GHz->vht_cap.cap |= (nss - 1) << 16;
-		#endif
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+		band_2GHz->vht_cap.cap |= (nss - 1) << IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_SHIFT;
+	#else
+		band_2GHz->vht_cap.cap |= (nss - 1) << 16;
+	#endif
 	}
 	if (rwnx_hw->mod_params->murx)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
 	if (rwnx_hw->mod_params->mutx)
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE;
 
 	/*
 	 * MCS map:
@@ -721,8 +626,8 @@ static void rwnx_set_vht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	 * However currently we have some limitations due to FPGA clock constraints
 	 * that prevent always using the range of MCS that is defined by the
 	 * parameter:
-	 *   - in RX, 2SS, we support up to MCS7
-	 *   - in TX, 2SS, we support up to MCS8
+	 *	 - in RX, 2SS, we support up to MCS7
+	 *	 - in TX, 2SS, we support up to MCS8
 	 */
 	// Get max supported BW
 	if (rwnx_hw->mod_params->use_80)
@@ -740,54 +645,142 @@ static void rwnx_set_vht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 		mcs_map_max = IEEE80211_VHT_MCS_SUPPORT_0_8;
 
 	mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
-	band_5GHz->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0);
+	band_2GHz->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0);
 	for (i = 0; i < nss; i++) {
-		band_5GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
-		band_5GHz->vht_cap.vht_mcs.rx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
+		band_2GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
+		band_2GHz->vht_cap.vht_mcs.rx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
 		mcs_map = IEEE80211_VHT_MCS_SUPPORT_0_7;
 	}
 	for (; i < 8; i++) {
-		band_5GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(
+		band_2GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(
 			IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
 	}
 
 	mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
-	band_5GHz->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0);
+	band_2GHz->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0);
 	for (i = 0; i < nss; i++) {
-		band_5GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
-		band_5GHz->vht_cap.vht_mcs.tx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
+		band_2GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
+		band_2GHz->vht_cap.vht_mcs.tx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
 		mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map,
 						IEEE80211_VHT_MCS_SUPPORT_0_8);
 	}
 	for (; i < 8; i++) {
-		band_5GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(
+		band_2GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(
 			IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
 	}
 
 	if (!rwnx_hw->mod_params->use_80) {
 #ifdef CONFIG_VENDOR_RWNX_VHT_NO80
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
+		band_2GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
 #endif
-		band_5GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_SHORT_GI_80;
+		band_2GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_SHORT_GI_80;
 	}
+
+	if (rwnx_hw->band_5g_support) {
+		band_5GHz->vht_cap.vht_supported = true;
+		if (rwnx_hw->mod_params->sgi80)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SHORT_GI_80;
+		if (rwnx_hw->mod_params->stbc_on)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXSTBC_1;
+		if (rwnx_hw->mod_params->ldpc_on)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_RXLDPC;
+		if (rwnx_hw->mod_params->bfmee) {
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE;
+			#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+			band_5GHz->vht_cap.cap |= 3 << IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT;
+			#else
+			band_5GHz->vht_cap.cap |= 3 << 13;
+			#endif
+		}
+		if (nss > 1)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_TXSTBC;
+
+		// Update the AMSDU max RX size (not shifted as located at offset 0 of the VHT cap)
+		band_5GHz->vht_cap.cap |= rwnx_hw->mod_params->amsdu_rx_max;
+
+		if (rwnx_hw->mod_params->bfmer) {
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE;
+			/* Set number of sounding dimensions */
+			#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+			band_5GHz->vht_cap.cap |= (nss - 1) << IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_SHIFT;
+			#else
+			band_5GHz->vht_cap.cap |= (nss - 1) << 16;
+			#endif
+		}
+		if (rwnx_hw->mod_params->murx)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
+		if (rwnx_hw->mod_params->mutx)
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE;
+
+		/*
+		 * MCS map:
+		 * This capabilities are filled according to the mcs_map module parameter.
+		 * However currently we have some limitations due to FPGA clock constraints
+		 * that prevent always using the range of MCS that is defined by the
+		 * parameter:
+		 *   - in RX, 2SS, we support up to MCS7
+		 *   - in TX, 2SS, we support up to MCS8
+		 */
+		// Get max supported BW
+		if (rwnx_hw->mod_params->use_80)
+			bw_max = PHY_CHNL_BW_80;
+		else if (rwnx_hw->mod_params->use_2040)
+			bw_max = PHY_CHNL_BW_40;
+		else
+			bw_max = PHY_CHNL_BW_20;
+
+		// Check if MCS map should be limited to MCS0_8 due to the standard. Indeed in BW20,
+		// MCS9 is not supported in 1 and 2 SS
+		if (rwnx_hw->mod_params->use_2040)
+			mcs_map_max = IEEE80211_VHT_MCS_SUPPORT_0_9;
+		else
+			mcs_map_max = IEEE80211_VHT_MCS_SUPPORT_0_8;
+
+		mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
+		band_5GHz->vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(0);
+		for (i = 0; i < nss; i++) {
+			band_5GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
+			band_5GHz->vht_cap.vht_mcs.rx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
+			mcs_map = IEEE80211_VHT_MCS_SUPPORT_0_7;
+		}
+		for (; i < 8; i++) {
+			band_5GHz->vht_cap.vht_mcs.rx_mcs_map |= cpu_to_le16(
+				IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
+		}
+
+		mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map, mcs_map_max);
+		band_5GHz->vht_cap.vht_mcs.tx_mcs_map = cpu_to_le16(0);
+		for (i = 0; i < nss; i++) {
+			band_5GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(mcs_map << (i*2));
+			band_5GHz->vht_cap.vht_mcs.tx_highest = MAX_VHT_RATE(mcs_map, nss, bw_max);
+			mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map,
+							IEEE80211_VHT_MCS_SUPPORT_0_8);
+		}
+		for (; i < 8; i++) {
+			band_5GHz->vht_cap.vht_mcs.tx_mcs_map |= cpu_to_le16(
+				IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2));
+		}
+
+		if (!rwnx_hw->mod_params->use_80) {
+#ifdef CONFIG_VENDOR_RWNX_VHT_NO80
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
 #endif
+			band_5GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_SHORT_GI_80;
+		}
+	}
 }
 
 static void rwnx_set_ht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 {
-	#ifdef USE_5G
 	struct ieee80211_supported_band *band_5GHz = wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
-
 	struct ieee80211_supported_band *band_2GHz = wiphy->bands[NL80211_BAND_2GHZ];
 	int i;
 	int nss = rwnx_hw->mod_params->nss;
 
 	if (!rwnx_hw->mod_params->ht_on) {
 		band_2GHz->ht_cap.ht_supported = false;
-		#ifdef USE_5G
-		band_5GHz->ht_cap.ht_supported = false;
-		#endif
+		if (rwnx_hw->band_5g_support)
+			band_5GHz->ht_cap.ht_supported = false;
 		return;
 	}
 
@@ -824,9 +817,8 @@ static void rwnx_set_ht_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 		band_2GHz->ht_cap.mcs.rx_mask[i] = 0xFF;
 	}
 
-	#ifdef USE_5G
-	band_5GHz->ht_cap = band_2GHz->ht_cap;
-	#endif
+	if (rwnx_hw->band_5g_support)
+		band_5GHz->ht_cap = band_2GHz->ht_cap;
 }
 
 #ifdef CONFIG_HE_FOR_OLD_KERNEL
@@ -927,13 +919,11 @@ static void rwnx_set_he_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 		he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
 	}
 
-    return ;
-    #endif
+	return ;
+	#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
-	#ifdef USE_5G
 	struct ieee80211_supported_band *band_5GHz = wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
 	struct ieee80211_supported_band *band_2GHz = wiphy->bands[NL80211_BAND_2GHZ];
 	int i;
 	int nss = rwnx_hw->mod_params->nss;
@@ -942,10 +932,10 @@ static void rwnx_set_he_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	if (!rwnx_hw->mod_params->he_on) {
 		band_2GHz->iftype_data = NULL;
 		band_2GHz->n_iftype_data = 0;
-		#ifdef USE_5G
-		band_5GHz->iftype_data = NULL;
-		band_5GHz->n_iftype_data = 0;
-		#endif
+		if (rwnx_hw->band_5g_support) {
+			band_5GHz->iftype_data = NULL;
+			band_5GHz->n_iftype_data = 0;
+		}
 		return;
 	}
 	he_cap = (struct ieee80211_sta_he_cap *) &band_2GHz->iftype_data->he_cap;
@@ -1037,105 +1027,105 @@ static void rwnx_set_he_capa(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 		he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
 	}
 
-#ifdef USE_5G
-	he_cap = (struct ieee80211_sta_he_cap *) &band_5GHz->iftype_data->he_cap;
-	he_cap->has_he = true;
-	he_cap->he_cap_elem.mac_cap_info[2] |= IEEE80211_HE_MAC_CAP2_ALL_ACK;
-	if (rwnx_hw->mod_params->use_2040) {
-		he_cap->he_cap_elem.phy_cap_info[0] |=
-						IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
-		he_cap->ppe_thres[0] |= 0x10;
+	if (rwnx_hw->band_5g_support) {
+		he_cap = (struct ieee80211_sta_he_cap *) &band_5GHz->iftype_data->he_cap;
+		he_cap->has_he = true;
+		he_cap->he_cap_elem.mac_cap_info[2] |= IEEE80211_HE_MAC_CAP2_ALL_ACK;
+		if (rwnx_hw->mod_params->use_2040) {
+			he_cap->he_cap_elem.phy_cap_info[0] |=
+							IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
+			he_cap->ppe_thres[0] |= 0x10;
+		}
+		//if (rwnx_hw->mod_params->use_80)
+		{
+			he_cap->he_cap_elem.phy_cap_info[0] |=
+							IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
+		}
+		if (rwnx_hw->mod_params->ldpc_on) {
+			he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
+		} else {
+			// If no LDPC is supported, we have to limit to MCS0_9, as LDPC is mandatory
+			// for MCS 10 and 11
+			rwnx_hw->mod_params->he_mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map,
+													IEEE80211_HE_MCS_SUPPORT_0_9);
+		}
+		#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+		he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US |
+											   IEEE80211_HE_PHY_CAP1_MIDAMBLE_RX_TX_MAX_NSTS;
+		he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_MIDAMBLE_RX_TX_MAX_NSTS |
+											   IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
+											   IEEE80211_HE_PHY_CAP2_DOPPLER_RX;
+		#else
+		he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US;
+		he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
+											   IEEE80211_HE_PHY_CAP2_DOPPLER_RX;
+		#endif
+		if (rwnx_hw->mod_params->stbc_on)
+			he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ;
+		he_cap->he_cap_elem.phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM |
+											   IEEE80211_HE_PHY_CAP3_DCM_MAX_RX_NSS_1 |
+											   IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
+		if (rwnx_hw->mod_params->bfmee) {
+			he_cap->he_cap_elem.phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE;
+			he_cap->he_cap_elem.phy_cap_info[4] |=
+						 IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
+		}
+		he_cap->he_cap_elem.phy_cap_info[5] |= IEEE80211_HE_PHY_CAP5_NG16_SU_FEEDBACK |
+											   IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
+		he_cap->he_cap_elem.phy_cap_info[6] |= IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
+											   IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
+											   IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB |
+											   IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMER_FB |
+											   IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT |
+											   IEEE80211_HE_PHY_CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO;
+		he_cap->he_cap_elem.phy_cap_info[7] |= IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI;
+		he_cap->he_cap_elem.phy_cap_info[8] |= IEEE80211_HE_PHY_CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G;
+		#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+		he_cap->he_cap_elem.phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
+											   IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB;
+		#endif
+		//mcs_map = rwnx_hw->mod_params->he_mcs_map;
+		mcs_map = min_t(int, rwnx_hw->mod_params->he_mcs_map, IEEE80211_HE_MCS_SUPPORT_0_9);
+		memset(&he_cap->he_mcs_nss_supp, 0, sizeof(he_cap->he_mcs_nss_supp));
+		for (i = 0; i < nss; i++) {
+			__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
+			he_cap->he_mcs_nss_supp.rx_mcs_80 |= cpu_to_le16(mcs_map << (i*2));
+			he_cap->he_mcs_nss_supp.rx_mcs_160 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.rx_mcs_80p80 |= unsup_for_ss;
+			mcs_map = IEEE80211_HE_MCS_SUPPORT_0_7;
+		}
+		for (; i < 8; i++) {
+			__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
+			he_cap->he_mcs_nss_supp.rx_mcs_80 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.rx_mcs_160 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.rx_mcs_80p80 |= unsup_for_ss;
+		}
+		mcs_map = rwnx_hw->mod_params->he_mcs_map;
+		for (i = 0; i < nss; i++) {
+			__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
+			he_cap->he_mcs_nss_supp.tx_mcs_80 |= cpu_to_le16(mcs_map << (i*2));
+			he_cap->he_mcs_nss_supp.tx_mcs_160 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
+			mcs_map = min_t(int, rwnx_hw->mod_params->he_mcs_map,
+							IEEE80211_HE_MCS_SUPPORT_0_7);
+		}
+		for (; i < 8; i++) {
+			__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
+			he_cap->he_mcs_nss_supp.tx_mcs_80 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.tx_mcs_160 |= unsup_for_ss;
+			he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
+		}
 	}
-	//if (rwnx_hw->mod_params->use_80)
-	{
-		he_cap->he_cap_elem.phy_cap_info[0] |=
-						IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
-	}
-	if (rwnx_hw->mod_params->ldpc_on) {
-		he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
-	} else {
-		// If no LDPC is supported, we have to limit to MCS0_9, as LDPC is mandatory
-		// for MCS 10 and 11
-		rwnx_hw->mod_params->he_mcs_map = min_t(int, rwnx_hw->mod_params->mcs_map,
-												IEEE80211_HE_MCS_SUPPORT_0_9);
-	}
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
-	he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US |
-										   IEEE80211_HE_PHY_CAP1_MIDAMBLE_RX_TX_MAX_NSTS;
-	he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_MIDAMBLE_RX_TX_MAX_NSTS |
-										   IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
-										   IEEE80211_HE_PHY_CAP2_DOPPLER_RX;
-	#else
-	he_cap->he_cap_elem.phy_cap_info[1] |= IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US;
-	he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
-										   IEEE80211_HE_PHY_CAP2_DOPPLER_RX;
-	#endif
-	if (rwnx_hw->mod_params->stbc_on)
-		he_cap->he_cap_elem.phy_cap_info[2] |= IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ;
-	he_cap->he_cap_elem.phy_cap_info[3] |= IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_16_QAM |
-										   IEEE80211_HE_PHY_CAP3_DCM_MAX_RX_NSS_1 |
-										   IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA;
-	if (rwnx_hw->mod_params->bfmee) {
-		he_cap->he_cap_elem.phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE;
-		he_cap->he_cap_elem.phy_cap_info[4] |=
-					 IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
-	}
-	he_cap->he_cap_elem.phy_cap_info[5] |= IEEE80211_HE_PHY_CAP5_NG16_SU_FEEDBACK |
-										   IEEE80211_HE_PHY_CAP5_NG16_MU_FEEDBACK;
-	he_cap->he_cap_elem.phy_cap_info[6] |= IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_42_SU |
-										   IEEE80211_HE_PHY_CAP6_CODEBOOK_SIZE_75_MU |
-										   IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB |
-										   IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMER_FB |
-										   IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT |
-										   IEEE80211_HE_PHY_CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO;
-	he_cap->he_cap_elem.phy_cap_info[7] |= IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI;
-	he_cap->he_cap_elem.phy_cap_info[8] |= IEEE80211_HE_PHY_CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G;
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
-	he_cap->he_cap_elem.phy_cap_info[9] |= IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
-										   IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB;
-	#endif
-	//mcs_map = rwnx_hw->mod_params->he_mcs_map;
-	mcs_map = min_t(int, rwnx_hw->mod_params->he_mcs_map, IEEE80211_HE_MCS_SUPPORT_0_9);
-	memset(&he_cap->he_mcs_nss_supp, 0, sizeof(he_cap->he_mcs_nss_supp));
-	for (i = 0; i < nss; i++) {
-		__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
-		he_cap->he_mcs_nss_supp.rx_mcs_80 |= cpu_to_le16(mcs_map << (i*2));
-		he_cap->he_mcs_nss_supp.rx_mcs_160 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.rx_mcs_80p80 |= unsup_for_ss;
-		mcs_map = IEEE80211_HE_MCS_SUPPORT_0_7;
-	}
-	for (; i < 8; i++) {
-		__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
-		he_cap->he_mcs_nss_supp.rx_mcs_80 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.rx_mcs_160 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.rx_mcs_80p80 |= unsup_for_ss;
-	}
-	mcs_map = rwnx_hw->mod_params->he_mcs_map;
-	for (i = 0; i < nss; i++) {
-		__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
-		he_cap->he_mcs_nss_supp.tx_mcs_80 |= cpu_to_le16(mcs_map << (i*2));
-		he_cap->he_mcs_nss_supp.tx_mcs_160 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
-		mcs_map = min_t(int, rwnx_hw->mod_params->he_mcs_map,
-						IEEE80211_HE_MCS_SUPPORT_0_7);
-	}
-	for (; i < 8; i++) {
-		__le16 unsup_for_ss = cpu_to_le16(IEEE80211_HE_MCS_NOT_SUPPORTED << (i*2));
-		he_cap->he_mcs_nss_supp.tx_mcs_80 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.tx_mcs_160 |= unsup_for_ss;
-		he_cap->he_mcs_nss_supp.tx_mcs_80p80 |= unsup_for_ss;
-	}
-#endif
 #endif
 }
 
 static void rwnx_set_wiphy_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 {
 #ifdef CONFIG_RWNX_FULLMAC
-    /* FULLMAC specific parameters */
-    wiphy->flags |= WIPHY_FLAG_REPORTS_OBSS;
-    wiphy->max_scan_ssids = SCAN_SSID_MAX;
-    wiphy->max_scan_ie_len = SCANU_MAX_IE_LEN;
+	/* FULLMAC specific parameters */
+	wiphy->flags |= WIPHY_FLAG_REPORTS_OBSS;
+	wiphy->max_scan_ssids = SCAN_SSID_MAX;
+	wiphy->max_scan_ie_len = SCANU_MAX_IE_LEN;
 #endif /* CONFIG_RWNX_FULLMAC */
 
 	if (rwnx_hw->mod_params->tdls) {
@@ -1176,9 +1166,8 @@ static void rwnx_set_wiphy_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 
 			// Enable "extra" channels
 			wiphy->bands[NL80211_BAND_2GHZ]->n_channels += 13;
-			#ifdef USE_5G
-			wiphy->bands[NL80211_BAND_5GHZ]->n_channels += 59;
-			#endif
+			if (rwnx_hw->band_5g_support)
+				wiphy->bands[NL80211_BAND_5GHZ]->n_channels += 59;
 		}
 	}
 }
@@ -1187,9 +1176,7 @@ static void rwnx_set_wiphy_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 static void rwnx_set_rf_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 {
 #ifndef CONFIG_RWNX_SDM
-	#ifdef USE_5G
 	struct ieee80211_supported_band *band_5GHz = wiphy->bands[NL80211_BAND_5GHZ];
-	#endif
 	struct ieee80211_supported_band *band_2GHz = wiphy->bands[NL80211_BAND_2GHZ];
 	u32 mdm_phy_cfg = __MDM_PHYCFG_FROM_VERS(rwnx_hw->version_cfm.version_phy_1);
 
@@ -1223,23 +1210,23 @@ static void rwnx_set_rf_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	{
 		wiphy_dbg(wiphy, "found Trident phy .. limit BW to 40MHz\n");
 		rwnx_hw->phy.limit_bw = true;
-		#ifdef USE_5G
+		if (rwnx_hw->band_5g_support) {
 #ifdef CONFIG_VENDOR_RWNX_VHT_NO80
-		band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
+			band_5GHz->vht_cap.cap |= IEEE80211_VHT_CAP_NOT_SUP_WIDTH_80;
 #endif
-		band_5GHz->vht_cap.cap &= ~(IEEE80211_VHT_CAP_SHORT_GI_80 |
-									IEEE80211_VHT_CAP_RXSTBC_MASK);
-		#endif
+			band_5GHz->vht_cap.cap &= ~(IEEE80211_VHT_CAP_SHORT_GI_80 |
+										IEEE80211_VHT_CAP_RXSTBC_MASK);
+		}
 		break;
 	}
 	case MDM_PHY_CONFIG_ELMA:
 		wiphy_dbg(wiphy, "found ELMA phy .. disabling 2.4GHz and greenfield rx\n");
 		wiphy->bands[NL80211_BAND_2GHZ] = NULL;
 		band_2GHz->ht_cap.cap &= ~IEEE80211_HT_CAP_GRN_FLD;
-		#ifdef USE_5G
-		band_5GHz->ht_cap.cap &= ~IEEE80211_HT_CAP_GRN_FLD;
-		band_5GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_RXSTBC_MASK;
-		#endif
+		if (rwnx_hw->band_5g_support) {
+			band_5GHz->ht_cap.cap &= ~IEEE80211_HT_CAP_GRN_FLD;
+			band_5GHz->vht_cap.cap &= ~IEEE80211_VHT_CAP_RXSTBC_MASK;
+		}
 		break;
 	case MDM_PHY_CONFIG_KARST:
 	{
@@ -1301,7 +1288,7 @@ void rwnx_custregd(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	wiphy->regulatory_flags |= REGULATORY_WIPHY_SELF_MANAGED;
 
 	rtnl_lock();
-	if (regulatory_set_wiphy_regd_sync_rtnl(wiphy, &rwnx_regdom))
+	if (rwnx_regulatory_set_wiphy_regd_sync_rtnl(wiphy, &rwnx_regdom))
 		wiphy_err(wiphy, "Failed to set custom regdomain\n");
 	else
 		wiphy_err(wiphy, "\n"

@@ -1,14 +1,10 @@
 RWNX_VERS_NUM := 6.4.3.0
 
 CONFIG_PLATFORM_NANOPI_M4 ?= n
-CONFIG_PLATFORM_ALLWINNER ?= y
+CONFIG_PLATFORM_ALLWINNER := $(CONFIG_ARCH_SUNXI)
 CONFIG_PLATFORM_INGENIC_T20 ?= n
 
-# Support of bootrom start
-CONFIG_START_FROM_BOOTROM = y
-
-# Support of pmic setting, new version bootrom avaliable
-CONFIG_PMIC_SETTING ?=y
+CONFIG_AIC_BSP_CTRL ?= y
 
 # ROM patch enabled option
 CONFIG_ROM_PATCH_EN ?=n
@@ -16,14 +12,13 @@ CONFIG_ROM_PATCH_EN ?=n
 #
 # WAITING FOR KCONFIG {
 #
+CONFIG_RWNX_SOFTMAC ?= n
 CONFIG_RWNX_FULLMAC ?= y
 CONFIG_RWNX_FHOST ?= n
 
 #
 # DEBUG OPTIONS
 CONFIG_RWNX_UM_HELPER_DFLT ?= "/dini/dini_bin/rwnx_umh.sh"
-CONFIG_AIC_FW_PATH = "/vendor/etc/firmware"
-export CONFIG_AIC_FW_PATH
 
 #
 # FW ARCH:
@@ -34,8 +29,7 @@ CONFIG_RWNX_TL4 ?= n
 CONFIG_RWNX_OLD_IPC ?= n
 
 # Support of P2P DebugFS for enabling/disabling NoA and OppPS
-CONFIG_RWNX_P2P_DEBUGFS ?= y
-CONFIG_DEBUG_FS ?=y
+CONFIG_RWNX_P2P_DEBUGFS := n
 #
 # } // WAITING FOR KCONFIG
 #
@@ -49,15 +43,16 @@ CONFIG_RWNX_AMSDUS_TX ?= n
 # Enable BFMER support (need FW support)
 CONFIG_RWNX_BFMER ?= n
 
-CONFIG_SDIO_SUPPORT =y
-CONFIG_USB_SUPPORT =n
+CONFIG_SDIO_SUPPORT := $(CONFIG_AIC_INTF_SDIO)
+CONFIG_USB_SUPPORT  := $(CONFIG_AIC_INTF_USB)
 CONFIG_RX_REORDER ?=y
 CONFIG_ARP_OFFLOAD =y
-CONFIG_USE_5G =n
 CONFIG_RADAR_OR_IR_DETECT =n
 CONFIG_DOWNLOAD_FW =y
 CONFIG_RFTEST=y
-CONFIG_USB_BT =n
+ifeq ($(CONFIG_USB_SUPPORT),y)
+CONFIG_USB_BT := y
+endif
 
 
 # Support of MU-MIMO transmission (need FW support)
@@ -82,6 +77,7 @@ CONFIG_RWNX_DBG ?= y
 
 obj-$(CONFIG_AIC8800_WLAN_SUPPORT) := aic8800_fdrv.o
 aic8800_fdrv-y := \
+	rwnx_gki.o             \
 	rwnx_msg_tx.o          \
 	rwnx_msg_rx.o          \
 	rwnx_utils.o           \
@@ -105,7 +101,6 @@ aic8800_fdrv-y := \
 
 aic8800_fdrv-$(CONFIG_RWNX_RADAR)       += rwnx_radar.o
 aic8800_fdrv-$(CONFIG_DEBUG_FS)         += rwnx_debugfs.o
-aic8800_fdrv-$(CONFIG_DEBUG_FS)         += rwnx_fw_dump.o
 aic8800_fdrv-$(CONFIG_DEBUG_FS)         += rwnx_fw_trace.o
 aic8800_fdrv-$(CONFIG_NL80211_TESTMODE) += rwnx_testmode.o
 aic8800_fdrv-$(CONFIG_RWNX_BFMER)       += rwnx_bfmer.o
@@ -137,9 +132,8 @@ ccflags-$(CONFIG_RWNX_OLD_IPC) += -DCONFIG_RWNX_OLD_IPC
 ccflags-$(CONFIG_PLATFORM_NANOPI_M4) += -DCONFIG_NANOPI_M4
 ccflags-$(CONFIG_PLATFORM_INGENIC_T20) += -DCONFIG_INGENIC_T20
 ccflags-$(CONFIG_PLATFORM_ALLWINNER) += -DCONFIG_PLATFORM_ALLWINNER
-ccflags-$(CONFIG_START_FROM_BOOTROM) += -DCONFIG_START_FROM_BOOTROM
-ccflags-$(CONFIG_PMIC_SETTING) += -DCONFIG_PMIC_SETTING
 ccflags-$(CONFIG_ROM_PATCH_EN) += -DCONFIG_ROM_PATCH_EN
+
 LOCAL_CODE_VERSION := $(shell expr $(VERSION) \* 256 + $(PATCHLEVEL))
 # 1038 is LINUX_KERENL_VERSION 4.14
 ifeq ($(shell [ $(LOCAL_CODE_VERSION) -lt 1038 ] && echo y),y)
@@ -148,8 +142,12 @@ endif
 ccflags-$(CONFIG_PLATFORM_ALLWINNER) += -DCONFIG_COEX
 ccflags-$(CONFIG_PLATFORM_NANOPI_M4) += -DCONFIG_COEX
 
+SRCPATH := $(shell dirname $(lastword $(MAKEFILE_LIST)))
+
 ccflags-y += -DCONFIG_RWNX_FULLMAC
-ccflags-y += -I$(src)/.
+ccflags-y += -I$(srctree)
+ccflags-y += -I$(SRCPATH)
+ccflags-y += -I$(SRCPATH)/../aic8800_bsp
 ccflags-$(CONFIG_RWNX_RADAR) += -DCONFIG_RWNX_RADAR
 ccflags-$(CONFIG_RWNX_MON_DATA) += -DCONFIG_RWNX_MON_DATA
 ccflags-$(CONFIG_RWNX_BFMER) += -DCONFIG_RWNX_BFMER
@@ -162,13 +160,9 @@ ccflags-$(CONFIG_RWNX_SW_PROFILING) += -DCONFIG_RWNX_SW_PROFILING
 ccflags-$(CONFIG_RWNX_MUMIMO_TX) += -DCONFIG_RWNX_MUMIMO_TX
 ccflags-$(CONFIG_RFTEST) += -DCONFIG_RFTEST
 
-ifeq ($(CONFIG_SDIO_SUPPORT), y)
-ccflags-y += -DAICWF_SDIO_SUPPORT
-endif
-
-ifeq ($(CONFIG_USB_SUPPORT), y)
-ccflags-y += -DAICWF_USB_SUPPORT
-endif
+ccflags-$(CONFIG_AIC_BSP_CTRL) += -DAICWF_BSP_CTRL
+ccflags-$(CONFIG_SDIO_SUPPORT) += -DAICWF_SDIO_SUPPORT
+ccflags-$(CONFIG_USB_SUPPORT)  += -DAICWF_USB_SUPPORT
 
 ifeq ($(CONFIG_RWNX_MUMIMO_TX), y)
 ccflags-y += -DCONFIG_USER_MAX=2
@@ -189,6 +183,6 @@ endif
 
 ccflags-$(CONFIG_RX_REORDER) += -DAICWF_RX_REORDER
 ccflags-$(CONFIG_ARP_OFFLOAD) += -DAICWF_ARP_OFFLOAD
-ccflags-$(CONFIG_USE_5G) += -DUSE_5G
 ccflags-$(CONFIG_RADAR_DETECT) += -DRADAR_OR_IR_DETECT
 ccflags-$(CONFIG_DOWNLOAD_FW)  += -DCONFIG_DOWNLOAD_FW
+ccflags-$(CONFIG_USB_BT)  += -DCONFIG_USB_BT

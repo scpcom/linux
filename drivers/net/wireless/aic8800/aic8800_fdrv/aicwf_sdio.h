@@ -43,7 +43,8 @@ typedef enum {
 	SDIO_TYPE_DATA         = 0X00,
 	SDIO_TYPE_CFG          = 0X10,
 	SDIO_TYPE_CFG_CMD_RSP  = 0X11,
-	SDIO_TYPE_CFG_DATA_CFM = 0X12
+	SDIO_TYPE_CFG_DATA_CFM = 0X12,
+	SDIO_TYPE_CFG_PRINT    = 0X13
 } sdio_type;
 
 struct rwnx_hw;
@@ -89,6 +90,7 @@ int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv);
 void aicwf_sdio_aggr_send(struct aicwf_tx_priv *tx_priv);
 void aicwf_sdio_aggrbuf_reset(struct aicwf_tx_priv *tx_priv);
 extern void aicwf_hostif_ready(void);
+extern void aicwf_hostif_fail(void);
 #ifdef CONFIG_PLATFORM_NANOPI
 extern void extern_wifi_set_enable(int is_on);
 extern void sdio_reinit(void);

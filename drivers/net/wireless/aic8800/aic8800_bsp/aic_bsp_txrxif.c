@@ -16,7 +16,7 @@
 #include <linux/debugfs.h>
 #include <linux/atomic.h>
 #include <linux/vmalloc.h>
-#include "aicsdio_txrxif.h"
+#include "aic_bsp_txrxif.h"
 #include "aic_bsp_driver.h"
 
 int aicwf_bus_init(uint bus_hdrlen, struct device *dev)
@@ -25,34 +25,32 @@ int aicwf_bus_init(uint bus_hdrlen, struct device *dev)
 	struct aicwf_bus *bus_if;
 
 	if (!dev) {
-		txrx_err("device not found\n");
+		bsp_err("device not found\n");
 		return -1;
 	}
 	bus_if = dev_get_drvdata(dev);
 	bus_if->cmd_buf = kzalloc(CMD_BUF_MAX, GFP_KERNEL);
 	if (!bus_if->cmd_buf) {
 		ret = -ENOMEM;
-		txrx_err("proto_attach failed\n");
+		bsp_err("proto_attach failed\n");
 		goto fail;
 	}
 	memset(bus_if->cmd_buf, '\0', CMD_BUF_MAX);
 
 	init_completion(&bus_if->bustx_trgg);
 	init_completion(&bus_if->busrx_trgg);
-#ifdef AICWF_SDIO_SUPPORT
-	bus_if->bustx_thread = kthread_run(aicwf_sdio_bustx_thread, (void *)bus_if, "aicwf_bustx_thread");
-	bus_if->busrx_thread = kthread_run(aicwf_sdio_busrx_thread, (void *)bus_if->bus_priv.sdio->rx_priv, "aicwf_busrx_thread");
-#endif
+	bus_if->bustx_thread = kthread_run(aicwf_bustx_thread, (void *)bus_if, "aicwf_bustx_thread");
+	bus_if->busrx_thread = kthread_run(aicwf_busrx_thread, (void *)bus_if->bus_priv.dev->rx_priv, "aicwf_busrx_thread");
 
 	if (IS_ERR(bus_if->bustx_thread)) {
 		bus_if->bustx_thread  = NULL;
-		txrx_err("aicwf_bustx_thread run fail\n");
+		bsp_err("aicwf_bustx_thread run fail\n");
 		goto fail;
 	}
 
 	if (IS_ERR(bus_if->busrx_thread)) {
 		bus_if->busrx_thread  = NULL;
-		txrx_err("aicwf_bustx_thread run fail\n");
+		bsp_err("aicwf_bustx_thread run fail\n");
 		goto fail;
 	}
 
@@ -66,17 +64,17 @@ fail:
 void aicwf_bus_deinit(struct device *dev)
 {
 	struct aicwf_bus *bus_if;
-	struct aic_sdio_dev *sdiodev;
+	struct priv_dev *aicdev;
 
 	if (!dev) {
-		txrx_err("device not found\n");
+		bsp_err("device not found\n");
 		return;
 	}
-	printk("%s", __func__);
+	bsp_dbg("%s", __func__);
 	bus_if = dev_get_drvdata(dev);
 	aicwf_bus_stop(bus_if);
 
-	sdiodev = bus_if->bus_priv.sdio;
+	aicdev = bus_if->bus_priv.dev;
 
 	if (bus_if->cmd_buf) {
 		kfree(bus_if->cmd_buf);
@@ -84,17 +82,16 @@ void aicwf_bus_deinit(struct device *dev)
 	}
 
 	if (bus_if->bustx_thread) {
-		complete(&bus_if->bustx_trgg);
+		complete_all(&bus_if->bustx_trgg);
 		kthread_stop(bus_if->bustx_thread);
 		bus_if->bustx_thread = NULL;
 	}
-	printk("exit %s\n", __func__);
 }
 
 void aicwf_frame_tx(void *dev, struct sk_buff *skb)
 {
-	struct aic_sdio_dev *sdiodev = (struct aic_sdio_dev *)dev;
-	aicwf_bus_txdata(sdiodev->bus_if, skb);
+	struct priv_dev *aicdev = (struct priv_dev *)dev;
+	aicwf_bus_txdata(aicdev->bus_if, skb);
 }
 
 struct aicwf_tx_priv *aicwf_tx_init(void *arg)
@@ -105,12 +102,12 @@ struct aicwf_tx_priv *aicwf_tx_init(void *arg)
 	if (!tx_priv)
 		return NULL;
 
-	tx_priv->sdiodev = (struct aic_sdio_dev *)arg;
+	tx_priv->aicdev = (struct priv_dev *)arg;
 
 	atomic_set(&tx_priv->aggr_count, 0);
 	tx_priv->aggr_buf = dev_alloc_skb(MAX_AGGR_TXPKT_LEN);
 	if (!tx_priv->aggr_buf) {
-		txrx_err("Alloc bus->txdata_buf failed!\n");
+		bsp_err("Alloc bus->txdata_buf failed!\n");
 		kfree(tx_priv);
 		return NULL;
 	}
@@ -165,14 +162,14 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 		skb = aicwf_frame_dequeue(&rx_priv->rxq);
 		spin_unlock_irqrestore(&rx_priv->rxqlock, flags);
 		if (skb == NULL) {
-			txrx_err("skb_error\r\n");
+			bsp_err("skb_error\r\n");
 			break;
 		}
 		while (aicwf_another_ptk(skb)) {
 			data = skb->data;
 			pkt_len = (*skb->data | (*(skb->data + 1) << 8));
 
-			if ((skb->data[2] & SDIO_TYPE_CFG) != SDIO_TYPE_CFG) { // type : data
+			if ((skb->data[2] & PRIV_TYPE_CFG) != PRIV_TYPE_CFG) { // type : data
 				aggr_len = pkt_len + RX_HWHRD_LEN;
 
 				if (aggr_len & (RX_ALIGNMENT - 1))
@@ -182,16 +179,13 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 
 				skb_inblock = __dev_alloc_skb(aggr_len + CCMP_OR_WEP_INFO, GFP_KERNEL);//8 is for ccmp mic or wep icv
 				if (skb_inblock == NULL) {
-					txrx_err("no more space!\n");
+					bsp_err("no more space!\n");
 					aicwf_dev_skb_free(skb);
 					return -EBADE;
 				}
 
 				skb_put(skb_inblock, aggr_len);
 				memcpy(skb_inblock->data, data, aggr_len);
-				#if 0
-				rwnx_rxdataind_aicwf(rx_priv->sdiodev->rwnx_hw, skb_inblock, (void *)rx_priv);
-				#endif
 				skb_pull(skb, adjust_len);
 			} else { //  type : config
 				aggr_len = pkt_len;
@@ -201,30 +195,30 @@ int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv)
 				else
 					adjust_len = aggr_len;
 
-			   skb_inblock = __dev_alloc_skb(aggr_len+4, GFP_KERNEL);
-			   if (skb_inblock == NULL) {
-				   txrx_err("no more space!\n");
-				   aicwf_dev_skb_free(skb);
-				   return -EBADE;
+				skb_inblock = __dev_alloc_skb(aggr_len+4, GFP_KERNEL);
+				if (skb_inblock == NULL) {
+					bsp_err("no more space!\n");
+					aicwf_dev_skb_free(skb);
+					return -EBADE;
 				}
 
 				skb_put(skb_inblock, aggr_len+4);
 				memcpy(skb_inblock->data, data, aggr_len+4);
-				if ((*(skb_inblock->data + 2) & 0x7f) == SDIO_TYPE_CFG_CMD_RSP)
-					rwnx_rx_handle_msg(rx_priv->sdiodev, (struct ipc_e2a_msg *)(skb_inblock->data + 4));
-				#if 0
-				if ((*(skb_inblock->data + 2) & 0x7f) == SDIO_TYPE_CFG_DATA_CFM)
-					aicwf_sdio_host_tx_cfm_handler(&(rx_priv->sdiodev->rwnx_hw->sdio_env), (u32 *)(skb_inblock->data + 4));
-				#endif
+				if ((*(skb_inblock->data + 2) & 0x7f) == PRIV_TYPE_CFG_CMD_RSP)
+					rwnx_rx_handle_msg(rx_priv->aicdev, (struct ipc_e2a_msg *)(skb_inblock->data + 4));
 				skb_pull(skb, adjust_len+4);
 			}
 		}
 
+		/* skb_inblock no used currently, just free it! */
+		dev_kfree_skb(skb_inblock);
 		dev_kfree_skb(skb);
 		atomic_dec(&rx_priv->rx_cnt);
 	}
 
-	aicwf_sdio_pwr_stctl(rx_priv->sdiodev, SDIO_ACTIVE_ST);
+#ifdef AICWF_SDIO_SUPPORT
+	aicwf_sdio_pwr_stctl(rx_priv->aicdev, SDIO_ACTIVE_ST);
+#endif
 
 	return ret;
 }
@@ -256,7 +250,7 @@ struct aicwf_rx_priv *aicwf_rx_init(void *arg)
 	if (!rx_priv)
 		return NULL;
 
-	rx_priv->sdiodev = (struct aic_sdio_dev *)arg;
+	rx_priv->aicdev = (struct priv_dev *)arg;
 	aicwf_frame_queue_init(&rx_priv->rxq, 1, MAX_RXQLEN);
 	spin_lock_init(&rx_priv->rxqlock);
 	atomic_set(&rx_priv->rx_cnt, 0);
@@ -265,7 +259,7 @@ struct aicwf_rx_priv *aicwf_rx_init(void *arg)
 	spin_lock_init(&rx_priv->freeq_lock);
 	rx_priv->recv_frames = aicwf_rxframe_queue_init(&rx_priv->rxframes_freequeue, MAX_REORD_RXFRAME);
 	if (!rx_priv->recv_frames) {
-		txrx_err("no enough buffer for free recv frame queue!\n");
+		bsp_err("no enough buffer for free recv frame queue!\n");
 		kfree(rx_priv);
 		return NULL;
 	}
@@ -287,10 +281,10 @@ static void aicwf_recvframe_queue_deinit(struct list_head *q)
 
 void aicwf_rx_deinit(struct aicwf_rx_priv *rx_priv)
 {
-	if (rx_priv->sdiodev->bus_if->busrx_thread) {
-		complete(&rx_priv->sdiodev->bus_if->busrx_trgg);
-		kthread_stop(rx_priv->sdiodev->bus_if->busrx_thread);
-		rx_priv->sdiodev->bus_if->busrx_thread = NULL;
+	if (rx_priv->aicdev->bus_if->busrx_thread) {
+		complete_all(&rx_priv->aicdev->bus_if->busrx_trgg);
+		kthread_stop(rx_priv->aicdev->bus_if->busrx_thread);
+		rx_priv->aicdev->bus_if->busrx_thread = NULL;
 	}
 
 	aicwf_frame_queue_flush(&rx_priv->rxq);
@@ -451,7 +445,7 @@ bool aicwf_frame_enq(struct device *dev, struct frame_queue *q, struct sk_buff *
 
 		p = aicwf_frame_queue_penq(q, prio_modified, pkt);
 		if (p == NULL)
-			txrx_err("failed\n");
+			bsp_err("failed\n");
 	}
 
 	return p != NULL;

@@ -12,6 +12,7 @@
 #define _RWNX_PLATFORM_H_
 
 #include <linux/pci.h>
+#include "lmac_msg.h"
 
 #define RWNX_CONFIG_FW_NAME             "rwnx_settings.ini"
 #define RWNX_PHY_CONFIG_TRD_NAME        "rwnx_trident.ini"
@@ -109,6 +110,9 @@ void rwnx_platform_off(struct rwnx_hw *rwnx_hw, void **config);
 
 int rwnx_platform_register_drv(void);
 void rwnx_platform_unregister_drv(void);
+
+void get_userconfig_txpwr_idx(txpwr_idx_conf_t *txpwr_idx);
+void get_userconfig_txpwr_ofst(txpwr_ofst_conf_t *txpwr_ofst);
 
 extern struct device *rwnx_platform_get_dev(struct rwnx_plat *rwnx_plat);
 

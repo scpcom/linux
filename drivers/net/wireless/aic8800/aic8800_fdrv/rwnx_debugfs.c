@@ -22,6 +22,7 @@
 #include "rwnx_radar.h"
 #include "rwnx_tx.h"
 
+#ifdef CONFIG_DEBUG_FS
 #ifdef CONFIG_RWNX_FULLMAC
 static ssize_t rwnx_dbgfs_stats_read(struct file *file,
 									 char __user *user_buf,
@@ -281,17 +282,17 @@ static int rwnx_dbgfs_txq(char *buf, size_t size, struct rwnx_txq *txq, int type
 static int rwnx_dbgfs_txq_sta(char *buf, size_t size, struct rwnx_sta *rwnx_sta,
 							  struct rwnx_hw *rwnx_hw)
 {
-    int tid, res, idx = 0;
-    struct rwnx_txq *txq;
+	int tid, res, idx = 0;
+	struct rwnx_txq *txq;
 
-    res = scnprintf(&buf[idx], size, "\n" STA_HDR,
+	res = scnprintf(&buf[idx], size, "\n" STA_HDR,
 			rwnx_sta->sta_idx,
 #ifdef CONFIG_RWNX_FULLMAC
 	rwnx_sta->mac_addr
 #endif /* CONFIG_RWNX_FULLMAC */
 			);
-    idx += res;
-    size -= res;
+	idx += res;
+	size -= res;
 
 #ifdef CONFIG_RWNX_FULLMAC
 	if (rwnx_sta->ps.active) {
@@ -475,26 +476,29 @@ static ssize_t rwnx_dbgfs_acsinfo_read(struct file *file,
 										   char __user *user_buf,
 										   size_t count, loff_t *ppos)
 {
-    struct rwnx_hw *priv = file->private_data;
-    #ifdef CONFIG_RWNX_FULLMAC
-    struct wiphy *wiphy = priv->wiphy;
-    #endif //CONFIG_RWNX_FULLMAC
-    char buf[(SCAN_CHANNEL_MAX + 1) * 43];
-    int survey_cnt = 0;
-    int len = 0;
-    int band, chan_cnt;
+	struct rwnx_hw *priv = file->private_data;
+#ifdef CONFIG_RWNX_FULLMAC
+	struct wiphy *wiphy = priv->wiphy;
+#endif //CONFIG_RWNX_FULLMAC
+	int survey_cnt = 0;
+	int len = 0;
+	int band, chan_cnt;
+	int band_max = NL80211_BAND_5GHZ;
+	char *buf = (char *)vmalloc((SCAN_CHANNEL_MAX + 1) * 43);
+	ssize_t size;
+
+	if (!buf)
+		return 0;
+
+	if (priv->band_5g_support)
+		band_max = NL80211_BAND_5GHZ + 1;
 
 	mutex_lock(&priv->dbgdump_elem.mutex);
 
 	len += scnprintf(buf, min_t(size_t, sizeof(buf) - 1, count),
 					 "FREQ    TIME(ms)    BUSY(ms)    NOISE(dBm)\n");
 
-
-	#ifdef USE_5G
-	for (band = NL80211_BAND_2GHZ; band <= NL80211_BAND_5GHZ; band++) {
-	#else
-	for (band = NL80211_BAND_2GHZ; band < NL80211_BAND_5GHZ; band++) {
-	#endif
+	for (band = NL80211_BAND_2GHZ; band < band_max; band++) {
 		for (chan_cnt = 0; chan_cnt < wiphy->bands[band]->n_channels; chan_cnt++) {
 			struct rwnx_survey_info *p_survey_info = &priv->survey[survey_cnt];
 			struct ieee80211_channel *p_chan = &wiphy->bands[band]->channels[chan_cnt];
@@ -518,7 +522,10 @@ static ssize_t rwnx_dbgfs_acsinfo_read(struct file *file,
 
 	mutex_unlock(&priv->dbgdump_elem.mutex);
 
-	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	size = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	vfree(buf);
+
+	return size;
 }
 
 DEBUGFS_READ_FILE_OPS(acsinfo);
@@ -722,14 +729,14 @@ static ssize_t rwnx_dbgfs_oppps_write(struct file *file,
 		return -EFAULT;
 	buf[len] = '\0';
 
-    /* Read the written CT Window (provided in ms) value */
-    if (sscanf(buf, "ctw=%d", &ctw) > 0) {
-	/* Check if at least one VIF is configured as P2P GO */
-	list_for_each_entry(rw_vif, &rw_hw->vifs, list) {
+	/* Read the written CT Window (provided in ms) value */
+	if (sscanf(buf, "ctw=%d", &ctw) > 0) {
+		/* Check if at least one VIF is configured as P2P GO */
+		list_for_each_entry(rw_vif, &rw_hw->vifs, list) {
 #ifdef CONFIG_RWNX_FULLMAC
-	if (RWNX_VIF_TYPE(rw_vif) == NL80211_IFTYPE_P2P_GO) {
+			if (RWNX_VIF_TYPE(rw_vif) == NL80211_IFTYPE_P2P_GO) {
 #endif /* CONFIG_RWNX_FULLMAC */
-		struct mm_set_p2p_oppps_cfm cfm;
+				struct mm_set_p2p_oppps_cfm cfm;
 
 				/* Forward request to the embedded and wait for confirmation */
 				rwnx_send_p2p_oppps_req(rw_hw, rw_vif, (u8)ctw, &cfm);
@@ -758,8 +765,8 @@ static ssize_t rwnx_dbgfs_noa_write(struct file *file,
 		return -EFAULT;
 	buf[len] = '\0';
 
-    /* Read the written NOA information */
-    if (sscanf(buf, "count=%d interval=%d duration=%d dyn=%d",
+	/* Read the written NOA information */
+	if (sscanf(buf, "count=%d interval=%d duration=%d dyn=%d",
 		&noa_count, &interval, &duration, &dyn_noa) > 0) {
 	/* Check if at least one VIF is configured as P2P GO */
 	list_for_each_entry(rw_vif, &rw_hw->vifs, list) {
@@ -783,88 +790,49 @@ static ssize_t rwnx_dbgfs_noa_write(struct file *file,
 DEBUGFS_WRITE_FILE_OPS(noa);
 #endif /* CONFIG_RWNX_P2P_DEBUGFS */
 
-struct rwnx_dbgfs_fw_trace {
-	struct rwnx_fw_trace_local_buf lbuf;
-	struct rwnx_fw_trace *trace;
-	struct rwnx_hw *rwnx_hw;
-};
+static char fw_log_buffer[FW_LOG_SIZE];
 
-static int rwnx_dbgfs_fw_trace_open(struct inode *inode, struct file *file)
-{
-	struct rwnx_dbgfs_fw_trace *ltrace = kmalloc(sizeof(*ltrace), GFP_KERNEL);
-	struct rwnx_hw *priv = inode->i_private;
-
-	if (!ltrace)
-		return -ENOMEM;
-
-	if (rwnx_fw_trace_alloc_local(&ltrace->lbuf, 5120)) {
-		kfree(ltrace);
-	}
-
-	ltrace->trace = &priv->debugfs.fw_trace;
-	ltrace->rwnx_hw = priv;
-	file->private_data = ltrace;
-	return 0;
-}
-
-static int rwnx_dbgfs_fw_trace_release(struct inode *inode, struct file *file)
-{
-	struct rwnx_dbgfs_fw_trace *ltrace = file->private_data;
-
-	if (ltrace) {
-		rwnx_fw_trace_free_local(&ltrace->lbuf);
-		kfree(ltrace);
-	}
-
-	return 0;
-}
-
-static ssize_t rwnx_dbgfs_fw_trace_read(struct file *file,
-										char __user *user_buf,
-										size_t count, loff_t *ppos)
-{
-	struct rwnx_dbgfs_fw_trace *ltrace = file->private_data;
-	bool dont_wait = ((file->f_flags & O_NONBLOCK) ||
-					  ltrace->rwnx_hw->debugfs.unregistering);
-
-	return rwnx_fw_trace_read(ltrace->trace, &ltrace->lbuf,
-							  dont_wait, user_buf, count);
-}
-
-static ssize_t rwnx_dbgfs_fw_trace_write(struct file *file,
-										 const char __user *user_buf,
-										 size_t count, loff_t *ppos)
-{
-	struct rwnx_dbgfs_fw_trace *ltrace = file->private_data;
-	int ret;
-
-	ret = _rwnx_fw_trace_reset(ltrace->trace, true);
-	if (ret)
-		return ret;
-
-	return count;
-}
-
-DEBUGFS_READ_WRITE_OPEN_RELEASE_FILE_OPS(fw_trace);
-
-static ssize_t rwnx_dbgfs_fw_trace_level_read(struct file *file,
+static ssize_t rwnx_dbgfs_fw_log_read(struct file *file,
 											  char __user *user_buf,
 											  size_t count, loff_t *ppos)
 {
 	struct rwnx_hw *priv = file->private_data;
-	return rwnx_fw_trace_level_read(&priv->debugfs.fw_trace, user_buf,
-									count, ppos);
+	size_t not_cpy;
+	size_t nb_cpy;
+	char *log = fw_log_buffer;
+
+	printk("%s, %d, %p, %p\n", __func__, priv->debugfs.fw_log.buf.size, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.dataend);
+	//spin_lock_bh(&priv->debugfs.fw_log.lock);
+
+	if ((priv->debugfs.fw_log.buf.start + priv->debugfs.fw_log.buf.size) >= priv->debugfs.fw_log.buf.dataend) {
+		memcpy(log, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.dataend - priv->debugfs.fw_log.buf.start);
+		not_cpy = copy_to_user(user_buf, log, priv->debugfs.fw_log.buf.dataend - priv->debugfs.fw_log.buf.start);
+		nb_cpy = priv->debugfs.fw_log.buf.dataend - priv->debugfs.fw_log.buf.start - not_cpy;
+		priv->debugfs.fw_log.buf.start = priv->debugfs.fw_log.buf.data;
+	} else {
+		memcpy(log, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.size);
+		not_cpy = copy_to_user(user_buf, log, priv->debugfs.fw_log.buf.size);
+		nb_cpy = priv->debugfs.fw_log.buf.size - not_cpy;
+		priv->debugfs.fw_log.buf.start = priv->debugfs.fw_log.buf.start + priv->debugfs.fw_log.buf.size - not_cpy;
+	}
+
+	priv->debugfs.fw_log.buf.size -= nb_cpy;
+	//spin_unlock_bh(&priv->debugfs.fw_log.lock);
+
+	printk("nb_cpy=%lu, not_cpy=%lu, start=%p, end=%p\n", nb_cpy, not_cpy, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.end);
+	return nb_cpy;
 }
 
-static ssize_t rwnx_dbgfs_fw_trace_level_write(struct file *file,
+static ssize_t rwnx_dbgfs_fw_log_write(struct file *file,
 											   const char __user *user_buf,
 											   size_t count, loff_t *ppos)
 {
-	struct rwnx_hw *priv = file->private_data;
-	return rwnx_fw_trace_level_write(&priv->debugfs.fw_trace, user_buf, count);
-}
-DEBUGFS_READ_WRITE_FILE_OPS(fw_trace_level);
+	//struct rwnx_hw *priv = file->private_data;
 
+	printk("%s\n", __func__);
+	return count;
+}
+DEBUGFS_READ_WRITE_FILE_OPS(fw_log);
 
 #ifdef CONFIG_RWNX_RADAR
 static ssize_t rwnx_dbgfs_pulses_read(struct file *file,
@@ -1058,17 +1026,17 @@ static ssize_t rwnx_dbgfs_band_write(struct file *file,
 	char buf[32];
 	int val;
 	size_t len = min_t(size_t, count, sizeof(buf) - 1);
+	int band_max = NL80211_BAND_5GHZ;
+
+	if (priv->band_5g_support)
+		band_max = NL80211_BAND_5GHZ + 1;
 
 	if (copy_from_user(buf, user_buf, len))
 		return -EFAULT;
 
 	buf[len] = '\0';
 
-	#ifdef USE_5G
-	if ((sscanf(buf, "%d", &val) > 0) && (val >= 0) && (val <= NL80211_BAND_5GHZ))
-	#else
-	if ((sscanf(buf, "%d", &val) > 0) && (val >= 0) && (val < NL80211_BAND_5GHZ))
-	#endif
+	if ((sscanf(buf, "%d", &val) > 0) && (val >= 0) && (val < band_max))
 		priv->phy.sec_chan.band = val;
 
 	return count;
@@ -1790,33 +1758,6 @@ DEBUGFS_READ_WRITE_FILE_OPS(last_rx);
 
 #endif /* CONFIG_RWNX_FULLMAC */
 
-/*
- * trace helper
- */
-void rwnx_fw_trace_dump(struct rwnx_hw *rwnx_hw)
-{
-	/* may be called before rwnx_dbgfs_register */
-	if (rwnx_hw->plat->enabled && !rwnx_hw->debugfs.fw_trace.buf.data) {
-		rwnx_fw_trace_buf_init(&rwnx_hw->debugfs.fw_trace.buf,
-							   rwnx_ipc_fw_trace_desc_get(rwnx_hw));
-	}
-
-	if (!rwnx_hw->debugfs.fw_trace.buf.data)
-		return;
-
-	_rwnx_fw_trace_dump(&rwnx_hw->debugfs.fw_trace.buf);
-}
-
-void rwnx_fw_trace_reset(struct rwnx_hw *rwnx_hw)
-{
-	_rwnx_fw_trace_reset(&rwnx_hw->debugfs.fw_trace, true);
-}
-
-void rwnx_dbgfs_trigger_fw_dump(struct rwnx_hw *rwnx_hw, char *reason)
-{
-	rwnx_send_dbg_trigger_req(rwnx_hw, reason);
-}
-
 #ifdef CONFIG_RWNX_FULLMAC
 static void rwnx_rc_stat_work(struct work_struct *ws)
 {
@@ -1948,10 +1889,10 @@ static void rwnx_rc_stat_work(struct work_struct *ws)
 
 	return;
 
-  error_after_dir:
+error_after_dir:
 	debugfs_remove_recursive(rwnx_debugfs->dir_sta[sta_idx]);
 	rwnx_debugfs->dir_sta[sta->sta_idx] = NULL;
-  error:
+error:
 	dev_err(rwnx_hw->dev,
 			"Error while (un)registering debug entry for sta %d\n", sta_idx);
 }
@@ -1987,11 +1928,13 @@ void rwnx_dbgfs_unregister_rc_stat(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta
 int rwnx_dbgfs_register(struct rwnx_hw *rwnx_hw, const char *name)
 {
 #ifdef CONFIG_RWNX_FULLMAC
-    struct dentry *phyd = rwnx_hw->wiphy->debugfsdir;
-    struct dentry *dir_rc;
+	struct dentry *phyd = rwnx_hw->wiphy->debugfsdir;
+	struct dentry *dir_rc;
 #endif /* CONFIG_RWNX_FULLMAC */
-    struct rwnx_debugfs *rwnx_debugfs = &rwnx_hw->debugfs;
-    struct dentry *dir_drv, *dir_diags;
+	struct rwnx_debugfs *rwnx_debugfs = &rwnx_hw->debugfs;
+	struct dentry *dir_drv, *dir_diags;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	dir_drv = debugfs_create_dir(name, phyd);
 	if (!dir_drv)
@@ -2015,12 +1958,12 @@ int rwnx_dbgfs_register(struct rwnx_hw *rwnx_hw, const char *name)
 	memset(rwnx_debugfs->rc_sta, 0xFF, sizeof(rwnx_debugfs->rc_sta));
 #endif
 
-    DEBUGFS_ADD_U32(tcp_pacing_shift, dir_drv, &rwnx_hw->tcp_pacing_shift,
+	DEBUGFS_ADD_U32(tcp_pacing_shift, dir_drv, &rwnx_hw->tcp_pacing_shift,
 			S_IWUSR | S_IRUSR);
-    DEBUGFS_ADD_FILE(stats, dir_drv, S_IWUSR | S_IRUSR);
-    DEBUGFS_ADD_FILE(sys_stats, dir_drv,  S_IRUSR);
-    DEBUGFS_ADD_FILE(txq, dir_drv, S_IRUSR);
-    DEBUGFS_ADD_FILE(acsinfo, dir_drv, S_IRUSR);
+	DEBUGFS_ADD_FILE(stats, dir_drv, S_IWUSR | S_IRUSR);
+	DEBUGFS_ADD_FILE(sys_stats, dir_drv,  S_IRUSR);
+	DEBUGFS_ADD_FILE(txq, dir_drv, S_IRUSR);
+	DEBUGFS_ADD_FILE(acsinfo, dir_drv, S_IRUSR);
 #ifdef CONFIG_RWNX_MUMIMO_TX
 	DEBUGFS_ADD_FILE(mu_group, dir_drv, S_IRUSR);
 #endif
@@ -2040,19 +1983,10 @@ int rwnx_dbgfs_register(struct rwnx_hw *rwnx_hw, const char *name)
 	}
 #endif /* CONFIG_RWNX_P2P_DEBUGFS */
 
-	if (rwnx_dbgfs_register_fw_dump(rwnx_hw, dir_drv, dir_diags))
-		goto err;
-	DEBUGFS_ADD_FILE(fw_dbg, dir_diags, S_IWUSR | S_IRUSR);
-
-	if (!rwnx_fw_trace_init(&rwnx_hw->debugfs.fw_trace,
-							rwnx_ipc_fw_trace_desc_get(rwnx_hw))) {
-		DEBUGFS_ADD_FILE(fw_trace, dir_diags, S_IWUSR | S_IRUSR);
-		if (rwnx_hw->debugfs.fw_trace.buf.nb_compo)
-			DEBUGFS_ADD_FILE(fw_trace_level, dir_diags, S_IWUSR | S_IRUSR);
-	} else {
-		rwnx_debugfs->fw_trace.buf.data = NULL;
+	if (rwnx_hw->fwlog_en) {
+		rwnx_fw_log_init(&rwnx_hw->debugfs.fw_log);
+		DEBUGFS_ADD_FILE(fw_log, dir_drv, S_IWUSR | S_IRUSR);
 	}
-
 #ifdef CONFIG_RWNX_RADAR
 	{
 		struct dentry *dir_radar, *dir_sec;
@@ -2091,10 +2025,7 @@ void rwnx_dbgfs_unregister(struct rwnx_hw *rwnx_hw)
 {
 	struct rwnx_debugfs *rwnx_debugfs = &rwnx_hw->debugfs;
 #ifdef CONFIG_RWNX_FULLMAC
-		struct rwnx_rc_config_save *cfg, *next;
-#endif
-#if defined(AICWF_USB_SUPPORT) || defined(AICWF_SDIO_SUPPORT)
-	return;
+	struct rwnx_rc_config_save *cfg, *next;
 #endif
 
 #ifdef CONFIG_RWNX_FULLMAC
@@ -2104,17 +2035,19 @@ void rwnx_dbgfs_unregister(struct rwnx_hw *rwnx_hw)
 	}
 #endif /* CONFIG_RWNX_FULLMAC */
 
-	rwnx_fw_trace_deinit(&rwnx_hw->debugfs.fw_trace);
+	if (rwnx_hw->fwlog_en)
+		rwnx_fw_log_deinit(&rwnx_hw->debugfs.fw_log);
 
 	if (!rwnx_hw->debugfs.dir)
 		return;
 
 	rwnx_debugfs->unregistering = true;
-	flush_work(&rwnx_debugfs->helper_work);
 #ifdef CONFIG_RWNX_FULLMAC
 	flush_work(&rwnx_debugfs->rc_stat_work);
 #endif
 	debugfs_remove_recursive(rwnx_hw->debugfs.dir);
 	rwnx_hw->debugfs.dir = NULL;
 }
+
+#endif /* CONFIG_DEBUG_FS */
 

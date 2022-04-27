@@ -27,7 +27,7 @@
 /**
  *
  */
- extern int aicwf_sdio_writeb(struct aic_sdio_dev *sdiodev, uint regaddr, u8 val);
+extern int aicwf_sdio_writeb(struct aic_sdio_dev *sdiodev, uint regaddr, u8 val);
 
 static void cmd_dump(const struct rwnx_cmd *cmd)
 {
@@ -208,7 +208,7 @@ static int cmd_mgr_queue(struct rwnx_cmd_mgr *cmd_mgr, struct rwnx_cmd *cmd)
 		}
 		#else
 		unsigned long tout = msecs_to_jiffies(RWNX_80211_CMD_TIMEOUT_MS * cmd_mgr->queue_sz);
-		if (!wait_for_completion_killable_timeout(&cmd->complete, tout)) {
+		if (!wait_for_completion_timeout(&cmd->complete, tout)) {
 			printk(KERN_CRIT"cmd timed-out\n");
 			#ifdef AICWF_SDIO_SUPPORT
 			ret = aicwf_sdio_writeb(sdiodev, SDIOWIFI_WAKEUP_REG, 2);
@@ -308,12 +308,12 @@ void cmd_mgr_task_process(struct work_struct *work)
 			break;
 
 		if (next) {
-		#ifdef AICWF_SDIO_SUPPORT
+#ifdef AICWF_SDIO_SUPPORT
 			struct aic_sdio_dev *sdiodev = container_of(cmd_mgr, struct aic_sdio_dev, cmd_mgr);
-		#endif
-		#ifdef AICWF_USB_SUPPORT
+#endif
+#ifdef AICWF_USB_SUPPORT
 			struct aic_usb_dev *usbdev = container_of(cmd_mgr, struct aic_usb_dev, cmd_mgr);
-		#endif
+#endif
 			next->flags &= ~RWNX_CMD_FLAG_WAIT_PUSH;
 
 			//printk("cmd_process, cmd->id=%d, tkn=%d\r\n",next->reqid, next->tkn);
@@ -326,8 +326,13 @@ void cmd_mgr_task_process(struct work_struct *work)
 			kfree(next->a2e_msg);
 
 			tout = msecs_to_jiffies(RWNX_80211_CMD_TIMEOUT_MS * cmd_mgr->queue_sz);
-			if (!wait_for_completion_killable_timeout(&next->complete, tout)) {
+			if (!wait_for_completion_timeout(&next->complete, tout)) {
 				printk(KERN_CRIT"cmd timed-out\n");
+#ifdef AICWF_SDIO_SUPPORT
+				if (aicwf_sdio_writeb(sdiodev, SDIOWIFI_WAKEUP_REG, 2) < 0) {
+					sdio_err("reg:%d write failed!\n", SDIOWIFI_WAKEUP_REG);
+				}
+#endif
 				cmd_dump(next);
 				spin_lock_bh(&cmd_mgr->lock);
 				cmd_mgr->state = RWNX_CMD_MGR_STATE_CRASHED;
@@ -337,7 +342,7 @@ void cmd_mgr_task_process(struct work_struct *work)
 				}
 				spin_unlock_bh(&cmd_mgr->lock);
 			} else
-		kfree(next);
+				kfree(next);
 		}
 	}
 
@@ -378,7 +383,7 @@ static int cmd_mgr_msgind(struct rwnx_cmd_mgr *cmd_mgr, struct rwnx_cmd_e2amsg *
 	struct rwnx_cmd *cmd;
 	bool found = false;
 
-   // RWNX_DBG(RWNX_FN_ENTRY_STR);
+	// RWNX_DBG(RWNX_FN_ENTRY_STR);
 	trace_msg_recv(msg->id);
 
 	//printk("cmd->id=%x\n", msg->id);
@@ -475,6 +480,8 @@ void rwnx_cmd_mgr_deinit(struct rwnx_cmd_mgr *cmd_mgr)
 	cmd_mgr->print(cmd_mgr);
 	cmd_mgr->drain(cmd_mgr);
 	cmd_mgr->print(cmd_mgr);
+	flush_workqueue(cmd_mgr->cmd_wq);
+	destroy_workqueue(cmd_mgr->cmd_wq);
 	memset(cmd_mgr, 0, sizeof(*cmd_mgr));
 }
 
