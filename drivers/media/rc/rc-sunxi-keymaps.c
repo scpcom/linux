@@ -60,19 +60,19 @@ static void init_addr(u32 *addr, u32 addr_num)
 #endif
 
 #ifdef CONFIG_SUNXI_KEYMAPPING_SUPPORT
-int init_sunxi_ir_map_ext(void *addr, int num)
+int init_sunxi_irrx_map_ext(void *addr, int num)
 {
 	init_addr(addr, num);
 	return rc_map_register(&sunxi_map);
 }
 #else
-int init_sunxi_ir_map(void)
+int init_sunxi_irrx_map(void)
 {
 	return rc_map_register(&sunxi_map);
 }
 #endif
 
-void exit_sunxi_ir_map(void)
+void exit_sunxi_irrx_map(void)
 {
 	rc_map_unregister(&sunxi_map);
 }

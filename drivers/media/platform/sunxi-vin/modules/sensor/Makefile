@@ -35,3 +35,4 @@ obj-m			+= nvp6158/
 #obj-m			+= rn6854m_mipi.o
 #obj-m			+= tp9950.o
 #obj-m			+= sc2232_mipi.o
+obj-y			+= n5_dvp.o

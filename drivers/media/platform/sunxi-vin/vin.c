@@ -2089,7 +2089,8 @@ static void __exit vin_exit(void)
 	vin_log(VIN_LOG_MD, "vin_exit end\n");
 }
 
-module_init(vin_init);
+late_initcall(vin_init);
+//module_init(vin_init);
 module_exit(vin_exit);
 
 MODULE_AUTHOR("yangfeng");

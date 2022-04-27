@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  *
  */
-
+//#define DEBUG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -35,21 +35,22 @@
 #include <asm/io.h>
 #include "sunxi-ir-tx.h"
 
-static u32 debug_mask = 1;
-#define dprintk(level_mask, fmt, arg...)				\
-do {									\
-	if (unlikely(debug_mask & level_mask))				\
-		pr_warn("%s()%d - "fmt, __func__, __LINE__, ##arg);	\
-} while (0)
-
-#define IRTX_ERR(fmt, arg...) pr_err("%s()%d - "fmt, __func__, __LINE__, ##arg)
+static u32 sunxi_irtx_regs_offset[] = {
+	IR_TX_MCR,
+	IR_TX_CR,
+	IR_TX_IDC_H,
+	IR_TX_IDC_L,
+	IR_TX_STAR,
+	IR_TX_INTC,
+	IR_TX_GLR,
+};
 
 struct ir_raw_buffer {
 	unsigned int tx_dcnt;
 	unsigned char tx_buf[IR_TX_RAW_BUF_SIZE];
 };
 
-struct sunxi_ir_tx_data {
+struct sunxi_irtx {
 	void __iomem *reg_base;
 	struct platform_device	*pdev;
 	struct rc_dev *rcdev;
@@ -57,14 +58,29 @@ struct sunxi_ir_tx_data {
 	struct clk *pclk;
 	struct clk *mclk;
 	struct reset_control *reset;
-	struct regulator *suply;
+	struct regulator *supply;
 	struct pinctrl *pctrl;
-	unsigned int suply_vol;
+	unsigned int supply_vol;
 	int irq_num;
+	struct ir_raw_buffer ir_rawbuf;
+	u32 regs_backup[ARRAY_SIZE(sunxi_irtx_regs_offset)];
 };
 
-static struct sunxi_ir_tx_data *ir_tx_data;
-static struct ir_raw_buffer     ir_rawbuf;
+static inline void sunxi_irtx_save_regs(struct sunxi_irtx *chip)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(sunxi_irtx_regs_offset); i++)
+		chip->regs_backup[i] = readl(chip->reg_base + sunxi_irtx_regs_offset[i]);
+}
+
+static inline void sunxi_irtx_restore_regs(struct sunxi_irtx *chip)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(sunxi_irtx_regs_offset); i++)
+		writel(chip->regs_backup[i], chip->reg_base + sunxi_irtx_regs_offset[i]);
+}
 
 /*
  * one pulse cycle(=10.666666us) is not an integer, so in order to
@@ -72,54 +88,58 @@ static struct ir_raw_buffer     ir_rawbuf;
  */
 static unsigned int three_pulse_cycle = 32;
 
-static inline int ir_tx_fifo_empty(void)
+static inline bool irtx_fifo_empty(struct sunxi_irtx *chip)
 {
 	unsigned int reg_val;
+	struct device *dev = &chip->pdev->dev;
 
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_TACR);
-	dprintk(DEBUG_INFO, "%3u bytes fifo available\n", reg_val);
+	reg_val = readl(chip->reg_base + IR_TX_TACR);
+	dev_dbg(dev, "%3u bytes fifo available\n", reg_val);
 
 	return (reg_val == IR_TX_FIFO_SIZE);
 }
 
-static inline int ir_tx_fifo_full(void)
+static inline bool irtx_fifo_full(struct sunxi_irtx *chip)
 {
 	unsigned int reg_val;
+	struct device *dev = &chip->pdev->dev;
 
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_TACR);
-	dprintk(DEBUG_INFO, "%3u bytes fifo available\n", reg_val);
+	reg_val = readl(chip->reg_base + IR_TX_TACR);
+	dev_dbg(dev, "%3u bytes fifo available\n", reg_val);
 
 	return (reg_val == 0);
 }
 
-static inline void ir_tx_reset_rawbuffer(void)
+static inline void sunxi_irtx_reset_rawbuffer(struct sunxi_irtx *chip)
 {
 	int i;
 
-	ir_rawbuf.tx_dcnt = 0;
+	chip->ir_rawbuf.tx_dcnt = 0;
 	for (i = 0; i < IR_TX_RAW_BUF_SIZE; i++)
-		ir_rawbuf.tx_buf[i] = 0;
+		chip->ir_rawbuf.tx_buf[i] = 0;
 }
 
+/* FIXME: The NEC coding process is wrong and needs to be fixed  */
+#if 0
 /**
  * This function implements encoding flow of NEC protocol,
  * just used to test sunxi ir-tx's basic function.
  */
-void ir_tx_packet_handler(unsigned char address, unsigned char command)
+void irtx_packet_handler(unsigned char address, unsigned char command)
 {
 	unsigned int  i, j;
 	unsigned int  count = 0;
 	unsigned char buffer[256];
 	unsigned char tx_code[4];
 
-	ir_tx_reset_rawbuffer();
+	sunxi_irtx_reset_rawbuffer();
 
 	tx_code[0] = address;
 	tx_code[1] = ~address;
 	tx_code[2] = command;
 	tx_code[3] = ~command;
 
-	dprintk(DEBUG_INFO, "addr: 0x%x  addr': 0x%x  cmd: 0x%x  cmd': 0x%x\n",
+	dev_dbg(chip->pdev->dev, "addr: 0x%x  addr': 0x%x  cmd: 0x%x  cmd': 0x%x\n",
 			tx_code[0], tx_code[1], tx_code[2], tx_code[3]);
 
 	// go encoding
@@ -175,290 +195,235 @@ void ir_tx_packet_handler(unsigned char address, unsigned char command)
 	}
 
 	for (i = 0; i < count; i++)
-		ir_rawbuf.tx_buf[ir_rawbuf.tx_dcnt++] = buffer[i];
+		chip->ir_rawbuf.tx_buf[chip->ir_rawbuf.tx_dcnt++] = buffer[i];
 
-	dprintk(DEBUG_INFO, "tx_dcnt = %d\n", ir_rawbuf.tx_dcnt);
+	dev_dbg(chip->pdev->dev, "tx_dcnt = %d\n", chip->ir_rawbuf.tx_dcnt);
 }
+#endif
 
-static int send_ir_code(void)
+static int sunxi_send_ir_code(struct sunxi_irtx *chip)
 {
 	unsigned int i, idle_threshold;
 	unsigned int reg_val;
+	struct device *dev = &chip->pdev->dev;
 
-	dprintk(DEBUG_INFO, "enter\n");
+	dev_dbg(dev, "enter\n");
 
 	/* reset transmit and flush fifo */
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_GLR);
-	reg_val |= 0x02;
-	writel(reg_val, ir_tx_data->reg_base + IR_TX_GLR);
+	reg_val = readl(chip->reg_base + IR_TX_GLR);
+	reg_val |= BIT(1);
+	writel(reg_val, chip->reg_base + IR_TX_GLR);
 
 	/* get idle threshold */
-	idle_threshold = (readl(ir_tx_data->reg_base + IR_TX_IDC_H) << 8)
-		| readl(ir_tx_data->reg_base + IR_TX_IDC_L);
-	dprintk(DEBUG_INFO, "idle_threshold = %d\n", idle_threshold);
+	idle_threshold = (readl(chip->reg_base + IR_TX_IDC_H) << 8)
+		| readl(chip->reg_base + IR_TX_IDC_L);
+	dev_dbg(dev, "idle_threshold = %d\n", idle_threshold);
 
 	/* set transmit threshold */
-	writel((ir_rawbuf.tx_dcnt - 1), ir_tx_data->reg_base + IR_TX_TR);
+	writel((chip->ir_rawbuf.tx_dcnt - 1), chip->reg_base + IR_TX_TR);
 
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_GLR   = 0x%2x\n", IR_TX_GLR,
-			readl(ir_tx_data->reg_base + IR_TX_GLR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_MCR   = 0x%2x\n", IR_TX_MCR,
-			readl(ir_tx_data->reg_base + IR_TX_MCR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_CR    = 0x%2x\n", IR_TX_CR,
-			readl(ir_tx_data->reg_base + IR_TX_CR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_IDC_H = 0x%2x\n", IR_TX_IDC_H,
-			readl(ir_tx_data->reg_base + IR_TX_IDC_H));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_IDC_L = 0x%2x\n", IR_TX_IDC_L,
-			readl(ir_tx_data->reg_base + IR_TX_IDC_L));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_ICR_H = 0x%2x\n", IR_TX_ICR_H,
-			readl(ir_tx_data->reg_base + IR_TX_ICR_H));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_ICR_L = 0x%2x\n", IR_TX_ICR_L,
-			readl(ir_tx_data->reg_base + IR_TX_ICR_L));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TELR  = 0x%2x\n", IR_TX_TELR,
-			readl(ir_tx_data->reg_base + IR_TX_TELR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_INTC  = 0x%2x\n", IR_TX_INTC,
-			readl(ir_tx_data->reg_base + IR_TX_INTC));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TACR  = 0x%2x\n", IR_TX_TACR,
-			readl(ir_tx_data->reg_base + IR_TX_TACR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_STAR  = 0x%2x\n", IR_TX_STAR,
-			readl(ir_tx_data->reg_base + IR_TX_STAR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TR    = 0x%2x\n", IR_TX_TR,
-			readl(ir_tx_data->reg_base + IR_TX_TR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_DMAC  = 0x%2x\n", IR_TX_DMAC,
-			readl(ir_tx_data->reg_base + IR_TX_DMAC));
-
-	if (ir_rawbuf.tx_dcnt <= IR_TX_FIFO_SIZE) {
-		for (i = 0; i < ir_rawbuf.tx_dcnt; i++) {
-			writeb(ir_rawbuf.tx_buf[i],
-					ir_tx_data->reg_base + IR_TX_FIFO_DR);
-		}
-	} else {
-		dprintk(DEBUG_INFO, "invalid packet\n");
+	if (chip->ir_rawbuf.tx_dcnt > IR_TX_FIFO_SIZE) {
+		dev_err(dev, "invalid packet\n");
 		return -1;
 	}
+	for (i = 0; i < chip->ir_rawbuf.tx_dcnt; i++) {
+		writeb(chip->ir_rawbuf.tx_buf[i],
+				chip->reg_base + IR_TX_FIFO_DR);
+	}
 
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_TACR);
-	dprintk(DEBUG_INFO, "%3u bytes fifo available\n", reg_val);
+	reg_val = readl(chip->reg_base + IR_TX_TACR);
+	dev_dbg(dev, "%3u bytes fifo available\n", reg_val);
 
 	if (IR_TX_CYCLE_TYPE) {
-		for (i = 0; i < ir_rawbuf.tx_dcnt; i++)
-			dprintk(DEBUG_INFO, "%d, ir txbuffer code = 0x%x!\n",
-					i, ir_rawbuf.tx_buf[i]);
-		reg_val = readl(ir_tx_data->reg_base + IR_TX_CR);
+		for (i = 0; i < chip->ir_rawbuf.tx_dcnt; i++)
+			dev_dbg(dev, "%d, ir txbuffer code = 0x%x!\n",
+					i, chip->ir_rawbuf.tx_buf[i]);
+		reg_val = readl(chip->reg_base + IR_TX_CR);
 		reg_val |= (0x01 << 7);
-		writel(reg_val, ir_tx_data->reg_base + IR_TX_CR);
+		writel(reg_val, chip->reg_base + IR_TX_CR);
 	} else {
-		while (!ir_tx_fifo_empty()) {
-			reg_val = readl(ir_tx_data->reg_base + IR_TX_TACR);
-			dprintk(DEBUG_INFO,
-				"fifo under run. %3u bytes fifo available\n",
+		while (!irtx_fifo_empty(chip)) {
+			reg_val = readl(chip->reg_base + IR_TX_TACR);
+			dev_dbg(dev, "fifo under run. %3u bytes fifo available\n",
 				reg_val);
 		}
 	}
 
 	/* wait idle finish */
-	while ((readl(ir_tx_data->reg_base + IR_TX_ICR_H) << 8
-				| readl(ir_tx_data->reg_base + IR_TX_ICR_L))
+	while ((readl(chip->reg_base + IR_TX_ICR_H) << 8
+				| readl(chip->reg_base + IR_TX_ICR_L))
 				< idle_threshold)
-		dprintk(DEBUG_INFO, "wait idle\n");
+		dev_dbg(dev, "wait idle\n");
 
-	dprintk(DEBUG_INFO, "finish\n");
+	dev_dbg(dev, "finish\n");
 
 	return 0;
 }
 
-static inline unsigned int ir_tx_get_intsta(void)
+static irqreturn_t sunxi_irtx_isr(int irqno, void *dev_id)
 {
-	return readl(ir_tx_data->reg_base + IR_TX_STAR);
-}
-
-static inline void ir_tx_clr_intsta(unsigned int bitmap)
-{
-	unsigned int reg_val;
-
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_STAR);
-	reg_val &= ~0xff;
-	reg_val |= bitmap & 0xff;
-	writel(reg_val, ir_tx_data->reg_base + IR_TX_STAR);
-}
-
-static irqreturn_t ir_tx_irq_service(int irqno, void *dev_id)
-{
+	struct sunxi_irtx *chip = (struct sunxi_irtx *)dev_id;
 	unsigned int intsta;
+	struct device *dev = &chip->pdev->dev;
 
-	intsta = ir_tx_get_intsta();
-	dprintk(DEBUG_INFO, "IR TX IRQ Serve %#x\n", intsta);
+	/* Clear the interrupt */
+	intsta = readl(chip->reg_base + IR_TX_STAR);
+	dev_dbg(dev, "IR TX IRQ Serve %#x\n", intsta);
 
-	ir_tx_clr_intsta(intsta);
+	intsta |= intsta & 0xff;
+	writel(intsta, chip->reg_base + IR_TX_STAR);
 
 	return IRQ_HANDLED;
 }
 
-static void ir_tx_reg_clear(struct sunxi_ir_tx_data *ir_tx_data)
+static void sunxi_irtx_reg_clear(struct sunxi_irtx *chip)
 {
-	writel(0, ir_tx_data->reg_base + IR_TX_GLR);
+	writel(0, chip->reg_base + IR_TX_GLR);
 }
 
-static void ir_tx_reg_cfg(struct sunxi_ir_tx_data *ir_tx_data)
+static void sunxi_irtx_reg_cfg(struct sunxi_irtx *chip)
 {
-	writel(IR_TX_MC_VALUE, ir_tx_data->reg_base + IR_TX_MCR);
-	writel(IR_TX_CLK_VALUE, ir_tx_data->reg_base + IR_TX_CR);
-	writel(IR_TX_IDC_H_VALUE, ir_tx_data->reg_base + IR_TX_IDC_H);
-	writel(IR_TX_IDC_L_VALUE, ir_tx_data->reg_base + IR_TX_IDC_L);
-	writel(IR_TX_STA_VALUE, ir_tx_data->reg_base + IR_TX_STAR);
-	writel(IR_TX_INT_C_VALUE, ir_tx_data->reg_base + IR_TX_INTC);
-	writel(IR_TX_GL_VALUE, ir_tx_data->reg_base + IR_TX_GLR);
+	struct device *dev = &chip->pdev->dev;
 
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_GLR   = 0x%2x\n", IR_TX_GLR,
-			readl(ir_tx_data->reg_base + IR_TX_GLR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_MCR   = 0x%2x\n", IR_TX_MCR,
-			readl(ir_tx_data->reg_base + IR_TX_MCR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_CR    = 0x%2x\n", IR_TX_CR,
-			readl(ir_tx_data->reg_base + IR_TX_CR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_IDC_H = 0x%2x\n", IR_TX_IDC_H,
-			readl(ir_tx_data->reg_base + IR_TX_IDC_H));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_IDC_L = 0x%2x\n", IR_TX_IDC_L,
-			readl(ir_tx_data->reg_base + IR_TX_IDC_L));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_ICR_H = 0x%2x\n", IR_TX_ICR_H,
-			readl(ir_tx_data->reg_base + IR_TX_ICR_H));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_ICR_L = 0x%2x\n", IR_TX_ICR_L,
-			readl(ir_tx_data->reg_base + IR_TX_ICR_L));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TELR  = 0x%2x\n", IR_TX_TELR,
-			readl(ir_tx_data->reg_base + IR_TX_TELR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_INTC  = 0x%2x\n", IR_TX_INTC,
-			readl(ir_tx_data->reg_base + IR_TX_INTC));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TACR  = 0x%2x\n", IR_TX_TACR,
-			readl(ir_tx_data->reg_base + IR_TX_TACR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_STAR  = 0x%2x\n", IR_TX_STAR,
-			readl(ir_tx_data->reg_base + IR_TX_STAR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_TR    = 0x%2x\n", IR_TX_TR,
-			readl(ir_tx_data->reg_base + IR_TX_TR));
-	dprintk(DEBUG_INFO, "Offset: 0x%2x IR_TX_DMAC  = 0x%2x\n", IR_TX_DMAC,
-			readl(ir_tx_data->reg_base + IR_TX_DMAC));
+	/* set reference frequency of modulated carrier */
+	writel(IR_TX_MC_VALUE, chip->reg_base + IR_TX_MCR);
+
+	/* reference clock select for cir transmit */
+	writel(IR_TX_CLK_VALUE, chip->reg_base + IR_TX_CR);
+
+	/* set idle duration counter threshold(high 4 bit) */
+	writel(IR_TX_IDC_H_VALUE, chip->reg_base + IR_TX_IDC_H);
+
+	/* set idle duration counter threshold(low 8 bit) */
+	writel(IR_TX_IDC_L_VALUE, chip->reg_base + IR_TX_IDC_L);
+
+	/* clear TX FIFO available interrupt flag */
+	writel(IR_TX_STA_VALUE, chip->reg_base + IR_TX_STAR);
+
+	/* set transmit packet end interrupt for cyclical pulse enbale
+	 * and transmitter fifo under run interrupt enable for Non-cyclical
+	 * pulse enable
+	 * */
+	writel(IR_TX_INT_C_VALUE, chip->reg_base + IR_TX_INTC);
+
+	/* Enable cir transmitter
+	 * Reset the cir transmit
+	 * set low level is the two times of high level
+	 * set the transmitting signal is modulated internally
+	 * */
+	writel(IR_TX_GL_VALUE, chip->reg_base + IR_TX_GLR);
+
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_GLR   = 0x%2x\n", IR_TX_GLR,
+			readl(chip->reg_base + IR_TX_GLR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_MCR   = 0x%2x\n", IR_TX_MCR,
+			readl(chip->reg_base + IR_TX_MCR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_CR    = 0x%2x\n", IR_TX_CR,
+			readl(chip->reg_base + IR_TX_CR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_IDC_H = 0x%2x\n", IR_TX_IDC_H,
+			readl(chip->reg_base + IR_TX_IDC_H));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_IDC_L = 0x%2x\n", IR_TX_IDC_L,
+			readl(chip->reg_base + IR_TX_IDC_L));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_ICR_H = 0x%2x\n", IR_TX_ICR_H,
+			readl(chip->reg_base + IR_TX_ICR_H));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_ICR_L = 0x%2x\n", IR_TX_ICR_L,
+			readl(chip->reg_base + IR_TX_ICR_L));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_TELR  = 0x%2x\n", IR_TX_TELR,
+			readl(chip->reg_base + IR_TX_TELR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_INTC  = 0x%2x\n", IR_TX_INTC,
+			readl(chip->reg_base + IR_TX_INTC));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_TACR  = 0x%2x\n", IR_TX_TACR,
+			readl(chip->reg_base + IR_TX_TACR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_STAR  = 0x%2x\n", IR_TX_STAR,
+			readl(chip->reg_base + IR_TX_STAR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_TR    = 0x%2x\n", IR_TX_TR,
+			readl(chip->reg_base + IR_TX_TR));
+	dev_dbg(dev, "Offset: 0x%2x IR_TX_DMAC  = 0x%2x\n", IR_TX_DMAC,
+			readl(chip->reg_base + IR_TX_DMAC));
 
 }
 
-static int ir_tx_clk_cfg(struct sunxi_ir_tx_data *ir_tx_data)
+static void sunxi_irtx_clk_uncfg(struct sunxi_irtx *chip)
+{
+	clk_disable_unprepare(chip->mclk);
+
+	clk_disable_unprepare(chip->bclk);
+
+	reset_control_assert(chip->reset);
+}
+
+static int irtx_clk_cfg(struct sunxi_irtx *chip)
 {
 	unsigned long rate = 0;
 	int ret = 0;
+	struct device *dev = &chip->pdev->dev;
 
-	ret = reset_control_deassert(ir_tx_data->reset);
+	ret = reset_control_deassert(chip->reset);
 	if (ret) {
-		IRTX_ERR("deassert ir tx rst failed!\n");
+		dev_err(dev, "deassert ir tx rst failed!\n");
 		return ret;
 	}
 
-	rate = clk_get_rate(ir_tx_data->bclk);
-	dprintk(DEBUG_INIT, "get ir bus clk rate %dHZ\n", (__u32)rate);
+	rate = clk_get_rate(chip->bclk);
+	dev_dbg(dev, "get ir bus clk rate %dHZ\n", (__u32)rate);
 
-	rate = clk_get_rate(ir_tx_data->pclk);
-	dprintk(DEBUG_INIT, "get ir parent clk rate %dHZ\n", (__u32)rate);
+	rate = clk_get_rate(chip->pclk);
+	dev_dbg(dev, "get ir parent clk rate %dHZ\n", (__u32)rate);
 
-	ret = clk_set_parent(ir_tx_data->mclk, ir_tx_data->pclk);
+	ret = clk_set_parent(chip->mclk, chip->pclk);
 	if (ret) {
-		IRTX_ERR("set ir_clk parent failed!\n");
-		return ret;
-	}
-
-	ret = clk_set_rate(ir_tx_data->mclk, IR_TX_CLK);
-	if (ret) {
-		IRTX_ERR("set ir clock freq to %d failed!\n", IR_TX_CLK);
-		return ret;
-	}
-	dprintk(DEBUG_INIT, "set ir_clk rate %dHZ\n", IR_TX_CLK);
-
-	rate = clk_get_rate(ir_tx_data->mclk);
-	dprintk(DEBUG_INIT, "get ir_clk rate %dHZ\n", (__u32)rate);
-
-	ret = clk_prepare_enable(ir_tx_data->bclk);
-	if (ret) {
-		IRTX_ERR("try to enable bus clk failed!\n");
+		dev_err(dev, "set ir_clk parent failed!\n");
 		goto assert_reset;
 	}
 
-	ret = clk_prepare_enable(ir_tx_data->mclk);
+	ret = clk_set_rate(chip->mclk, IR_TX_CLK);
 	if (ret) {
-		IRTX_ERR("try to enable ir_clk failed!\n");
+		dev_err(dev, "set ir clock freq to %d failed!\n", IR_TX_CLK);
 		goto assert_reset;
+	}
+	dev_dbg(dev, "set ir_clk rate %dHZ\n", IR_TX_CLK);
+
+	rate = clk_get_rate(chip->mclk);
+	dev_dbg(dev, "get ir_clk rate %dHZ\n", (__u32)rate);
+
+	ret = clk_prepare_enable(chip->bclk);
+	if (ret) {
+		dev_err(dev, "try to enable bus clk failed!\n");
+		goto assert_reset;
+	}
+
+	ret = clk_prepare_enable(chip->mclk);
+	if (ret) {
+		dev_err(dev, "try to enable ir_clk failed!\n");
+		goto clk_unprepare;
 	}
 
 	return 0;
 
+clk_unprepare:
+	clk_disable_unprepare(chip->bclk);
+
 assert_reset:
-	reset_control_assert(ir_tx_data->reset);
+	reset_control_assert(chip->reset);
 
 	return ret;
 }
 
-static void ir_clk_exit(struct sunxi_ir_tx_data *ir_tx_data)
-{
-	if (IS_ERR_OR_NULL(ir_tx_data->mclk))
-		IRTX_ERR("ir_clk handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->mclk);
-		clk_put(ir_tx_data->mclk);
-		ir_tx_data->mclk = NULL;
-	}
-
-	if (IS_ERR_OR_NULL(ir_tx_data->bclk))
-		IRTX_ERR("bus clk handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->bclk);
-		clk_put(ir_tx_data->bclk);
-		ir_tx_data->bclk = NULL;
-	}
-
-	reset_control_assert(ir_tx_data->reset);
-
-	if (IS_ERR_OR_NULL(ir_tx_data->pclk))
-		IRTX_ERR("ir_clk_source handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->pclk);
-		clk_put(ir_tx_data->pclk);
-		ir_tx_data->pclk = NULL;
-	}
-}
-
-static void ir_tx_clk_uncfg(struct sunxi_ir_tx_data *ir_tx_data)
-{
-	if (IS_ERR_OR_NULL(ir_tx_data->mclk))
-		IRTX_ERR("ir_clk handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->mclk);
-	}
-
-	if (IS_ERR_OR_NULL(ir_tx_data->bclk))
-		IRTX_ERR("bus clk handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->bclk);
-	}
-
-	reset_control_assert(ir_tx_data->reset);
-#if 0
-	if (IS_ERR_OR_NULL(ir_tx_data->pclk))
-		IRTX_ERR("ir_clk_source handle is invalid, just return!\n");
-	else {
-		clk_disable_unprepare(ir_tx_data->pclk);
-	}
-#endif
-}
-
-static int ir_tx_select_gpio_state(struct pinctrl *pctrl, char *name)
+static int sunxi_irtx_select_pinctrl_state(char *name, struct sunxi_irtx *chip)
 {
 	int ret = 0;
 	struct pinctrl_state *pctrl_state = NULL;
+	struct device *dev = &chip->pdev->dev;
 
-	pctrl_state = pinctrl_lookup_state(pctrl, name);
+	pctrl_state = pinctrl_lookup_state(chip->pctrl, name);
 	if (IS_ERR(pctrl_state)) {
-		IRTX_ERR("IR_TX pinctrl_lookup_state(%s) failed! return %p \n",
+		dev_err(dev, "IR_TX pinctrl_lookup_state(%s) failed! return %p \n",
 				name, pctrl_state);
 		return -1;
 	}
 
-	ret = pinctrl_select_state(pctrl, pctrl_state);
+	ret = pinctrl_select_state(chip->pctrl, pctrl_state);
 	if (ret) {
-		IRTX_ERR("IR_TX pinctrl_select_state(%s) failed! return %d \n",
+		dev_err(dev, "IR_TX pinctrl_select_state(%s) failed! return %d \n",
 				name, ret);
 		return ret;
 	}
@@ -466,37 +431,33 @@ static int ir_tx_select_gpio_state(struct pinctrl *pctrl, char *name)
 	return 0;
 }
 
-static int ir_tx_request_gpio(struct sunxi_ir_tx_data *ir_tx_data)
-{
-	ir_tx_data->pctrl = devm_pinctrl_get(&ir_tx_data->pdev->dev);
-	if (IS_ERR(ir_tx_data->pctrl)) {
-		IRTX_ERR("devm_pinctrl_get() failed!\n");
-		return -1;
-	}
-
-	return ir_tx_select_gpio_state(ir_tx_data->pctrl,
-			PINCTRL_STATE_DEFAULT);
-}
-
-static int ir_tx_setup(struct sunxi_ir_tx_data *ir_tx_data)
+static int sunxi_irtx_hw_init(struct sunxi_irtx *chip)
 {
 	int ret = 0;
+	struct device *dev = &chip->pdev->dev;
 
-	ret = ir_tx_request_gpio(ir_tx_data);
+	ret = sunxi_irtx_select_pinctrl_state(PINCTRL_STATE_DEFAULT, chip);
 	if (ret) {
-		IRTX_ERR("request gpio failed!\n");
+		dev_err(dev, "request gpio failed!\n");
 		return ret;
 	}
 
-	ret = ir_tx_clk_cfg(ir_tx_data);
+	ret = irtx_clk_cfg(chip);
 	if (ret) {
-		IRTX_ERR("ir tx clk configure failed!\n");
+		dev_err(dev, "ir tx clk configure failed!\n");
 		return ret;
 	}
 
-	ir_tx_reg_cfg(ir_tx_data);
+	sunxi_irtx_reg_cfg(chip);
 
 	return 0;
+}
+
+static void sunxi_irtx_hw_exit(struct sunxi_irtx *chip)
+{
+	sunxi_irtx_reg_clear(chip);
+	sunxi_irtx_select_pinctrl_state(PINCTRL_STATE_SLEEP, chip);
+	sunxi_irtx_clk_uncfg(chip);
 }
 
 /*
@@ -509,60 +470,64 @@ static int ir_tx_setup(struct sunxi_ir_tx_data *ir_tx_data)
  * @DRMC: duty cycle of modulated carrier, its value can be 0,1 or 2
  *        which is decided by the bit6 and bit5 of TX MCR.
  */
-static int sunxi_ir_tx_set_carrier(struct rc_dev *dev, u32 carrier_freq)
+static int sunxi_irtx_set_carrier(struct rc_dev *rcdev, u32 carrier_freq)
 {
 	unsigned int reg_val;
 	unsigned int drmc = 1;
+	struct sunxi_irtx *chip = rcdev->priv;
+	struct device *dev = &chip->pdev->dev;
 
 	if ((carrier_freq > 6000000) || (carrier_freq < 15000)) {
-		IRTX_ERR("invalid frequency of carrier: %d\n", carrier_freq);
+		dev_err(dev, "invalid frequency of carrier: %d\n", carrier_freq);
 		return -EINVAL;
 	}
 
 	/* First, get the duty cycle of modulated carrier */
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_GLR);
+	reg_val = readl(chip->reg_base + IR_TX_GLR);
 	drmc = (reg_val >> 5) & 0x3;
-	dprintk(DEBUG_INFO, "DRMC is %d\n", drmc);
-	dprintk(DEBUG_INFO, "0: duty cycle 50%%\n"
+	dev_dbg(dev, "DRMC is %d\n", drmc);
+	dev_dbg(dev, "0: duty cycle 50%%\n"
 						"1: duty cycle 33%%\n"
 						"2: duty cycle 25%%\n");
 
 	/* Then, calculate the value of N */
 	reg_val = IR_TX_CLK / ((2 + drmc) * carrier_freq) - 1;
 	reg_val &= 0xff;
-	dprintk(DEBUG_INFO, "RFMC is %2x\n", reg_val);
-	writel(reg_val, ir_tx_data->reg_base + IR_TX_MCR);
+	dev_dbg(dev,  "RFMC is %2x\n", reg_val);
+	writel(reg_val, chip->reg_base + IR_TX_MCR);
 
 	return 0;
 }
 
-static int sunxi_ir_tx_set_duty_cycle(struct rc_dev *dev, u32 duty_cycle)
+static int sunxi_irtx_set_duty_cycle(struct rc_dev *rcdev, u32 duty_cycle)
 {
 	unsigned int reg_val;
+	struct sunxi_irtx *chip = rcdev->priv;
+	struct device *dev = &chip->pdev->dev;
 
 	if (duty_cycle > 100) {
-		IRTX_ERR("invalid duty_cycle: %d\n", duty_cycle);
+		dev_err(dev, "invalid duty_cycle: %d\n", duty_cycle);
 		return -EINVAL;
 	}
 
-	dprintk(DEBUG_INFO, "set duty cycle to %d\n", duty_cycle);
-	reg_val = readl(ir_tx_data->reg_base + IR_TX_GLR);
+	dev_dbg(dev, "set duty cycle to %d\n", duty_cycle);
+	reg_val = readl(chip->reg_base + IR_TX_GLR);
 
 	/* clear bit5 and bit6 */
 	reg_val &= 0x9f;
 	if (duty_cycle < 30) {
 		reg_val |= 0x40; /* set bit6=1 */
-		dprintk(DEBUG_INFO, "set duty cycle to 25%%\n");
+		dev_dbg(dev, "set duty cycle to 25%%\n");
 	} else if (duty_cycle < 40) {
 		reg_val |= 0x20; /* set bit5=1 */
-		dprintk(DEBUG_INFO, "set duty cycle to 33%%\n");
+		dev_dbg(dev, "set duty cycle to 33%%\n");
 	} else {
 		/* do nothing, bit5 and bit6 are already cleared to 0 */
-		dprintk(DEBUG_INFO, "set duty cycle to 50%%\n");
+		dev_dbg(dev, "set duty cycle to 50%%\n");
 	}
 
-	dprintk(DEBUG_INFO, "reg_val of IR_TX_GLR: %2x\n", reg_val);
-	writel(reg_val, ir_tx_data->reg_base + IR_TX_GLR);
+	dev_dbg(dev, "reg_val of IR_TX_GLR: %2x\n", reg_val);
+	writel(reg_val, chip->reg_base + IR_TX_GLR);
 
 	return 0;
 }
@@ -576,108 +541,109 @@ static int sunxi_ir_tx_set_duty_cycle(struct rc_dev *dev, u32 duty_cycle)
  * @buf: store run_length_encode data and will be written to tx fifo
  * @count: the current index of buf
  */
-static unsigned int run_length_encode(unsigned int *raw_data,
-										unsigned char *buf,
-										unsigned int count)
+static unsigned int run_length_encode(unsigned int *raw_data, unsigned char *buf,
+					unsigned int count, struct sunxi_irtx *chip)
 {
 	unsigned int is_high_level = 0;
 	unsigned int num = 0; /* the number of pulse cycle */
+	struct device *dev = &chip->pdev->dev;
 
 	/* output high level or low level */
 	is_high_level = (*raw_data >> 24) & 0x01;
-	dprintk(DEBUG_INFO, "is high level: %d\n", is_high_level);
+	dev_dbg(dev, "is high level: %d\n", is_high_level);
 
 	/* calculate the number of pulse cycle */
 	num = ((*raw_data & 0x00FFFFFF) * 3) / three_pulse_cycle;
 	/* check number is over 127 or not */
 	while (num > 0x7f) {
 		buf[count] = (is_high_level << 7) | 0x7f;
-		dprintk(DEBUG_INFO, "current buffer data is %2x\n", buf[count]);
+		dev_dbg(dev, "current buffer data is %2x\n", buf[count]);
 		count++;
 		num -= 0x7f;
 	}
 
 	buf[count] = (is_high_level << 7) | num;
-	dprintk(DEBUG_INFO, "current buffer data is %2x\n", buf[count]);
+	dev_dbg(dev, "current buffer data is %2x\n", buf[count]);
 	count++;
 
 	return count;
 }
 
-static int sunxi_ir_tx_xmit(struct rc_dev *dev, unsigned int *txbuf,
+static int sunxi_irtx_xmit(struct rc_dev *rcdev, unsigned int *txbuf,
 							unsigned int count)
 {
 	int i, ret, num;
-	int mark = 0;
+	bool mark = 0;
 	unsigned int index = 0;
 	unsigned int *head_p, *data_p, *stop_p;
+	struct sunxi_irtx *chip = rcdev->priv;
+	struct device *dev = &chip->pdev->dev;
 
-	if (unlikely(!dev)) {
-		dprintk(DEBUG_INFO, "device is null\n");
+	if (unlikely(!rcdev)) {
+		dev_dbg(dev, "device is null\n");
 		return -EINVAL;
 	}
 
 	if (unlikely(count > IR_TX_RAW_BUF_SIZE)) {
-		dprintk(DEBUG_INFO, "too many raw data\n");
+		dev_dbg(dev, "too many raw data\n");
 		return -EINVAL;
 	}
 
-	dprintk(DEBUG_INFO, "transmit %d raw data\n", count);
+	dev_dbg(dev, "transmit %d raw data\n", count);
 
-	ir_tx_reset_rawbuffer();
+	sunxi_irtx_reset_rawbuffer(chip);
 
 	/* encode the guide code */
 	head_p = txbuf;
-	dprintk(DEBUG_INFO, "head pulse: '%#x', head space: '%#x'\n",
+	dev_dbg(dev, "head pulse: '%#x', head space: '%#x'\n",
 				*head_p, *(head_p + 1));
 	/* pull the level bit high */
 	*head_p |= (1 << 24);
-	index = run_length_encode(head_p, ir_rawbuf.tx_buf, index);
+	index = run_length_encode(head_p, chip->ir_rawbuf.tx_buf, index, chip);
 	head_p++;
-	index = run_length_encode(head_p, ir_rawbuf.tx_buf, index);
+	index = run_length_encode(head_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 	/* encode the payload: addr, ~addr, cmd, ~cmd */
 	data_p = (++head_p);
-	dprintk(DEBUG_INFO, "valid raw data is:\n");
+	dev_dbg(dev, "valid raw data is:\n");
 	/* count = head(2) + payload(num) + end(2) */
 	num = count - 4;
 	for (i = 0; i < num; i++) {
-		dprintk(DEBUG_INFO, "%#x ", *data_p);
+		dev_dbg(dev, "%#x ", *data_p);
+
 		/* cycle the level bit up and down  */
-		if (mark == 1) {
-			index = run_length_encode(data_p, ir_rawbuf.tx_buf, index);
-			mark = 0;
-		} else if (mark == 0) {
-			*data_p |= (1 << 24);
-			index = run_length_encode(data_p, ir_rawbuf.tx_buf, index);
-			mark = 1;
-		}
+		mark = !mark;
+		*data_p |= (mark << 24);
+		index = run_length_encode(data_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 		data_p++;
 		if ((i + 1) % 8 == 0)
-			dprintk(DEBUG_INFO, "\n");
+			dev_dbg(dev, "\n");
 	}
-	dprintk(DEBUG_INFO, "\n");
+	dev_dbg(dev, "\n");
 
 	/* encode the end code */
 	stop_p = data_p;
-	dprintk(DEBUG_INFO, "stop pulse: '%#x', stop space: '%#x'\n",
+	dev_dbg(dev, "stop pulse: '%#x', stop space: '%#x'\n",
 				*stop_p, *(stop_p + 1));
-	index = run_length_encode(stop_p, ir_rawbuf.tx_buf, index);
+	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
 	stop_p++;
 	/* pull the stop bit level high  */
 	*stop_p |= (1 << 24);
-	index = run_length_encode(stop_p, ir_rawbuf.tx_buf, index);
+	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
+
+	/* avoid the level being continuously pulled up */
+	stop_p++;
+	index = run_length_encode(stop_p, chip->ir_rawbuf.tx_buf, index, chip);
 
 	/* update ir_rawbuf.tx_dcnt */
-	ir_rawbuf.tx_dcnt = index;
-	dprintk(DEBUG_INFO, "ir_rawbuf total count is %d\n", ir_rawbuf.tx_dcnt);
+	chip->ir_rawbuf.tx_dcnt = index;
+	dev_dbg(dev, "ir_rawbuf total count is %d\n", chip->ir_rawbuf.tx_dcnt);
 
 	/* send ir code to tx fifo */
-	ret = send_ir_code();
-
+	ret = sunxi_send_ir_code(chip);
 	if (unlikely(ret)) {
-		dprintk(DEBUG_INFO, "send ir code fail\n");
+		dev_dbg(dev, "send ir code fail\n");
 		ret = -EINVAL;
 	} else {
 		ret = count;
@@ -686,67 +652,103 @@ static int sunxi_ir_tx_xmit(struct rc_dev *dev, unsigned int *txbuf,
 	return ret;
 }
 
-static int sunxi_ir_tx_startup(struct platform_device *pdev,
-				struct sunxi_ir_tx_data *ir_tx_data)
+static int sunxi_irtx_resource_get(struct sunxi_irtx *chip)
 {
-	struct device_node *np = pdev->dev.of_node;
-	int ret = 0;
+	struct resource *res;
+	struct device *dev = &chip->pdev->dev;
 
-	ir_tx_data->reg_base = of_iomap(np, 0);
-	if (ir_tx_data->reg_base == NULL) {
-		IRTX_ERR("Failed to ioremap() io memory region.\n");
+	res = platform_get_resource(chip->pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "fail to get IORESOURCE_MEM\n");
+		return -EINVAL;
+	}
+
+	chip->reg_base = devm_ioremap_resource(&chip->pdev->dev, res);
+	if (IS_ERR(chip->reg_base)) {
+		dev_err(&chip->pdev->dev, "fail to map IO resource\n");
+		return PTR_ERR(chip->reg_base);
+	}
+
+	chip->irq_num = platform_get_irq(chip->pdev, 0);
+	if (chip->irq_num < 0) {
+		dev_err(&chip->pdev->dev, "no irq resource");
+		return -EINVAL;
+	}
+
+	chip->pctrl = devm_pinctrl_get(&chip->pdev->dev);
+	if (IS_ERR(chip->pctrl)) {
+		dev_err(&chip->pdev->dev, "devm_pinctrl_get() failed!\n");
+		return PTR_ERR(chip->pctrl);
+	}
+
+	chip->reset = devm_reset_control_get(&chip->pdev->dev, NULL);
+	if (IS_ERR(chip->reset)) {
+		dev_err(&chip->pdev->dev, "Failed to get reset handle\n");
+		return PTR_ERR(chip->reset);
+	}
+
+	chip->bclk = devm_clk_get(&chip->pdev->dev, "bus");
+	if (!chip->bclk) {
+		dev_err(&chip->pdev->dev, "Failed to get bus clk.\n");
 		return -EBUSY;
 	}
-	dprintk(DEBUG_INIT, "base: %p !\n", ir_tx_data->reg_base);
 
-	ir_tx_data->irq_num = irq_of_parse_and_map(np, 0);
-	if (ir_tx_data->irq_num == 0) {
-		IRTX_ERR("Failed to map irq.\n");
-		ret = -EBUSY;
-		goto out_iounmap;
-
-	}
-	dprintk(DEBUG_INIT, "irq num: %d !\n", ir_tx_data->irq_num);
-
-	ir_tx_data->reset = devm_reset_control_get(&pdev->dev, NULL);
-	if (IS_ERR(ir_tx_data->reset)) {
-		IRTX_ERR("Failed to get reset handle\n");
-		ret = PTR_ERR(ir_tx_data->reset);
-		goto out_dispose_mapping;
+	chip->pclk = devm_clk_get(&chip->pdev->dev, "pclk");
+	if (!chip->pclk) {
+		dev_err(&chip->pdev->dev, "Failed to get parent clk.\n");
+		return -EBUSY;
 	}
 
-	ir_tx_data->bclk = devm_clk_get(&pdev->dev, "bus");
-	if (IS_ERR_OR_NULL(ir_tx_data->bclk)) {
-		IRTX_ERR("Failed to get bus clk.\n");
-		ret = -EBUSY;
-		goto out_dispose_mapping;
-	}
-
-	ir_tx_data->pclk = devm_clk_get(&pdev->dev, "pclk");
-	if (IS_ERR_OR_NULL(ir_tx_data->pclk)) {
-		IRTX_ERR("Failed to get parent clk.\n");
-		ret = -EBUSY;
-		goto out_dispose_mapping;
-	}
-
-	ir_tx_data->mclk = devm_clk_get(&pdev->dev, "mclk");
-	if (IS_ERR_OR_NULL(ir_tx_data->mclk)) {
-		IRTX_ERR("Failed to get ir tx clk.\n");
-		ret = -EBUSY;
-		goto out_dispose_mapping;
+	chip->mclk = devm_clk_get(&chip->pdev->dev, "mclk");
+	if (!chip->mclk) {
+		dev_err(&chip->pdev->dev, "Failed to get ir tx clk.\n");
+		return -EBUSY;
 	}
 
 	return 0;
-
-out_dispose_mapping:
-	irq_dispose_mapping(ir_tx_data->irq_num);
-out_iounmap:
-	iounmap(ir_tx_data->reg_base);
-
-	return ret;
 }
 
-static ssize_t ir_tx_test_show(struct device *dev,
+static int sunxi_irtx_rc_init(struct sunxi_irtx *chip)
+{
+	int ret;
+	static char irtx_dev_name[] = "irtx";
+	struct device *dev = &chip->pdev->dev;
+
+	chip->rcdev = devm_rc_allocate_device(dev, RC_DRIVER_IR_RAW);
+	if (!chip->rcdev) {
+		dev_err(dev, "rc dev allocate fail!\n");
+		return -ENOMEM;
+	}
+
+	/* initialize rcdev*/
+	chip->rcdev->priv = chip;
+	chip->rcdev->input_phys = SUNXI_IR_TX_DEVICE_NAME"/input0";
+	chip->rcdev->input_id.bustype = BUS_HOST;
+	chip->rcdev->input_id.vendor = 0x0001;
+	chip->rcdev->input_id.product = 0x0001;
+	chip->rcdev->input_id.version = 0x0100;
+	chip->rcdev->input_dev->dev.init_name = &irtx_dev_name[0];
+
+	chip->rcdev->dev.parent = dev;
+	chip->rcdev->map_name = RC_MAP_SUNXI;
+	chip->rcdev->device_name = SUNXI_IR_TX_DEVICE_NAME;
+	chip->rcdev->driver_name = SUNXI_IR_TX_DRIVER_NAME;
+	chip->rcdev->driver_type = RC_DRIVER_IR_RAW;
+
+	chip->rcdev->tx_ir = sunxi_irtx_xmit;
+	chip->rcdev->s_tx_carrier = sunxi_irtx_set_carrier;
+	chip->rcdev->s_tx_duty_cycle = sunxi_irtx_set_duty_cycle;
+
+	ret = devm_rc_register_device(dev, chip->rcdev);
+	if (ret) {
+		dev_err(dev, "failed to register rc device\n");
+		return ret;
+	}
+
+	return 0;
+}
+#if 0
+static ssize_t irtx_test_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	if (dev == NULL) {
@@ -754,12 +756,12 @@ static ssize_t ir_tx_test_show(struct device *dev,
 		return 0;
 	}
 
-	return sprintf(buf, "Usage: echo 0xyyzz > ir_tx_test\n"
+	return sprintf(buf, "Usage: echo 0xyyzz > irtx_test\n"
 					"yy - address\n"
 					"zz - command\n");
 }
 
-static ssize_t ir_tx_test_store(struct device *dev,
+static ssize_t irtx_test_store(struct device *dev,
 				struct device_attribute *attr, const char *buf,
 				size_t count)
 {
@@ -788,240 +790,148 @@ static ssize_t ir_tx_test_store(struct device *dev,
 	cmd = value & 0xff;
 	addr = (value >> 8) & 0xff;
 
-	ir_tx_packet_handler(addr, cmd);
-	ret = send_ir_code();
+	irtx_packet_handler(addr, cmd);
+	ret = sunxi_send_ir_code();
 	if (ret == 0) {
 		printk("send ir code success\n");
 	}
 
 	return count;
 }
-static DEVICE_ATTR(ir_tx_test, 0664, ir_tx_test_show, ir_tx_test_store);
+static DEVICE_ATTR(irtx_test, 0664, irtx_test_show, irtx_test_store);
+#endif
 
-static int sunxi_ir_tx_probe(struct platform_device *pdev)
+static int sunxi_irtx_probe(struct platform_device *pdev)
 {
+	int ret;
 	struct device *dev = &pdev->dev;
-	struct rc_dev *ir_tx_rcdev;
-	int ret = 0;
-	static char ir_tx_dev_name[] = "ir_tx";
+	struct sunxi_irtx *chip;
 
-	dprintk(DEBUG_INIT, "%s %s\n", SUNXI_IR_TX_DRIVER_NAME,
-									SUNXI_IR_TX_VERSION);
+	dev_dbg(dev, "%s %s\n", SUNXI_IR_TX_DRIVER_NAME, SUNXI_IR_TX_VERSION);
 
-	ir_tx_data = devm_kzalloc(dev, sizeof(*ir_tx_data), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(ir_tx_data)) {
-		IRTX_ERR("not enough memory for ir tx data\n");
+	chip = devm_kzalloc(dev, sizeof(struct sunxi_irtx), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(chip)) {
+		dev_err(dev, "not enough memory for ir tx data\n");
 		return -ENOMEM;
 	}
 
-	if (pdev->dev.of_node) {
-		/* initialize hardware resource */
-		ret = sunxi_ir_tx_startup(pdev, ir_tx_data);
-		if (ret) {
-			IRTX_ERR("initialize hardware resource fail\n");
-			goto err_startup;
-		}
-	} else {
-		IRTX_ERR("device tree err!\n");
-		ret = -EBUSY;
-		goto err_startup;
-	}
-	dprintk(DEBUG_INIT, "initialize hardware resource success\n");
+	chip->pdev = pdev;
 
-	ir_tx_rcdev = devm_rc_allocate_device(dev, RC_DRIVER_IR_RAW);
-	if (!ir_tx_rcdev) {
-		IRTX_ERR("rc dev allocate fail!\n");
-		ret = -ENOMEM;
+	/* initialize hardware resource */
+	ret = sunxi_irtx_resource_get(chip);
+	if (ret) {
+		dev_err(dev, "ir-tx failed to get resource\n");
 		goto err_startup;
 	}
 
-	/* initialize ir_tx_rcdev*/
-	ir_tx_rcdev->priv = ir_tx_data;
-	ir_tx_rcdev->input_phys = SUNXI_IR_TX_DEVICE_NAME "/input0";
-	ir_tx_rcdev->input_id.bustype = BUS_HOST;
-	ir_tx_rcdev->input_id.vendor = 0x0001;
-	ir_tx_rcdev->input_id.product = 0x0001;
-	ir_tx_rcdev->input_id.version = 0x0100;
-	ir_tx_rcdev->input_dev->dev.init_name = &ir_tx_dev_name[0];
-
-	ir_tx_rcdev->dev.parent = dev;
-	ir_tx_rcdev->map_name = RC_MAP_SUNXI;
-	ir_tx_rcdev->device_name = SUNXI_IR_TX_DEVICE_NAME;
-	ir_tx_rcdev->driver_name = SUNXI_IR_TX_DRIVER_NAME;
-	ir_tx_rcdev->driver_type = RC_DRIVER_IR_RAW;
-
-	ir_tx_rcdev->tx_ir = sunxi_ir_tx_xmit;
-	ir_tx_rcdev->s_tx_carrier = sunxi_ir_tx_set_carrier;
-	ir_tx_rcdev->s_tx_duty_cycle = sunxi_ir_tx_set_duty_cycle;
-
-	ret = devm_rc_register_device(dev, ir_tx_rcdev);
+	ret = sunxi_irtx_rc_init(chip);
 	if (ret) {
-		IRTX_ERR("failed to register rc device\n");
-		goto err_register_rcdev;
+		dev_err(dev, "sunxi_irtx_rc_init failed.\n");
+		goto err_startup;
 	}
-	dprintk(DEBUG_INIT, "register rc device success\n");
 
-	ir_tx_data->rcdev = ir_tx_rcdev;
-	ir_tx_data->pdev = pdev;
-
-	ret = ir_tx_setup(ir_tx_data);
+	ret = sunxi_irtx_hw_init(chip);
 	if (ret) {
-		IRTX_ERR("ir_tx_setup failed.\n");
-		ret = -EIO;
-		goto err_register_rcdev;
+		dev_err(dev, "sunxi_irtx_hw_init failed.\n");
+		goto err_register;
 	}
-	dprintk(DEBUG_INIT, "ir_tx_setup success\n");
+	dev_dbg(dev, "sunxi_irtx_hw_init success\n");
+	platform_set_drvdata(pdev, chip);
 
-	platform_set_drvdata(pdev, ir_tx_data);
-	ret = request_irq(ir_tx_data->irq_num, ir_tx_irq_service, 0,
-						"RemoteIR_TX", ir_tx_data);
+	ret = devm_request_irq(dev, chip->irq_num, sunxi_irtx_isr, 0,
+						"RemoteIR_TX", chip);
 	if (ret) {
-		IRTX_ERR(" request irq fail.\n");
-		ret = -EBUSY;
+		dev_err(dev, "request irq fail.\n");
 		goto err_request_irq;
 	}
 
-	device_create_file(dev, &dev_attr_ir_tx_test);
+/* FIXME: need to fix */
+//	device_create_file(dev, &dev_attr_irtx_test);
 
-	dprintk(DEBUG_INIT, "probe success\n");
+	dev_dbg(dev, "probe success\n");
 
 	return 0;
 
 err_request_irq:
-	platform_set_drvdata(pdev, NULL);
-	rc_unregister_device(ir_tx_rcdev);
-	ir_tx_rcdev = NULL;
-//	ir_tx_clk_uncfg(ir_tx_data);
-	ir_clk_exit(ir_tx_data);
-	ir_tx_reg_clear(ir_tx_data);
-
-err_register_rcdev:
-	rc_free_device(ir_tx_rcdev);
-
+	sunxi_irtx_hw_exit(chip);
+err_register:
+	rc_unregister_device(chip->rcdev);
 err_startup:
-	kfree(ir_tx_data);
-
 	return ret;
 }
 
-static int sunxi_ir_tx_remove(struct platform_device *pdev)
+static int sunxi_irtx_remove(struct platform_device *pdev)
 {
-	struct sunxi_ir_tx_data *ir_tx_data = platform_get_drvdata(pdev);
+	struct sunxi_irtx *chip = platform_get_drvdata(pdev);
 
-	device_remove_file(&pdev->dev, &dev_attr_ir_tx_test);
-	free_irq(ir_tx_data->irq_num, &pdev->dev);
-	devm_pinctrl_put(ir_tx_data->pctrl);
-
-	ir_tx_reg_clear(ir_tx_data);
-	ir_clk_exit(ir_tx_data);
-//	ir_tx_clk_uncfg(ir_tx_data);
-
-	platform_set_drvdata(pdev, NULL);
-	rc_unregister_device(ir_tx_data->rcdev);
-	kfree(ir_tx_data);
+//	device_remove_file(&pdev->dev, &dev_attr_irtx_test);
+	sunxi_irtx_hw_exit(chip);
+	rc_unregister_device(chip->rcdev);
 
 	return 0;
 }
 
-static const struct of_device_id sunxi_ir_tx_of_match[] = {
-	{ .compatible = "allwinner,ir_tx", },
+static const struct of_device_id sunxi_irtx_of_match[] = {
+	{ .compatible = "allwinner,irtx", },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, sunxi_ir_tx_of_match);
+MODULE_DEVICE_TABLE(of, sunxi_irtx_of_match);
 
 #ifdef CONFIG_PM
 
-static int ir_tx_resume_setup(struct sunxi_ir_tx_data *ir_tx_data)
-{
-	int ret;
-
-	if (IS_ERR_OR_NULL(ir_tx_data->pctrl)) {
-		pr_err("ir-tx pin config err\n");
-		return -1;
-	}
-
-	ret = ir_tx_clk_cfg(ir_tx_data);
-	if (ret) {
-		pr_err("ir tx clk configure failed\n");
-		return ret;
-	}
-
-	ir_tx_reg_cfg(ir_tx_data);
-
-	ir_tx_select_gpio_state(ir_tx_data->pctrl, PINCTRL_STATE_DEFAULT);
-
-	return 0;
-}
-
-static int ir_tx_suspend_setup(struct sunxi_ir_tx_data *ir_tx_data)
-{
-	ir_tx_select_gpio_state(ir_tx_data->pctrl, PINCTRL_STATE_SLEEP);
-
-	ir_tx_reg_clear(ir_tx_data);
-
-	ir_tx_clk_uncfg(ir_tx_data);
-
-	return 0;
-}
-
-static int sunxi_ir_tx_suspend(struct device *dev)
+static int sunxi_irtx_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct sunxi_ir_tx_data *ir_tx_data = platform_get_drvdata(pdev);
-	int ret = 0;
+	struct sunxi_irtx *chip = platform_get_drvdata(pdev);
 
-	dprintk(DEBUG_SUSPEND, "enter\n");
+	dev_dbg(dev, "%s enter\n", __func__);
 
-	disable_irq_nosync(ir_tx_data->irq_num);
+	disable_irq_nosync(chip->irq_num);
 
-	ret = ir_tx_suspend_setup(ir_tx_data);
-	if (ret) {
-		pr_err("%s: ir tx suspend failed\n", __func__);
-		return ret;
-	}
+	sunxi_irtx_save_regs(chip);
+
+	sunxi_irtx_hw_exit(chip);
 
 	return 0;
 }
 
-static int sunxi_ir_tx_resume(struct device *dev)
+static int sunxi_irtx_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct sunxi_ir_tx_data *ir_tx_data = platform_get_drvdata(pdev);
-	int ret = 0;
+	struct sunxi_irtx *chip = platform_get_drvdata(pdev);
 
-	dprintk(DEBUG_SUSPEND, "enter\n");
+	dev_dbg(dev, "%s enter\n", __func__);
 
-	ret = ir_tx_resume_setup(ir_tx_data);
-	if (ret) {
-		IRTX_ERR("ir_tx_setup failed!\n");
-		return ret;
-	}
+	sunxi_irtx_hw_init(chip);
 
-	enable_irq(ir_tx_data->irq_num);
+	sunxi_irtx_restore_regs(chip);
+
+	enable_irq(chip->irq_num);
 
 	return 0;
 }
 
-static const struct dev_pm_ops sunxi_ir_tx_pm_ops = {
-	.suspend        = sunxi_ir_tx_suspend,
-	.resume         = sunxi_ir_tx_resume,
+static const struct dev_pm_ops sunxi_irtx_pm_ops = {
+	.suspend        = sunxi_irtx_suspend,
+	.resume         = sunxi_irtx_resume,
 };
 #endif
 
-static struct platform_driver sunxi_ir_tx_driver = {
-	.probe  = sunxi_ir_tx_probe,
-	.remove = sunxi_ir_tx_remove,
+static struct platform_driver sunxi_irtx_driver = {
+	.probe  = sunxi_irtx_probe,
+	.remove = sunxi_irtx_remove,
 	.driver = {
 		.name   = SUNXI_IR_TX_DRIVER_NAME,
 		.owner  = THIS_MODULE,
-		.of_match_table = sunxi_ir_tx_of_match,
+		.of_match_table = sunxi_irtx_of_match,
 #ifdef CONFIG_PM
-		.pm	= &sunxi_ir_tx_pm_ops,
+		.pm	= &sunxi_irtx_pm_ops,
 #endif
 	},
 };
 
-module_platform_driver(sunxi_ir_tx_driver);
-MODULE_AUTHOR("libohui <libohui@allwinnertech.com>");
+module_platform_driver(sunxi_irtx_driver);
+MODULE_AUTHOR("luruixiang <luruixiang@allwinnertech.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Remote IR TX driver");
+MODULE_VERSION("2.0.0");

@@ -47,6 +47,7 @@
 #include <asm/signal.h>
 #include <linux/clk/sunxi.h>
 #include <linux/debugfs.h>
+#include <linux/pm_runtime.h>
 
 #if IS_ENABLED(CONFIG_SUNXI_MPP)
 #include <linux/mpp.h>
@@ -275,6 +276,7 @@ struct dma_buf_info {
 	struct dma_buf_attachment *attachment;
 	struct sg_table	*sgt;
 	int    p_id;
+	struct file *filp;
 };
 
 static struct cedar_dev *cedar_devp;
@@ -287,8 +289,8 @@ static struct cedar_dev *cedar_devp;
 
 
 extern void cedar_dma_flush_range(const void *, size_t);
-static int map_dma_buf_addr(int fd, unsigned int *addr);
-static void unmap_dma_buf_addr(int unmap_all, int fd);
+static int map_dma_buf_addr(int fd, unsigned int *addr, struct file *filp);
+static void unmap_dma_buf_addr(int unmap_all, int fd, struct file *filp);
 
 static irqreturn_t VideoEngineInterupt(int irq, void *dev)
 {
@@ -584,7 +586,7 @@ int disable_cedar_hw_clk(void)
 	reset_control_assert(cedar_devp->reset_ve);
 #endif
 
-	unmap_dma_buf_addr(1, 0);
+	//unmap_dma_buf_addr(1, 0, filp);
 
 #ifdef CEDAR_DEBUG
 	printk("%s,%d\n", __func__, __LINE__);
@@ -894,7 +896,7 @@ static int ve_power_manage_shutdown(void)
 
 #endif
 
-static int map_dma_buf_addr(int fd, unsigned int *addr)
+static int map_dma_buf_addr(int fd, unsigned int *addr, struct file *filp)
 {
 	struct sg_table *sgt;
 	struct dma_buf_info *buf_info;
@@ -929,6 +931,7 @@ static int map_dma_buf_addr(int fd, unsigned int *addr)
 	buf_info->addr = sg_dma_address(buf_info->sgt->sgl);
 	buf_info->fd = fd;
 	buf_info->p_id = current->tgid;
+	buf_info->filp = filp;
 	#if PRINTK_IOMMU_ADDR
 	VE_LOGI("fd:%d, buf_info:%p addr:%lx, dma_buf:%p, \
 			dma_buf_attach:%p, sg_table:%p, nents:%d, pid:%d\n",
@@ -960,7 +963,7 @@ BUF_FREE:
 	return -1;
 }
 
-static void unmap_dma_buf_addr(int unmap_all, int fd)
+static void unmap_dma_buf_addr(int unmap_all, int fd, struct file *filp)
 {
 	struct dma_buf_info *buf_info;
 	struct aw_mem_list_head *pos;
@@ -993,10 +996,10 @@ static void unmap_dma_buf_addr(int unmap_all, int fd)
 				tmp_fd = fd;
 			}
 
-			if (buf_info->fd == tmp_fd && buf_info->p_id == current->tgid) {
+			if (buf_info->fd == tmp_fd && buf_info->p_id == current->tgid && filp == buf_info->filp) {
 				#if PRINTK_IOMMU_ADDR
 				VE_LOGI("free: fd:%d, buf_info:%p iommu_addr:%lx, dma_buf:%p, \
-						dma_buf_attach:%p, sg_table:%p nets:%d, pid:%d\n",
+					dma_buf_attach:%p, sg_table:%p nets:%d, pid:%d unmapall:%d filp:%p\n",
 				buf_info->fd,
 				buf_info,
 				buf_info->addr,
@@ -1004,7 +1007,9 @@ static void unmap_dma_buf_addr(int unmap_all, int fd)
 				buf_info->attachment,
 				buf_info->sgt,
 				buf_info->sgt->nents,
-				buf_info->p_id);
+				buf_info->p_id,
+				unmap_all,
+				filp);
 				#endif
 
 				if (buf_info->dma_buf > 0) {
@@ -1582,7 +1587,7 @@ static long compat_cedardev_ioctl(struct file *filp, unsigned int cmd, unsigned 
 				VE_LOGE("IOCTL_GET_IOMMU_ADDR copy_from_user error");
 				return -EFAULT;
 			}
-			if (map_dma_buf_addr(parm.fd, &parm.iommu_addr) != 0) {
+			if (map_dma_buf_addr(parm.fd, &parm.iommu_addr, filp) != 0) {
 				VE_LOGE("IOCTL_GET_IOMMU_ADDR map dma buf fail");
 				return -EFAULT;
 			}
@@ -1605,7 +1610,7 @@ static long compat_cedardev_ioctl(struct file *filp, unsigned int cmd, unsigned 
 				return -EFAULT;
 			}
 
-			unmap_dma_buf_addr(0, parm.fd);
+			unmap_dma_buf_addr(0, parm.fd, filp);
 			break;
 		}
 		case IOCTL_MAP_DMA_BUF:
@@ -1617,7 +1622,7 @@ static long compat_cedardev_ioctl(struct file *filp, unsigned int cmd, unsigned 
 				VE_LOGE("IOCTL_GET_IOMMU_ADDR copy_from_user error");
 				return -EFAULT;
 			}
-			if (map_dma_buf_addr(parm.fd, &parm.phy_addr) != 0) {
+			if (map_dma_buf_addr(parm.fd, &parm.phy_addr, filp) != 0) {
 				VE_LOGE("IOCTL_GET_IOMMU_ADDR map dma buf fail");
 				return -EFAULT;
 			}
@@ -1636,7 +1641,7 @@ static long compat_cedardev_ioctl(struct file *filp, unsigned int cmd, unsigned 
 				return -EFAULT;
 			}
 
-			unmap_dma_buf_addr(0, parm.fd);
+			unmap_dma_buf_addr(0, parm.fd, filp);
 			break;
 		}
 		case IOCTL_FLUSH_CACHE_RANGE:
@@ -1780,7 +1785,7 @@ static int cedardev_release(struct inode *inode, struct file *filp)
 	info = filp->private_data;
 	mutex_lock(&info->lock_flag_io);
 	//if the process abort, this will free iommu_buffer
-	unmap_dma_buf_addr(1, 0);
+	unmap_dma_buf_addr(1, 0, filp);
 
 	/* lock status */
 	if (info->lock_flags) {
@@ -1886,11 +1891,14 @@ static int cedardev_mmap(struct file *filp, struct vm_area_struct *vma)
 	return 0;
 }
 
-static int sunxi_cedar_suspend(struct platform_device *pdev, pm_message_t state)
+static int sunxi_cedar_suspend(struct device *dev)
 {
 	int ret = 0;
 
-	printk("[cedar] standby suspend\n");
+#if defined CONFIG_ARCH_SUN8IW20
+	VE_LOGD("[cedar] standby suspend");
+	pm_runtime_put_sync(dev);
+#endif
 	ret = disable_cedar_hw_clk();
 
 #if defined CONFIG_ARCH_SUN9IW1P1
@@ -1905,11 +1913,14 @@ static int sunxi_cedar_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int sunxi_cedar_resume(struct platform_device *pdev)
+static int sunxi_cedar_resume(struct device *dev)
 {
 	int ret = 0;
 
-	printk("[cedar] standby resume\n");
+#if defined CONFIG_ARCH_SUN8IW20
+	VE_LOGD("[cedar] standby resume");
+	pm_runtime_get_sync(dev);
+#endif
 
 #if defined CONFIG_ARCH_SUN9IW1P1
 	clk_prepare_enable(cedar_devp->power_clk);
@@ -1928,6 +1939,7 @@ static int sunxi_cedar_resume(struct platform_device *pdev)
 }
 
 
+static SIMPLE_DEV_PM_OPS(sunxi_cedar_pm_ops, sunxi_cedar_suspend, sunxi_cedar_resume);
 
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -2477,13 +2489,41 @@ static void cedardev_exit(void)
 
 static int	sunxi_cedar_remove(struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
+	VE_LOGD("sunxi_cedar_remove");
+	pdev->id = of_alias_get_id(np, "ve");
+	if (pdev->id < 0) {
+		VE_LOGD("failed to get alias ve id\n");
+	} else if (pdev->id == 1) {
+		VE_LOGI("device ve1 just return");
+		return 0;
+	}
+#if defined CONFIG_ARCH_SUN8IW20
+       pm_runtime_disable(&pdev->dev);
+#endif
 	cedardev_exit();
 	return 0;
 }
 
 static int	sunxi_cedar_probe(struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
+	pdev->id = of_alias_get_id(np, "ve");
+	if (pdev->id < 0) {
+		VE_LOGD("failed to get alias ve id\n");
+	} else if (pdev->id == 1) {
+		VE_LOGI("device ve1 just use to add iommu master");
+		return 0;
+	}
+#if defined CONFIG_ARCH_SUN8IW20
+	VE_LOGD("sunxi_cedar_probe power-domain init!!!");
+	//add for R528 sleep and awaken
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+#endif
 	cedardev_init(pdev);
+	VE_LOGD("sunxi_cedar_probe");
 	return 0;
 }
 
@@ -2496,9 +2536,8 @@ MODULE_DEVICE_TABLE(of, sunxi_cedar_match);
 static struct platform_driver sunxi_cedar_driver = {
 	.probe		= sunxi_cedar_probe,
 	.remove		= sunxi_cedar_remove,
-	.suspend	= sunxi_cedar_suspend,
-	.resume		= sunxi_cedar_resume,
 	.driver		= {
+		.pm	= &sunxi_cedar_pm_ops,
 		.name	= "sunxi-cedar",
 		.owner	= THIS_MODULE,
 		.of_match_table = sunxi_cedar_match,

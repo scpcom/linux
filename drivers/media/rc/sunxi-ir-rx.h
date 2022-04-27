@@ -17,6 +17,7 @@
 #ifndef SUNXI_IR_RX_H
 #define SUNXI_IR_RX_H
 #include <linux/reset.h>
+#include <media/rc-core.h>
 
 /* Registers */
 #define IR_CTRL_REG		(0x00)	/* IR Control */
@@ -121,7 +122,14 @@ enum {
 	IR_SUPLY_ENABLE,
 };
 
-struct sunxi_ir_rx_data {
+static u32 sunxi_irrx_regs_offset[] = {
+	IR_CTRL_REG,
+	IR_SPLCFG_REG,
+	IR_RXCFG_REG,
+	IR_RXINTE_REG,
+};
+
+struct sunxi_ir_rx {
 	void __iomem *reg_base;
 	struct platform_device	*pdev;
 	struct clk *bclk;
@@ -129,21 +137,27 @@ struct sunxi_ir_rx_data {
 	struct clk *mclk;
 	struct reset_control *reset;
 	struct rc_dev *rcdev;
-	struct regulator *suply;
+	struct regulator *supply;
 	struct pinctrl *pctrl;
-	u32 suply_vol;
+	u32 supply_vol;
 	int irq_num;
 	u32 ir_protocols;
 	u32 ir_addr_cnt;
 	u32 ir_addr[MAX_ADDR_NUM];
 	u32 ir_powerkey[MAX_ADDR_NUM];
-	//struct device *dev;
-	//int bus_num;
+	u32 regs_backup[ARRAY_SIZE(sunxi_irrx_regs_offset)];
+	u32 is_receiving;
+	u32 threshold_low;
+	u32 threshold_high;
+	bool pulse_pre;
+	char protocol;
+	bool boot_code;
+	struct ir_raw_event rawir;
 };
 
-int init_sunxi_ir_map(void);
-void exit_sunxi_ir_map(void);
+int init_sunxi_irrx_map(void);
+void exit_sunxi_irrx_map(void);
 #ifdef CONFIG_SUNXI_KEYMAPPING_SUPPORT
-int init_sunxi_ir_map_ext(void *addr, int num);
+int init_sunxi_irrx_map_ext(void *addr, int num);
 #endif
 #endif /* SUNXI_IR_RX_H */
