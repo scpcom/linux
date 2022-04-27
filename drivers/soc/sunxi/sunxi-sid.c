@@ -359,7 +359,11 @@ void sid_rd_soc_secure_status(void)
 
 	get_key_map_info("secure_status", EFUSE_SID_BASE, &offset, &max_size);
 
+#ifdef CONFIG_ARCH_SUN20IW1
+	sunxi_soc_secure = (((sunxi_smc_readl((phys_addr_t)(base + offset))) >> 31) & 0x1);
+#else
 	sunxi_soc_secure = ((sunxi_smc_readl((phys_addr_t)(base + offset))) & 0x1);
+#endif
 
 	sid_put_base(node, base, 1);
 	init_flag = 1;
@@ -406,6 +410,47 @@ int sunxi_get_serial(u8 *serial)
 	return 0;
 }
 EXPORT_SYMBOL(sunxi_get_serial);
+
+/**
+ * get module_param:
+ * argc[0]---dst buf
+ * argc[1]---the sid offset
+ * argc[2]---len(btye)
+ */
+int sunxi_get_module_param_from_sid(u32 *dst, u32 offset, u32 len)
+{
+	void __iomem *baseaddr = NULL;
+	struct device_node *dev_node = NULL;
+	int i;
+
+	if (dst == NULL) {
+		pr_err("the dst buf is NULL\n");
+		return -1;
+	}
+
+	if (len & 0x3) {
+		pr_err("the len must be word algin\n");
+		return -2;
+	}
+
+	if (sid_get_base(&dev_node, &baseaddr, EFUSE_SID_BASE, 0)) {
+		pr_err("sid_get_base fail \n");
+		return 0;
+	}
+
+	SID_DBG("baseaddr: 0x%p offset:0x%x len(word):0x%x\n", baseaddr, offset, len);
+
+	for (i = 0; i < len; i += 4) {
+		dst[i] = sid_readl(baseaddr + 0x200 + offset + i, 0);
+	}
+
+	sid_put_base(dev_node, baseaddr, 0);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sunxi_get_module_param_from_sid);
+
+
 
 /**
  * soc chipid str:

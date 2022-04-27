@@ -89,6 +89,7 @@ int sunxi_get_serial(unsigned char *serial);
 unsigned int sunxi_get_soc_bin(void);
 s32 sunxi_get_platform(s8 *buf, s32 size);
 s32 sunxi_efuse_readn(s8 *key_name, void *buf, u32 n);
+int sunxi_get_module_param_from_sid(u32 *dst, u32 offset, u32 len);
 #else
 unsigned int __attribute__((weak)) sunxi_get_soc_ver(void) {return -ENOSYS; }
 int __attribute__((weak)) sunxi_get_soc_chipid(unsigned char *chipid) {return -ENOSYS; }
@@ -100,6 +101,7 @@ int __attribute__((weak)) sunxi_get_serial(unsigned char *serial) {return -ENOSY
 unsigned int __attribute__((weak)) sunxi_get_soc_bin(void) {return -ENOSYS; }
 s32 __attribute__((weak)) sunxi_get_platform(s8 *buf, s32 size) {return -ENOSYS; }
 s32 __attribute__((weak)) sunxi_efuse_readn(s8 *key_name, void *buf, u32 n) {return -ENOSYS; }
+int __attribute__((weak)) sunxi_get_module_param_from_sid(u32 *dst, u32 offset, u32 len) {return -ENOSYS; }
 #endif
 int sunxi_soc_is_secure(void);
 #endif  /* __SUNXI_MACH_SUNXI_CHIP_H */

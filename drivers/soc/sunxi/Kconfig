@@ -34,6 +34,21 @@ config GPU_PM_DOMAINS
 
 	 If unsure, say N.
 
+config SUNXI_PM_DOMAINS
+	tristate "Allwinner power domain"
+	depends on PM
+	depends on ARCH_SUN50IW12 || ARCH_SUN8IW20
+	select PM_GENERIC_DOMAINS
+	select PM_GENERIC_DOMAINS_OF
+	select MFD_SYSCON
+	help
+	 Say y here to enable power domain support.
+	 In order to meet high performance and low power requirements, a power
+	 management unit is designed or saving power when domain in low power
+	 mode. The PPU is dedicated for managing the power of the domain.
+
+	 If unsure, say N.
+
 config SUNXI_SID
 	tristate "Allwinner sunxi sid support"
 	default n

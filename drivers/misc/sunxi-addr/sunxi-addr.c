@@ -14,13 +14,14 @@
 #include <linux/miscdevice.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/random.h>
 
 #define ADDR_MGT_DBG(fmt, arg...) printk(KERN_DEBUG "[ADDR_MGT] %s: " fmt "\n",\
 				__func__, ## arg)
 #define ADDR_MGT_ERR(fmt, arg...) printk(KERN_ERR "[ADDR_MGT] %s: " fmt "\n",\
 				__func__, ## arg)
 
-#define MODULE_CUR_VERSION  "v1.0.9"
+#define MODULE_CUR_VERSION  "v1.0.10"
 
 #define MATCH_STR_LEN       20
 #define ADDR_VAL_LEN        6
@@ -137,6 +138,11 @@ static int get_addr_by_name(int fmt, char *addr, char *name)
 		return -1;
 	}
 
+	if (t->addr == NULL) {
+		ADDR_MGT_ERR("t->addr: ", t->addr);
+		return -1;
+	}
+
 	if (IS_TYPE_INVALID(t->type_cur)) {
 		ADDR_MGT_ERR("addr type invalid");
 		return -1;
@@ -192,11 +198,12 @@ EXPORT_SYMBOL_GPL(get_custom_mac_address);
 static int addr_factory(struct device_node *np,
 			int idx, int type, char *mac, char *name)
 {
-	int  ret, i;
+	int  ret;
 	char match[MATCH_STR_LEN];
 	const char *p;
-	char id[ID_LEN], hash[HASH_LEN], cmp_buf[ID_LEN];
-	struct timespec64 curtime;
+	char id[ID_LEN], cmp_buf[ID_LEN];
+	static char hash[HASH_LEN];
+	static int initial = -1;
 
 	switch (type) {
 	case TYPE_BURN:
@@ -215,20 +222,30 @@ static int addr_factory(struct device_node *np,
 	case TYPE_IDGEN:
 		if (idx > HASH_LEN / ADDR_VAL_LEN - 1)
 			return -1;
-		if (sunxi_get_soc_chipid(id))
+		if (initial == -1) {
+			if (sunxi_get_soc_chipid(id)) {
+				initial = 0;
+				return -1;
+			}
+			memset(cmp_buf, 0x00, ID_LEN);
+			if (memcmp(id, cmp_buf, ID_LEN) == 0) {
+				initial = 0;
+				return -1;
+			}
+			if (hmac_sha256(id, ID_LEN, hash)) {
+				initial = 0;
+				return -1;
+			}
+			initial = 1;
+		}
+
+		if (initial == 0)
 			return -1;
-		memset(cmp_buf, 0x00, ID_LEN);
-		if (memcmp(id, cmp_buf, ID_LEN) == 0)
-			return -1;
-		if (hmac_sha256(id, ID_LEN, hash))
-			return -1;
+
 		memcpy(mac, &hash[idx * ADDR_VAL_LEN], ADDR_VAL_LEN);
 		break;
 	case TYPE_RAND:
-		for (i = 0; i < ADDR_VAL_LEN; i++) {
-			ktime_get_real_ts64(&curtime);
-			mac[i] = (char)curtime.tv_nsec;
-		}
+		get_random_bytes(mac, ADDR_VAL_LEN);
 		break;
 	default:
 		ADDR_MGT_ERR("unsupport type: %d", type);
