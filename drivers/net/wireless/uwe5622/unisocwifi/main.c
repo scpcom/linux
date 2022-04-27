@@ -24,9 +24,11 @@
 #include "intf_ops.h"
 #include "vendor.h"
 #include "work.h"
+#if defined(UWE5621_FTR)
 #include "tx_msg.h"
 #include "rx_msg.h"
 #include "wl_core.h"
+#endif
 #include "tcp_ack.h"
 #include "rnd_mac_addr.h"
 #ifdef DFS_MASTER
@@ -257,7 +259,8 @@ static netdev_tx_t sprdwl_start_xmit(struct sk_buff *skb, struct net_device *nde
 	if (vif->priv->fw_stat[vif->mode] != SPRDWL_INTF_OPEN) {
 		wl_err_ratelimited("%s, %d, should not send this data\n",
 		       __func__, __LINE__);
-		return NETDEV_TX_BUSY;
+		dev_kfree_skb(skb);
+		return NETDEV_TX_OK;
 	}
 
 	msg = sprdwl_intf_get_msg_buf(vif->priv,
@@ -290,7 +293,12 @@ static netdev_tx_t sprdwl_start_xmit(struct sk_buff *skb, struct net_device *nde
 		return NETDEV_TX_OK;
 	}
 #endif
+#if !defined(UWE5621_FTR)
+	/* sprdwl_send_data: offset use 2 for cp bytes align */
+	ret = sprdwl_send_data(vif, msg, skb, 2);
+#else
 	ret = sprdwl_send_data(vif, msg, skb, 0);
+#endif /* UWE5621_FTR */
 	if (ret) {
 		wl_ndev_log(L_ERR, ndev, "%s drop msg due to TX Err\n", __func__);
 		/* FIXME as debug sdiom later, here just drop the msg
@@ -361,8 +369,11 @@ static struct net_device_stats *sprdwl_get_stats(struct net_device *ndev)
 {
 	return &ndev->stats;
 }
-
+#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
+static void sprdwl_tx_timeout(struct net_device *ndev, unsigned int txqueue)
+#else
 static void sprdwl_tx_timeout(struct net_device *ndev)
+#endif
 {
 	wl_ndev_log(L_DBG, ndev, "%s\n", __func__);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
@@ -1618,7 +1629,6 @@ static void sprdwl_init_debugfs(struct sprdwl_priv *priv)
 
 int sprdwl_core_init(struct device *dev, struct sprdwl_priv *priv)
 {
-	u8 *efuse_mac_addr = NULL;
 	struct wiphy *wiphy = priv->wiphy;
 	struct wireless_dev *wdev;
 	int ret;
@@ -1643,8 +1653,6 @@ int sprdwl_core_init(struct device *dev, struct sprdwl_priv *priv)
 	}
 	sprdwl_init_debugfs(priv);
 
-	if (is_valid_ether_addr(priv->mac_addr))
-		efuse_mac_addr = priv->mac_addr;
 	rtnl_lock();
 	wdev = sprdwl_add_iface(priv, "wlan%d", NL80211_IFTYPE_STATION, NULL);
 	rtnl_unlock();
@@ -1670,7 +1678,9 @@ int sprdwl_core_init(struct device *dev, struct sprdwl_priv *priv)
 			    ((struct sprdwl_intf *)priv->hw_priv));
 #endif
 
+#if defined(UWE5621_FTR)
 	qos_enable(1);
+#endif
 	sprdwl_init_npi();
 	ret = register_inetaddr_notifier(&sprdwl_inetaddr_cb);
 	if (ret)
@@ -1703,7 +1713,9 @@ int sprdwl_core_deinit(struct sprdwl_priv *priv)
 	if (priv->fw_capa & SPRDWL_CAPA_NS_OFFLOAD)
 		unregister_inet6addr_notifier(&sprdwl_inet6addr_cb);
 	sprdwl_deinit_npi();
+#if defined(UWE5621_FTR)
 	qos_enable(0);
+#endif
 	sprdwl_del_all_ifaces(priv);
 	sprdwl_vendor_deinit(priv->wiphy);
 	wiphy_unregister(priv->wiphy);

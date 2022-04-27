@@ -257,6 +257,7 @@ void sdiohal_wakelock_init(void)
 {
 	struct sdiohal_data_t *p_data = sdiohal_get_data();
 
+	/*wakeup_source pointer*/
 	p_data->tx_ws = wakeup_source_create("sdiohal_tx_wakelock");
 	p_data->rx_ws = wakeup_source_create("sdiohal_rx_wakelock");
 	p_data->scan_ws = wakeup_source_create("sdiohal_scan_wakelock");
@@ -914,18 +915,27 @@ refill:
 #else
 		order = SDIOHAL_FRAG_PAGE_MAX_ORDER_32_BIT;
 #endif
+		/*GFP_KERNEL allow sleep, so not in interrupt; sdma changed,adma not*/
+		if (gfp_mask & GFP_KERNEL)
+			local_irq_restore(flags);
 		for (; ;) {
 			gfp_t gfp = gfp_mask;
 
 			if (order)
-				gfp |= __GFP_COMP | __GFP_NOWARN;
+				gfp |= __GFP_COMP;
 			/* alloc_pages will initialize count to 1. */
 			frag_ctl->frag.page = alloc_pages(gfp, order);
 			if (likely(frag_ctl->frag.page))
 				break;
-			if (--order < 0)
-				goto fail;
+			if (--order < 0) {
+				if (gfp_mask & GFP_KERNEL)
+					goto fail1;
+				else
+					goto fail;
+			}
 		}
+		if (gfp_mask & GFP_KERNEL)
+			local_irq_save(flags);
 		frag_ctl->frag.size = PAGE_SIZE << order;
 		if (frag_ctl->frag.size < fragsz) {
 			sdiohal_info("BITS_PER_LONG=%d,PAGE_SIZE=%ld,order=%d\n",
@@ -1001,6 +1011,7 @@ refill:
 	return data;
 fail:
 	local_irq_restore(flags);
+fail1:
 	sdiohal_err("alloc mem fail\n");
 	return NULL;
 }
@@ -1090,22 +1101,23 @@ err:
 }
 
 /* for normal dma idle buf */
-void *sdiohal_get_rx_free_buf(unsigned int *alloc_size)
+void *sdiohal_get_rx_free_buf(unsigned int *alloc_size, unsigned int read_len)
 {
 	void *p;
 	unsigned int fragsz;
 
-#if (BITS_PER_LONG > 32) || (PAGE_SIZE >= 65536)
-	fragsz = SDIOHAL_RX_RECVBUF_LEN;
-
-#else
-	fragsz = SDIOHAL_32_BIT_RX_RECVBUF_LEN;
-#endif
+	/* fragsz need to be 1024 aligned */
+	fragsz = roundup(read_len, 1024);
+/*
+ * GFP_ATOMIC is not sleep forever, requirement is high;
+ * GFP_KERNEL is nornal way, allow sleep;
+ *__GFP_COLD
+ */
 	p = sdiohal_alloc_frag(fragsz,
 #if KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE
-			       GFP_ATOMIC,
+			       GFP_KERNEL,
 #else
-			       GFP_ATOMIC | __GFP_COLD,
+			       GFP_KERNEL,
 #endif
 			       1, alloc_size);
 
@@ -1403,17 +1415,11 @@ static int sdiohal_dtbs_buf_init(void)
 {
 	struct sdiohal_data_t *p_data = sdiohal_get_data();
 
-	p_data->dtbs_buf = sdiohal_alloc_frag(MAX_MBUF_SIZE,
-#if KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE
-					      GFP_ATOMIC,
-#else
-					      GFP_ATOMIC | __GFP_COLD,
-#endif
-					      0, NULL);
-	if (!p_data->dtbs_buf)
+	p_data->dtbs_buf = kzalloc(MAX_MBUF_SIZE, GFP_KERNEL);
+	if (!p_data->dtbs_buf) {
+		sdiohal_err("dtbs buf alloc fail\n");
 		return -ENOMEM;
-
-	WARN_ON(((unsigned long int)p_data->dtbs_buf) % 64);
+	}
 
 	return 0;
 }
@@ -1421,17 +1427,7 @@ static int sdiohal_dtbs_buf_init(void)
 static int sdiohal_dtbs_buf_deinit(void)
 {
 	struct sdiohal_data_t *p_data = sdiohal_get_data();
-	int order;
-
-	if (!p_data->dtbs_buf)
-		return -ENOMEM;
-
-#if (BITS_PER_LONG > 32) || (PAGE_SIZE >= 65536)
-	order = SDIOHAL_FRAG_PAGE_MAX_ORDER;
-#else
-	order = SDIOHAL_FRAG_PAGE_MAX_ORDER_32_BIT;
-#endif
-	free_pages((unsigned long)p_data->dtbs_buf, order);
+	kfree(p_data->dtbs_buf);
 	p_data->dtbs_buf = NULL;
 
 	return 0;

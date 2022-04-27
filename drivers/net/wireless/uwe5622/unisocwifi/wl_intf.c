@@ -1052,6 +1052,20 @@ void sprdwl_count_rx_tp(struct sprdwl_rx_if *rx_if, int num)
 		rx_if->rx_data_num = 0;
 	}
 }
+
+static int check_msdu_early(struct sprdwl_intf *intf, struct mbuf_t *mbuf)
+{
+	struct rx_msdu_desc *msdu_desc =
+		(struct rx_msdu_desc *)(mbuf->buf + intf->hif_offset);
+
+	if (mbuf->len < msdu_desc->msdu_len ||
+		msdu_desc->msdu_len > 1600) {
+		wl_err("%s, %d, %d, %d\n", __func__, __LINE__, mbuf->len, msdu_desc->msdu_len);
+		return -1;
+	}
+	return 0;
+}
+
 static int intf_rx_handle(int chn, struct mbuf_t *head,
 				   struct mbuf_t *tail, int num)
 {
@@ -1075,6 +1089,13 @@ static int intf_rx_handle(int chn, struct mbuf_t *head,
 		for (i = num; i > 0; i--) {
 			sprdwl_sdio_process_credit(intf,
 				(void *)(mbuf->buf + intf->hif_offset));
+			if (intf->priv->hw_type == SPRDWL_HW_USB &&
+				chn == USB_RX_DATA_PORT &&
+				check_msdu_early(intf, mbuf)) {
+				sprdwcn_bus_push_list(chn, head, tail, num);
+				return 0;
+			}
+
 			mbuf = mbuf->next;
 		}
 	}
@@ -1732,7 +1753,11 @@ void sprdwl_tx_delba(struct sprdwl_intf *intf,
 
 int sprdwl_notifier_boost(struct notifier_block *nb, unsigned long event, void *data)
 {
+#if KERNEL_VERSION(5, 4, 19) <= LINUX_VERSION_CODE
 	struct cpufreq_policy_data *policy = data;
+#else
+	struct cpufreq_policy *policy = data;
+#endif
 	unsigned long min_freq;
 	unsigned long max_freq = policy->cpuinfo.max_freq;
 	struct sprdwl_intf *intf = get_intf();
@@ -1742,7 +1767,11 @@ int sprdwl_notifier_boost(struct notifier_block *nb, unsigned long event, void *
 
 	boost = intf->boost;
 
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+	if (event != CPUFREQ_CREATE_POLICY)
+#else
 	if (event != CPUFREQ_ADJUST)
+#endif
 		return NOTIFY_DONE;
 
 	min_freq = boost ? 1200000 : 400000;
@@ -1819,7 +1848,7 @@ void adjust_rxnum_level(char *buf, unsigned char offset)
 #undef MAX_LEN
 }
 
-int sprdwl_intf_init(struct sprdwl_priv *priv, struct sprdwl_intf *intf)
+int sprdwl_bus_init(struct sprdwl_priv *priv)
 {
 	int ret = -EINVAL, chn = 0;
 
@@ -1846,44 +1875,58 @@ int sprdwl_intf_init(struct sprdwl_priv *priv, struct sprdwl_intf *intf)
 			if (ret < 0)
 				goto err;
 		}
-
-		g_intf_ops.intf = (void *)intf;
-		/* TODO: Need we reserve g_intf_ops? */
-		intf->hw_intf = (void *)&g_intf_ops;
-
-		priv->hw_priv = intf;
-		priv->hw_offset = intf->hif_offset;
-		intf->priv = priv;
-		intf->fw_awake = 1;
-		intf->fw_power_down = 0;
-		intf->txnum_level = BOOST_TXNUM_LEVEL;
-		intf->rxnum_level = BOOST_RXNUM_LEVEL;
-		intf->boost = 0;
-#ifdef UNISOC_WIFI_PS
-		init_completion(&intf->suspend_completed);
-#endif
-	} else {
+		return 0;
+	}
 err:
-		wl_err("%s: unregister %d ops\n",
+	wl_err("%s: unregister %d ops\n",
 		       __func__, g_intf_ops.max_num);
 
-		for (; chn > 0; chn--)
-			sprdwcn_bus_chn_deinit(&g_intf_ops.hif_ops[chn]);
+	for (; chn > 0; chn--)
+		sprdwcn_bus_chn_deinit(&g_intf_ops.hif_ops[chn]);
 
-		g_intf_ops.hif_ops = NULL;
-		g_intf_ops.max_num = 0;
-	}
+	g_intf_ops.hif_ops = NULL;
+	g_intf_ops.max_num = 0;
+
+	return ret;
+}
+
+void sprdwl_bus_deinit(void)
+{
+	int chn = 0;
+
+	for (chn = 0; chn < g_intf_ops.max_num; chn++)
+		sprdwcn_bus_chn_deinit(&g_intf_ops.hif_ops[chn]);
+}
+
+int sprdwl_intf_init(struct sprdwl_priv *priv, struct sprdwl_intf *intf)
+{
+	int ret = -EINVAL;
+
+	ret = sprdwl_bus_init(priv);
+	if (ret < 0)
+		return ret;
+
+	g_intf_ops.intf = (void *)intf;
+	/* TODO: Need we reserve g_intf_ops? */
+	intf->hw_intf = (void *)&g_intf_ops;
+
+	priv->hw_priv = intf;
+	priv->hw_offset = intf->hif_offset;
+	intf->priv = priv;
+	intf->fw_awake = 1;
+	intf->fw_power_down = 0;
+	intf->txnum_level = BOOST_TXNUM_LEVEL;
+	intf->rxnum_level = BOOST_RXNUM_LEVEL;
+	intf->boost = 0;
+#ifdef UNISOC_WIFI_PS
+	init_completion(&intf->suspend_completed);
+#endif
 
 	return ret;
 }
 
 void sprdwl_intf_deinit(struct sprdwl_intf *dev)
 {
-	int chn = 0;
-
-	for (chn = 0; chn < g_intf_ops.max_num; chn++)
-		sprdwcn_bus_chn_deinit(&g_intf_ops.hif_ops[chn]);
-
 	g_intf_ops.intf = NULL;
 	g_intf_ops.max_num = 0;
 	dev->hw_intf = NULL;

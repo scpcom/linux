@@ -1619,7 +1619,7 @@ static int sprdwl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	sscan_buf = kzalloc(sizeof(*sscan_buf), GFP_KERNEL);
 	if (!sscan_buf)
 		return -ENOMEM;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 83)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 	scan_plans = request->scan_plans;
 	sscan_buf->interval = scan_plans->interval;
 #else
@@ -1721,6 +1721,20 @@ static int sprdwl_cfg80211_sched_scan_stop(struct wiphy *wiphy,
 #ifdef SYNC_DISCONNECT
 void sprdwl_disconnect_handle(struct sprdwl_vif *vif)
 {
+	u16 reason_code = 0;
+	if ((vif->sm_state == SPRDWL_CONNECTED) ||
+			(vif->sm_state == SPRDWL_DISCONNECTING)) {
+		cfg80211_disconnected(vif->ndev, reason_code,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 83)
+			NULL, 0, true, GFP_KERNEL);
+#else
+			NULL, 0, GFP_KERNEL);
+#endif
+		wl_ndev_log(L_DBG, vif->ndev,
+			"%s %s, reason_code %d\n", __func__,
+			vif->ssid, reason_code);
+	}
+
 	vif->sm_state = SPRDWL_DISCONNECTED;
 
 	/* Clear bssid & ssid */
@@ -1748,10 +1762,8 @@ static int sprdwl_cfg80211_disconnect(struct wiphy *wiphy,
 	enum sm_state old_state = vif->sm_state;
 	int ret;
 #ifdef SYNC_DISCONNECT
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 60)
 	u32 msec;
 	ktime_t kt;
-#endif
 #endif
 #ifdef STA_SOFTAP_SCC_MODE
 	struct sprdwl_intf *intf = (struct sprdwl_intf *)vif->priv->hw_priv;
@@ -1772,17 +1784,19 @@ static int sprdwl_cfg80211_disconnect(struct wiphy *wiphy,
 		goto out;
 	}
 #ifdef SYNC_DISCONNECT
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 60)
 	if (!sprdwl_sync_disconnect_event(vif, msecs_to_jiffies(1000))) {
 		kt = ktime_get();
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+		msec = (u32)(div_u64(kt, NSEC_PER_MSEC));
+#else
 		msec = (u32)(div_u64(kt.tv64, NSEC_PER_MSEC));
+#endif
 		wl_err("Wait disconnect event timeout. [mstime = %d]\n",
 		       cpu_to_le32(msec));
 	} else {
 		sprdwl_disconnect_handle(vif);
 	}
 	atomic_set(&vif->sync_disconnect_event, 0);
-#endif
 #endif
 	trace_deauth_reason(vif->mode, reason_code, LOCAL_EVENT);
 out:

@@ -1668,7 +1668,7 @@ static int sdiohal_resume(struct device *dev)
 		enable_irq(p_data->irq_num);
 #endif
 
-	for (chn = 0; chn < SDIO_CHANNEL_NUM; chn++) {
+	for (chn = SDIO_CHANNEL_NUM; chn >= 0; chn--) {
 		sdiohal_ops = chn_ops(chn);
 		if (sdiohal_ops && sdiohal_ops->power_notify) {
 			ret = sdiohal_ops->power_notify(chn, true);
@@ -1914,6 +1914,11 @@ static int sdiohal_probe(struct sdio_func *func,
 	}
 	sdiohal_debug("get host ok!!!");
 
+#ifdef CONFIG_HISI_BOARD
+/* max_blk_count default is 256*/
+/* to(MAX_CHAIN_NODE_NUM * MAX_MBUF_SIZE)/(CONFIG_SDIO_BLKSIZE) < max_blk_count */
+	p_data->sdio_dev_host->max_blk_count = 512;
+#endif
 	atomic_set(&p_data->xmit_start, 1);
 
 	if (!p_data->pwrseq) {
@@ -1970,7 +1975,6 @@ static int sdiohal_probe(struct sdio_func *func,
 	if (scan_card_notify != NULL)
 		scan_card_notify();
 
-	device_disable_async_suspend(&func->dev);
 	sdiohal_debug("rescan callback:%p\n", scan_card_notify);
 	sdiohal_info("probe ok\n");
 

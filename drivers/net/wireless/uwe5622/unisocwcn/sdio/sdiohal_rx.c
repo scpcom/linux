@@ -254,8 +254,15 @@ read_again:
 			if (ret != 0) {
 				sdiohal_err("adma read fail ret:%d\n", ret);
 				rx_dtbs = 0;
-				if (p_data->irq_type != SDIOHAL_RX_POLLING)
+				if (p_data->irq_type != SDIOHAL_RX_POLLING) {
+					sdiohal_rx_list_free(
+						data_list->mbuf_head,
+						data_list->mbuf_tail,
+						data_list->node_num);
+					kfree(data_list);
+					data_list = NULL;
 					goto submit_list;
+				}
 			}
 			rx_dtbs =  *((unsigned int *)(p_data->dtbs_buf
 				   + (SDIOHAL_DTBS_BUF_SIZE - 4)));
@@ -275,7 +282,8 @@ read_again:
 				      __func__, read_len,
 				      p_data->adma_rx_enable);
 
-			rx_buf = sdiohal_get_rx_free_buf(&alloc_size);
+			/*get buf by readlen 1024 aligned */
+			rx_buf = sdiohal_get_rx_free_buf(&alloc_size, read_len);
 			if (!rx_buf) {
 				sdiohal_err("get_rx_free_buf fail, rlen=%d\n",
 					    read_len);

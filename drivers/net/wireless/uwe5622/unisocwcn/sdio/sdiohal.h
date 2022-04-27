@@ -6,7 +6,7 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/version.h>
-#if KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
 #include <uapi/linux/sched/types.h>
 #else
 #include <linux/sched.h>
@@ -54,7 +54,7 @@ extern long int sdiohal_log_level;
 	} while (0)
 #define sdiohal_pr_perf(fmt, args...) \
 	do { if (sdiohal_log_level & SDIOHAL_PERF_LEVEL) \
-		pr_info(fmt, ## args); \
+		trace_printk(fmt, ## args); \
 	} while (0)
 #else
 #define sdiohal_normal(fmt, args...)
@@ -293,6 +293,7 @@ struct sdiohal_data_t {
 	struct task_struct *rx_thread;
 	struct completion tx_completed;
 	struct completion rx_completed;
+	/*wakeup_source pointer*/
 	struct wakeup_source *tx_ws;
 	struct wakeup_source *rx_ws;
 	atomic_t tx_wake_flag;
@@ -361,6 +362,7 @@ struct sdiohal_data_t {
 	struct timespec tm_begin_irq;
 	struct timespec tm_end_irq;
 
+	/*wakeup_source pointer*/
 	struct wakeup_source *scan_ws;
 	struct completion scan_done;
 	struct completion remove_done;
@@ -448,7 +450,7 @@ struct sdiohal_list_t *sdiohal_get_rx_mbuf_list(int num);
 struct sdiohal_list_t *sdiohal_get_rx_mbuf_node(int num);
 int sdiohal_rx_list_dispatch(void);
 struct sdiohal_list_t *sdiohal_get_rx_channel_list(int channel);
-void *sdiohal_get_rx_free_buf(unsigned int *alloc_size);
+void *sdiohal_get_rx_free_buf(unsigned int *alloc_size, unsigned int read_len);
 void sdiohal_tx_init_retrybuf(void);
 int sdiohal_misc_init(void);
 void sdiohal_misc_deinit(void);

@@ -17,7 +17,6 @@
 
 #ifndef __WL_CORE_H__
 #define __WL_CORE_H__
-
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/spinlock.h>

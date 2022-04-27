@@ -1081,6 +1081,10 @@ int sprdwl_sdio_process_credit(void *pdev, void *data)
 	if (common->type == SPRDWL_TYPE_DATA_SPECIAL) {
 		int offset = (size_t)&((struct rx_msdu_desc *)0)->rsvd5;
 
+		if (intf->priv->hw_type == SPRDWL_HW_USB) {
+			return -2;
+		}
+
 		flow = data + offset;
 		goto out;
 	}
@@ -1548,7 +1552,7 @@ static inline unsigned short from32to16(unsigned int x)
 	return x;
 }
 
-static unsigned int do_csum(const unsigned char *buff, int len)
+unsigned int do_csum(const unsigned char *buff, int len)
 {
 	int odd;
 	unsigned int result = 0;

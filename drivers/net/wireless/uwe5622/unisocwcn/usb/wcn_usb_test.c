@@ -221,7 +221,7 @@ static ssize_t wcn_usb_channel_write(struct file *file, const char *buffer,
 		return -EIO;
 	}
 
-	wcn_usb_test_print("%s i[%d] mbuf_num[%d] byte[%ld]\n",
+	wcn_usb_test_print("%s i[%d] mbuf_num[%d] byte[%zd]\n",
 			__func__, i, mbuf_num, buf_offset);
 
 	*ppos += buf_offset;

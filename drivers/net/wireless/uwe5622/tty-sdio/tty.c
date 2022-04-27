@@ -629,41 +629,6 @@ struct mchn_ops_t bt_tx_ops = {
 #endif
 };
 
-static int bluetooth_reset(struct notifier_block *this, unsigned long ev, void *ptr)
-{
-#define RESET_BUFSIZE 5
-	int ret = 0;
-	int block_size = RESET_BUFSIZE;
-	unsigned char reset_buf[RESET_BUFSIZE] = {0x04, 0xff, 0x02, 0x57, 0xa5};
-
-	if (!ev) {
-		pr_info("%s:reset callback coming\n", __func__);
-		if (mtty_dev != NULL) {
-			if (!work_pending(&mtty_dev->bt_rx_work)) {
-				pr_info("%s tty_insert_flip_string", __func__);
-				while (ret < block_size) {
-					pr_info("%s before tty_insert_flip_string ret: %d, len: %d\n",
-							__func__, ret, RESET_BUFSIZE);
-					ret = tty_insert_flip_string(mtty_dev->port,
-							(unsigned char *)reset_buf,
-							RESET_BUFSIZE);   // -BT_SDIO_HEAD_LEN
-					pr_info("%s ret: %d, len: %d\n", __func__, ret, RESET_BUFSIZE);
-					if (ret)
-						tty_flip_buffer_push(mtty_dev->port);
-					block_size = block_size - ret;
-					ret = 0;
-				}
-			}
-		}
-		ret = NOTIFY_DONE;
-	}
-	return ret;
-}
-
-static struct notifier_block bluetooth_reset_block = {
-    .notifier_call = bluetooth_reset,
-};
-
 static int  mtty_probe(struct platform_device *pdev)
 {
 	struct mtty_init_data *pdata = (struct mtty_init_data *)
@@ -732,9 +697,6 @@ static int  mtty_probe(struct platform_device *pdev)
 	rfkill_bluetooth_init(pdev);
 	bluesleep_init();
 	woble_init();
-
-	marlin_reset_callback_register(MARLIN_BLUETOOTH, &bluetooth_reset_block);
-
 	sprdwcn_bus_chn_init(&bt_rx_ops);
 	sprdwcn_bus_chn_init(&bt_tx_ops);
 	sema_init(&sem_id, BT_TX_POOL_SIZE - 1);

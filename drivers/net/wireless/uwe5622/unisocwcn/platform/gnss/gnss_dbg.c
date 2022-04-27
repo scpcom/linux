@@ -109,7 +109,6 @@ static void gnss_ring_destroy(struct gnss_ring_t *pring)
 		}
 		GNSS_DEBUG("to free pring.");
 		kfree(pring);
-		pring = NULL;
 	}
 }
 
@@ -373,7 +372,7 @@ static struct miscdevice gnss_slog_device = {
 	.fops = &gnss_slog_fops,
 };
 
-static int __init gnss_module_init(void)
+int __init gnss_module_init(void)
 {
 	int ret;
 
@@ -406,7 +405,7 @@ static int __init gnss_module_init(void)
 	return ret;
 }
 
-static void __exit gnss_module_exit(void)
+void __exit gnss_module_exit(void)
 {
 	gnss_ring_destroy(gnss_rx_ring);
 	gnss_device_destroy();
@@ -414,6 +413,8 @@ static void __exit gnss_module_exit(void)
 	misc_deregister(&gnss_slog_device);
 }
 
+#if (0)
 module_init(gnss_module_init);
 module_exit(gnss_module_exit);
 MODULE_LICENSE("GPL");
+#endif
