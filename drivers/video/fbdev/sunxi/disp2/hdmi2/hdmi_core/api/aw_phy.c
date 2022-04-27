@@ -582,7 +582,7 @@ static struct aw_phy_config *phy_get_configs(u32 pClk, color_depth_t color,
 	return NULL;
 }
 
-void phy_reset(void)
+void hdmi_tx_phy_reset(void)
 {
 	phy_base->phy_ctl0.bits.entx = 0;
 	phy_base->phy_ctl5.bits.enresck = 0;
@@ -762,7 +762,7 @@ int phy_config_resume(void)
 {
 	int ret = 0;
 	/* close phy and mpLL*/
-	phy_reset();
+	hdmi_tx_phy_reset();
 
 	//mpll configuration
 	phy_set_mpll();
@@ -784,7 +784,7 @@ static int __phy_config(struct aw_phy_config *config)
 {
 	int ret = 0;
 	/* 先关闭PHY 和 mPLL */
-	phy_reset();
+	hdmi_tx_phy_reset();
 
 	//配置mpll
 	phy_set_mpll();

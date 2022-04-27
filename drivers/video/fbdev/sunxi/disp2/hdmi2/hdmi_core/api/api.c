@@ -439,7 +439,7 @@ static u32 api_get_audio_channel_count(void)
 #if IS_ENABLED(CONFIG_AW_PHY)
 static void api_phy_reset(void)
 {
-	return phy_reset();
+	return hdmi_tx_phy_reset();
 }
 
 static int api_phy_config_resume(void)
