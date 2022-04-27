@@ -18,6 +18,7 @@
 #define _DEV_LCD_FB_H
 #include "include.h"
 
+extern struct dev_lcd_fb_t g_drv_info;
 
 struct dev_lcd_fb_t {
 	struct device *device;

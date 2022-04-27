@@ -28,7 +28,7 @@ struct disp_lcd_cfg {
 	bool lcd_used;
 
 	bool lcd_bl_en_used;
-	struct disp_gpio_set_t lcd_bl_en;
+	struct disp_gpio_info lcd_bl_en;
 	int lcd_bl_gpio_hdl;
 	char lcd_bl_en_power[LCD_POWER_STR_LEN];
 
@@ -40,11 +40,13 @@ struct disp_lcd_cfg {
 	char lcd_fix_power[LCD_POWER_NUM][LCD_POWER_STR_LEN];
 
 	bool lcd_gpio_used[LCD_GPIO_NUM];
-	struct disp_gpio_set_t lcd_gpio[LCD_GPIO_NUM];
+	struct disp_gpio_info lcd_gpio[LCD_GPIO_NUM];
 	int gpio_hdl[LCD_GPIO_NUM];
 	char lcd_gpio_power[LCD_GPIO_REGU_NUM][LCD_POWER_STR_LEN];
 
 	char lcd_pin_power[LCD_GPIO_REGU_NUM][LCD_POWER_STR_LEN];
+	struct disp_gpio_info lcd_spi_dc_pin;
+	int spi_dc_pin_hdl;
 
 	u32 backlight_bright;
 	/*

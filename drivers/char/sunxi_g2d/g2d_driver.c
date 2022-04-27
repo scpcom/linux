@@ -362,7 +362,7 @@ void *g2d_malloc(__u32 bytes_num, uintptr_t *phy_addr)
 {
 	void *address = NULL;
 
-#if defined(CONFIG_ION_SUNXI)
+#if defined(CONFIG_ION_SUNXI) || defined(CONFIG_ION)
 	u32 actual_bytes;
 
 	if (bytes_num != 0) {
@@ -409,7 +409,8 @@ void *g2d_malloc(__u32 bytes_num, uintptr_t *phy_addr)
 
 void g2d_free(void *virt_addr, void *phy_addr, unsigned int size)
 {
-#if defined(CONFIG_ION_SUNXI)
+#if defined(CONFIG_ION_SUNXI) || defined(CONFIG_ION)
+
 	u32 actual_bytes;
 
 	actual_bytes = PAGE_ALIGN(size);

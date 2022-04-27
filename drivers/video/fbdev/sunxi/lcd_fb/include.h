@@ -22,7 +22,9 @@
 #include "linux/semaphore.h"
 #include <asm/barrier.h>
 #include <asm/div64.h>
-//#include <asm/memory.h>
+#if !defined(CONFIG_RISCV)
+#include <asm/memory.h>
+#endif
 #include <asm/unistd.h>
 #include <linux/cdev.h>
 #include <linux/clk-provider.h>
@@ -65,6 +67,10 @@
 #include <linux/sunxi-gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/clk-provider.h>
+#include <linux/spi/spidev.h>
+#include <linux/spi/spi.h>
+#include "../../../../spi/spi-sunxi.h"
+#include "lcd_fb_feature.h"
 
 #define LCD_GAMMA_TABLE_SIZE (256 * sizeof(unsigned int))
 #define LCD_FB_DEBUG_LEVEL 0
@@ -142,7 +148,6 @@ struct disp_lcd_panel_fun {
 	int (*lcd_user_defined_func)(unsigned int sel, unsigned int para1,
 				     unsigned int para2, unsigned int para3);
 	int (*set_bright)(unsigned int sel, unsigned int bright);
-	int (*set_layer)(unsigned int sel, void *buf, unsigned int len);
 	int (*blank)(unsigned int sel, unsigned int en);
 	int (*set_var)(unsigned int sel, struct fb_info *info);
 	int (*set_addr_win)(unsigned int sel, int x, int y, int width, int height);
@@ -194,13 +199,16 @@ struct disp_fb_create_info {
 
 
 enum disp_lcd_if {
-	LCD_IF_HV = 0,
-	LCD_IF_CPU = 1,
-	LCD_IF_LVDS = 3,
-	LCD_IF_DSI = 4,
-	LCD_IF_EDP = 5,
-	LCD_IF_EXT_DSI = 6,
-	LCD_IF_VDPO = 7,
+	LCD_FB_IF_SPI = 0,
+	LCD_FB_IF_DBI = 1,
+};
+
+enum lcd_fb_dbi_if {
+	LCD_FB_L3I1 = 0x0,
+	LCD_FB_L3I2 = 0x1,
+	LCD_FB_L4I1 = 0x2,
+	LCD_FB_L4I2 = 0x3,
+	LCD_FB_D2LI = 0x4,
 };
 
 enum lcdfb_pixel_format {
@@ -226,10 +234,20 @@ enum lcdfb_pixel_format {
 	LCDFB_FORMAT_BGRA_5551 = 0x13,
 };
 
+enum lcdfb_dbi_fmt {
+	LCDFB_DBI_RGB111 = 0x0,
+	LCDFB_DBI_RGB444 = 0x1,
+	LCDFB_DBI_RGB565 = 0x2,
+	LCDFB_DBI_RGB666 = 0x3,
+	LCDFB_DBI_RGB888 = 0x4,
+};
+
 struct disp_panel_para {
 	enum disp_lcd_if lcd_if;
+	enum lcd_fb_dbi_if dbi_if;
+	unsigned int lcd_spi_bus_num;
 
-	unsigned int lcd_dclk_freq;
+	unsigned int lcd_data_speed;
 	unsigned int lcd_x;	/* horizontal resolution */
 	unsigned int lcd_y;	/* vertical resolution */
 	unsigned int lcd_width;	/* width of lcd in mm */
@@ -240,22 +258,13 @@ struct disp_panel_para {
 	unsigned int lcd_pwm_freq;
 	unsigned int lcd_pwm_pol;
 	enum lcdfb_pixel_format lcd_pixel_fmt;
+	enum lcdfb_dbi_fmt lcd_dbi_fmt;
+	unsigned int lcd_dbi_clk_mode;
+	unsigned int lcd_dbi_te;
 	unsigned int fb_buffer_num;
 
-	unsigned int lcd_rb_swap;
-	unsigned int lcd_rgb_endian;
-
-	unsigned int lcd_vt;
-	unsigned int lcd_ht;
-	unsigned int lcd_vbp;
-	unsigned int lcd_hbp;
-	unsigned int lcd_vspw;
-	unsigned int lcd_hspw;
+	enum dbi_src_seq lcd_rgb_order;
 	unsigned int lcd_fps;
-
-	unsigned int lcd_interlace;
-	unsigned int lcd_hv_clk_phase;
-	unsigned int lcd_hv_sync_polarity;
 
 	unsigned int lcd_frm;
 	unsigned int lcd_gamma_en;
@@ -276,6 +285,7 @@ struct lcd_fb_device {
 	u32 disp;
 
 	void *priv_data;
+	struct spi_device *spi_device;
 
 	struct disp_video_timings timings;
 	s32 (*init)(struct lcd_fb_device *p_lcd);
@@ -321,6 +331,11 @@ struct lcd_fb_device {
 	int (*set_layer)(struct lcd_fb_device *p_lcd, struct fb_info *p_info);
 	int (*set_var)(struct lcd_fb_device *p_lcd, struct fb_info *p_info);
 	int (*blank)(struct lcd_fb_device *p_lcd, unsigned int en);
+	int (*cmd_write)(struct lcd_fb_device *p_lcd, unsigned char cmd);
+	int (*para_write)(struct lcd_fb_device *p_lcd, unsigned char para);
+	int (*cmd_read)(struct lcd_fb_device *p_lcd, unsigned char cmd,
+			unsigned char *rx_buf, unsigned char len);
+	int (*wait_for_vsync)(struct lcd_fb_device *p_lcd);
 };
 
 struct sunxi_disp_source_ops {
@@ -342,8 +357,28 @@ struct sunxi_disp_source_ops {
 	int (*sunxi_lcd_gpio_set_direction)(unsigned int screen_id,
 					     unsigned int io_index,
 					     u32 direction);
+	int (*sunxi_lcd_cmd_write)(unsigned int screen_id,
+					 unsigned char cmd);
+	int (*sunxi_lcd_para_write)(unsigned int screen_id,
+					 unsigned char para);
+	int (*sunxi_lcd_cmd_read)(unsigned int screen_id,
+					 unsigned char cmd, unsigned char *rx_buf, unsigned char len);
 };
 
+enum disp_return_value {
+	DIS_SUCCESS = 0,
+	DIS_FAIL = -1,
+	DIS_PARA_FAILED = -2,
+	DIS_PRIO_ERROR = -3,
+	DIS_OBJ_NOT_INITED = -4,
+	DIS_NOT_SUPPORT = -5,
+	DIS_NO_RES = -6,
+	DIS_OBJ_COLLISION = -7,
+	DIS_DEV_NOT_INITED = -8,
+	DIS_DEV_SRAM_COLLISION = -9,
+	DIS_TASK_ERROR = -10,
+	DIS_PRIO_COLLSION = -11
+};
 
 
 #endif /*End of file*/

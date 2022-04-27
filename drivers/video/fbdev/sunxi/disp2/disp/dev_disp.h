@@ -17,6 +17,7 @@
 #include "de/bsp_display.h"
 #include "de/disp_display.h"
 #include "de/disp_manager.h"
+#include "de/lcd_debug.h"
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif

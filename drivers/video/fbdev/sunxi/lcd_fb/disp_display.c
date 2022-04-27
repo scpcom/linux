@@ -62,6 +62,19 @@ s32 bsp_disp_lcd_set_layer(unsigned int disp, struct fb_info *p_info)
 	return  lcd->set_layer(lcd, p_info);
 }
 
+s32 bsp_disp_lcd_wait_for_vsync(unsigned int disp)
+{
+	struct lcd_fb_device *lcd;
+
+	lcd = disp_get_lcd(disp);
+	if (lcd == NULL) {
+		lcd_fb_wrn("Get lcd device fail!\n");
+		return -1;
+	}
+
+	return  lcd->wait_for_vsync(lcd);
+}
+
 s32 bsp_disp_lcd_set_var(unsigned int disp, struct fb_info *p_info)
 {
 	struct lcd_fb_device *lcd;
@@ -368,6 +381,7 @@ struct lcd_fb_device *lcd_fb_device_get(int disp)
 
 
 extern struct dev_lcd_fb_t g_drv_info;
+#define MY_BYTE_ALIGN(x) (((x + (4 * 1024 - 1)) >> 12) << 12)
 
 void *lcd_fb_dma_malloc(u32 num_bytes, void *phys_addr)
 {
@@ -380,17 +394,17 @@ void *lcd_fb_dma_malloc(u32 num_bytes, void *phys_addr)
 		address = dma_alloc_coherent(
 		    g_drv_info.device, actual_bytes, (dma_addr_t *)phys_addr, GFP_KERNEL);
 		if (address) {
-			pr_warn(
+			lcd_fb_inf(
 			    "dma_alloc_coherent ok, address=0x%p, size=0x%x\n",
 			    (void *)(*(unsigned long *)phys_addr), num_bytes);
 			return address;
 		} else {
-			pr_warn("dma_alloc_coherent fail, size=0x%x\n",
+			lcd_fb_wrn("dma_alloc_coherent fail, size=0x%x\n",
 				num_bytes);
 			return NULL;
 		}
 	} else {
-		pr_warn("%s size is zero\n", __func__);
+		lcd_fb_wrn("%s size is zero\n", __func__);
 	}
 
 	return NULL;
@@ -404,4 +418,44 @@ void lcd_fb_dma_free(void *virt_addr, void *phys_addr, u32 num_bytes)
 	if (phys_addr && virt_addr)
 		dma_free_coherent(g_drv_info.device, actual_bytes, virt_addr,
 				  (dma_addr_t)phys_addr);
+}
+
+
+s32 bsp_disp_lcd_cmd_write(unsigned int screen_id,
+					 unsigned char cmd)
+{
+	int ret = -1;
+	struct lcd_fb_device *lcd;
+
+	lcd = disp_get_lcd(screen_id);
+	if (lcd && lcd->cmd_write)
+		ret = lcd->cmd_write(lcd, cmd);
+
+	return ret;
+}
+
+s32 bsp_disp_lcd_para_write(unsigned int screen_id,
+					 unsigned char para)
+{
+	int ret = -1;
+	struct lcd_fb_device *lcd;
+
+	lcd = disp_get_lcd(screen_id);
+	if (lcd && lcd->para_write)
+		ret = lcd->para_write(lcd, para);
+
+	return ret;
+}
+
+s32 bsp_disp_lcd_cmd_read(unsigned int screen_id, unsigned char cmd,
+			  unsigned char *rx_buf, unsigned char len)
+{
+	int ret = -1;
+	struct lcd_fb_device *lcd;
+
+	lcd = disp_get_lcd(screen_id);
+	if (lcd && lcd->para_write)
+		ret = lcd->cmd_read(lcd, cmd, rx_buf, len);
+
+	return ret;
 }

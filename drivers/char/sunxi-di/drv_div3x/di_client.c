@@ -13,8 +13,8 @@
 
 #include "di_client.h"
 #include "di_dev.h"
-#include "../common/di_utils.h"
-#include "../common/di_debug.h"
+#include "di_utils.h"
+#include "di_debug.h"
 #include "sunxi_di.h"
 
 #include <linux/kernel.h>
@@ -92,6 +92,13 @@ int di_client_reset(struct di_client *c, void *data)
 	c->para_checked = false;
 	c->unreset = false;
 	c->proc_fb_seqno = 0;
+	c->di_detect_result = 0;
+	c->interlace_detected_counts = 0;
+	c->lastest_interlace_detected_frame = 0;
+	c->interlace_detected_counts_exceed_first_p_frame = 0;
+	c->progressive_detected_counts = 0;
+	c->progressive_detected_first_frame = 0;
+	c->lastest_progressive_detected_frame = 0;
 	c->apply_fixed_para = true;
 	atomic_set(&c->wait_con, DI_PROC_STATE_IDLE);
 
@@ -132,6 +139,13 @@ int di_client_check_para(struct di_client *c, void *data)
 	}
 
 	c->proc_fb_seqno = 0;
+	c->di_detect_result = 0;
+	c->interlace_detected_counts = 0;
+	c->lastest_interlace_detected_frame = 0;
+	c->interlace_detected_counts_exceed_first_p_frame = 0;
+	c->progressive_detected_counts = 0;
+	c->progressive_detected_first_frame = 0;
+	c->lastest_progressive_detected_frame = 0;
 	c->apply_fixed_para = true;
 
 	if ((c->video_size.height == 0)
@@ -245,6 +259,21 @@ static bool di_client_check_fb_arg(struct di_client *c,
 		fb_arg->is_pulldown ? "Y" : "N",
 		fb_arg->top_field_first ? "Y" : "N",
 		fb_arg->base_field ? "TOP" : "BOTTOM");
+	DI_DEBUG("out fb0 info:format:%u dma_buf_fd:%d "
+	"buf:(y_addr:0x%llx)(cb_addr:0x%llx)(cr_addr:0x%llx)(ystride:%d)(cstride:%d) "
+	"size:(%dx%d)\n",
+	fb_arg->out_dit_fb0.format, fb_arg->out_dit_fb0.dma_buf_fd,
+	fb_arg->out_dit_fb0.buf.y_addr, fb_arg->out_dit_fb0.buf.cb_addr, fb_arg->out_dit_fb0.buf.cr_addr,
+	fb_arg->out_dit_fb0.buf.ystride, fb_arg->out_dit_fb0.buf.cstride,
+	fb_arg->out_dit_fb0.size.width, fb_arg->out_dit_fb0.size.height);
+
+	DI_DEBUG("out fb1 info:format:%u dma_buf_fd:%d "
+	"buf:(y_addr:0x%llx)(cb_addr:0x%llx)(cr_addr:0x%llx)(ystride:%d)(cstride:%d)"
+	"size:(%dx%d)\n",
+	fb_arg->out_dit_fb1.format, fb_arg->out_dit_fb1.dma_buf_fd,
+	fb_arg->out_dit_fb1.buf.y_addr, fb_arg->out_dit_fb1.buf.cb_addr, fb_arg->out_dit_fb1.buf.cr_addr,
+	fb_arg->out_dit_fb1.buf.ystride, fb_arg->out_dit_fb1.buf.cstride,
+	fb_arg->out_dit_fb1.size.width, fb_arg->out_dit_fb1.size.height);
 
 	/* TODO: add more check ? */
 	return true;
@@ -389,6 +418,7 @@ int di_client_process_fb(struct di_client *c,
 		return -EINVAL;
 	}
 	memcpy((void *)&c->fb_arg, fb_arg, sizeof(c->fb_arg));
+
 	ret = di_client_get_fbs(c);
 
 	time = ktime_get();
@@ -396,6 +426,36 @@ int di_client_process_fb(struct di_client *c,
 
 	if (!ret)
 		ret = di_drv_process_fb(c);
+
+	if ((c->mode == DI_MODE_60HZ
+		|| c->mode == DI_MODE_30HZ
+		|| c->mode == DI_MODE_WEAVE)
+		&& c->di_detect_result == DI_DETECT_PROGRESSIVE) {
+		DI_INFO("di detect result:progressive, di_mode:%s\n",
+			c->mode == DI_MODE_60HZ ? "60HZ" :
+			c->mode == DI_MODE_30HZ ? "30HZ" : "weave");
+		if (!c->progressive_detected_counts)
+			c->progressive_detected_first_frame = c->proc_fb_seqno;
+		if (c->progressive_detected_counts == 0xffffffffffffffff)
+			c->interlace_detected_counts = 0;
+		c->progressive_detected_counts++;
+		c->lastest_progressive_detected_frame = c->proc_fb_seqno;
+		ret = FB_PROCESS_ERROR_INTERLACE_TYPE;
+	} else {
+		DI_INFO("di detect result:interlace, di_mode:%s\n",
+			c->mode == DI_MODE_60HZ ? "60HZ" :
+			c->mode == DI_MODE_30HZ ? "30HZ" :
+			c->mode == DI_MODE_BOB ? "bob" :
+			c->mode == DI_MODE_TNR ? "tnr only" :
+			"weave");
+		c->interlace_detected_counts++;
+		c->lastest_interlace_detected_frame = c->proc_fb_seqno;
+		if (c->progressive_detected_counts
+			&& (c->interlace_detected_counts
+				> c->progressive_detected_counts))
+			c->interlace_detected_counts_exceed_first_p_frame++;
+	}
+
 	time = ktime_get();
 	t2 = ktime_to_us(time);
 

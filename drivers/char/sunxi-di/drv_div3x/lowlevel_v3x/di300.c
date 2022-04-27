@@ -15,8 +15,8 @@
 #include "di300_reg.h"
 #include "di300_alg.h"
 #include "../di_client.h"
-#include "../../common/di_utils.h"
-#include "../../common/di_debug.h"
+#include "../di_utils.h"
+#include "../di_debug.h"
 #include "../sunxi_di.h"
 
 #include <linux/io.h>
@@ -279,16 +279,13 @@ static s32 di_dev_set_top_para(struct di_client *c)
 	di_para = &proc_rst->di_para;
 	alg_para = &di_para->alg_para;
 
-	if (alg_para->alg_en & alg_para->fod_alg_para.fod_alg_en) {
-		if (alg_hist->fod_alg_hist.is_fieldorderchange) {
-			c->fb_arg.top_field_first =
-				alg_hist->fod_alg_hist.bff_fix ? 0 : 1;
-		}
-	}
-
+	c->fb_arg.top_field_first =
+			di_para->bff ? 0 : 1;
+	DI_INFO("top_field_first:%d di_para->bff:%d\n", c->fb_arg.top_field_first, di_para->bff);
 	tff = c->fb_arg.top_field_first ? 1 : 0;
 	if (c->dit_mode.intp_mode == DI_DIT_INTP_MODE_BOB)
 		tff ^= (c->fb_arg.base_field ? 1 : 0);
+	DI_INFO("set tff:%d\n", tff);
 	reg->forder.bits.bff = tff ? 0 : 1;
 
 	if (c->md_en)
@@ -630,6 +627,8 @@ s32 di_dev_get_proc_result(void *client)
 	fmd_hist->FMD_FRD02 = reg->fmd_frd02.bits.cnt;
 	fmd_hist->FMD_FRD13 = reg->fmd_frd13.bits.cnt;
 
+	DI_INFO("di_dev_get_proc_result, FOD_FID10:%d FOD_FID32:%d\n", fmd_hist->FOD_FID10, fmd_hist->FOD_FID32);
+
 	fmd_hist->FIELD_MAX_VIDEO_NUM_F3 =
 		reg->fmd_field_hist0.bits.max_video_num;
 	fmd_hist->FIELD_MAX_TEXT_NUM_F3 =
@@ -678,17 +677,21 @@ static s32 di_dev_calc_proc_result(struct di_client *c)
 	/* FOD */
 	if (alg_hist->fod_alg_hist.is_fieldorderchange) {
 		DI_DEBUG(TAG"[FOD]Field order changed.\n");
-		if (alg_hist->fod_alg_hist.bff_fix)
-			DI_DEBUG(TAG"[FOD]Current field order:BFF.\n");
-		else
-			DI_DEBUG(TAG"[FOD]Current field order:TFF.\n");
 	}
 
-	/* ITD */
-	if (alg_hist->itd_alg_hist.is_progressive_lock)
-		DI_DEBUG(TAG"[ITD]Progressive locked.\n");
+	if (alg_hist->fod_alg_hist.bff_fix)
+		DI_DEBUG(TAG"[FOD]Current field order:BFF.\n");
 	else
-		DI_DEBUG(TAG"[ITD]Iterlaced detected.\n");
+		DI_DEBUG(TAG"[FOD]Current field order:TFF.\n");
+
+	/* ITD */
+	if (alg_hist->itd_alg_hist.is_progressive_lock) {
+		c->di_detect_result = DI_DETECT_PROGRESSIVE;
+		DI_DEBUG(TAG"[ITD]Progressive locked.\n");
+	} else {
+		c->di_detect_result = DI_DETECT_INTERLACE;
+		DI_DEBUG(TAG"[ITD]Interlaced detected.\n");
+	}
 
 	/* FMD */
 	if (alg_hist->fmd_alg_hist.is_non22_lock) {
@@ -701,6 +704,8 @@ static s32 di_dev_calc_proc_result(struct di_client *c)
 			break;
 		case 3:
 			DI_FMD(TAG"[FMD]Film mode 2224 locked.\n");
+			DI_FMD(TAG"[FMD]Film mode 22 locked. is actually a progressive video\n");
+			c->di_detect_result = DI_DETECT_PROGRESSIVE;
 			break;
 		case 4:
 			DI_FMD(TAG"[FMD]Film mode 32322 locked.\n");
@@ -715,11 +720,13 @@ static s32 di_dev_calc_proc_result(struct di_client *c)
 			DI_FMD(TAG"[FMD]Film mode 87 locked.\n");
 			break;
 		default:
-			DI_FMD(TAG"[FMD]Film mode 22 locked.\n");
+			DI_FMD(TAG"[FMD]Film mode 22 locked. is actually a progressive video\n");
+			c->di_detect_result = DI_DETECT_PROGRESSIVE;
 			break;
 		}
 	} else if (alg_hist->fmd_alg_hist.is_22_lock) {
-		DI_FMD(TAG"[FMD]Film mode 22 locked.\n");
+		DI_FMD(TAG"[FMD]Film mode 22 locked. is actually a progressive video\n");
+		c->di_detect_result = DI_DETECT_PROGRESSIVE;
 	} else {
 		DI_DEBUG(TAG"[FMD]Film mode unlocked.\n");
 	}

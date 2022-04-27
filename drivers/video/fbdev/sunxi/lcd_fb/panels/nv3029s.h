@@ -1,5 +1,5 @@
 /*
- * drivers/video/fbdev/sunxi/lcd_fb/panels/kld39501/kld39501/kld39501.h
+ * drivers/video/fbdev/sunxi/lcd_fb/panels/nv3029s.h
  *
  * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
  * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
@@ -14,11 +14,12 @@
  * GNU General Public License for more details.
  *
  */
-#ifndef _KLD35512_H
-#define _KLD35512_H
 
-#include "../panels.h"
+#ifndef _NV3029S_H
+#define _NV3029S_H
 
-struct __lcd_panel kld35512_panel;
+#include "panels.h"
+
+struct __lcd_panel nv3029s_panel;
 
 #endif /*End of file*/

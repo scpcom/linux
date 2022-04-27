@@ -27,27 +27,6 @@ struct dev_lcd_fb_t g_drv_info;
 extern int lcd_init(void);
 
 
-#ifndef CONFIG_OF
-static void lcd_fb_dev_release(struct device *dev)
-{
-	lcd_fb_wrn("\n");
-}
-static struct resource disp_resource[] = {};
-
-static struct platform_device lcd_fb_device = {
-	.name = "lcd_fb",
-	.id = -1,
-	.num_resources = ARRAY_SIZE(disp_resource),
-	.resource = disp_resource,
-	.dev = {
-		.release = lcd_fb_dev_release,
-		.power = {
-				.async_suspend = 1,
-			 }
-	}
-};
-#endif
-
 
 static struct attribute *lcd_fb_attributes[] = {
 	NULL
@@ -82,12 +61,6 @@ static int lcd_fb_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-#ifndef CONFIG_OF
-	u64 dma_mask = 0;
-	dma_mask = DMA_BIT_MASK(8 * sizeof(dma_addr_t));
-	dma_set_coherent_mask(&pdev->dev, dma_mask);
-#endif
-
 	g_drv_info.device = &pdev->dev;
 	lcd_fb_wrn("\n");
 	ret = sysfs_create_group(&pdev->dev.kobj, &lcd_fb_attribute_group);
@@ -107,20 +80,19 @@ static void lcd_fb_shutdown(struct platform_device *pdev)
 {
 	int i = 0;
 	struct lcd_fb_device *dispdev = NULL;
-	lcd_fb_wrn("\n");
 
 	for (i = 0; i < SUPPORT_MAX_LCD; ++i) {
 		dispdev = lcd_fb_device_get(i);
 		if (dispdev)
 			dispdev->disable(dispdev);
 	}
+	lcd_fb_wrn("Finish\n");
 }
 
 static int lcd_fb_remove(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	lcd_fb_wrn("\n");
 	lcd_fb_shutdown(pdev);
 	fb_exit();
 	disp_exit_lcd();
@@ -131,7 +103,7 @@ static int lcd_fb_remove(struct platform_device *pdev)
 
 
 static const struct of_device_id lcd_fb_match[] = {
-	{.compatible = "allwinner,sunxi-lcdfb",},
+	{.compatible = "allwinner,sunxi-lcd_fb0",},
 	{},
 };
 
@@ -184,9 +156,6 @@ static int __init lcd_fb_init(void)
 {
 	s32 ret = -1;
 	lcd_fb_wrn("\n");
-#ifndef CONFIG_OF
-	ret = platform_device_register(&lcd_fb_device);
-#endif
 	ret = platform_driver_register(&lcd_fb_driver);
 	return ret;
 }
@@ -194,9 +163,6 @@ static int __init lcd_fb_init(void)
 static void __exit lcd_fb_exit(void)
 {
 	platform_driver_unregister(&lcd_fb_driver);
-#ifndef CONFIG_OF
-	platform_device_unregister(&lcd_fb_device);
-#endif
 	lcd_fb_wrn("\n");
 }
 
@@ -216,6 +182,9 @@ int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops)
 	src_ops->sunxi_lcd_pin_cfg = bsp_disp_lcd_pin_cfg;
 	src_ops->sunxi_lcd_gpio_set_value = bsp_disp_lcd_gpio_set_value;
 	src_ops->sunxi_lcd_gpio_set_direction = bsp_disp_lcd_gpio_set_direction;
+	src_ops->sunxi_lcd_cmd_write = bsp_disp_lcd_cmd_write;
+	src_ops->sunxi_lcd_para_write = bsp_disp_lcd_para_write;
+	src_ops->sunxi_lcd_cmd_read = bsp_disp_lcd_cmd_read;
 	return 0;
 }
 

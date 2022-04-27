@@ -548,12 +548,23 @@ irqreturn_t g2d_handle_irq(int irq, void *dev_id)
 {
 
 #if defined(CONFIG_SUNXI_G2D_MIXER)
+#if G2D_MIXER_RCQ_USED == 1
 	if (g2d_top_rcq_task_irq_query()) {
+		g2d_top_mixer_reset();
+		g2d_ext_hd.finish_flag = 1;
+		wake_up(&g2d_ext_hd.queue);
+		return IRQ_HANDLED;
+	}
+#else
+	if (g2d_mixer_irq_query()) {
+		g2d_top_mixer_reset();
 		g2d_ext_hd.finish_flag = 1;
 		wake_up(&g2d_ext_hd.queue);
 		return IRQ_HANDLED;
 	}
 #endif
+#endif
+
 
 
 #if defined(CONFIG_SUNXI_G2D_ROTATE)

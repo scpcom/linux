@@ -58,9 +58,15 @@ void lcd_fb_dma_free(void *virt_addr, void *phys_addr, u32 num_bytes);
 struct lcd_fb_device *lcd_fb_device_get(int disp);
 s32 lcd_fb_device_register(struct lcd_fb_device *dispdev);
 s32 lcd_fb_device_unregister(struct lcd_fb_device *dispdev);
-#define MY_BYTE_ALIGN(x) (((x + (4 * 1024 - 1)) >> 12) << 12)
 s32 bsp_disp_lcd_set_layer(unsigned int disp, struct fb_info *p_info);
 s32 bsp_disp_lcd_blank(unsigned int disp, unsigned int en);
 s32 bsp_disp_lcd_set_var(unsigned int disp, struct fb_info *p_info);
+s32 bsp_disp_lcd_cmd_write(unsigned int screen_id,
+					 unsigned char cmd);
+s32 bsp_disp_lcd_para_write(unsigned int screen_id,
+					 unsigned char para);
+s32 bsp_disp_lcd_cmd_read(unsigned int screen_id, unsigned char cmd,
+			  unsigned char *rx_buf, unsigned char len);
+s32 bsp_disp_lcd_wait_for_vsync(unsigned int disp);
 
 #endif

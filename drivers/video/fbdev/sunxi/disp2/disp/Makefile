@@ -54,6 +54,7 @@ disp-$(CONFIG_SUNXI_DISP2_FB_HW_ROTATION_SUPPORT) += fb_g2d_rot.o
 ifeq ($(CONFIG_DISP2_SUNXI_SUPPORT_LCD),y)
 disp-objs += de/disp_lcd.o
 disp-objs += lcd/panels.o lcd/lcd_source.o lcd/default_panel.o
+disp-objs += of_service.o de/lcd_debug.o
 
 disp-$(CONFIG_LCD_SUPPORT_NV3052C_RGB) += lcd/nv3052c_rgb.o
 disp-$(CONFIG_LCD_SUPPORT_ST7701S_RGB) += lcd/st7701s_rgb.o
@@ -88,17 +89,17 @@ disp-$(CONFIG_LCD_SUPPORT_TM_DSI_PANEL) += lcd/tm_dsi_panel.o
 disp-$(CONFIG_LCD_SUPPORT_ST7789V_CPU) += lcd/st7789v_cpu.o
 disp-$(CONFIG_LCD_SUPPORT_JD9366AB_3) += lcd/jd9366ab_3.o
 disp-$(CONFIG_LCD_SUPPORT_TFT08006) += lcd/tft08006.o
+disp-$(CONFIG_LCD_SUPPORT_BP101WX1_206) += lcd/bp101wx1-206.o
+disp-$(CONFIG_LCD_SUPPORT_FX070) += lcd/fx070.o
+disp-$(CONFIG_LCD_SUPPORT_K101IM2QA04) += lcd/k101im2qa04.o
+disp-$(CONFIG_LCD_SUPPORT_CC08021801_310_800X1280) += lcd/CC08021801_310_800X1280.o
+disp-$(CONFIG_LCD_SUPPORT_K080_IM2HYL802R_800X1280) += lcd/K080_IM2HYL802R_800X1280.o
+disp-$(CONFIG_LCD_SUPPORT_K101_IM2BYL02_L_800X1280) += lcd/K101_IM2BYL02_L_800X1280.o
+disp-y += lcd/super_lcd_driver.o
 
 disp-$(CONFIG_EINK_PANEL_USED) += de/disp_eink_manager.o \
 		de/eink_buffer_manager.o de/eink_pipeline_manager.o \
 		de/disp_format_convert.o lcd/default_eink.o
 
-disp-objs += lcd/panels.o lcd/lcd_source.o lcd/default_panel.o \
-		lcd/lt070me05000.o lcd/wtq05027d01.o lcd/t27p06.o \
-		lcd/dx0960be40a1.o lcd/tft720x1280.o lcd/S6D7AA0X01.o \
-		lcd/cpu_gg1p4062utsw.o lcd/ls029b3sx02.o \
-		lcd/he0801a068.o lcd/inet_dsi_panel.o lcd/lq101r1sx03.o  \
-		lcd/WilliamLcd.o lcd/bp101wx1-206.o lcd/k101im2qa04.o  lcd/fx070.o \
-		lcd/CC08021801_310_800X1280.o lcd/K080_IM2HYL802R_800X1280.o lcd/K101_IM2BYL02_L_800X1280.o
 endif
 disp-objs += $(obj_low)

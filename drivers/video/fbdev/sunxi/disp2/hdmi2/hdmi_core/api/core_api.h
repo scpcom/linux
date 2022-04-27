@@ -891,6 +891,10 @@ struct hdmi_dev_func {
 	void (*phy_power_enable)(u8 enable);
 	void (*dvimode_enable)(u8 enable);
 	void (*set_phy_base_addr)(uintptr_t reg_base);
+#if IS_ENABLED(CONFIG_AW_PHY)
+	void (*phy_reset)(void);
+	int (*phy_config_resume)(void);
+#endif
 };
 
 #endif

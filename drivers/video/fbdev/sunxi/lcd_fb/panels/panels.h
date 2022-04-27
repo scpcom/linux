@@ -13,6 +13,7 @@
 #include "../include.h"
 #include "lcd_source.h"
 #include "../disp_display.h"
+#include "../dev_fb.h"
 
 struct __lcd_panel {
 	char name[32];
@@ -38,5 +39,10 @@ extern struct __lcd_panel kld39501_panel;
 #ifdef CONFIG_LCD_SUPPORT_KLD2844B
 extern struct __lcd_panel kld2844b_panel;
 #endif
+
+#ifdef CONFIG_LCD_SUPPORT_NV3029S
+extern struct __lcd_panel nv3029s_panel;
+#endif
+
 
 #endif

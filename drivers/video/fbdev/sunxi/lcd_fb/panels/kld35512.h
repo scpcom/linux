@@ -1,5 +1,5 @@
 /*
- * core_api/core_api.h
+ * drivers/video/fbdev/sunxi/lcd_fb/panels/kld39501/kld39501/kld39501.h
  *
  * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
  * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
@@ -14,24 +14,11 @@
  * GNU General Public License for more details.
  *
  */
-#ifndef _CORE_API_H
-#define _CORE_API_H
+#ifndef _KLD35512_H
+#define _KLD35512_H
 
-#include "../panels.h"
+#include "panels.h"
 
-#define RESET(s, v) sunxi_lcd_gpio_set_value(s, 0, v)
-#define DC(s, v) sunxi_lcd_gpio_set_value(s, 1, v)
-
-void reset_panel(unsigned int sel);
-
-void init_panel(unsigned int sel);
-
-void display_standardb(unsigned int sel);
-
-void exit_panel(unsigned int sel);
-int panel_dma_transfer(unsigned int sel, void *buf, unsigned int len);
-int panel_blank(unsigned int sel, unsigned int en);
-int panel_set_var(unsigned int sel, struct fb_info *p_info);
-void address(unsigned int sel, int x, int y, int width, int height);
+struct __lcd_panel kld35512_panel;
 
 #endif /*End of file*/

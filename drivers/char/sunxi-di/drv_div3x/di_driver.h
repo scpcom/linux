@@ -21,6 +21,8 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 
+#define DI_TASK_CNT_MAX DI_CLIENT_CNT_MAX
+
 enum di_drv_state {
 	DI_DRV_STATE_IDLE = 0,
 	DI_DRV_STATE_BUSY,
@@ -41,7 +43,9 @@ struct di_driver_data {
 	void __iomem *reg_base;
 	u32  irq_no;
 	struct clk *clk_source;
+	struct clk *clk_bus;
 	struct clk *iclk;
+	struct reset_control *rst_bus_di;
 
 	struct mutex mlock;
 	struct list_head clients;

@@ -1,8 +1,9 @@
 /*
- * drivers/video/fbdev/sunxi/lcd_fb/panels/kld39501/kld39501/kld39501.h
+ * drivers/video/fbdev/sunxi/lcd_fb/lcd_fb_feature/lcd_fb_feature.h
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
+ * Copyright (c) 2007-2020 Allwinnertech Co., Ltd.
  * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
+ *
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,11 +15,19 @@
  * GNU General Public License for more details.
  *
  */
-#ifndef _KLD39501_H
-#define _KLD39501_H
+#ifndef _LCD_FB_FEATURE_H
+#define _LCD_FB_FEATURE_H
 
-#include "../panels.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-struct __lcd_panel kld39501_panel;
+#if defined(CONFIG_ARCH_SUN50IW11) || defined(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN20IW1)
+#define SUPPORT_DBI_IF
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*End of file*/

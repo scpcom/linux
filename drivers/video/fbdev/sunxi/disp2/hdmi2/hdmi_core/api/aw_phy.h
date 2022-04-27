@@ -663,5 +663,8 @@ u8 phy_power_state(hdmi_tx_dev_t *dev);
 void phy_power_enable(hdmi_tx_dev_t *dev, u8 enable);
 void phy_set_reg_base(uintptr_t base);
 uintptr_t phy_get_reg_base(void);
+void phy_reset(void);
+int phy_config_resume(void);
+
 
 #endif	/* AW_PHY_H_ */

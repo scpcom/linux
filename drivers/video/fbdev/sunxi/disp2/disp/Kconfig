@@ -72,3 +72,9 @@ config DISP2_SUNXI_SUPPORT_CAPTURE
 	default y
 	---help---
 		If you want to support capture, select it.
+
+config DISP2_SUNXI_DEVICE_OFF_ON_RELEASE
+	bool "Clear all layers and turn off display device on /dev/disp release"
+	default y
+	help
+		Select it to enable this feature.

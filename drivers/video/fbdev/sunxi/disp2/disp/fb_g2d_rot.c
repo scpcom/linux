@@ -58,70 +58,68 @@ int fb_g2d_set_degree(struct fb_g2d_rot_t *inst,
 			degree_g2d = -1;
 			break;
 		}
-		if (degree_g2d != inst->info.flag_h) {
-			switch (degree_g2d) {
-			case G2D_ROT_90:
-			case G2D_ROT_270:
-				inst->info.flag_h = degree_g2d;
-				inst->fb->var.rotate = degree;
-				inst->info.dst_image_h.width =
-				    inst->fb->var.yres;
-				inst->info.dst_image_h.height =
-				    inst->fb->var.xres;
-				inst->info.dst_image_h.clip_rect.w =
-				    inst->info.dst_image_h.height;
-				inst->info.dst_image_h.clip_rect.h =
-				    inst->info.dst_image_h.width;
-				config->info.fb.crop.width =
-				    ((long long)inst->fb->var.yres << 32);
-				config->info.fb.crop.height =
-				    ((long long)inst->fb->var.xres << 32);
-				config->info.fb.size[0].width =
-				    inst->fb->var.yres;
-				config->info.fb.size[0].height =
-				    inst->fb->var.xres;
-				config->info.fb.size[1].width =
-				    inst->fb->var.yres;
-				config->info.fb.size[1].height =
-				    inst->fb->var.xres;
-				config->info.fb.size[2].width =
-				    inst->fb->var.yres;
-				config->info.fb.size[2].height =
-				    inst->fb->var.xres;
-				break;
-			case G2D_ROT_0:
-			case G2D_ROT_180:
-				inst->info.flag_h = degree_g2d;
-				inst->fb->var.rotate = degree;
-				inst->info.dst_image_h.width =
-				    inst->fb->var.xres;
-				inst->info.dst_image_h.height =
-				    inst->fb->var.yres;
-				inst->info.dst_image_h.clip_rect.w =
-				    inst->info.dst_image_h.width;
-				inst->info.dst_image_h.clip_rect.h =
-				    inst->info.dst_image_h.height;
-				config->info.fb.crop.width =
-				    ((long long)inst->fb->var.xres << 32);
-				config->info.fb.crop.height =
-				    ((long long)inst->fb->var.yres << 32);
-				config->info.fb.size[0].width =
-				    inst->fb->var.xres;
-				config->info.fb.size[0].height =
-				    inst->fb->var.yres;
-				config->info.fb.size[1].width =
-				    inst->fb->var.xres;
-				config->info.fb.size[1].height =
-				    inst->fb->var.yres;
-				config->info.fb.size[2].width =
-				    inst->fb->var.xres;
-				config->info.fb.size[2].height =
-				    inst->fb->var.yres;
-				break;
-			default:
-				pr_warn("Not support degreee:%d\n", degree);
-				break;
-			}
+		switch (degree_g2d) {
+		case G2D_ROT_90:
+		case G2D_ROT_270:
+			inst->info.flag_h = degree_g2d;
+			inst->fb->var.rotate = degree;
+			inst->info.dst_image_h.width =
+			    inst->fb->var.yres;
+			inst->info.dst_image_h.height =
+			    inst->fb->var.xres;
+			inst->info.dst_image_h.clip_rect.w =
+			    inst->info.dst_image_h.height;
+			inst->info.dst_image_h.clip_rect.h =
+			    inst->info.dst_image_h.width;
+			config->info.fb.crop.width =
+			    ((long long)inst->fb->var.yres << 32);
+			config->info.fb.crop.height =
+			    ((long long)inst->fb->var.xres << 32);
+			config->info.fb.size[0].width =
+			    inst->fb->var.yres;
+			config->info.fb.size[0].height =
+			    inst->fb->var.xres;
+			config->info.fb.size[1].width =
+			    inst->fb->var.yres;
+			config->info.fb.size[1].height =
+			    inst->fb->var.xres;
+			config->info.fb.size[2].width =
+			    inst->fb->var.yres;
+			config->info.fb.size[2].height =
+			    inst->fb->var.xres;
+			break;
+		case G2D_ROT_0:
+		case G2D_ROT_180:
+			inst->info.flag_h = degree_g2d;
+			inst->fb->var.rotate = degree;
+			inst->info.dst_image_h.width =
+			    inst->fb->var.xres;
+			inst->info.dst_image_h.height =
+			    inst->fb->var.yres;
+			inst->info.dst_image_h.clip_rect.w =
+			    inst->info.dst_image_h.width;
+			inst->info.dst_image_h.clip_rect.h =
+			    inst->info.dst_image_h.height;
+			config->info.fb.crop.width =
+			    ((long long)inst->fb->var.xres << 32);
+			config->info.fb.crop.height =
+			    ((long long)inst->fb->var.yres << 32);
+			config->info.fb.size[0].width =
+			    inst->fb->var.xres;
+			config->info.fb.size[0].height =
+			    inst->fb->var.yres;
+			config->info.fb.size[1].width =
+			    inst->fb->var.xres;
+			config->info.fb.size[1].height =
+			    inst->fb->var.yres;
+			config->info.fb.size[2].width =
+			    inst->fb->var.xres;
+			config->info.fb.size[2].height =
+			    inst->fb->var.yres;
+			break;
+		default:
+			pr_warn("Not support degreee:%d\n", degree);
+			break;
 		}
 	}
 	return 0;
@@ -235,7 +233,7 @@ struct fb_g2d_rot_t *fb_g2d_rot_create(struct fb_info *p_info,
 	switch (value) {
 	case FB_ROTATION_HW_90:
 		fb_rot->info.flag_h = G2D_ROT_90;
-		p_info->var.rotate = G2D_ROT_90;
+		p_info->var.rotate = FB_ROTATION_HW_90;
 		fb_rot->info.dst_image_h.width = p_info->var.yres;
 		fb_rot->info.dst_image_h.height = p_info->var.xres;
 		fb_rot->info.dst_image_h.clip_rect.w = fb_rot->info.dst_image_h.height;
@@ -253,7 +251,7 @@ struct fb_g2d_rot_t *fb_g2d_rot_create(struct fb_info *p_info,
 		break;
 	case FB_ROTATION_HW_180:
 		fb_rot->info.flag_h = G2D_ROT_180;
-		p_info->var.rotate = G2D_ROT_180;
+		p_info->var.rotate = FB_ROTATION_HW_180;
 		fb_rot->info.dst_image_h.width = p_info->var.xres;
 		fb_rot->info.dst_image_h.height = p_info->var.yres;
 		fb_rot->info.dst_image_h.clip_rect.w = fb_rot->info.dst_image_h.width;
@@ -261,7 +259,7 @@ struct fb_g2d_rot_t *fb_g2d_rot_create(struct fb_info *p_info,
 		break;
 	case FB_ROTATION_HW_270:
 		fb_rot->info.flag_h = G2D_ROT_270;
-		p_info->var.rotate = G2D_ROT_270;
+		p_info->var.rotate = FB_ROTATION_HW_270;
 		fb_rot->info.dst_image_h.width = p_info->var.yres;
 		fb_rot->info.dst_image_h.height = p_info->var.xres;
 		fb_rot->info.dst_image_h.clip_rect.w = fb_rot->info.dst_image_h.height;

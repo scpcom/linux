@@ -12,15 +12,10 @@
 #ifndef _LCD_FB_INTF_
 #define _LCD_FB_INTF_
 
-struct disp_gpio_set_t {
-	char gpio_name[32];
-	int port;
-	int port_num;
-	int mul_sel;
-	int pull;
-	int drv_level;
-	int data;
-	int gpio;
+struct disp_gpio_info {
+	unsigned gpio;
+	char name[32];
+	int value;
 };
 
 #define DISP_IRQ_RETURN IRQ_HANDLED
@@ -39,11 +34,10 @@ int lcd_fb_script_get_item(char *main_name, char *sub_name, int value[],
 
 int lcd_fb_get_ic_ver(void);
 
-int lcd_fb_gpio_request(struct disp_gpio_set_t *gpio_list,
-			  u32 group_count_max);
-int lcd_fb_gpio_request_simple(struct disp_gpio_set_t *gpio_list,
+int lcd_fb_gpio_request(struct disp_gpio_info *gpio_info);
+int lcd_fb_gpio_request_simple(struct disp_gpio_info *gpio_list,
 				 u32 group_count_max);
-int lcd_fb_gpio_release(int p_handler, s32 if_release_to_default_status);
+int lcd_fb_gpio_release(struct disp_gpio_info *gpio_info);
 
 /* direction: 0:input, 1:output */
 int lcd_fb_gpio_set_direction(u32 p_handler, u32 direction,

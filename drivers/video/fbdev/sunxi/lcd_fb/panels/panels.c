@@ -22,6 +22,10 @@ struct __lcd_panel *panel_array[] = {
 #ifdef CONFIG_LCD_SUPPORT_KLD2844B
 	&kld2844b_panel,
 #endif
+
+#ifdef CONFIG_LCD_SUPPORT_NV3029S
+	&nv3029s_panel,
+#endif
 	NULL,
 };
 

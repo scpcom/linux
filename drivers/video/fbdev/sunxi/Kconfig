@@ -240,6 +240,7 @@ config LCD_FB
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
+	select BACKLIGHT_CLASS_DEVICE
 	default n
 	---help---
 	  Framebuffer implementaion for LCD panel without DE and tcon

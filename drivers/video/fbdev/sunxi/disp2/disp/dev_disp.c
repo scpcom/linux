@@ -9,6 +9,7 @@
  */
 
 #include "dev_disp.h"
+#include "de/disp_lcd.h"
 #if defined(CONFIG_DISP2_SUNXI_ION)
 #include <linux/ion.h>
 #include <uapi/linux/ion.h>
@@ -2697,15 +2698,10 @@ int disp_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-int disp_release(struct inode *inode, struct file *file)
+void disp_device_off(void)
 {
 	int num_screens = 0, i = 0, j = 0;
 	struct disp_manager *mgr = NULL;
-
-	if (!atomic_dec_and_test(&g_driver_ref_count)) {
-		/* There is any other user, just return. */
-		return 0;
-	}
 
 	memset(lyr_cfg, 0, 16*sizeof(struct disp_layer_config));
 
@@ -2729,6 +2725,20 @@ int disp_release(struct inode *inode, struct file *file)
 			}
 		}
 	}
+}
+
+int disp_release(struct inode *inode, struct file *file)
+{
+#if 0
+	if (!atomic_dec_and_test(&g_driver_ref_count)) {
+		/* There is any other user, just return. */
+		return 0;
+	}
+
+#ifdef CONFIG_DISP2_SUNXI_DEVICE_OFF_ON_RELEASE
+	disp_device_off();
+#endif
+#endif
 	return 0;
 }
 
@@ -3690,8 +3700,11 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #ifdef EINK_FLUSH_TIME_TEST
 	do_gettimeofday(&ioctrl_start_timer);
 #endif				/*test eink time */
-
 	num_screens = bsp_disp_feat_get_num_screens();
+
+	if (cmd == DISP_NODE_LCD_MESSAGE_REQUEST || cmd == DISP_RELOAD_LCD) {
+		goto handle_cmd;
+	}
 
 	if (copy_from_user
 	    ((void *)karg, (void __user *)arg, 4 * sizeof(unsigned long))) {
@@ -3742,6 +3755,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	if (cmd == DISP_print)
 		__wrn("cmd:0x%x,%ld,%ld\n", cmd, ubuffer[0], ubuffer[1]);
 
+handle_cmd:
 	switch (cmd) {
 		/* ----disp global---- */
 	case DISP_SET_BKCOLOR:
@@ -4585,6 +4599,75 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 			break;
 		}
+	case DISP_NODE_LCD_MESSAGE_REQUEST:
+		{
+			int ret;
+			struct para lcd_debug_para;
+			struct para lcd_debug_para_tmp;
+			struct dt_property *dt_prop;
+			char prop_name[32] = {0};
+			struct dt_property *dt_prop_dts;
+			char prop_dts_name[32] = {0};
+			unsigned char value[100] = {0};
+			unsigned char dts_value[100] = {0};
+
+			if  (copy_from_user(&lcd_debug_para, (void *) arg, sizeof(struct para))) {
+				return -2;
+			}
+			if (copy_from_user(&lcd_debug_para_tmp, (void *) arg, sizeof(struct para))) {
+				return -2;
+			}
+			dt_prop = &lcd_debug_para.prop_src;
+
+			ret = copy_from_user(prop_name, dt_prop->name, 32);
+
+			if (ret)
+				return -2;
+
+			ret = copy_from_user(value, dt_prop->value, dt_prop->length);
+
+			if (ret)
+				return -2;
+
+			dt_prop->name = prop_name;
+			dt_prop->value = (void *)value;
+
+			dt_prop_dts = &lcd_debug_para.prop_dts;
+
+			ret = copy_from_user(prop_dts_name, dt_prop_dts->name, 32);
+
+			if (ret)
+				return -2;
+
+			ret = copy_from_user(dts_value, dt_prop_dts->value, dt_prop_dts->length);
+
+			if (ret)
+				return -2;
+
+			dt_prop_dts->name = prop_dts_name;
+			dt_prop_dts->value = (void *)dts_value;
+
+			ret = handle_request(&lcd_debug_para);
+
+			if (ret)
+				return -1;
+
+			if (copy_to_user((void __user *)lcd_debug_para_tmp.prop_dts.name, lcd_debug_para.prop_dts.name, 32))
+				return -3;
+
+			if (copy_to_user((void __user *)lcd_debug_para_tmp.prop_dts.value, lcd_debug_para.prop_dts.value, lcd_debug_para.prop_dts.length))
+				return -3;
+
+			if (copy_to_user(&((struct para *)arg)->prop_dts.length, &lcd_debug_para.prop_dts.length, sizeof(lcd_debug_para.prop_dts.length)))
+				return -3;
+
+			return ret;
+		}
+	case DISP_RELOAD_LCD:
+		{
+			reload_lcd();
+			break;
+		}
 
 
 	default:
@@ -4774,11 +4857,7 @@ static void __exit disp_module_exit(void)
 	cdev_del(my_cdev);
 }
 
-#ifdef CONFIG_ARCH_SUN50IW9P1
-subsys_initcall_sync(disp_module_init);
-#else
 module_init(disp_module_init);
-#endif
 module_exit(disp_module_exit);
 
 MODULE_AUTHOR("tan");

@@ -15,7 +15,7 @@
 #define _DI_CLIENT_H_
 
 #include "sunxi_di.h"
-#include "../common/di_utils.h"
+#include "di_utils.h"
 
 #include <linux/types.h>
 #include <linux/cdev.h>
@@ -44,6 +44,11 @@ enum {
 	DI_PROC_STATE_2START,
 	DI_PROC_STATE_WAIT4FINISH,
 	DI_PROC_STATE_FINISH_ERR,
+};
+
+enum {
+	DI_DETECT_INTERLACE = 0,
+	DI_DETECT_PROGRESSIVE = 1,
 };
 
 /* buffer for md flags */
@@ -112,7 +117,15 @@ struct di_client {
 	bool para_checked;
 	bool unreset;
 
-	/* dev_cdata must be at last */
+	u8 di_detect_result;
+	u64 interlace_detected_counts;
+	u64 lastest_interlace_detected_frame;
+	u64 interlace_detected_counts_exceed_first_p_frame;
+	u64 progressive_detected_counts;
+	u64 lastest_progressive_detected_frame;
+	u64 progressive_detected_first_frame;
+
+	/* dev_cdata must be at last!!! */
 	uintptr_t dev_cdata;
 };
 

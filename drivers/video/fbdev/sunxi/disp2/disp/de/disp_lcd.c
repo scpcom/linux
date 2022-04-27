@@ -11,6 +11,7 @@
 #include <linux/reset.h>
 #include "disp_lcd.h"
 #include "../dev_disp.h"
+#include "../lcd/panels.h"
 
 extern void lcd_set_panel_funs(void);
 #define DISP_LCD_MODE_DIRTY_MASK 0x80000000
@@ -934,6 +935,16 @@ unsigned int lcd_t1 = 0, lcd_t2 = 0, lcd_t3 = 0, lcd_t4 = 0, lcd_t5 = 0;
 unsigned int lcd_pin, lcd_po, lcd_tcon;
 #endif
 
+#if defined(CONFIG_ARCH_SUN50IW10)
+struct qareg_iomap_data {
+	int initialized;
+	void *qa_addr;
+	void *ic_ver_addr;
+	void *disp_cfg_addr;
+};
+static struct qareg_iomap_data iomap_data;
+#endif
+
 extern int sunxi_get_soc_chipid_str(char *serial);
 
 static s32 disp_lcd_speed_limit(struct disp_panel_para *panel, u32 *min_dclk,
@@ -944,6 +955,13 @@ static s32 disp_lcd_speed_limit(struct disp_panel_para *panel, u32 *min_dclk,
 	unsigned long value = 0;
 	unsigned int qa_val = 0;
 	unsigned int ic_ver = 0, display_cfg_flag = 0;
+
+	if (!iomap_data.initialized) {
+		iomap_data.qa_addr = ioremap(0x0300621c, 4);
+		iomap_data.ic_ver_addr = ioremap(0x03000024, 4);
+		iomap_data.disp_cfg_addr = ioremap(0x03006218, 4);
+		iomap_data.initialized = 1;
+	}
 #endif
 
 	/*init unlimit*/
@@ -951,10 +969,15 @@ static s32 disp_lcd_speed_limit(struct disp_panel_para *panel, u32 *min_dclk,
 	*max_dclk = 9999;
 
 #if defined(CONFIG_ARCH_SUN50IW10)
-	qa_val = readl(ioremap(0x0300621c, 4));
+	if (!iomap_data.qa_addr || !iomap_data.ic_ver_addr || !iomap_data.disp_cfg_addr) {
+		DE_WRN("ioremap fail!%p %p %p\n", iomap_data.qa_addr, iomap_data.ic_ver_addr,
+		       iomap_data.disp_cfg_addr);
+		goto OUT;
+	}
+	qa_val = readl(iomap_data.qa_addr);
 	qa_val = (qa_val >> 28) & 0x00000003;
-	ic_ver = readl(ioremap(0x03000024, 4)) & 0x00000007;
-	display_cfg_flag = (readl(ioremap(0x03006218, 4)) >> 12) & 0x00000001;
+	ic_ver = readl(iomap_data.ic_ver_addr) & 0x00000007;
+	display_cfg_flag = (readl(iomap_data.disp_cfg_addr) >> 12) & 0x00000001;
 	sunxi_get_soc_chipid_str(id);
 
 	if (qa_val >= 2 && panel->lcd_if == LCD_IF_DSI) {
@@ -1052,9 +1075,9 @@ static s32 disp_lcd_speed_limit(struct disp_panel_para *panel, u32 *min_dclk,
 			break;
 		}
 	}
+#endif
 
 OUT:
-#endif
 	/*unlimit */
 	return 0;
 }
@@ -1200,8 +1223,11 @@ static s32 disp_lcd_pwm_enable(struct disp_device *lcd)
 		    disp_sys_pwm_request(lcdp->panel_info.lcd_pwm_ch);
 	}
 
-	if (disp_lcd_is_used(lcd) && lcdp->pwm_info.dev)
+	if (disp_lcd_is_used(lcd) && lcdp->pwm_info.dev) {
+		disp_sys_pwm_set_polarity(lcdp->pwm_info.dev,
+				  lcdp->pwm_info.polarity);
 		return disp_sys_pwm_enable(lcdp->pwm_info.dev);
+	}
 	DE_WRN("pwm device hdl is NULL\n");
 
 	return DIS_FAIL;
@@ -1904,13 +1930,18 @@ static s32 disp_lcd_enable(struct disp_device *lcd)
 	unsigned long flags;
 	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
 	struct disp_manager *mgr = NULL;
-	int ret;
+	int ret = 0;
 	int i;
 
 	if ((lcd == NULL) || (lcdp == NULL)) {
 		DE_WRN("NULL hdl!\n");
 		return DIS_FAIL;
 	}
+
+	if (!disp_lcd_is_used(lcd)) {
+		return ret;
+	}
+
 	flush_work(&lcd->close_eink_panel_work);
 	DE_INF("lcd %d\n", lcd->disp);
 	mgr = lcd->manager;
@@ -2026,12 +2057,17 @@ static s32 disp_lcd_enable(struct disp_device *lcd)
 	int i;
 	struct disp_manager *mgr = NULL;
 	unsigned bl;
-	int ret;
+	int ret = 0;
 
 	if ((lcd == NULL) || (lcdp == NULL)) {
 		DE_WRN("NULL hdl!\n");
 		return DIS_FAIL;
 	}
+
+	if (!disp_lcd_is_used(lcd)) {
+		return ret;
+	}
+
 	__inf("lcd %d\n", lcd->disp);
 	mgr = lcd->manager;
 	if (mgr == NULL) {
@@ -3061,9 +3097,9 @@ s32 disp_init_lcd(struct disp_bsp_init_para *para)
 #if defined(SUPPORT_DSI)
 	u32 i = 0, index_base;
 #endif
+#if defined(CONFIG_ARCH_SUN8IW17P1)
 	char primary_key[20];
 	int ret = 0, value = 1;
-#if defined(CONFIG_ARCH_SUN8IW17P1)
 	s32 use_dsi_flag = 0;
 #endif
 
@@ -3103,11 +3139,6 @@ s32 disp_init_lcd(struct disp_bsp_init_para *para)
 			continue;
 		}
 
-		sprintf(primary_key, "lcd%d", disp);
-		ret = disp_sys_script_get_item(primary_key, "lcd_used", &value,
-					       1);
-		if (ret != 1 || value != 1)
-			continue;
 		lcd = &lcds[disp];
 		lcdp = &lcd_private[disp];
 		lcd->priv_data = (void *)lcdp;
@@ -3252,5 +3283,37 @@ s32 disp_exit_lcd(void)
 	lcds = NULL;
 	lcd_private = NULL;
 
+#if defined(CONFIG_ARCH_SUN50IW10)
+	if (iomap_data.initialized) {
+		iounmap(iomap_data.qa_addr);
+		iounmap(iomap_data.ic_ver_addr);
+		iounmap(iomap_data.disp_cfg_addr);
+
+		iomap_data.initialized = 0;
+		iomap_data.qa_addr = NULL;
+		iomap_data.ic_ver_addr = NULL;
+		iomap_data.disp_cfg_addr = NULL;
+	}
+#endif
+
 	return 0;
+}
+
+extern struct disp_drv_info g_disp_drv;
+extern s32 disp_exit(void);
+void reload_lcd(void)
+{
+	int disp;
+	struct disp_lcd_private_data *lcdp;
+
+	disp = 0;
+	printk("lcd%d reloading\n", disp);
+	disp_lcd_disable(&lcds[disp]);
+	msleep(5000);
+	lcdp = disp_lcd_get_priv(&lcds[disp]);
+	memset(&lcdp->lcd_cfg, 0, sizeof(lcdp->lcd_cfg));
+	disp_lcd_init(&lcds[disp], disp);
+	disp_lcd_set_panel_funs(&lcds[disp], "super_lcd_driver", &super_lcd_panel.func);
+	disp_lcd_enable(&lcds[disp]);
+	printk("lcd%d reload finish\n", disp);
 }

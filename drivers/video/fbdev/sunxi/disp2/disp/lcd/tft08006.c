@@ -153,14 +153,13 @@ static s32 lcd_close_flow(u32 sel)
 
 static void lcd_power_on(u32 sel)
 {
-	sunxi_lcd_pin_cfg(sel, 1);
-	sunxi_lcd_delay_ms(50);
+	panel_reset(sel, 1);
+	sunxi_lcd_delay_ms(10);
+	panel_reset(sel, 0);
+	sunxi_lcd_delay_ms(5);
 	panel_reset(sel, 1);
 	sunxi_lcd_delay_ms(5);
-	panel_reset(sel, 0);
-	sunxi_lcd_delay_ms(10);
-	panel_reset(sel, 1);
-	sunxi_lcd_delay_ms(120);
+	sunxi_lcd_pin_cfg(sel, 1);
 
 }
 
@@ -415,7 +414,7 @@ static void lcd_panel_init(u32 sel)
 {
 	__u32 i;
 	sunxi_lcd_dsi_clk_enable(sel);
-	sunxi_lcd_delay_ms(100);
+	sunxi_lcd_delay_ms(20);
 	for (i = 0;; i++) {
 		if (lcm_tft08006_setting[i].count == REGFLAG_END_OF_TABLE)
 			break;

@@ -27,6 +27,8 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/spinlock.h>
+#include <linux/ioctl.h>
+#include <linux/cdev.h>
 
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
@@ -36,7 +38,8 @@
 #define NSI_MAJOR         137
 #define NSI_MINORS        256
 
-#define MBUS_QOS_MAX      0x3
+#define MBUS_PRI_MAX      0x3
+#define MBUS_QOS_MAX      0x2
 
 #define for_each_ports(port) for (port = 0; port < MBUS_PMU_IAG_MAX; port++)
 
@@ -44,6 +47,9 @@
 #define IAG_MODE(n)		   (0x0010 + (0x200 * n))
 #define IAG_PRI_CFG(n)		   (0x0014 + (0x200 * n))
 #define IAG_INPUT_OUTPUT_CFG(n)	   (0x0018 + (0x200 * n))
+#define IAG_BAND_WIDTH(n)	   (0x0028 + (0x200 * n))
+#define IAG_SATURATION(n)	   (0x002c + (0x200 * n))
+#define IAG_QOS_CFG(n)		   (0x0094 + (0x200 * 23) + (0x4 * (n / 16)))
 /* Counter n = 0 ~ 19 */
 #define MBUS_PMU_ENABLE(n)         (0x00c0 + (0x200 * n))
 #define MBUS_PMU_CLR(n)            (0x00c4 + (0x200 * n))
@@ -56,11 +62,16 @@
 #define MBUS_PMU_LA_WR(n)          (0x00e0 + (0x200 * n))
 
 #define MBUS_PORT_MODE          (MBUS_PMU_MAX + 0)
-#define MBUS_PORT_QOS           (MBUS_PMU_MAX + 1)
+#define MBUS_PORT_PRI           (MBUS_PMU_MAX + 1)
 #define MBUS_INPUT_OUTPUT       (MBUS_PMU_MAX + 2)
+#define MBUS_PORT_QOS           (MBUS_PMU_MAX + 3)
+#define MBUS_PORT_ABS_BWL	(MBUS_PMU_MAX + 4)
+#define MBUS_PORT_ABS_BWLEN	(MBUS_PMU_MAX + 5)
 
 
 struct nsi_bus {
+	struct cdev cdev;
+	struct device *dev;
 	void __iomem *base;
 	struct clk *pclk;  /* PLL clock */
 	struct clk *mclk;  /* mbus clock */
@@ -75,10 +86,13 @@ struct nsi_pmu_data {
 	spinlock_t bwlock;
 };
 
+unsigned long latency_sum[MBUS_PMU_IAG_MAX];
+unsigned long latency_aver[MBUS_PMU_IAG_MAX];
+unsigned long request_sum[MBUS_PMU_IAG_MAX];
+
 static struct nsi_pmu_data hw_nsi_pmu;
 static struct nsi_bus sunxi_nsi;
 static struct class *nsi_pmu_class;
-
 
 static int nsi_init_status = -EAGAIN;
 
@@ -107,7 +121,7 @@ int notrace nsi_port_setmode(enum nsi_pmu port, unsigned int mode)
 EXPORT_SYMBOL_GPL(nsi_port_setmode);
 
 /**
- * nsi_port_setpri() - set a master QOS
+ * nsi_port_setpri() - set a master priority
  *
  * @qos: the qos value want to set
  */
@@ -118,7 +132,7 @@ int notrace nsi_port_setpri(enum nsi_pmu port, unsigned int pri)
 	if (port >= MBUS_PMU_IAG_MAX)
 		return -ENODEV;
 
-	if (pri > MBUS_QOS_MAX)
+	if (pri > MBUS_PRI_MAX)
 		return -EPERM;
 
 	mutex_lock(&nsi_setting);
@@ -131,6 +145,32 @@ int notrace nsi_port_setpri(enum nsi_pmu port, unsigned int pri)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nsi_port_setpri);
+
+/**
+ * nsi_port_setqos() - set a master qos(hpr/lpr)
+ *
+ * @qos: the qos value want to set
+ */
+int notrace nsi_port_setqos(enum nsi_pmu port, unsigned int qos)
+{
+	unsigned int value;
+
+	if (port >= MBUS_PMU_IAG_MAX)
+		return -ENODEV;
+
+	if (qos > MBUS_QOS_MAX)
+		return -EPERM;
+
+	mutex_lock(&nsi_setting);
+	value = readl_relaxed(sunxi_nsi.base + IAG_QOS_CFG(port));
+	value &= ~(0x3 << ((port % 16) * 2));
+	writel_relaxed(value | (qos << ((port % 16) * 2)),
+		       sunxi_nsi.base + IAG_QOS_CFG(port));
+	mutex_unlock(&nsi_setting);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nsi_port_setqos);
 
 /**
  * nsi_port_setio() - set a master's qos in or out
@@ -154,6 +194,74 @@ int notrace nsi_port_setio(enum nsi_pmu port, bool io)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nsi_port_setio);
+
+/**
+ * nsi_port_set_abs_bwl() - set a master absolutely bandwidth limit
+ *
+ * @bwl: the number of bandwidth limit
+ */
+int notrace nsi_port_set_abs_bwl(enum nsi_pmu port, unsigned int bwl)
+{
+	unsigned int bw_val, sat_val;
+	unsigned int n, t;
+	unsigned long mrate = clk_get_rate(sunxi_nsi.mclk);
+	unsigned long drate;
+
+	if (port >= MBUS_PMU_IAG_MAX)
+		return -ENODEV;
+
+	if (bwl == 0)
+		return -EPERM;
+
+	mutex_lock(&nsi_setting);
+	if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+		sunxi_nsi.dclk = devm_clk_get(sunxi_nsi.dev, "sdram");
+		if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+			sunxi_nsi.dclk = sunxi_nsi.pclk;
+			dev_err(sunxi_nsi.dev, "get sdram clock failed\n");
+		}
+	}
+	/* cpu pmu clk : pll_ddr/4 */
+	drate = clk_get_rate(sunxi_nsi.dclk) / 4;
+
+	/* cpu */
+	if (port == 0) {
+		bw_val = 256 * bwl / (drate / 1000000);
+		t = 1000 * 10 / (drate / 1000000);
+	} else {
+		bw_val = 256 * bwl / (mrate / 1000000);
+		t = 1000 * 10 / (mrate / 1000000);
+	}
+	n = 5 * 1000 / t * 10;
+	sat_val = n * bw_val / (256 * 16);
+
+	writel_relaxed(bw_val, sunxi_nsi.base + IAG_BAND_WIDTH(port));
+	writel_relaxed(sat_val, sunxi_nsi.base + IAG_SATURATION(port));
+	mutex_unlock(&nsi_setting);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nsi_port_set_abs_bwl);
+
+/**
+ * nsi_port_set_abs_bwlen() - enable a master absolutely bandwidth limit
+ * function
+ *
+ * @port: index of the port to setup
+ * @en: 0-disable, 1-enable
+ */
+int notrace nsi_port_set_abs_bwlen(enum nsi_pmu port, bool en)
+{
+	if (port >= MBUS_PMU_IAG_MAX)
+		return -ENODEV;
+
+	mutex_lock(&nsi_setting);
+	writel_relaxed(en, sunxi_nsi.base + IAG_MODE(port));
+	mutex_unlock(&nsi_setting);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nsi_port_set_abs_bwlen);
 
 static void nsi_pmu_disable(enum nsi_pmu port)
 {
@@ -186,7 +294,7 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 {
 	unsigned int cycle, port;
 	unsigned long mrate = clk_get_rate(sunxi_nsi.mclk);
-	unsigned long drate = clk_get_rate(sunxi_nsi.dclk);
+	unsigned long drate;
 	unsigned char *buffer = kmalloc(64, GFP_KERNEL);
 	unsigned long period, flags;
 	int ret = 0;
@@ -196,11 +304,32 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 	 * us*1000/(1s/400Mhz) = us*1000*400000000(rate)/1000000000
 	 */
 
+	if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+		sunxi_nsi.dclk = devm_clk_get(sunxi_nsi.dev, "sdram");
+		if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+			sunxi_nsi.dclk = sunxi_nsi.pclk;
+			dev_err(dev, "get sdram clock failed\n");
+		} else {
+			dev_info(dev, "get sdram clock success\n");
+		}
+	}
+
+	if (sunxi_nsi.dclk == sunxi_nsi.pclk)
+		drate = clk_get_rate(sunxi_nsi.dclk) / 2;
+	else
+		drate = clk_get_rate(sunxi_nsi.dclk) / 4;  // cpu pmu clk : pll_ddr/4
+
 	ret = kstrtoul(buf, 10, &period);
 	if (ret < 0)
 		goto end;
 
 	spin_lock_irqsave(&hw_nsi_pmu.bwlock, flags);
+
+	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
+		latency_sum[port] = 0;
+		latency_aver[port] = 0;
+		request_sum[port] = 0;
+	}
 
 	/* set pmu period */
 	cycle = period * mrate / 1000000;
@@ -258,6 +387,102 @@ static const struct of_device_id sunxi_nsi_matches[] = {
 #endif
 	{},
 };
+
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10)
+static void set_limit_for_old_version(void)
+{
+	/*GPU: limiter mode, limit to 1500MB/s, sat as 5us, nsi clk 400MHz*/
+	writel_relaxed(0x3c0, sunxi_nsi.base + IAG_BAND_WIDTH(1));
+	writel_relaxed(0x1d4, sunxi_nsi.base + IAG_SATURATION(1));
+	writel_relaxed(0x1, sunxi_nsi.base + IAG_MODE(1));
+
+	/*G2D: limiter mode, limit to 500MB/s, sat as 5us, nsi clk 400MHz*/
+	writel_relaxed(0x140, sunxi_nsi.base + IAG_BAND_WIDTH(16));
+	writel_relaxed(0x9c, sunxi_nsi.base + IAG_SATURATION(16));
+	writel_relaxed(0x1, sunxi_nsi.base + IAG_MODE(16));
+}
+
+static void set_limit_for_old_version_720p(void)
+{
+	/*GPU: limiter mode, limit to 1800MB/s, sat as 5us, nsi clk 400MHz*/
+	writel_relaxed(0x480, sunxi_nsi.base + IAG_BAND_WIDTH(1));
+	writel_relaxed(0x232, sunxi_nsi.base + IAG_SATURATION(1));
+	writel_relaxed(0x1, sunxi_nsi.base + IAG_MODE(1));
+}
+
+static int sunxi_nsi_set_limit(struct device *dev)
+{
+	int ret;
+	struct device_node *disp_np, *dram_np;
+	unsigned int ic_version, fb0_width, fb0_height, dram_type;
+
+	disp_np = of_find_node_by_name(NULL, "disp");
+	ret = of_property_read_u32(disp_np, "fb0_width", &fb0_width);
+	if (ret) {
+		dev_err(dev, "get fb0_width failed\n");
+		return -EINVAL;
+	}
+	of_property_read_u32(disp_np, "fb0_height", &fb0_height);
+	if (ret) {
+		dev_err(dev, "get fb0_height failed\n");
+		return -EINVAL;
+	}
+	dram_np = of_find_node_by_name(NULL, "dram");
+	of_property_read_u32(dram_np, "dram_type", &dram_type);
+	if (ret) {
+		dev_err(dev, "get dram_type failed\n");
+		return -EINVAL;
+	}
+	/*
+	unsigned int dram_clk;
+
+	of_property_read_u32(dram_np, "dram_clk", &dram_clk);
+	if (ret) {
+		dev_err(dev, "get dram_clk failed\n");
+		return -EINVAL;
+	}
+	*/
+
+	ic_version = readl(ioremap(0x03000024, 4)) & 0x00000007;
+	if (ic_version == 0 || ic_version == 0x3 || ic_version == 0x4) {
+		if (fb0_width >= 1080 && fb0_height >= 1080) {
+			set_limit_for_old_version();
+			dev_info(dev, "set limit to fit 1080P(ABCDE)\n");
+		} else {
+			set_limit_for_old_version_720p();
+			dev_info(dev, "set limit to fit 720P(ABCDE)\n");
+		}
+	} else {
+		if (fb0_width >= 1080 && fb0_height >= 1080 && dram_type == 8) {
+			set_limit_for_old_version();
+			dev_info(dev, "set limit to fit 1080P-LP4(F)\n");
+		} else {
+			dev_info(dev, "no limit for F version(except 1080P-LP4)\n");
+		}
+	}
+
+	return 0;
+}
+
+static int sunxi_nsi_unset_limit(struct device *dev)
+{
+	/* disable limit for GPU/G2D */
+	writel_relaxed(0x0, sunxi_nsi.base + IAG_MODE(1));
+	writel_relaxed(0x0, sunxi_nsi.base + IAG_MODE(16));
+	dev_info(dev, "unset limit\n");
+
+	return 0;
+}
+#else
+static int sunxi_nsi_set_limit(struct device *dev)
+{
+	return -ENODEV;
+}
+static int sunxi_nsi_unset_limit(struct device *dev)
+{
+	return -ENODEV;
+}
+#endif
 
 static int nsi_probe(struct platform_device *pdev)
 {
@@ -384,6 +609,10 @@ static int nsi_init(struct platform_device *pdev)
 	if (nsi_init_status == -EAGAIN)
 		nsi_init_status = nsi_probe(pdev);
 
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10)
+	sunxi_nsi_set_limit(&pdev->dev);
+#endif
+
 	return nsi_init_status;
 }
 
@@ -412,7 +641,7 @@ static ssize_t nsi_pmu_bandwidth_show(struct device *dev,
 	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
 		bread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_RD(port));
 		bwrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_WR(port));
-		bandrw[port] = bread +bwrite;
+		bandrw[port] = bread + bwrite;
 	}
 	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
 		len += sprintf(bwbuf, "%u  ", bandrw[port]/1024);
@@ -428,6 +657,72 @@ static ssize_t nsi_pmu_bandwidth_show(struct device *dev,
 	spin_unlock_irqrestore(&hw_nsi_pmu.bwlock, flags);
 	return len;
 }
+
+static ssize_t nsi_pmu_latency_show(struct device *dev,
+			struct device_attribute *da, char *buf)
+{
+	unsigned long laread, lawrite, larw[MBUS_PMU_IAG_MAX];
+	unsigned long request;
+	unsigned int port, len = 0;
+	unsigned long flags = 0;
+	char labuf[16];
+
+	spin_lock_irqsave(&hw_nsi_pmu.bwlock, flags);
+
+	/* read the iag pmu latency and request */
+	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
+		laread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_LA_RD(port));
+		lawrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_LA_WR(port));
+		request = readl_relaxed(sunxi_nsi.base + MBUS_PMU_RQ_RD(port)) +
+						+ readl_relaxed(sunxi_nsi.base + MBUS_PMU_RQ_WR(port));
+
+		if (request == 0) {
+			larw[port] = 0;
+		} else {
+			larw[port] = (laread + lawrite) / request;
+			latency_sum[port] += (laread + lawrite);
+			request_sum[port] += request;
+		}
+	}
+	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
+		len += sprintf(labuf, "%lu  ", larw[port]);
+		strcat(buf, labuf);
+	}
+
+	/* read the tag pmu latency and request, which is total ddr latency and request */
+	laread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_LA_RD(MBUS_PMU_TAG));
+	lawrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_LA_WR(MBUS_PMU_TAG));
+	request = readl_relaxed(sunxi_nsi.base + MBUS_PMU_RQ_RD(MBUS_PMU_TAG)) +
+						+ readl_relaxed(sunxi_nsi.base + MBUS_PMU_RQ_WR(MBUS_PMU_TAG));
+	len += sprintf(labuf, "%lu\n", (laread + lawrite) / request);
+	strcat(buf, labuf);
+	latency_sum[port] += (laread + lawrite);
+	request_sum[port] += request;
+
+	spin_unlock_irqrestore(&hw_nsi_pmu.bwlock, flags);
+	return len;
+}
+
+static ssize_t nsi_pmu_latency_aver_show(struct device *dev,
+			struct device_attribute *da, char *buf)
+{
+	unsigned int port, len = 0;
+	unsigned long flags = 0;
+	char labuf[32];
+
+	spin_lock_irqsave(&hw_nsi_pmu.bwlock, flags);
+
+	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
+		len += sprintf(labuf, "%lu  ", latency_sum[port] / request_sum[port]);
+		strcat(buf, labuf);
+	}
+	len += sprintf(labuf, "%lu\n", latency_sum[port] / request_sum[port]);
+	strcat(buf, labuf);
+
+	spin_unlock_irqrestore(&hw_nsi_pmu.bwlock, flags);
+	return len;
+}
+
 
 static ssize_t nsi_available_pmu_show(struct device *dev,
 			struct device_attribute *da, char *buf)
@@ -446,30 +741,71 @@ static unsigned int nsi_get_value(struct nsi_pmu_data *data,
 {
 	unsigned int i, size = 0;
 	unsigned long value;
+	unsigned long mrate, drate;
+	unsigned int bw_val;
 
 	switch (index) {
 	case MBUS_PORT_MODE:   //0x10    fixed limit regulator
 		for_each_ports(i) {
 			value = readl_relaxed(sunxi_nsi.base +
 					IAG_MODE(i));
-			size += sprintf(buf + size, "master:%-8s qos_mode:%lu\n",
-					get_name(i), (value & 0x3));
+			size += sprintf(buf + size, "master[%2d]:%-8s qos_mode:%lu\n",
+					i, get_name(i), (value & 0x3));
 		}
 		break;
-	case MBUS_PORT_QOS:   //0x14
+	case MBUS_PORT_PRI:   //0x14
 		for_each_ports(i) {
 			value = readl_relaxed(sunxi_nsi.base +
 					IAG_PRI_CFG(i));
-			size += sprintf(buf + size, "master:%-8s read_priority:%lu \
-					write_priority:%lu\n", get_name(i), (value >> 2), (value & 0x3));
+			size += sprintf(buf + size, "master[%2d]:%-8s read_prio:%lu write_prio:%lu\n",
+					i, get_name(i), (value >> 2), (value & 0x3));
+		}
+		break;
+	case MBUS_PORT_QOS:
+		for_each_ports(i) {
+			value = readl_relaxed(sunxi_nsi.base +
+					IAG_QOS_CFG(i));
+			size += sprintf(buf + size, "master[%2d]:%-8s qos(0-lpr 1-hpr):%lu \n",
+					i, get_name(i), (value >> ((i % 16) * 2)) & 0x3);
 		}
 		break;
 	case MBUS_INPUT_OUTPUT:          //0x18
 		for_each_ports(i) {
 			value = readl_relaxed(sunxi_nsi.base +
 					IAG_INPUT_OUTPUT_CFG(i));
-			size += sprintf(buf + size, "master:%-8s qos_sel(0-out 1-input):%lu\n",
-					get_name(i), (value & 1));
+			size += sprintf(buf + size, "master[%2d]:%-8s qos_sel(0-out 1-input):%lu\n",
+					i, get_name(i), (value & 1));
+		}
+		break;
+	case MBUS_PORT_ABS_BWL:
+		mrate = clk_get_rate(sunxi_nsi.mclk);
+		if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+			sunxi_nsi.dclk = devm_clk_get(sunxi_nsi.dev, "sdram");
+			if (IS_ERR_OR_NULL(sunxi_nsi.dclk)) {
+				sunxi_nsi.dclk = sunxi_nsi.pclk;
+				dev_err(sunxi_nsi.dev, "get sdram clock failed\n");
+			}
+		}
+		drate = clk_get_rate(sunxi_nsi.dclk) / 4;
+
+		for_each_ports(i) {
+			bw_val = readl_relaxed(sunxi_nsi.base + IAG_BAND_WIDTH(i));
+			if (i == 0)
+				value = bw_val * (drate / 1000000) / 256;
+			else
+				value = bw_val * (mrate / 1000000) / 256;
+			if ((value % 100) == 99)
+				value += 1;
+			size += sprintf(buf + size, "master[%2d]:%-8s BWLimit(MB/s):%lu \n",
+					i, get_name(i), value);
+		}
+		break;
+	case MBUS_PORT_ABS_BWLEN:
+		for_each_ports(i) {
+			value = readl_relaxed(sunxi_nsi.base +
+					IAG_MODE(i));
+			size += sprintf(buf + size, "master[%2d]:%-8s BWLimit_en:%lu \n",
+					i, get_name(i), value);
 		}
 		break;
 	default:
@@ -509,11 +845,20 @@ static unsigned int nsi_set_value(struct nsi_pmu_data *data, unsigned int index,
 	case MBUS_PORT_MODE:
 		nsi_port_setmode(port, val);
 		break;
-	case MBUS_PORT_QOS:
+	case MBUS_PORT_PRI:
 		nsi_port_setpri(port, val);
+		break;
+	case MBUS_PORT_QOS:
+		nsi_port_setqos(port, val);
 		break;
 	case MBUS_INPUT_OUTPUT:
 		nsi_port_setio(port, val);
+		break;
+	case MBUS_PORT_ABS_BWL:
+		nsi_port_set_abs_bwl(port, val);
+		break;
+	case MBUS_PORT_ABS_BWLEN:
+		nsi_port_set_abs_bwlen(port, val);
 		break;
 	default:
 		/* programmer goofed */
@@ -575,15 +920,23 @@ static ssize_t nsi_store_value(struct device *dev,
 	return count;
 }
 
+
 /* get all masters' mode or set a master's mode */
 static SENSOR_DEVICE_ATTR(port_mode, 0644,
 			  nsi_show_value, nsi_store_value, MBUS_PORT_MODE);
 /* get all masters' prio or set a master's prio */
 static SENSOR_DEVICE_ATTR(port_prio, 0644,
+			  nsi_show_value, nsi_store_value, MBUS_PORT_PRI);
+/* get all masters' prio or set a master's qos(hpr/lpr) */
+static SENSOR_DEVICE_ATTR(port_qos, 0644,
 			  nsi_show_value, nsi_store_value, MBUS_PORT_QOS);
 /* get all masters' inout or set a master's inout */
 static SENSOR_DEVICE_ATTR(port_select, 0644,
 			  nsi_show_value, nsi_store_value, MBUS_INPUT_OUTPUT);
+static SENSOR_DEVICE_ATTR(port_abs_bwl, 0644,
+			  nsi_show_value, nsi_store_value, MBUS_PORT_ABS_BWL);
+static SENSOR_DEVICE_ATTR(port_abs_bwlen, 0644,
+			  nsi_show_value, nsi_store_value, MBUS_PORT_ABS_BWLEN);
 /* get all masters' sample timer or set a master's timer */
 static struct device_attribute dev_attr_pmu_timer =
 	__ATTR(pmu_timer, 0644, nsi_pmu_timer_show, nsi_pmu_timer_store);
@@ -591,16 +944,25 @@ static struct device_attribute dev_attr_pmu_bandwidth =
 	__ATTR(pmu_bandwidth, 0444, nsi_pmu_bandwidth_show, NULL);
 static struct device_attribute dev_attr_available_pmu =
 	__ATTR(available_pmu, 0444, nsi_available_pmu_show, NULL);
+static struct device_attribute dev_attr_pmu_latency =
+	__ATTR(pmu_latency, 0444, nsi_pmu_latency_show, NULL);
+static struct device_attribute dev_attr_pmu_latency_aver =
+	__ATTR(pmu_latency_aver, 0444, nsi_pmu_latency_aver_show, NULL);
 
 /* pointers to created device attributes */
 static struct attribute *nsi_attributes[] = {
 	&dev_attr_pmu_timer.attr,
 	&dev_attr_pmu_bandwidth.attr,
 	&dev_attr_available_pmu .attr,
+	&dev_attr_pmu_latency.attr,
+	&dev_attr_pmu_latency_aver.attr,
 
 	&sensor_dev_attr_port_mode.dev_attr.attr,
 	&sensor_dev_attr_port_prio.dev_attr.attr,
+	&sensor_dev_attr_port_qos.dev_attr.attr,
 	&sensor_dev_attr_port_select.dev_attr.attr,
+	&sensor_dev_attr_port_abs_bwl.dev_attr.attr,
+	&sensor_dev_attr_port_abs_bwlen.dev_attr.attr,
 	NULL,
 };
 
@@ -619,6 +981,7 @@ static int nsi_pmu_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	nsi_init(pdev);
+	sunxi_nsi.dev = dev;
 
 	if (hw_nsi_pmu.dev_nsi)
 		return 0;
@@ -631,10 +994,6 @@ static int nsi_pmu_probe(struct platform_device *pdev)
 		ret = PTR_ERR(hw_nsi_pmu.dev_nsi);
 		goto out_err;
 	}
-
-	sunxi_nsi.dclk = devm_clk_get(dev, "sdram");
-	if (!sunxi_nsi.dclk)
-		dev_err(dev, "get sdram clock failed\n");
 
 	spin_lock_init(&hw_nsi_pmu.bwlock);
 
@@ -669,8 +1028,11 @@ static int sunxi_nsi_suspend(struct device *dev)
 
 static int sunxi_nsi_resume(struct device *dev)
 {
-	dev_info(dev, "resume okay\n");
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10)
+	sunxi_nsi_set_limit(dev);
+#endif
 
+	dev_info(dev, "resume okay\n");
 	return 0;
 }
 
@@ -695,19 +1057,77 @@ static struct platform_driver nsi_pmu_driver = {
 	.remove = nsi_pmu_remove,
 };
 
+enum NSI_IOCTL_CMD {
+	IOCTL_UNKNOWN = 0x100,
+	NSI_SET_LIMIT,
+	NSI_UNSET_LIMIT,
+};
+
+static long nsi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd) {
+	case NSI_SET_LIMIT:
+		sunxi_nsi_set_limit(sunxi_nsi.dev);
+		break;
+	case NSI_UNSET_LIMIT:
+		sunxi_nsi_unset_limit(sunxi_nsi.dev);
+		break;
+	default:
+		pr_err("nsi: err ioctl cmd");
+		return -ENOTTY;
+	}
+
+	return 0;
+}
+
+#ifdef CONFIG_COMPAT
+static long nsi_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	unsigned long translated_arg = (unsigned long)compat_ptr(arg);
+
+	return nsi_ioctl(file, cmd, translated_arg);
+
+}
+#endif
+
+static const struct file_operations nsi_fops = {
+	.owner	 = THIS_MODULE,
+	.unlocked_ioctl	= nsi_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = nsi_compat_ioctl,
+#endif
+};
+
 static int nsi_pmu_init(void)
 {
 	int ret;
+	struct device *dev;
 
 	ret = register_chrdev_region(MKDEV(NSI_MAJOR, 0), NSI_MINORS, "nsi");
 	if (ret)
 		goto out_err;
+
+	cdev_init(&sunxi_nsi.cdev, &nsi_fops);
+	sunxi_nsi.cdev.owner = THIS_MODULE;
+	ret = cdev_add(&sunxi_nsi.cdev, MKDEV(NSI_MAJOR, 1), 1);
+	if (ret) {
+		pr_err("add cdev fail\n");
+		goto out_err;
+	}
 
 	nsi_pmu_class = class_create(THIS_MODULE, "nsi-pmu");
 	if (IS_ERR(nsi_pmu_class)) {
 		ret = PTR_ERR(nsi_pmu_class);
 		goto out_err;
 	}
+
+	dev = device_create(nsi_pmu_class, NULL, MKDEV(NSI_MAJOR, 1), NULL,
+			"nsi");
+	if (IS_ERR(dev)) {
+		pr_err("device_create failed!\n");
+		goto out_err;
+	}
+
 	ret = platform_driver_register(&nsi_pmu_driver);
 	if (ret) {
 		pr_err("register sunxi nsi platform driver failed\n");
@@ -725,10 +1145,9 @@ out_err:
 
 static void nsi_pmu_exit(void)
 {
+	cdev_del(&sunxi_nsi.cdev);
 	platform_driver_unregister(&nsi_pmu_driver);
-
 	class_destroy(nsi_pmu_class);
-
 	unregister_chrdev_region(MKDEV(NSI_MAJOR, 0), NSI_MINORS);
 }
 

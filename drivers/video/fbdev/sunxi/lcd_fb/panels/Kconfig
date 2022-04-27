@@ -22,3 +22,9 @@ config LCD_SUPPORT_KLD2844B
 	default y
 	---help---
 		If you want to support kld2844b panel for display driver, select it.
+
+config LCD_SUPPORT_NV3029S
+	bool "LCD support nv3029s panel"
+	default n
+	---help---
+		If you want to support nv3029s panel for display driver, select it.

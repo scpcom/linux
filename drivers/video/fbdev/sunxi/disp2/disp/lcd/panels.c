@@ -117,12 +117,23 @@ struct __lcd_panel *panel_array[] = {
 #ifdef CONFIG_LCD_SUPPORT_NV3052C_RGB
         &nv3052c_rgb_panel,
 #endif
-
+#ifdef CONFIG_LCD_SUPPORT_BP101WX1_206
 	&bp101wx1_panel,
+#endif
+#ifdef CONFIG_LCD_SUPPORT_K101IM2QA04
 	&k101im2qa04_panel,
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_FX070
 	&fx070_panel,
+#endif
+#ifdef CONFIG_LCD_SUPPORT_K080_IM2HYL802R_800X1280
 	&K080_IM2HYL802R_800X1280_mipi_panel,
+#endif
+#ifdef CONFIG_LCD_SUPPORT_K101_IM2BYL02_L_800X1280
 	&K101_IM2BYL02_L_800X1280_mipi_panel,
+#endif
+	&super_lcd_panel,
 	NULL,
 };
 

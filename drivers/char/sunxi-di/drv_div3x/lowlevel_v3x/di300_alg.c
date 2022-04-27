@@ -12,7 +12,7 @@
  */
 
 #include "di300_alg.h"
-#include "../../common/di_debug.h"
+#include "../di_debug.h"
 
 u32 p2_period[8] = { PROD22, PROD32, PROD2332, PROD2224, PROD32322,
 	PROD55, PROD64, PROD87
@@ -77,19 +77,31 @@ static void di_alg_field_order_detection(
 	    intraf1diff * alg_para->R_kick > maxmfdiff) {
 		diffs = mf0diff - mf1diff;
 
+		DI_INFO("large than maxmfdiff, intraf0diff:%d intraf1diff:%d alg_para->R_kick:%d\n",
+				intraf0diff, intraf1diff, alg_para->R_kick);
+		DI_INFO("mf0diff:%d mf1diff:%d\n", mf0diff, mf1diff);
+		DI_INFO("di_para->bff:%d\n", di_para->bff);
 		if (di_para->bff == 0) {
-			if (diffs < 0 &&
-			    mf0diff * alg_para->R_rev_10 < mf1diff * 10 &&
-			    mf1diff > alg_para->T_rev) {
+			if ((diffs < 0) &&
+			    ((mf0diff * alg_para->R_rev_10) < (mf1diff * 10)) &&
+			    (mf1diff > alg_para->T_rev)) {
+				DI_INFO("bff 0, diffs:%d\n", diffs);
+				DI_INFO("R_rev_10 compare:%d %d\n",
+					mf0diff * alg_para->R_rev_10, mf1diff * 10);
+				DI_INFO("mf1diff:%d T_rev:%d\n", mf1diff, alg_para->T_rev);
 				alg_hist->rev_cnt_bff += 1;
 			} else {
 				alg_hist->rev_cnt_bff = 0;
 				alg_hist->rev_cnt_tff = 0;
 			}
 		} else {
-			if (diffs > 0 &&
-			    mf1diff * alg_para->R_rev_10 < mf0diff * 10 &&
-			    mf0diff > alg_para->T_rev) {
+			if ((diffs > 0) &&
+			    ((mf1diff * alg_para->R_rev_10) < (mf0diff * 10)) &&
+			    (mf0diff > alg_para->T_rev)) {
+				DI_INFO("bff 1, diffs:%d\n", diffs);
+				DI_INFO("R_rev_10 compare:%d %d\n",
+					mf1diff * alg_para->R_rev_10, mf0diff * 10);
+				DI_INFO("mf1diff:%d T_rev:%d\n", mf0diff, alg_para->T_rev);
 				alg_hist->rev_cnt_tff += 1;
 			} else {
 				alg_hist->rev_cnt_bff = 0;
@@ -97,6 +109,8 @@ static void di_alg_field_order_detection(
 			}
 		}
 
+		DI_INFO("rev_cnt_bff:%d rev_cnt_tff:%d T_rev_time:%d\n",
+				alg_hist->rev_cnt_bff, alg_hist->rev_cnt_tff, alg_para->T_rev_time);
 		if (alg_hist->rev_cnt_bff == alg_para->T_rev_time) {
 			alg_hist->bff_fix = 1;
 			alg_hist->rev_cnt_bff = 0;
@@ -112,6 +126,7 @@ static void di_alg_field_order_detection(
 			alg_hist->is_fieldorderchange = 0;
 		}
 	} else {
+		DI_INFO("lower than maxmfdiff\n");
 		alg_hist->bff_fix = di_para->bff;
 		alg_hist->is_fieldorderchange = 0;
 	}
@@ -1225,7 +1240,7 @@ static void di_alg_fmd_non22(struct __fmd_hist *fmd_hist,
 	u32 is_scenechange = base_field ?
 	    alg_hist->is_scenechange_f4 : alg_hist->is_scenechange_f3;
 	u32 is_lock_pre = alg_hist->is_non22_lock;
-	u32 is_lock_cur;
+	u32 is_lock_cur = 0;
 	s32 la_length = alg_hist->la_length;
 	s32 ha_length = alg_hist->ha_length;
 	u32 *p2diff_la = alg_hist->p2diff_la;
@@ -1534,7 +1549,7 @@ static void di_alg_itd_22(struct __itd_hist *itd_hist,
 	u32 is_scenetrace;
 	u32 is_22_temp_di;
 	u32 cadence_cur;
-	u32 weave_phase;
+	u32 weave_phase = 0;
 
 	s32 i, width, heightf;
 	u32 t_p1diffthrl, t_p1diffthrh, avgns;
@@ -2008,8 +2023,7 @@ void di_alg_fixed_para(struct di_client *c,
 	alg_para->itd_alg_para.itd_alg_en =
 		((c->mode == DI_MODE_60HZ) ||
 		(c->mode == DI_MODE_30HZ) ||
-		(c->mode == DI_MODE_WEAVE)) &&
-	    (c->fb_arg.is_interlace == 0);
+		(c->mode == DI_MODE_WEAVE));
 
 	/* Enable TNR adaptive gain control when TNR module enable */
 	alg_para->tnr_alg_para.tnr_alg_en = c->tnr_en;
@@ -2124,7 +2138,10 @@ void di_alg_hist_to_hardware(struct di_client *c,
 	if (alg_para->alg_en == 0)
 		return;
 
-	if (alg_para->fod_alg_para.fod_alg_en)
-		if (alg_hist->fod_alg_hist.is_fieldorderchange)
+	if (alg_para->fod_alg_para.fod_alg_en) {
+		if (alg_hist->fod_alg_hist.is_fieldorderchange) {
 			di_para->bff = alg_hist->fod_alg_hist.bff_fix;
+			DI_INFO("is_fieldorderchange, bff:%d\n", di_para->bff);
+		}
+	}
 }

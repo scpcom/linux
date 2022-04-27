@@ -97,4 +97,25 @@ s32 sunxi_lcd_gpio_set_value(u32 screen_id, u32 io_index, u32 value);
  */
 s32 sunxi_lcd_gpio_set_direction(u32 screen_id, u32 io_index, u32 direction);
 
+/**
+ * sunxi_lcd_cmd_write
+ * @screen_id: The index of screen.
+ * @cmd:  command to be send
+ */
+s32 sunxi_lcd_cmd_write(u32 screen_id, u8 cmd);
+
+/**
+ * sunxi_lcd_para_write
+ * @screen_id: The index of screen.
+ * @cmd:  command to be send
+ */
+s32 sunxi_lcd_para_write(u32 screen_id, u8 para);
+
+/**
+ * sunxi_lcd_para_write
+ * @screen_id: The index of screen.
+ * @cmd:  command to be send
+ */
+s32 sunxi_lcd_cmd_read(u32 screen_id, u8 cmd, u8 *rx_buf, u8 len);
+
 extern struct sunxi_lcd_drv g_lcd_drv;

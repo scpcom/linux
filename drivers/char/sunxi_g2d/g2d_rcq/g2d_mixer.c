@@ -869,6 +869,7 @@ static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task,
 {
 	__s32 i = 0, ret = -1;
 
+#if G2D_MIXER_RCQ_USED == 1
 	g2d_top_rcq_update_en(0);
 	g2d_top_rcq_irq_en(0);
 #if defined(CONFIG_ARM64)
@@ -877,6 +878,10 @@ static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task,
 #else
 	g2d_top_set_rcq_head((__u64)(__u32)p_task->p_rcq_info->phy_addr,
 			     p_task->p_rcq_info->rcq_header_len);
+#endif
+#else
+	g2d_mixer_irq_en(0);
+	g2d_mixer_start(0);
 #endif
 
 	for (i = 0; i < p_task->frame_cnt; ++i) {
@@ -888,8 +893,13 @@ static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task,
 	if (dbg_info > 1)
 		g2d_mixer_rcq_debug(p_task);
 
+#if G2D_MIXER_RCQ_USED == 1
 	g2d_top_rcq_irq_en(1);
 	g2d_top_rcq_update_en(1);
+#else
+	g2d_mixer_irq_en(1);
+	g2d_mixer_start(1);
+#endif
 	ret = g2d_wait_cmd_finish(WAIT_CMD_TIME_MS*p_task->frame_cnt);
 	memcpy(p_task->p_para, p_para,
 	       sizeof(struct mixer_para) * p_task->frame_cnt);

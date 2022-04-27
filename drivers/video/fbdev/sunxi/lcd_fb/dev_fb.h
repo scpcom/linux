@@ -21,5 +21,6 @@
 
 int fb_init(struct dev_lcd_fb_t *p_info);
 int fb_exit(void);
+void lcd_fb_black_screen(u32 sel);
 
 #endif /*End of file*/

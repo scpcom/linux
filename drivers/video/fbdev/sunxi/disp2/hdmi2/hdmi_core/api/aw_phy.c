@@ -296,10 +296,10 @@ static struct aw_phy_config aw_phy[] = {
 	{288000, PIXEL_REPETITION_OFF, COLOR_DEPTH_10, 0x3B4C, 0x001B, 0x3, 0x4},
 	{288000, PIXEL_REPETITION_OFF, COLOR_DEPTH_12, 0x5A64, 0x001B, 0x3, 0x4},
 	{288000, PIXEL_REPETITION_OFF, COLOR_DEPTH_16, 0x7A50, 0x003D, 0x3, 0x4},
-	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8,  0x0, 0x14A50, 0x333FFFF, 0x10151515},
-	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_10, 0x0, 0x14A50, 0x333FFFF, 0x10151515},
-	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_12, 0x0, 0x14A50, 0x333FFFF, 0x10151515},
-	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_16, 0x0, 0x14A50, 0x333FFFF, 0x10151515},
+	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8,  0x0, 0x01084F, 0x0444, 0x1F1F1F1F},
+	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_10, 0x0, 0x01084F, 0x0444, 0x1F1F1F1F},
+	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_12, 0x0, 0x01084F, 0x0444, 0x1F1F1F1F},
+	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_16, 0x0, 0x01084F, 0x0444, 0x1F1F1F1F},
 	{317000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8,  0x40, 0x36, 0x3, 0x4},
 	{330000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8,  0x40, 0x36, 0x3, 0x4},
 	{330000, PIXEL_REPETITION_OFF, COLOR_DEPTH_10, 0x3B4C, 0x001B, 0x3, 0x4},
@@ -582,7 +582,7 @@ static struct aw_phy_config *phy_get_configs(u32 pClk, color_depth_t color,
 	return NULL;
 }
 
-static void phy_reset(void)
+void phy_reset(void)
 {
 	phy_base->phy_ctl0.bits.entx = 0;
 	phy_base->phy_ctl5.bits.enresck = 0;
@@ -597,8 +597,10 @@ static void phy_reset(void)
 	phy_base->phy_ctl5.bits.enib = 0;
 	phy_base->pll_ctl1.bits.reset = 1;
 	phy_base->pll_ctl1.bits.pwron = 0;
+	phy_base->pll_ctl0.bits.envbs = 0;
 
 }
+
 
 static void phy_set_mpll(void)
 {
@@ -694,6 +696,7 @@ static int phy_enable(void)
 {
 	int i = 0, status = 0;
 	//enib -> enldo -> enrcal -> encalog -> enbi[3:0] -> enck -> enp2s[3:0] -> enres -> enresck -> entx[3:0]
+	phy_base->phy_ctl4.bits.reg_slv = 4;     //low power voltage 1.08V, default is 3, set 4 as well as pll_ctl0 bit [24:26]
 	phy_base->phy_ctl5.bits.enib = 1;
 	phy_base->phy_ctl0.bits.enldo = 1;
 	phy_base->phy_ctl0.bits.enldo_fs = 1;
@@ -751,7 +754,30 @@ static int phy_enable(void)
 	phy_base->phy_ctl0.bits.scl_en = 1;
 	phy_base->phy_ctl0.bits.hpd_en = 1;
 	phy_base->phy_ctl0.bits.reg_den = 0xF;
+	phy_base->pll_ctl0.bits.envbs = 1;
 	return 0;
+}
+
+int phy_config_resume(void)
+{
+	int ret = 0;
+	/* close phy and mpLL*/
+	phy_reset();
+
+	//mpll configuration
+	phy_set_mpll();
+
+	//Frequency division configuration
+	phy_set_div();
+
+	//clk configuration
+	phy_set_clk();
+
+	//enable
+	ret = phy_enable();
+	if (ret < 0)
+		pr_err("[%s]: phy enable failed!\n", __func__);
+	return ret;
 }
 
 static int __phy_config(struct aw_phy_config *config)
@@ -768,10 +794,11 @@ static int __phy_config(struct aw_phy_config *config)
 
 	//配置phy
 	phy_base->phy_ctl1.dwval = ((phy_base->phy_ctl1.dwval & 0xFFC0FFFF) | config->phy_ctl1);
-	phy_base->phy_ctl2.dwval |= config->phy_ctl2;
-	phy_base->phy_ctl3.dwval |= config->phy_ctl3;
+	phy_base->phy_ctl2.dwval = ((phy_base->phy_ctl2.dwval & 0xFF000000) | config->phy_ctl2);
+	phy_base->phy_ctl3.dwval = ((phy_base->phy_ctl3.dwval & 0xFFFF0000) | config->phy_ctl3);
 	phy_base->phy_ctl4.dwval = ((phy_base->phy_ctl4.dwval & 0xE0000000) | config->phy_ctl4);
-	phy_base->pll_ctl1.dwval |= config->pll_ctl1;
+	//phy_base->pll_ctl0.dwval |= config->pll_ctl0;
+	//phy_base->pll_ctl1.dwval |= config->pll_ctl1;
 
 	//配置时钟
 	phy_set_clk();

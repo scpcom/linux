@@ -266,7 +266,7 @@ s32 hdmi_smooth_enable_core(void);
 s32 hdmi_disable_core(void);
 
 /*************************audio***************************/
-#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO)
+#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO) || defined(CONFIG_SND_SOC_SUNXI_AHUB_TMP)
 s32 hdmi_set_audio_para(hdmi_audio_t *audio_para);
 s32 hdmi_core_audio_enable(u8 mode, u8 channel);
 #endif

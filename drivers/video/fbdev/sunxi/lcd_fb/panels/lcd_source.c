@@ -160,3 +160,43 @@ s32 sunxi_lcd_gpio_set_direction(u32 screen_id, u32 io_index, u32 direct)
 
 	return -1;
 }
+
+/**
+ * sunxi_lcd_cmd_write
+ * @screen_id: The index of screen.
+ * @cmd:  command to be send
+ */
+s32 sunxi_lcd_cmd_write(u32 screen_id, u8 cmd)
+{
+	if (g_lcd_drv.src_ops.sunxi_lcd_cmd_write)
+		return g_lcd_drv.src_ops.sunxi_lcd_cmd_write(screen_id, cmd);
+
+	return -1;
+}
+
+/**
+ * sunxi_lcd_para_write
+ * @screen_id: The index of screen.
+ * @para:  para to be writed
+ */
+s32 sunxi_lcd_para_write(u32 screen_id, u8 para)
+{
+	if (g_lcd_drv.src_ops.sunxi_lcd_para_write)
+		return g_lcd_drv.src_ops.sunxi_lcd_para_write(screen_id, para);
+
+	return -1;
+}
+
+/**
+ * sunxi_lcd_para_write
+ * @screen_id: The index of screen.
+ * @cmd:  command to be read
+ * @len:  length of bytes to be read
+ */
+s32 sunxi_lcd_cmd_read(u32 screen_id, u8 cmd, u8 *rx_buf, u8 len)
+{
+	if (g_lcd_drv.src_ops.sunxi_lcd_cmd_read)
+		return g_lcd_drv.src_ops.sunxi_lcd_cmd_read(screen_id, cmd, rx_buf, len);
+
+	return -1;
+}

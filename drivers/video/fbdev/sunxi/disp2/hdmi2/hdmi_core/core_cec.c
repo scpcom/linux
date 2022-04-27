@@ -1180,7 +1180,7 @@ static long cec_compat_ioctl(struct file *file, unsigned int cmd,
 	}
 
 	ubuffer = compat_alloc_user_space(3 * sizeof(unsigned long));
-	if (!access_ok(VERIFY_WRITE, ubuffer, 3 * sizeof(unsigned long)))
+	if (!access_ok(/*VERIFY_WRITE,*/ ubuffer, 3 * sizeof(unsigned long)))
 		return -EFAULT;
 
 	if (put_user(karg[0], &ubuffer[0]) ||

@@ -255,6 +255,22 @@ static void hdmi_resume_clk_enable(void)
 		return;
 
 	if (hdmi_drv->rst_bus_sub) {
+		ret = reset_control_assert(hdmi_drv->rst_bus_sub);
+		if (ret) {
+			pr_err("[%s] assert bus sub failed!\n", __func__);
+			return;
+		}
+	}
+
+	if (hdmi_drv->rst_bus_main) {
+		ret = reset_control_assert(hdmi_drv->rst_bus_main);
+		if (ret) {
+			pr_err("[%s] assert bus main failed!\n", __func__);
+			return;
+		}
+	}
+
+	if (hdmi_drv->rst_bus_sub) {
 		ret = reset_control_deassert(hdmi_drv->rst_bus_sub);
 		if (ret) {
 			pr_err("[%s] deassert bus sub failed!\n", __func__);
@@ -372,7 +388,6 @@ static void hdmi_clk_disable(void)
 
 static void hdmi_suspend_clk_disable(void)
 {
-	int ret = 0;
 
 	if (!hdmi_clk_enable_mask)
 		return;
@@ -399,21 +414,6 @@ static void hdmi_suspend_clk_disable(void)
 	if (hdmi_drv->hdmi_bus_clk != NULL)
 		clk_disable_unprepare(hdmi_drv->hdmi_bus_clk);
 
-	if (hdmi_drv->rst_bus_sub) {
-		ret = reset_control_assert(hdmi_drv->rst_bus_sub);
-		if (ret) {
-			pr_err("[%s] assert bus sub failed!\n", __func__);
-			return;
-		}
-	}
-
-	if (hdmi_drv->rst_bus_main) {
-		ret = reset_control_assert(hdmi_drv->rst_bus_main);
-		if (ret) {
-			pr_err("[%s] assert bus main failed!\n", __func__);
-			return;
-		}
-	}
 }
 
 static void hdmi_pin_configure(void)
@@ -734,7 +734,7 @@ static s32 hdmi_disable(void)
 	return ret;
 }
 
-#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO)
+#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO) || defined(CONFIG_SND_SOC_SUNXI_AHUB_TMP)
 s32 hdmi_audio_enable(u8 enable, u8 channel)
 {
 	s32 ret = 0;
@@ -780,7 +780,12 @@ static s32 hdmi_suspend(void)
 		hdmi_drv->hdmi_core->dev_func.hdcp_close();
 #endif
 
+#if IS_ENABLED(CONFIG_AW_PHY)
+	hdmi_drv->hdmi_core->dev_func.phy_reset();
+#endif
+
 	hdmi_suspend_sys_source_release();
+
 	if (hdmi_drv->cec_support
 		&& hdmi_drv->cec_super_standby) {
 		/*enable_wakeup_src(CPUS_HDMICEC_SRC, 0);
@@ -829,7 +834,9 @@ static s32 hdmi_resume(void)
 		hdmi_power_enable(hdmi_drv->regulator[i]);
 	hdmi_resume_sys_source_configure();
 	hdmi_clk_reset();
-
+#if IS_ENABLED(CONFIG_AW_PHY)
+	hdmi_drv->hdmi_core->dev_func.phy_config_resume();
+#endif
 	/*enable hpd sense*/
 	hpd_sense_enbale_core(hdmi_drv->hdmi_core);
 
@@ -1486,7 +1493,7 @@ static int hdmi_tx_init(struct platform_device *pdev)
 	struct disp_device_func disp_func;
 	hdcpParams_t hdcp;
 
-#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO)
+#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO) || defined(CONFIG_SND_SOC_SUNXI_AHUB_TMP)
 	__audio_hdmi_func audio_func;
 #if defined(CONFIG_SND_SUNXI_SOC_AUDIOHUB_INTERFACE)
 	__audio_hdmi_func audio_func_muti;
@@ -1646,7 +1653,7 @@ static int hdmi_tx_init(struct platform_device *pdev)
 
 	disp_set_hdmi_func(&disp_func);
 
-#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO)
+#if defined(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO) || defined(CONFIG_SND_SOC_SUNXI_AHUB_TMP)
 	audio_func.hdmi_audio_enable = hdmi_audio_enable;
 	audio_func.hdmi_set_audio_para = hdmi_set_audio_para;
 	audio_set_hdmi_func(&audio_func);

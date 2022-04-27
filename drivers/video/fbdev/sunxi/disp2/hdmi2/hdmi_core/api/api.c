@@ -436,6 +436,17 @@ static u32 api_get_audio_channel_count(void)
 
 }
 
+#if IS_ENABLED(CONFIG_AW_PHY)
+static void api_phy_reset(void)
+{
+	return phy_reset();
+}
+
+static int api_phy_config_resume(void)
+{
+	return phy_config_resume();
+}
+#endif
 
 static u32 api_get_phy_power_state(void)
 {
@@ -612,7 +623,10 @@ void hdmitx_api_init(hdmi_tx_dev_t *dev,
 	func.phy_power_enable		  = api_phy_power_enable;
 	func.dvimode_enable			  = api_dvimode_enable;
 	func.set_phy_base_addr        = api_set_phy_base;
-
+#if IS_ENABLED(CONFIG_AW_PHY)
+	func.phy_reset                = api_phy_reset;
+	func.phy_config_resume        = api_phy_config_resume;
+#endif
 	register_func_to_hdmi_core(func);
 }
 
