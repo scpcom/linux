@@ -234,6 +234,7 @@ static int snd_soc_rpaf_misc_open(struct inode *inode, struct file *file)
 	}
 	msg_component = &dsp_component->msg_component;
 	init_waitqueue_head(&msg_component->tsleep);
+	spin_lock_init(&msg_component->lock);
 
 	snd_soc_dsp_component_list_add_tail(&msg_component->soc_component);
 	dsp_component->rpaf_info = rpaf_info;
@@ -250,6 +251,8 @@ static int snd_soc_rpaf_misc_open(struct inode *inode, struct file *file)
 	return err;
 }
 
+static int snd_soc_rpaf_misc_common_stop(struct snd_dsp_component *dsp_component);
+static int snd_soc_rpaf_misc_common_remove(struct snd_dsp_component *dsp_component);
 static int snd_soc_rpaf_misc_release(struct inode *inode, struct file *file)
 {
 	struct snd_dsp_component *dsp_component = file->private_data;
@@ -257,17 +260,25 @@ static int snd_soc_rpaf_misc_release(struct inode *inode, struct file *file)
 	struct snd_soc_dsp_component *component = &msg_component->soc_component;
 	struct snd_soc_rpaf_info *rpaf_info = dsp_component->rpaf_info;
 	int i = 0;
+	int result;
 
 	/* 判断当前状态 */
 	switch (dsp_component->state) {
 	case SND_DSP_COMPONENT_STATE_START:
 	case SND_DSP_COMPONENT_STATE_RUNNING:
+		result = snd_soc_rpaf_misc_common_stop(dsp_component);
+		if (result < 0)
+			return result;
+	case SND_DSP_COMPONENT_STATE_STOP:
+		result = snd_soc_rpaf_misc_common_remove(dsp_component);
+		if (result < 0)
+			return result;
+		break;
 	case SND_DSP_COMPONENT_STATE_CLOSE:
 	default:
 		return -EINVAL;
 	case SND_DSP_COMPONENT_STATE_OPEN:
 	case SND_DSP_COMPONENT_STATE_CREATE:
-	case SND_DSP_COMPONENT_STATE_STOP:
 	case SND_DSP_COMPONENT_STATE_REMOVE:
 		break;
 	}
@@ -709,6 +720,7 @@ static ssize_t snd_soc_rpaf_misc_write(struct file *file, const char __user *buf
 	struct snd_soc_dsp_component *component = &msg_component->soc_component;
 	struct snd_soc_rpaf_info *rpaf_info = dsp_component->rpaf_info;
 	ssize_t read_size = count;
+	int ret;
 
 	if (count > component->read_size)
 		read_size = component->read_size;
@@ -722,8 +734,12 @@ static ssize_t snd_soc_rpaf_misc_write(struct file *file, const char __user *buf
 
 	component->cmd_val = SND_SOC_DSP_COMPONENT_WRITE;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
 	mutex_unlock(&dsp_component->comp_rw_lock);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
 	return read_size;
 }
@@ -736,6 +752,7 @@ ssize_t snd_soc_rpaf_misc_lib_write(struct snd_dsp_component *dsp_component,
 	struct snd_soc_dsp_component *component = &msg_component->soc_component;
 	ssize_t read_size = size;
 	const char __user *buf = (const char __user *)data;
+	int ret;
 
 	if (IS_ERR_OR_NULL(dsp_component->write_area) ||
 		IS_ERR_OR_NULL(dsp_component->read_area))
@@ -755,8 +772,12 @@ ssize_t snd_soc_rpaf_misc_lib_write(struct snd_dsp_component *dsp_component,
 
 	component->cmd_val = SND_SOC_DSP_COMPONENT_WRITE;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
 	mutex_unlock(&dsp_component->comp_rw_lock);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
 	return read_size;
 }
@@ -1023,6 +1044,7 @@ static int snd_soc_rpaf_misc_common_set_algo(struct snd_dsp_component *dsp_compo
 	struct snd_soc_dsp_component *soc_component = &msg_component->soc_component;
 	struct snd_soc_dsp_component_config __user *_component_config = arg;
 	struct snd_soc_dsp_component_config component_config;
+	int ret;
 
 	if (copy_from_user(&component_config, _component_config,
 		sizeof(struct snd_soc_dsp_component_config))) {
@@ -1053,7 +1075,11 @@ static int snd_soc_rpaf_misc_common_set_algo(struct snd_dsp_component *dsp_compo
 
 	soc_component->cmd_val = SND_SOC_DSP_COMPONENT_ALGO_SET;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
 	return 0;
 }
@@ -1066,6 +1092,7 @@ static int snd_soc_rpaf_misc_common_get_algo(struct snd_dsp_component *dsp_compo
 	struct snd_soc_dsp_component *soc_component = &msg_component->soc_component;
 	struct snd_soc_dsp_component_config __user *_component_config = arg;
 	struct snd_soc_dsp_component_config component_config;
+	int ret;
 
 	if (copy_from_user(&component_config, _component_config,
 		sizeof(struct snd_soc_dsp_component_config))) {
@@ -1083,7 +1110,11 @@ static int snd_soc_rpaf_misc_common_get_algo(struct snd_dsp_component *dsp_compo
 	soc_component->params.stream = component_config.pcm_params.stream;
 
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
 	dev_dbg(rpaf_info->dev, "%s:Line:%d, driver:%s\n"
 		"component_config.comp_mode:%d, soc_component->comp_mode:%d\n"
@@ -1174,7 +1205,11 @@ static int snd_soc_rpaf_misc_common_create(struct snd_dsp_component *dsp_compone
 	soc_component->cmd_val = SND_SOC_DSP_COMPONENT_CREATE;
 	/* 发送给msgbox to dsp */
 
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	result = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (result < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, result);
+		return result;
+	}
 
 	return result;
 }
@@ -1185,6 +1220,7 @@ static int snd_soc_rpaf_misc_common_remove(struct snd_dsp_component *dsp_compone
 	struct msg_component_package *msg_component = &dsp_component->msg_component;
 	struct snd_soc_dsp_component *soc_component = &msg_component->soc_component;
 	struct snd_dsp_component *stream_dsp_component = NULL;
+	int ret;
 
 	/* 判断当前状态 */
 	switch (dsp_component->state) {
@@ -1223,7 +1259,11 @@ static int snd_soc_rpaf_misc_common_remove(struct snd_dsp_component *dsp_compone
 
 	soc_component->cmd_val = SND_SOC_DSP_COMPONENT_REMOVE;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 	/* 状态跳转 */
 	dsp_component->state = SND_DSP_COMPONENT_STATE_REMOVE;
 	return 0;
@@ -1258,6 +1298,7 @@ static int snd_soc_rpaf_misc_common_start(struct snd_dsp_component *dsp_componen
 	struct msg_component_package *msg_component = &dsp_component->msg_component;
 	struct snd_soc_dsp_component *soc_component = &msg_component->soc_component;
 	struct snd_soc_rpaf_pcm_runtime *runtime = &dsp_component->runtime;
+	int ret;
 
 	/* 判断当前状态 */
 	switch (dsp_component->state) {
@@ -1283,7 +1324,11 @@ static int snd_soc_rpaf_misc_common_start(struct snd_dsp_component *dsp_componen
 
 	soc_component->cmd_val = SND_SOC_DSP_COMPONENT_START;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 	/* 状态跳转 */
 	dsp_component->state = SND_DSP_COMPONENT_STATE_START;
 	return 0;
@@ -1295,6 +1340,7 @@ static int snd_soc_rpaf_misc_common_stop(struct snd_dsp_component *dsp_component
 	struct msg_component_package *msg_component = &dsp_component->msg_component;
 	struct snd_soc_dsp_component *soc_component = &msg_component->soc_component;
 	struct snd_soc_rpaf_pcm_runtime *runtime = &dsp_component->runtime;
+	int ret;
 
 	/* 判断当前状态 */
 	switch (dsp_component->state) {
@@ -1315,7 +1361,11 @@ static int snd_soc_rpaf_misc_common_stop(struct snd_dsp_component *dsp_component
 
 	soc_component->cmd_val = SND_SOC_DSP_COMPONENT_STOP;
 	/* 发送给msgbox to dsp */
-	sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	ret = sunxi_hifi_component_block_send(rpaf_info->dsp_id, msg_component);
+	if (ret < 0) {
+		pr_err("%s line:%d error:%d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 	/* 状态跳转 */
 	dsp_component->state = SND_DSP_COMPONENT_STATE_STOP;
 	return 0;
@@ -1412,6 +1462,47 @@ static long snd_soc_rpaf_misc_common_ioctl(struct file *file,
 		__put_user(result, &_xferi->result);
 		return result < 0 ? result : 0;
 	}
+#ifdef CONFIG_COMPAT
+	case SND_SOC_DSP_COMPONENT_IOCTL_WRITE32:
+	{
+		struct snd_rpaf_xferi xferi;
+		struct snd_rpaf_xferi32 __user *_xferi32 = arg;
+		struct msg_component_package *msg_component = &dsp_component->msg_component;
+		struct snd_soc_dsp_component *component = &msg_component->soc_component;
+		int result;
+		compat_caddr_t buf;
+
+		get_user(xferi.result, &_xferi32->result);
+		get_user(buf, &_xferi32->input_buf);
+		xferi.input_buf = compat_ptr(buf);
+		get_user(xferi.input_length, &_xferi32->input_length);
+		get_user(buf, &_xferi32->output_buf);
+		xferi.output_buf = compat_ptr(buf);
+		get_user(xferi.output_length, &_xferi32->output_length);
+		get_user(buf, &_xferi32->dump_buf);
+		xferi.dump_buf = compat_ptr(buf);
+		get_user(xferi.dump_length, &_xferi32->dump_length);
+		get_user(xferi.dump_type, &_xferi32->dump_type);
+
+		dsp_component->state = SND_DSP_COMPONENT_STATE_RUNNING;
+
+		component->write_length = xferi.input_length;
+		component->read_length = xferi.output_length;
+		result = snd_soc_rpaf_misc_lib_write(dsp_component, xferi.input_buf,
+						xferi.input_length);
+		if (result < 0) {
+			__put_user(result, &_xferi32->result);
+			return result < 0 ? result : 0;
+		}
+		/* 回写回来 */
+		result = snd_soc_rpaf_write_to_user(dsp_component, xferi.output_buf,
+						&xferi.output_length);
+		__put_user(result, &_xferi32->result);
+		__put_user(xferi.output_length, &_xferi32->output_length);
+
+		return result < 0 ? result : 0;
+	}
+#endif
 	default:
 		dev_err(rpaf_info->dev, "%s cmd:%d not exist.\n", __func__, cmd);
 		return -EINVAL;
@@ -1419,6 +1510,21 @@ static long snd_soc_rpaf_misc_common_ioctl(struct file *file,
 
 	return result;
 }
+
+#ifdef CONFIG_COMPAT
+static long snd_soc_rpaf_misc_compat_ioctl(struct file *file,
+					  unsigned int cmd,
+					  unsigned long arg)
+{
+	struct snd_dsp_component *dsp_component = file->private_data;
+	void __user *argp = compat_ptr(arg);
+
+	if (((cmd >> 8) & 0xFF) != 'C')
+		return -ENOTTY;
+
+	return snd_soc_rpaf_misc_common_ioctl(file, dsp_component, cmd, argp);
+}
+#endif
 
 static long snd_soc_rpaf_misc_unlocked_ioctl(struct file *file,
 					  unsigned int cmd,
@@ -1437,7 +1543,9 @@ static const struct file_operations snd_soc_rpaf_misc_f_ops = {
 	.owner = THIS_MODULE,
 	.open = snd_soc_rpaf_misc_open,
 	.unlocked_ioctl = snd_soc_rpaf_misc_unlocked_ioctl,
-//	.compat_ioctl = snd_soc_rpaf_misc_compat_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = snd_soc_rpaf_misc_compat_ioctl,
+#endif
 //	.read = snd_soc_rpaf_misc_read,
 	.write = snd_soc_rpaf_misc_write,
 	.llseek = no_llseek,

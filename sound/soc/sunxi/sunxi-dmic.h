@@ -181,7 +181,6 @@ struct sunxi_dmic_dts_info {
 	size_t playback_cma;
 	size_t capture_cma;
 
-	unsigned int dmic_rxsync_en;
 	unsigned int rx_chmap;
 	unsigned int data_vol;
 };
@@ -197,5 +196,9 @@ struct sunxi_dmic_info {
 
 	struct sunxi_dma_params capture_dma_param;
 	unsigned int chan_en;
+
+	unsigned int rx_sync_en;
+	int rx_sync_id;
+	rx_sync_domain_t rx_sync_domain;
 };
 #endif /* SUNXI_DMIC_H */

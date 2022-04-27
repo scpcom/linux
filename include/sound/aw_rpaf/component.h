@@ -166,6 +166,7 @@ struct snd_dsp_hal_component_ops {
 
 struct msg_component_package {
 	wait_queue_head_t tsleep;
+	spinlock_t lock;
 	int32_t wakeup_flag;
 	struct snd_soc_dsp_component soc_component;
 	struct list_head list;

@@ -114,6 +114,7 @@ struct snd_dsp_hal_substream_driver {
 
 struct msg_substream_package {
 	wait_queue_head_t tsleep;
+	spinlock_t lock;
 	int32_t wakeup_flag;
 	struct snd_soc_dsp_substream soc_substream;
 	struct snd_pcm_substream *substream;

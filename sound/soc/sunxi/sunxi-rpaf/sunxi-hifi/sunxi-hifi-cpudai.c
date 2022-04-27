@@ -395,6 +395,7 @@ static int sunxi_hifi_cpudai_init(struct sunxi_cpudai_info *sunxi_cpudai,
 
 	/* init for playback */
 	init_waitqueue_head(&msg_playback->tsleep);
+	spin_lock_init(&msg_playback->lock);
 	msg_playback->wakeup_flag = 0;
 	soc_substream = &msg_playback->soc_substream;
 	pcm_params = &soc_substream->params;
@@ -423,10 +424,12 @@ static int sunxi_hifi_cpudai_init(struct sunxi_cpudai_info *sunxi_cpudai,
 	dsp_component = &sunxi_cpudai->dsp_playcomp;
 	msg_component = &dsp_component->msg_component;
 	init_waitqueue_head(&msg_component->tsleep);
+	spin_lock_init(&msg_component->lock);
 	msg_component->wakeup_flag = 0;
 
 	/* init for capture */
 	init_waitqueue_head(&msg_capture->tsleep);
+	spin_lock_init(&msg_capture->lock);
 	msg_capture->wakeup_flag = 0;
 	soc_substream = &msg_capture->soc_substream;
 	pcm_params = &soc_substream->params;
@@ -448,10 +451,12 @@ static int sunxi_hifi_cpudai_init(struct sunxi_cpudai_info *sunxi_cpudai,
 	dsp_component = &sunxi_cpudai->dsp_capcomp;
 	msg_component = &dsp_component->msg_component;
 	init_waitqueue_head(&msg_component->tsleep);
+	spin_lock_init(&msg_component->lock);
 	msg_component->wakeup_flag = 0;
 
 	/* init for debug */
 	init_waitqueue_head(&msg_debug->tsleep);
+	spin_lock_init(&msg_debug->lock);
 	msg_debug->wakeup_flag = 0;
 
 	/* register sunxi_cpudai_info to rpmsg_hifi driver */
@@ -761,8 +766,11 @@ static void trigger_work_playback_func(struct work_struct *work)
 			/* 拷贝并发送通知component */
 			snd_soc_rpaf_pcm_update_stream_process(&sunxi_cpudai->dsp_playcomp);
 
-			if ((ret == 0) &&
-				(runtime->status->state == SNDRV_PCM_STATE_RUNNING)) {
+			if (ret != 0) {
+				dev_err(sunxi_cpudai->cpu_dai->dev,
+					"%s state:%d, ret=%d\n", __func__, runtime->status->state, ret);
+			}
+			if (runtime->status->state == SNDRV_PCM_STATE_RUNNING) {
 				queue_delayed_work(sunxi_cpudai->wq_playback,
 					&sunxi_cpudai->trigger_work_playback, 0);
 			}
@@ -862,8 +870,11 @@ do_readi:
 			/* 拷贝并发送通知component */
 			snd_soc_rpaf_pcm_update_stream_process(&sunxi_cpudai->dsp_capcomp);
 
-			if ((ret == 0) &&
-				(runtime->status->state == SNDRV_PCM_STATE_RUNNING)) {
+			if (ret != 0) {
+				dev_err(sunxi_cpudai->cpu_dai->dev,
+					"%s state:%d, ret=%d\n", __func__, runtime->status->state, ret);
+			}
+			if (runtime->status->state == SNDRV_PCM_STATE_RUNNING) {
 				queue_delayed_work(sunxi_cpudai->wq_capture,
 					&sunxi_cpudai->trigger_work_capture, 0);
 			}

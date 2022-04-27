@@ -37,6 +37,8 @@
 #include "sunxi-hifi-dmic.h"
 #include "sunxi-hifi-cpudai.h"
 
+#define RPMSG_TIMEOUT_NORMAL    (3000)
+
 struct audio_driver_info {
 	char driver[32];
 	void *data;
@@ -227,6 +229,7 @@ int sunxi_hifi_component_block_send(unsigned int hifi_id,
 	if ((hifi_id > 1) || (gHifi_priv[hifi_id] == NULL))
 		return -EINVAL;
 
+	spin_lock_irq(&msg_component->lock);
 	rpmsg_dev = gHifi_priv[hifi_id]->rpmsg_dev;
 	if (msg_component->wakeup_flag) {
 		dev_warn(&rpmsg_dev->dev, "%s wakeup_flag was not reset.\n", __func__);
@@ -239,7 +242,9 @@ int sunxi_hifi_component_block_send(unsigned int hifi_id,
 	add_wait_queue(&msg_component->tsleep, &wait);
 
 	/* 发送数据 */
+	spin_unlock_irq(&msg_component->lock);
 	ret = sunxi_hifi_component_nonblock_send(hifi_id, msg_component);
+	spin_lock_irq(&msg_component->lock);
 	if (ret) {
 		dev_err(&rpmsg_dev->dev, "%s rpmsg_send failed: %d\n", __func__, ret);
 		ret = -EIO;
@@ -258,10 +263,14 @@ int sunxi_hifi_component_block_send(unsigned int hifi_id,
 			break;
 		}
 		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(&msg_component->lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(&msg_component->lock);
 		if (!tout) {
 			dev_err(&rpmsg_dev->dev,
-				"rpmsg_send failed waiting receive: %d\n", ret);
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, msg_component->wakeup_flag);
 			ret = -EIO;
 			break;
 		} else {
@@ -276,12 +285,14 @@ int sunxi_hifi_component_block_send(unsigned int hifi_id,
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&msg_component->tsleep, &wait);
+	spin_unlock_irq(&msg_component->lock);
 
 	return ret;
 
 err_rpmsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&msg_component->tsleep, &wait);
+	spin_unlock_irq(&msg_component->lock);
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_hifi_component_block_send);
@@ -301,6 +312,7 @@ int sunxi_mixer_block_send(unsigned int hifi_id, struct msg_mixer_package *msg_m
 		return -EINVAL;
 	}
 
+	spin_lock_irq(&msg_mixer->lock);
 	rpmsg_dev = gHifi_priv[hifi_id]->rpmsg_dev;
 
 	msg_audio_package.audioMsgVal = MSGBOX_SOC_DSP_AUDIO_MIXER_COMMAND;
@@ -319,8 +331,10 @@ int sunxi_mixer_block_send(unsigned int hifi_id, struct msg_mixer_package *msg_m
 	set_current_state(TASK_KILLABLE);
 	add_wait_queue(cpudai_tsleep, &wait);
 	/* 发送数据 */
+	spin_unlock_irq(&msg_mixer->lock);
 	ret = rpmsg_send(rpmsg_dev->ept, &msg_audio_package,
 				  sizeof(struct msg_audio_package));
+	spin_lock_irq(&msg_mixer->lock);
 	if (ret) {
 		dev_err(&rpmsg_dev->dev, "rpmsg_send failed: %d\n", ret);
 		ret = -EIO;
@@ -339,9 +353,14 @@ int sunxi_mixer_block_send(unsigned int hifi_id, struct msg_mixer_package *msg_m
 			break;
 		}
 		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(&msg_mixer->lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(&msg_mixer->lock);
 		if (!tout) {
-			dev_err(&rpmsg_dev->dev, "rpmsg_send timeout.\n");
+			dev_err(&rpmsg_dev->dev,
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, *wakeup_flag);
 			ret = -EIO;
 			break;
 		} else {
@@ -357,11 +376,13 @@ int sunxi_mixer_block_send(unsigned int hifi_id, struct msg_mixer_package *msg_m
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(cpudai_tsleep, &wait);
+	spin_unlock_irq(&msg_mixer->lock);
 	return ret;
 
 err_rmpsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(cpudai_tsleep, &wait);
+	spin_unlock_irq(&msg_mixer->lock);
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_mixer_block_send);
@@ -378,6 +399,7 @@ static int sunxi_hifi_substream_component_block_send(unsigned int hifi_id,
 	if ((hifi_id > 1) || (gHifi_priv[hifi_id] == NULL))
 		return -EINVAL;
 
+	spin_lock_irq(&msg_component->lock);
 	msg_component->soc_component.comp_mode = SND_DSP_COMPONENT_MODE_STREAM;
 	msg_component->soc_component.cmd_val = SND_SOC_DSP_COMPONENT_SET_STREAM_PARAMS;
 
@@ -397,7 +419,9 @@ static int sunxi_hifi_substream_component_block_send(unsigned int hifi_id,
 	msg_package.audioMsgVal = MSGBOX_SOC_DSP_AUDIO_COMPONENT_COMMAND;
 	msg_package.sharePointer = (unsigned int)__pa(&msg_component->soc_component);
 	sunxi_rpaf_dma_flush_range(&msg_component->soc_component, sizeof(struct snd_soc_dsp_component));
+	spin_unlock_irq(&msg_component->lock);
 	ret = sunxi_hifi_nonblock_send(hifi_id, &msg_package);
+	spin_lock_irq(&msg_component->lock);
 	if (ret) {
 		dev_err(&rpmsg_dev->dev, "%s rpmsg_send failed: %d\n", __func__, ret);
 		ret = -EIO;
@@ -416,10 +440,14 @@ static int sunxi_hifi_substream_component_block_send(unsigned int hifi_id,
 			break;
 		}
 		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(&msg_component->lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(&msg_component->lock);
 		if (!tout) {
 			dev_err(&rpmsg_dev->dev,
-				"rpmsg_send failed waiting receive: %d\n", ret);
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, msg_component->wakeup_flag);
 			ret = -EIO;
 			break;
 		} else {
@@ -434,12 +462,14 @@ static int sunxi_hifi_substream_component_block_send(unsigned int hifi_id,
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&msg_component->tsleep, &wait);
+	spin_unlock_irq(&msg_component->lock);
 
 	return ret;
 
 err_rpmsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&msg_component->tsleep, &wait);
+	spin_unlock_irq(&msg_component->lock);
 	return ret;
 }
 
@@ -651,6 +681,7 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 	int ret = 0;
 	wait_queue_entry_t wait;
 	wait_queue_head_t *cpudai_tsleep;
+	spinlock_t *lock;
 	long tout;
 
 	if ((hifi_id > 1) || (gHifi_priv[hifi_id] == NULL) ||
@@ -689,6 +720,7 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 			msg_substream = &sunxi_cpudai->msg_capture;
 		}
 		cpudai_tsleep = &msg_substream->tsleep;
+		lock = &msg_substream->lock;
 		wakeup_flag = &msg_substream->wakeup_flag;
 		soc_substream = &msg_substream->soc_substream;
 
@@ -702,6 +734,7 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 
 		msg_debug = &sunxi_cpudai->msg_debug;
 		cpudai_tsleep = &msg_debug->tsleep;
+		lock = &msg_debug->lock;
 		wakeup_flag = &msg_debug->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -728,6 +761,7 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 		}
 		msg_component = &dsp_component->msg_component;
 		cpudai_tsleep = &msg_component->tsleep;
+		lock = &msg_component->lock;
 		wakeup_flag = &msg_component->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -737,9 +771,10 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 	break;
 	default:
 		dev_err(&rpmsg_dev->dev, "msg_cmd error:%lu\n", msg_cmd);
-		break;
+		return -EINVAL;
 	}
 
+	spin_lock_irq(lock);
 	if (*wakeup_flag) {
 		dev_warn(&rpmsg_dev->dev, "%s wakeup_flag was not reset.\n", __func__);
 		/* reset */
@@ -753,10 +788,12 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 	set_current_state(TASK_KILLABLE);
 	add_wait_queue(cpudai_tsleep, &wait);
 	/* 发送数据 */
+	spin_unlock_irq(lock);
 	ret = rpmsg_send(rpmsg_dev->ept, &msg_audio_package,
 				sizeof(struct msg_audio_package));
+	spin_lock_irq(lock);
 	if (ret) {
-		dev_err(&rpmsg_dev->dev, "rpmsg_send failed: %d\n", ret);
+		dev_err(&rpmsg_dev->dev, "line:%d rpmsg_send failed: %d\n", __LINE__, ret);
 		ret = -EIO;
 		goto err_rmpsg_send;
 	}
@@ -772,10 +809,14 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 			*wakeup_flag = 0;
 			break;
 		}
-		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(lock);
 		if (!tout) {
-			dev_err(&rpmsg_dev->dev, "rpmsg_send timeout.\n");
+			dev_err(&rpmsg_dev->dev,
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, *wakeup_flag);
 			ret = -EIO;
 			break;
 		} else {
@@ -791,11 +832,13 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(cpudai_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 
 err_rmpsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(cpudai_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_hifi_cpudai_substream_block_send);
@@ -814,6 +857,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 	int ret = 0;
 	wait_queue_entry_t wait;
 	wait_queue_head_t *daudio_tsleep;
+	spinlock_t *lock;
 	long tout;
 
 	if ((hifi_id > 1) || (gHifi_priv[hifi_id] == NULL) ||
@@ -852,6 +896,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 			msg_substream = &sunxi_daudio->msg_capture;
 		}
 		daudio_tsleep = &msg_substream->tsleep;
+		lock = &msg_substream->lock;
 		wakeup_flag = &msg_substream->wakeup_flag;
 		soc_substream = &msg_substream->soc_substream;
 
@@ -865,6 +910,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 
 		msg_mixer = &sunxi_daudio->msg_mixer;
 		daudio_tsleep = &msg_mixer->tsleep;
+		lock = &msg_mixer->lock;
 		wakeup_flag = &msg_mixer->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -878,6 +924,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 
 		msg_debug = &sunxi_daudio->msg_debug;
 		daudio_tsleep = &msg_debug->tsleep;
+		lock = &msg_debug->lock;
 		wakeup_flag = &msg_debug->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -904,6 +951,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 		}
 		msg_component = &dsp_component->msg_component;
 		daudio_tsleep = &msg_component->tsleep;
+		lock = &msg_component->lock;
 		wakeup_flag = &msg_component->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -913,8 +961,9 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 	break;
 	default:
 		dev_err(&rpmsg_dev->dev, "msg_cmd error:%lu\n", msg_cmd);
-		break;
+		return -EINVAL;
 	}
+	spin_lock_irq(lock);
 	if (*wakeup_flag) {
 		dev_warn(&rpmsg_dev->dev, "%s wakeup_flag was not reset.\n", __func__);
 		/* reset */
@@ -925,10 +974,12 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 	set_current_state(TASK_KILLABLE);
 	add_wait_queue(daudio_tsleep, &wait);
 	/* 发送数据 */
+	spin_unlock_irq(lock);
 	ret = rpmsg_send(rpmsg_dev->ept, &msg_audio_package,
 				  sizeof(struct msg_audio_package));
+	spin_lock_irq(lock);
 	if (ret) {
-		dev_err(&rpmsg_dev->dev, "rpmsg_send failed: %d\n", ret);
+		dev_err(&rpmsg_dev->dev, "line:%d rpmsg_send failed: %d\n", __LINE__, ret);
 		ret = -EIO;
 		goto err_rmpsg_send;
 	}
@@ -947,11 +998,15 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 			*wakeup_flag = 0;
 			break;
 		}
-		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(lock);
 		if (!tout) {
+			dev_err(&rpmsg_dev->dev,
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, *wakeup_flag);
 			ret = -EIO;
-			dev_err(&rpmsg_dev->dev, "rpmsg_send timeout.\n");
 			break;
 		} else {
 			if (*wakeup_flag == 0)
@@ -966,11 +1021,13 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(daudio_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 
 err_rmpsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(daudio_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_hifi_daudio_substream_block_send);
@@ -989,6 +1046,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 	int ret = 0;
 	wait_queue_entry_t wait;
 	wait_queue_head_t *dmic_tsleep;
+	spinlock_t *lock;
 	long tout;
 
 	if ((hifi_id > 1) || (gHifi_priv[hifi_id] == NULL) ||
@@ -1016,6 +1074,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 
 		msg_substream = &sunxi_dmic->msg_capture;
 		dmic_tsleep = &msg_substream->tsleep;
+		lock = &msg_substream->lock;
 		wakeup_flag = &msg_substream->wakeup_flag;
 		soc_substream = &msg_substream->soc_substream;
 
@@ -1029,6 +1088,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 
 		msg_mixer = &sunxi_dmic->msg_mixer;
 		dmic_tsleep = &msg_mixer->tsleep;
+		lock = &msg_mixer->lock;
 		wakeup_flag = &msg_mixer->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -1042,6 +1102,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 
 		msg_debug = &sunxi_dmic->msg_debug;
 		dmic_tsleep = &msg_debug->tsleep;
+		lock = &msg_debug->lock;
 		wakeup_flag = &msg_debug->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -1057,6 +1118,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 		dsp_component = &sunxi_dmic->dsp_capcomp;
 		msg_component = &dsp_component->msg_component;
 		dmic_tsleep = &msg_component->tsleep;
+		lock = &msg_component->lock;
 		wakeup_flag = &msg_component->wakeup_flag;
 
 		msg_audio_package.sharePointer =
@@ -1066,8 +1128,9 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 	break;
 	default:
 		dev_err(&rpmsg_dev->dev, "msg_cmd error:%lu\n", msg_cmd);
-		break;
+		return -EINVAL;
 	}
+	spin_lock_irq(lock);
 	if (*wakeup_flag) {
 		dev_warn(&rpmsg_dev->dev, "%s wakeup_flag was not reset.\n", __func__);
 		/* reset */
@@ -1078,8 +1141,10 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 	set_current_state(TASK_KILLABLE);
 	add_wait_queue(dmic_tsleep, &wait);
 	/* 发送数据 */
+	spin_unlock_irq(lock);
 	ret = rpmsg_send(rpmsg_dev->ept, &msg_audio_package,
 				  sizeof(struct msg_audio_package));
+	spin_lock_irq(lock);
 	if (ret) {
 		dev_err(&rpmsg_dev->dev, "rpmsg_send failed: %d\n", ret);
 		ret = -EIO;
@@ -1100,10 +1165,14 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 			*wakeup_flag = 0;
 			break;
 		}
-		/* 等待唤醒,超时等待1s */
-		tout = schedule_timeout_killable(msecs_to_jiffies(1 * 1000));
+		set_current_state(TASK_KILLABLE);
+		spin_unlock_irq(lock);
+		tout = schedule_timeout(msecs_to_jiffies(RPMSG_TIMEOUT_NORMAL));
+		spin_lock_irq(lock);
 		if (!tout) {
-			dev_err(&rpmsg_dev->dev, "rpmsg_send timeout.\n");
+			dev_err(&rpmsg_dev->dev,
+				"line:%d rpmsg_send timeout %d, flag=%d\n",
+				__LINE__, ret, *wakeup_flag);
 			ret = -EIO;
 			break;
 		} else {
@@ -1119,11 +1188,13 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 	/* 换醒或者超时后 */
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(dmic_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 
 err_rmpsg_send:
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(dmic_tsleep, &wait);
+	spin_unlock_irq(lock);
 	return ret;
 }
 EXPORT_SYMBOL(sunxi_hifi_dmic_substream_block_send);
@@ -1146,6 +1217,7 @@ static int msg_audio_package_is_invalid(unsigned long cmd)
 int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 {
 	struct msg_audio_package msg_pack = hifi_priv->msg_pack;
+	unsigned long flags;
 
 	switch (msg_pack.audioMsgVal) {
 	case MSGBOX_SOC_DSP_AUDIO_PCM_COMMAND:
@@ -1162,6 +1234,7 @@ int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 		msg_substream = container_of(soc_substream, struct msg_substream_package,
 							soc_substream);
 
+		spin_lock_irqsave(&msg_substream->lock, flags);
 		/* 设置rmsg的用于substream irq 回调 */
 		if ((msg_pack.audioMsgVal == MSGBOX_SOC_DSP_AUDIO_PCM_COMMAND) &&
 			((soc_substream->cmd_val == SND_SOC_DSP_PCM_READI) ||
@@ -1171,6 +1244,7 @@ int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 		msg_substream->wakeup_flag = 1;
 		/* for update output_addr and read again */
 		wake_up(&msg_substream->tsleep);
+		spin_unlock_irqrestore(&msg_substream->lock, flags);
 #if 0
 		/* 预留了其它参数的操作更新 */
 		void *driver_data;
@@ -1245,8 +1319,10 @@ int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 		sunxi_rpaf_dma_flush_range(soc_mixer, sizeof(struct snd_soc_dsp_mixer));
 		msg_mixer = container_of(soc_mixer, struct msg_mixer_package,
 							soc_mixer);
+		spin_lock_irqsave(&msg_mixer->lock, flags);
 		msg_mixer->wakeup_flag = 1;
 		wake_up(&msg_mixer->tsleep);
+		spin_unlock_irqrestore(&msg_mixer->lock, flags);
 	}
 	break;
 	case MSGBOX_SOC_DSP_AUDIO_DEBUG_COMMAND:
@@ -1265,8 +1341,10 @@ int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 		soc_component = (struct snd_soc_dsp_component *)__va(msg_pack.sharePointer);
 		sunxi_rpaf_dma_flush_range(soc_component, sizeof(struct snd_soc_dsp_component));
 		msg_component = container_of(soc_component, struct msg_component_package, soc_component);
+		spin_lock_irqsave(&msg_component->lock, flags);
 		msg_component->wakeup_flag = 1;
 		wake_up(&msg_component->tsleep);
+		spin_unlock_irqrestore(&msg_component->lock, flags);
 	}
 	break;
 	default:

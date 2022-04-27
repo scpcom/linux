@@ -32,7 +32,7 @@ static inline void sunxi_rpaf_dma_flush_range(const void *addr, size_t len)
 #if IS_ENABLED(CONFIG_64BIT) && IS_ENABLED(CONFIG_RISCV)
 	dma_usr_va_wb_range((void *)addr, (unsigned long)len);
 #else
-	dmac_flush_range((const void *)addr, (const void *)len);
+	dmac_flush_range((const void *)addr, (const void *)(addr + len));
 #endif
 #endif
 }

@@ -208,14 +208,12 @@ static struct attribute_group dmic_debug_attr_group = {
  */
 static void sunxi_dmic_enable(struct sunxi_dmic_info *sunxi_dmic, bool enable)
 {
-	struct sunxi_dmic_dts_info *dts_info = NULL;
 	struct sunxi_dmic_mem_info *mem_info = NULL;
 
 	if (IS_ERR_OR_NULL(sunxi_dmic)) {
 		pr_err("[%s] sunxi_dmic is NULL!\n", __func__);
 		return;
 	}
-	dts_info = &sunxi_dmic->dts_info;
 	mem_info = &sunxi_dmic->mem_info;
 
 	if (enable) {
@@ -227,11 +225,9 @@ static void sunxi_dmic_enable(struct sunxi_dmic_info *sunxi_dmic, bool enable)
 		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
 				(0x1 << GLOBE_EN), (0x1 << GLOBE_EN));
 
-		if (dts_info->dmic_rxsync_en) {
-			regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
-				(0x1 << DMIC_RX_EN_MUX), (0x1 << DMIC_RX_EN_MUX));
-			regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
-				(0x1 << DMIC_RX_SYNC_EN), (0x1 << DMIC_RX_SYNC_EN));
+		if (sunxi_dmic->rx_sync_en) {
+			sunxi_rx_sync_control(sunxi_dmic->rx_sync_domain,
+					sunxi_dmic->rx_sync_id, 1);
 		}
 	} else {
 		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
@@ -243,11 +239,9 @@ static void sunxi_dmic_enable(struct sunxi_dmic_info *sunxi_dmic, bool enable)
 				(0x1 << FIFO_DRQ_EN),
 				(0x0 << FIFO_DRQ_EN));
 
-		if (dts_info->dmic_rxsync_en) {
-			regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
-				(0x1 << DMIC_RX_EN_MUX), (0x0 << DMIC_RX_EN_MUX));
-			regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
-				(0x1 << DMIC_RX_SYNC_EN), (0x0 << DMIC_RX_SYNC_EN));
+		if (sunxi_dmic->rx_sync_en) {
+			sunxi_rx_sync_control(sunxi_dmic->rx_sync_domain,
+					sunxi_dmic->rx_sync_id, 0);
 		}
 	}
 }
@@ -265,8 +259,16 @@ static void sunxi_dmic_init(struct sunxi_dmic_info *sunxi_dmic)
 	mem_info = &sunxi_dmic->mem_info;
 
 	regmap_write(mem_info->regmap, SUNXI_DMIC_CH_MAP, dts_info->rx_chmap);
-	regmap_update_bits(mem_info->regmap, SUNXI_DMIC_CTR,
-			(0x7 << DMICDFEN), (0x7 << DMICDFEN));
+
+	if (sunxi_dmic->rx_sync_en) {
+		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_CTR,
+				(0x7 << DMICDFEN), (0x0 << DMICDFEN));
+		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
+				(0x1 << DMIC_RX_EN_MUX), (0x1 << DMIC_RX_EN_MUX));
+	} else {
+		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_CTR,
+				(0x7 << DMICDFEN), (0x7 << DMICDFEN));
+	}
 
 	/* set the vol */
 	regmap_update_bits(mem_info->regmap, SUNXI_DMIC_DATA0_1_VOL,
@@ -419,6 +421,22 @@ static int sunxi_dmic_prepare(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void sunxi_dmic_rx_enable(void *data, bool enable)
+{
+	struct snd_soc_component *component = data;
+	struct sunxi_dmic_info *sunxi_dmic = snd_soc_component_get_drvdata(component);
+	struct sunxi_dmic_mem_info *mem_info = NULL;
+
+	mem_info = &sunxi_dmic->mem_info;
+	if (enable)
+		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
+			(1 << DMIC_RX_SYNC_EN), (1 << DMIC_RX_SYNC_EN));
+	else
+		regmap_update_bits(mem_info->regmap, SUNXI_DMIC_EN,
+			(1 << DMIC_RX_SYNC_EN), (0 << DMIC_RX_SYNC_EN));
+
+}
+
 static int sunxi_dmic_startup(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai)
 {
@@ -431,6 +449,13 @@ static int sunxi_dmic_startup(struct snd_pcm_substream *substream,
 
 	snd_soc_dai_set_dma_data(dai, substream,
 				&sunxi_dmic->capture_dma_param);
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_dmic->rx_sync_en) {
+		sunxi_rx_sync_startup((void *)dai->component,
+			sunxi_dmic->rx_sync_domain, sunxi_dmic->rx_sync_id,
+			sunxi_dmic_rx_enable);
+	}
 
 	return 0;
 }
@@ -605,6 +630,12 @@ static void sunxi_dmic_shutdown(struct snd_pcm_substream *substream,
 		return;
 	}
 	clk_info = &sunxi_dmic->clk_info;
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_dmic->rx_sync_en) {
+		sunxi_rx_sync_shutdown(sunxi_dmic->rx_sync_domain,
+			sunxi_dmic->rx_sync_id);
+	}
 }
 
 static struct snd_soc_dai_ops sunxi_dmic_dai_ops = {
@@ -833,12 +864,25 @@ static int sunxi_dmic_dts_params_init(struct platform_device *pdev,
 		dts_info->capture_cma = temp_val;
 	}
 
-	ret = of_property_read_u32(np, "dmic_rxsync_en", &temp_val);
+	ret = of_property_read_u32(np, "rx_sync_en", &temp_val);
 	if (ret != 0) {
-		dev_warn(&pdev->dev, "dmic_rxsync_en config missing or invalid.\n");
-		dts_info->dmic_rxsync_en = 0;
+		dev_warn(&pdev->dev, "rx_sync_en config missing or invalid.\n");
+		sunxi_dmic->rx_sync_en = 0;
 	} else {
-		dts_info->dmic_rxsync_en = temp_val;
+		sunxi_dmic->rx_sync_en = temp_val;
+	}
+
+	if (sunxi_dmic->rx_sync_en) {
+		sunxi_dmic->rx_sync_domain = RX_SYNC_SYS_DOMAIN;
+		sunxi_dmic->rx_sync_id =
+			sunxi_rx_sync_probe(sunxi_dmic->rx_sync_domain);
+		if (sunxi_dmic->rx_sync_id < 0) {
+			dev_err(&pdev->dev, "sunxi_rx_sync_probe failed\n");
+			return -EINVAL;
+		}
+		dev_info(&pdev->dev, "sunxi_rx_sync_probe successful. domain=%d, id=%d\n",
+			sunxi_dmic->rx_sync_domain,
+			sunxi_dmic->rx_sync_id);
 	}
 
 	return 0;
@@ -969,6 +1013,9 @@ static int __exit sunxi_dmic_dev_remove(struct platform_device *pdev)
 	mem_info = &sunxi_dmic->mem_info;
 	clk_info = &sunxi_dmic->clk_info;
 	pin_info = &sunxi_dmic->pin_info;
+
+	if (sunxi_dmic->rx_sync_en)
+		sunxi_rx_sync_remove(sunxi_dmic->rx_sync_domain);
 
 #ifdef SUNXI_DMIC_DEBUG
 	sysfs_remove_group(&pdev->dev.kobj, &dmic_debug_attr_group);

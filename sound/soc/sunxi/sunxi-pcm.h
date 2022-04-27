@@ -14,6 +14,8 @@
 #ifndef __SUNXI_PCM_H_
 #define __SUNXI_PCM_H_
 
+#include "sunxi-rx-sync.h"
+
 #define SUNXI_AUDIO_CMA_BLOCK_BYTES 1024
 #define SUNXI_AUDIO_CMA_MAX_KBYTES 1024
 #define SUNXI_AUDIO_CMA_MIN_KBYTES 64
@@ -35,7 +37,7 @@ struct sunxi_dma_params {
 
 extern int asoc_dma_platform_register(struct device *dev, unsigned int flags);
 extern void asoc_dma_platform_unregister(struct device *dev);
-extern int sunxi_ahub_get_rawflag(void);
+extern int sunxi_get_rawflag(void);
 
 #endif /* __SUNXI_PCM_H_ */
 

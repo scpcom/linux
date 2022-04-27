@@ -79,6 +79,8 @@
 #define	FIFO_CTL_TXIM		2
 #define	FIFO_CTL_RXTL		4
 #define	FIFO_CTL_TXTL		12
+#define	SPDIF_RX_SYNC_EN	20
+#define	SPDIF_RX_SYNC_EN_START	21
 #define	FIFO_CTL_FRX		29
 #define	FIFO_CTL_FTX		30
 #define	FIFO_CTL_HUBEN		31
@@ -245,9 +247,10 @@ struct sunxi_spdif_clk_info {
 	struct clk *clk_pll;
 	struct clk *clk_module;
 	struct clk *clk_bus;
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
 	struct clk *clk_pll1;
 	struct clk *clk_pll1_div;
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	struct clk *clk_pll_periph;
 	struct clk *clk_module_rx;
 #endif
 	struct reset_control *clk_rst;
@@ -311,5 +314,9 @@ struct sunxi_spdif_info {
 	unsigned int rate;
 	unsigned int active;
 	bool configured;
+
+	unsigned int rx_sync_en;
+	int rx_sync_id;
+	rx_sync_domain_t rx_sync_domain;
 };
 #endif	/* __SUNXI_SPDIF_H_ */

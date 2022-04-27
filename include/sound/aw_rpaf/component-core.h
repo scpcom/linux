@@ -34,6 +34,19 @@ struct snd_rpaf_xferi {
 	ssize_t dump_type; /* component type */
 };
 
+#ifdef CONFIG_COMPAT
+struct snd_rpaf_xferi32 {
+	int32_t result;
+	int32_t input_buf;
+	int32_t input_length;
+	int32_t output_buf;
+	int32_t output_length;
+	int32_t dump_buf;
+	int32_t dump_length;
+	int32_t dump_type;
+};
+#endif
+
 /*
  * param[0] = MSGBOX_DSP_AUDIO_COMMAND->MSGBOX_DSP_AUDIO_COMPONENT_COMMAND
  * param[1] = *snd_dsp_audio_framework_component
@@ -48,7 +61,13 @@ enum SND_SOC_DSP_AUDIO_COMPONENT_COMMAND {
 	SND_SOC_DSP_COMPONENT_IOCTL_START = _IO('C', 0x04),
 	SND_SOC_DSP_COMPONENT_IOCTL_STOP = _IO('C', 0x05),
 	SND_SOC_DSP_COMPONENT_IOCTL_WRITE = _IOW('C', 0x06, struct snd_rpaf_xferi),
+#ifdef CONFIG_COMPAT
+	SND_SOC_DSP_COMPONENT_IOCTL_WRITE32 = _IOW('C', 0x06, struct snd_rpaf_xferi32),
+#endif
 	SND_SOC_DSP_COMPONENT_IOCTL_READ = _IOR('C', 0x07, struct snd_rpaf_xferi),
+#ifdef CONFIG_COMPAT
+	SND_SOC_DSP_COMPONENT_IOCTL_READ32 = _IOR('C', 0x07, struct snd_rpaf_xferi32),
+#endif
 	SND_SOC_DSP_COMPONENT_IOCTL_ALGO_SET = _IOW('C', 0x08, struct snd_soc_dsp_component_config),
 	SND_SOC_DSP_COMPONENT_IOCTL_ALGO_GET = _IOWR('C', 0x09, struct snd_soc_dsp_component_config),
 	SND_SOC_DSP_COMPONENT_IOCTL_UNLINK = _IO('C', 0x0A),

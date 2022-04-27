@@ -61,6 +61,7 @@ struct snd_dsp_hal_mixer_ops {
 
 struct msg_mixer_package {
 	wait_queue_head_t tsleep;
+	spinlock_t lock;
 	int32_t wakeup_flag;
 	struct snd_soc_dsp_mixer soc_mixer;
 };

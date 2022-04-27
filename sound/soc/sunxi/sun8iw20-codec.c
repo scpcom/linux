@@ -47,6 +47,7 @@
 #define LOG_ERR(fmt, arg...)	pr_err("[AUDIOCODEC][%s][%d]:" fmt "\n", __func__, __LINE__, ##arg)
 #define LOG_WARN(fmt, arg...)	pr_warn("[AUDIOCODEC][%s][%d]:" fmt "\n", __func__, __LINE__, ##arg)
 #define LOG_INFO(fmt, arg...)	pr_info("[AUDIOCODEC][%s][%d]:" fmt "\n", __func__, __LINE__, ##arg)
+#define LOG_DEBUG(fmt, arg...)	pr_debug("[AUDIOCODEC][%s][%d]:" fmt "\n", __func__, __LINE__, ##arg)
 
 /* digital audio process function */
 enum sunxi_hw_dap {
@@ -483,6 +484,136 @@ static void dachpf_enable(struct snd_soc_component *component, bool on)
 }
 #endif
 
+int sunxi_get_gain_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int invert = mc->invert;
+	unsigned int shift = mc->shift;
+	int max = mc->max;
+	int min = mc->min;
+	u32 val_tmp;
+
+	switch (shift) {
+	case MIC1_GAIN_SHIFT:
+		val_tmp = sunxi_codec->mic1gain;
+	break;
+	case MIC2_GAIN_SHIFT:
+		val_tmp = sunxi_codec->mic2gain;
+	break;
+	case MIC3_GAIN_SHIFT:
+		val_tmp = sunxi_codec->mic3gain;
+	break;
+	case HP_GAIN_SHIFT:
+		val_tmp = sunxi_codec->headphonegain;
+	break;
+	default:
+		LOG_ERR("the gain is null");
+	break;
+	}
+
+	if (val_tmp > max || val_tmp < min)
+		return -1;
+
+	ucontrol->value.integer.value[0] = val_tmp - min;
+	if (invert)
+		ucontrol->value.integer.value[0] =
+			max - ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+int sunxi_put_gain_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int invert = mc->invert;
+	unsigned int shift = mc->shift;
+	int max = mc->max;
+	int min = mc->min;
+	u32 val_tmp;
+
+	val_tmp = ucontrol->value.integer.value[0] + min;
+	if (invert)
+		val_tmp = max - val_tmp;
+
+	switch (shift) {
+	case MIC1_GAIN_SHIFT:
+		sunxi_codec->mic1gain = val_tmp;
+		if (sunxi_codec->mic1gain_now)
+			snd_soc_component_update_bits(component,
+				SUNXI_ADC1_REG,
+				(0x1F<<ADC1_PGA_GAIN_CTRL),
+				(sunxi_codec->mic1gain<<ADC1_PGA_GAIN_CTRL));
+	break;
+	case MIC2_GAIN_SHIFT:
+		sunxi_codec->mic2gain = val_tmp;
+		if (sunxi_codec->mic2gain_now)
+			snd_soc_component_update_bits(component,
+				SUNXI_ADC2_REG,
+				(0x1F<<ADC2_PGA_GAIN_CTRL),
+				(sunxi_codec->mic2gain<<ADC2_PGA_GAIN_CTRL));
+	break;
+	case MIC3_GAIN_SHIFT:
+		sunxi_codec->mic3gain = val_tmp;
+		if (sunxi_codec->mic3gain_now)
+			snd_soc_component_update_bits(component,
+				SUNXI_ADC3_REG,
+				(0x1F<<ADC3_PGA_GAIN_CTRL),
+				(sunxi_codec->mic3gain<<ADC3_PGA_GAIN_CTRL));
+	break;
+	case HP_GAIN_SHIFT:
+		sunxi_codec->headphonegain = val_tmp;
+		if (sunxi_codec->hpgain_now)
+			snd_soc_component_update_bits(component,
+				SUNXI_HP2_REG,
+				0x7 << HEADPHONE_GAIN,
+				sunxi_codec->headphonegain << HEADPHONE_GAIN);
+	break;
+	default:
+		LOG_ERR("the gain is null");
+	break;
+	}
+
+	return 0;
+}
+
+static int sunxi_codec_playback_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+
+	switch (event) {
+	case	SND_SOC_DAPM_PRE_PMU:
+		/* DACL to left channel LINEOUT Mute control 0:mute 1: not mute */
+		msleep(30);
+		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+				(0x1 << DACLMUTE) | (0x1 << DACRMUTE),
+				(0x1 << DACLMUTE) | (0x1 << DACRMUTE));
+		snd_soc_component_update_bits(component, SUNXI_DAC_DPC,
+				(0x1<<EN_DAC), (0x1<<EN_DAC));
+		break;
+	case	SND_SOC_DAPM_POST_PMD:
+		snd_soc_component_update_bits(component, SUNXI_DAC_DPC,
+				(0x1<<EN_DAC), (0x0<<EN_DAC));
+		/* DACL to left channel LINEOUT Mute control 0:mute 1: not mute */
+		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+				(0x1 << DACLMUTE) | (0x1 << DACRMUTE),
+				(0x0 << DACLMUTE) | (0x0 << DACRMUTE));
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 #ifdef SUNXI_CODEC_HUB_ENABLE
 static int sunxi_codec_get_hub_mode(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -660,50 +791,82 @@ static int sunxi_codec_headphone_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
 	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 	struct codec_hw_config *hw_cfg = &(sunxi_codec->hw_config);
+	unsigned int reg_val;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
+	sunxi_codec->hpgain_now = 1;
 #ifdef SUNXI_CODEC_DAP_ENABLE
-		if (hw_cfg->dacdrc_cfg & DAP_HP_EN)
-			dacdrc_enable(component, 1);
-		if (hw_cfg->dachpf_cfg & DAP_HP_EN)
-			dachpf_enable(component, 1);
+	if (hw_cfg->dacdrc_cfg & DAP_HP_EN)
+		dacdrc_enable(component, 1);
+	if (hw_cfg->dachpf_cfg & DAP_HP_EN)
+		dachpf_enable(component, 1);
 #endif
+	/* In order to ensure that the hpout pop for B chip SOC,
+	 * the B chip SOC needs to disable RMC_EN and enable RD_EN
+	 * when up HPOUT (whether LINEOUT use).
+	 */
+	if (sunxi_get_soc_ver() & 0x7) {
 		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
-				(0x1 << RMC_EN), (0x1 << RMC_EN));
+				(0x1 << RMC_EN), (0x0 << RMC_EN));
+		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
+				(0x1 << RD_EN), (0x1 << RD_EN));
+		msleep(100);
+	} else {
 		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
-				(0x1 << RAMP_OUT_EN), (0x1 << RAMP_OUT_EN));
-		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
-				(0x1 << HP_DRVOUTEN), (0x1 << HP_DRVOUTEN));
-		snd_soc_component_update_bits(component, SUNXI_POWER_REG,
-				(0x1 << HPLDO_EN), (0x1 << HPLDO_EN));
+				(0x1 << HPFB_BUF_EN), (0x1 << HPFB_BUF_EN));
 		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
 				(0x1 << HP_DRVEN), (0x1 << HP_DRVEN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << HP_DRVOUTEN), (0x1 << HP_DRVOUTEN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << RSWITCH), (0x1 << RSWITCH));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << HPFB_IN_EN), (0x1 << HPFB_IN_EN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << RAMP_OUT_EN), (0x1 << RAMP_OUT_EN));
+		snd_soc_component_update_bits(component, SUNXI_POWER_REG,
+				(0x1 << HPLDO_EN), (0x1 << HPLDO_EN));
+	}
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
-				(0x1 << HP_DRVEN), (0x0 << HP_DRVEN));
-		/* A version of the chip cannot be disable HPLDO and RMC_EN */
-		if (sunxi_get_soc_ver() & 0x7) {
-			snd_soc_component_update_bits(component, SUNXI_POWER_REG,
-					(0x1 << HPLDO_EN), (0x0 << HPLDO_EN));
-			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
-					(0x1 << RMC_EN), (0x0 << RMC_EN));
-		} else {
-			snd_soc_component_update_bits(component, SUNXI_POWER_REG,
-					(0x1 << HPLDO_EN), (0x1 << HPLDO_EN));
+	sunxi_codec->hpgain_now = 0;
+
+	/* In order to ensure that the hpout pop for B chip SOC,
+	 * the B chip SOC needs to enable RMC_EN and disable RD_EN
+	 * when down HPOUT and LINEOUT useing.
+	 */
+	if (sunxi_get_soc_ver() & 0x7) {
+		/* if lineout playing, enable RMC_EN */
+		reg_val = snd_soc_component_read32(component, SUNXI_DAC_REG);
+		if ((reg_val & (0x1 << LINEOUTLEN)) || (reg_val & (0x1 << LINEOUTREN)))
 			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
 					(0x1 << RMC_EN), (0x1 << RMC_EN));
-		}
+
+		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
+				(0x1 << RD_EN), (0x0 << RD_EN));
+		msleep(100);
+	} else {
+		snd_soc_component_update_bits(component, SUNXI_POWER_REG,
+				(0x1 << HPLDO_EN), (0x0 << HPLDO_EN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << HPFB_BUF_EN), (0x0 << HPFB_BUF_EN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << HP_DRVEN), (0x0 << HP_DRVEN));
 		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
 				(0x1 << HP_DRVOUTEN), (0x0 << HP_DRVOUTEN));
 		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << RSWITCH), (0x0 << RSWITCH));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				(0x1 << HPFB_IN_EN), (0x0 << HPFB_IN_EN));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
 				(0x1 << RAMP_OUT_EN), (0x0 << RAMP_OUT_EN));
+	}
 #ifdef SUNXI_CODEC_DAP_ENABLE
-		if (hw_cfg->dacdrc_cfg & DAP_HP_EN)
-			dacdrc_enable(component, 0);
-		if (hw_cfg->dachpf_cfg & DAP_HP_EN)
-			dachpf_enable(component, 0);
+	if (hw_cfg->dacdrc_cfg & DAP_HP_EN)
+		dacdrc_enable(component, 0);
+	if (hw_cfg->dachpf_cfg & DAP_HP_EN)
+		dachpf_enable(component, 0);
 #endif
 		break;
 	}
@@ -718,50 +881,63 @@ static int sunxi_codec_lineout_event(struct snd_soc_dapm_widget *w,
 	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 	struct codec_spk_config *spk_cfg = &(sunxi_codec->spk_config);
 	struct codec_hw_config *hw_cfg = &(sunxi_codec->hw_config);
+	unsigned int reg_val;
 
 	switch (event) {
 	case	SND_SOC_DAPM_POST_PMU:
 #ifdef SUNXI_CODEC_DAP_ENABLE
-		if (hw_cfg->dacdrc_cfg & DAP_SPK_EN)
-			dacdrc_enable(component, 1);
-		if (hw_cfg->dachpf_cfg & DAP_SPK_EN)
-			dachpf_enable(component, 1);
+	if (hw_cfg->dacdrc_cfg & DAP_SPK_EN)
+		dacdrc_enable(component, 1);
+	if (hw_cfg->dachpf_cfg & DAP_SPK_EN)
+		dachpf_enable(component, 1);
 #endif
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << LINEOUTLEN), (0x1 << LINEOUTLEN));
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << LINEOUTREN), (0x1 << LINEOUTREN));
-		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
-				(0x1 << RMC_EN), (0x1 << RMC_EN));
 
-		if (spk_cfg->used) {
-			gpio_direction_output(spk_cfg->spk_gpio, 1);
-			gpio_set_value(spk_cfg->spk_gpio, spk_cfg->pa_level);
-			/* time delay to wait spk pa work fine */
-			msleep(spk_cfg->pa_msleep);
-		}
-		break;
-	case	SND_SOC_DAPM_PRE_PMD:
-		if (spk_cfg->used)
-			gpio_set_value(spk_cfg->spk_gpio, !(spk_cfg->pa_level));
-
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << LINEOUTLEN), (0x0 << LINEOUTLEN));
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << LINEOUTREN), (0x0 << LINEOUTREN));
-		/* A version of the chip cannot be disable RMC_EN */
-		if (sunxi_get_soc_ver() & 0x7)
-			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
-					(0x1 << RMC_EN), (0x0 << RMC_EN));
-		else
+	/* In order to ensure that the hpout pop for B chip SOC,
+	 * the B chip SOC needs to enable RMC_EN when RD_EN disable (HPOUT no useing).
+	 */
+	if (sunxi_get_soc_ver() & 0x7) {
+		reg_val = snd_soc_component_read32(component, SUNXI_RAMP_REG);
+		if (!(reg_val & (0x1 << RD_EN)))
 			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
 					(0x1 << RMC_EN), (0x1 << RMC_EN));
+	}
+
+	snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+			(0x1 << LINEOUTLEN), (0x1 << LINEOUTLEN));
+	snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+			(0x1 << LINEOUTREN), (0x1 << LINEOUTREN));
+
+	if (spk_cfg->used) {
+		gpio_direction_output(spk_cfg->spk_gpio, 1);
+		gpio_set_value(spk_cfg->spk_gpio, spk_cfg->pa_level);
+		/* time delay to wait spk pa work fine */
+		msleep(spk_cfg->pa_msleep);
+	}
+		break;
+	case	SND_SOC_DAPM_PRE_PMD:
+	if (spk_cfg->used)
+		gpio_set_value(spk_cfg->spk_gpio, !(spk_cfg->pa_level));
+
+	snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+			(0x1 << LINEOUTLEN), (0x0 << LINEOUTLEN));
+	snd_soc_component_update_bits(component, SUNXI_DAC_REG,
+			(0x1 << LINEOUTREN), (0x0 << LINEOUTREN));
+
+	/* In order to ensure that the hpout pop for B chip SOC,
+	 * the B chip SOC needs to disable RMC_EN when RD_EN disable and disable lineout.
+	 */
+	if (sunxi_get_soc_ver() & 0x7) {
+		reg_val = snd_soc_component_read32(component, SUNXI_RAMP_REG);
+		if (!(reg_val & (0x1 << RD_EN)))
+			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
+					(0x1 << RMC_EN), (0x0 << RMC_EN));
+	}
 
 #ifdef SUNXI_CODEC_DAP_ENABLE
-		if (hw_cfg->dacdrc_cfg & DAP_SPK_EN)
-			dacdrc_enable(component, 0);
-		if (hw_cfg->dachpf_cfg & DAP_SPK_EN)
-			dachpf_enable(component, 0);
+	if (hw_cfg->dacdrc_cfg & DAP_SPK_EN)
+		dacdrc_enable(component, 0);
+	if (hw_cfg->dachpf_cfg & DAP_SPK_EN)
+		dachpf_enable(component, 0);
 #endif
 		break;
 	default:
@@ -771,28 +947,22 @@ static int sunxi_codec_lineout_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int sunxi_codec_playback_event(struct snd_soc_dapm_widget *w,
+static int sunxi_hp_gain_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 
 	switch (event) {
 	case	SND_SOC_DAPM_PRE_PMU:
-		/* DACL to left channel LINEOUT Mute control 0:mute 1: not mute */
-		msleep(30);
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << DACLMUTE) | (0x1 << DACRMUTE),
-				(0x1 << DACLMUTE) | (0x1 << DACRMUTE));
-		snd_soc_component_update_bits(component, SUNXI_DAC_DPC,
-				(0x1<<EN_DAC), (0x1<<EN_DAC));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				0x7 << HEADPHONE_GAIN,
+				sunxi_codec->headphonegain << HEADPHONE_GAIN);
 		break;
 	case	SND_SOC_DAPM_POST_PMD:
-		snd_soc_component_update_bits(component, SUNXI_DAC_DPC,
-				(0x1<<EN_DAC), (0x0<<EN_DAC));
-		/* DACL to left channel LINEOUT Mute control 0:mute 1: not mute */
-		snd_soc_component_update_bits(component, SUNXI_DAC_REG,
-				(0x1 << DACLMUTE) | (0x1 << DACRMUTE),
-				(0x0 << DACLMUTE) | (0x0 << DACRMUTE));
+		snd_soc_component_update_bits(component, SUNXI_HP2_REG,
+				0x7 << HEADPHONE_GAIN,
+				0x0 << HEADPHONE_GAIN);
 		break;
 	default:
 		break;
@@ -801,25 +971,109 @@ static int sunxi_codec_playback_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-/*
+static int sunxi_mic1_gain_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+
+	switch (event) {
+	case	SND_SOC_DAPM_PRE_PMU:
+		snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
+				(0x1F<<ADC1_PGA_GAIN_CTRL),
+				(sunxi_codec->mic1gain<<ADC1_PGA_GAIN_CTRL));
+		break;
+	case	SND_SOC_DAPM_POST_PMD:
+		snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
+				(0x1F<<ADC1_PGA_GAIN_CTRL),
+				(0x0<<ADC1_PGA_GAIN_CTRL));
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int sunxi_mic2_gain_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+
+	switch (event) {
+	case	SND_SOC_DAPM_PRE_PMU:
+		snd_soc_component_update_bits(component, SUNXI_ADC2_REG,
+				(0x1F<<ADC2_PGA_GAIN_CTRL),
+				(sunxi_codec->mic2gain<<ADC2_PGA_GAIN_CTRL));
+		break;
+	case	SND_SOC_DAPM_POST_PMD:
+		snd_soc_component_update_bits(component, SUNXI_ADC2_REG,
+				(0x1F<<ADC2_PGA_GAIN_CTRL),
+				(0x0<<ADC2_PGA_GAIN_CTRL));
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int sunxi_mic3_gain_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+
+	switch (event) {
+	case	SND_SOC_DAPM_PRE_PMU:
+		snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
+				(0x1F<<ADC3_PGA_GAIN_CTRL),
+				(sunxi_codec->mic3gain<<ADC3_PGA_GAIN_CTRL));
+		break;
+	case	SND_SOC_DAPM_POST_PMD:
+		snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
+				(0x1F<<ADC3_PGA_GAIN_CTRL),
+				(0x0<<ADC3_PGA_GAIN_CTRL));
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int sunxi_codec_adc1_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 
 	switch (event) {
 	case	SND_SOC_DAPM_POST_PMU:
 		//mdelay(80);
+		sunxi_codec->mic1gain_now = 1;
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC1_CHANNEL_EN,
+					      0x1 << ADC1_CHANNEL_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
-				(0x1 << ADC1_EN), (0x1 << ADC1_EN));
+					      0x1 << ADC1_EN,
+					      0x1 << ADC1_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x1 << EN_AD));
+					      0x1 << EN_AD,
+					      0x1 << EN_AD);
 		break;
 	case	SND_SOC_DAPM_POST_PMD:
+		sunxi_codec->mic1gain_now = 0;
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x0 << EN_AD));
+					      0x1 << EN_AD,
+					      0x0 << EN_AD);
 		snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
-				(0x1 << ADC1_EN), (0x0 << ADC1_EN));
+					      0x1 << ADC1_EN,
+					      0x0 << ADC1_EN);
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC1_CHANNEL_EN,
+					      0x0 << ADC1_CHANNEL_EN);
 		break;
 	default:
 		break;
@@ -827,24 +1081,38 @@ static int sunxi_codec_adc1_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+
 static int sunxi_codec_adc2_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 
 	switch (event) {
 	case	SND_SOC_DAPM_POST_PMU:
 		//mdelay(80);
+		sunxi_codec->mic2gain_now = 1;
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC2_CHANNEL_EN,
+					      0x1 << ADC2_CHANNEL_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC2_REG,
-				(0x1 << ADC2_EN), (0x1 << ADC2_EN));
+					      0x1 << ADC2_EN,
+					      0x1 << ADC2_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x1 << EN_AD));
+					      0x1 << EN_AD,
+					      0x1 << EN_AD);
 		break;
 	case	SND_SOC_DAPM_POST_PMD:
+		sunxi_codec->mic2gain_now = 0;
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x0 << EN_AD));
+					      0x1 << EN_AD,
+					      0x0 << EN_AD);
 		snd_soc_component_update_bits(component, SUNXI_ADC2_REG,
-				(0x1 << ADC2_EN), (0x0 << ADC2_EN));
+					      0x1 << ADC2_EN,
+					      0x0 << ADC2_EN);
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC2_CHANNEL_EN,
+					      0x0 << ADC2_CHANNEL_EN);
 		break;
 	default:
 		break;
@@ -852,47 +1120,38 @@ static int sunxi_codec_adc2_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+
 static int sunxi_codec_adc3_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
 
 	switch (event) {
 	case	SND_SOC_DAPM_POST_PMU:
+		//mdelay(80);
+		sunxi_codec->mic3gain_now = 1;
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC3_CHANNEL_EN,
+					      0x1 << ADC3_CHANNEL_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
-				(0x1 << ADC3_EN), (0x1 << ADC3_EN));
+					      0x1 << ADC3_EN,
+					      0x1 << ADC3_EN);
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x1 << EN_AD));
+					      0x1 << EN_AD,
+					      0x1 << EN_AD);
 		break;
 	case	SND_SOC_DAPM_POST_PMD:
+		sunxi_codec->mic3gain_now = 0;
 		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x0 << EN_AD));
+					      0x1 << EN_AD,
+					      0x0 << EN_AD);
 		snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
-				(0x1 << ADC3_EN), (0x0 << ADC3_EN));
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-*/
-
-static int sunxi_codec_capture_event(struct snd_soc_dapm_widget *w,
-				struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-
-	switch (event) {
-	case	SND_SOC_DAPM_POST_PMU:
-		//delay 80ms to avoid the capture pop at the beginning
-		mdelay(80);
-		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x1 << EN_AD));
-		break;
-	case	SND_SOC_DAPM_POST_PMD:
-		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-				(0x1 << EN_AD), (0x0 << EN_AD));
+					      0x1 << ADC3_EN,
+					      0x0 << ADC3_EN);
+		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
+					      0x1 << ADC3_CHANNEL_EN,
+					      0x0 << ADC3_CHANNEL_EN);
 		break;
 	default:
 		break;
@@ -935,118 +1194,6 @@ static int sunxi_codec_adc_mixer_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-/*
-static int sunxi_codec_adc1_mixer_event(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
-	struct codec_hw_config *hw_cfg = &(sunxi_codec->hw_config);
-	unsigned int adcctrl_val = 0;
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		if (hw_cfg->adcdrc_cfg & DAP_HP_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC1_REG);
-			if ((adcctrl_val >> MIC1_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		} else if (hw_cfg->adcdrc_cfg & DAP_SPK_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC2_REG);
-			if ((adcctrl_val >> MIC2_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		}
-
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC1_CHANNEL_EN), (0x1 << ADC1_CHANNEL_EN));
-
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		if ((hw_cfg->adcdrc_cfg & DAP_SPK_EN) ||
-			(hw_cfg->adcdrc_cfg & DAP_HP_EN))
-			adcdrc_enable(component, 0);
-
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC1_CHANNEL_EN), (0x0 << ADC1_CHANNEL_EN));
-
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-static int sunxi_codec_adc2_mixer_event(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
-	struct codec_hw_config *hw_cfg = &(sunxi_codec->hw_config);
-	unsigned int adcctrl_val = 0;
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		if (hw_cfg->adcdrc_cfg & DAP_HP_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC1_REG);
-			if ((adcctrl_val >> MIC1_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		} else if (hw_cfg->adcdrc_cfg & DAP_SPK_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC2_REG);
-			if ((adcctrl_val >> MIC2_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		}
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC2_CHANNEL_EN), (0x1 << ADC2_CHANNEL_EN));
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		if ((hw_cfg->adcdrc_cfg & DAP_SPK_EN) ||
-			(hw_cfg->adcdrc_cfg & DAP_HP_EN))
-			adcdrc_enable(component, 0);
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC2_CHANNEL_EN), (0x0 << ADC2_CHANNEL_EN));
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-static int sunxi_codec_adc3_mixer_event(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
-	struct codec_hw_config *hw_cfg = &(sunxi_codec->hw_config);
-	unsigned int adcctrl_val = 0;
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		if (hw_cfg->adcdrc_cfg & DAP_HP_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC1_REG);
-			if ((adcctrl_val >> MIC1_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		} else if (hw_cfg->adcdrc_cfg & DAP_SPK_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC2_REG);
-			if ((adcctrl_val >> MIC2_PGA_EN) & 0x1)
-				adcdrc_enable(component, 1);
-		}
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC3_CHANNEL_EN), (0x1 << ADC3_CHANNEL_EN));
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		if ((hw_cfg->adcdrc_cfg & DAP_SPK_EN) ||
-			(hw_cfg->adcdrc_cfg & DAP_HP_EN))
-			adcdrc_enable(component, 0);
-		snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-			(0x1 << ADC3_CHANNEL_EN), (0x0 << ADC3_CHANNEL_EN));
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-*/
-
 static const struct snd_kcontrol_new sunxi_codec_controls[] = {
 #ifdef SUNXI_CODEC_HUB_ENABLE
 	SOC_ENUM_EXT("codec hub mode", sunxi_codec_hub_mode_enum[0],
@@ -1054,7 +1201,7 @@ static const struct snd_kcontrol_new sunxi_codec_controls[] = {
 				sunxi_codec_set_hub_mode),
 #endif
 #ifdef SUNXI_CODEC_ADCSWAP_ENABLE
-	SOC_ENUM_EXT("ADC1 ADC2 Swap", sunxi_codec_adcswap_func_enum[0],
+	SOC_ENUM_EXT("ADC1 ADC2 swap", sunxi_codec_adcswap_func_enum[0],
 		     sunxi_codec_get_adcswap1_mode,
 		     sunxi_codec_set_adcswap1_mode),
 	SOC_ENUM_EXT("ADC3 ADC4 swap", sunxi_codec_adcswap_func_enum[0],
@@ -1077,14 +1224,23 @@ static const struct snd_kcontrol_new sunxi_codec_controls[] = {
 	SOC_SINGLE_TLV("ADC3 volume", SUNXI_ADC_VOL_CTRL,
 		       ADC3_VOL, 0xFF, 0, adc_vol_tlv),
 	/* MIC1 Gain */
-	SOC_SINGLE_TLV("MIC1 gain volume", SUNXI_ADC1_REG,
-		       ADC1_PGA_GAIN_CTRL, 0x1F, 0, mic_gain_tlv),
+	SOC_SINGLE_EXT_TLV("MIC1 gain volume", SND_SOC_NOPM,
+			MIC1_GAIN_SHIFT, 0x1F, 0,
+			sunxi_get_gain_volsw,
+			sunxi_put_gain_volsw,
+			mic_gain_tlv),
 	/* MIC2 Gain */
-	SOC_SINGLE_TLV("MIC2 gain volume", SUNXI_ADC2_REG,
-		       ADC2_PGA_GAIN_CTRL, 0x1F, 0, mic_gain_tlv),
+	SOC_SINGLE_EXT_TLV("MIC2 gain volume", SND_SOC_NOPM,
+			MIC2_GAIN_SHIFT, 0x1F, 0,
+			sunxi_get_gain_volsw,
+			sunxi_put_gain_volsw,
+			mic_gain_tlv),
 	/* MIC3 Gain */
-	SOC_SINGLE_TLV("MIC3 gain volume", SUNXI_ADC3_REG,
-		       ADC3_PGA_GAIN_CTRL, 0x1F, 0, mic_gain_tlv),
+	SOC_SINGLE_EXT_TLV("MIC3 gain volume", SND_SOC_NOPM,
+			MIC3_GAIN_SHIFT, 0x1F, 0,
+			sunxi_get_gain_volsw,
+			sunxi_put_gain_volsw,
+			mic_gain_tlv),
 	/* FMIN_L Gain */
 	SOC_SINGLE_TLV("FMINL gain volume", SUNXI_ADC1_REG,
 		       FMINLG, 0x1, 0, fmin_gain_tlv),
@@ -1101,8 +1257,11 @@ static const struct snd_kcontrol_new sunxi_codec_controls[] = {
 	SOC_SINGLE_TLV("LINEOUT volume", SUNXI_DAC_REG,
 		       LINEOUT_VOL, 0x1F, 0, lineout_tlv),
 	/* Headphone Gain */
-	SOC_SINGLE_TLV("Headphone Volume", SUNXI_HP2_REG,
-		       HEADPHONE_GAIN, 0x7, 0, headphone_gain_tlv),
+	SOC_SINGLE_EXT_TLV("Headphone volume", SND_SOC_NOPM,
+			HP_GAIN_SHIFT, 0x07, 1,
+			sunxi_get_gain_volsw,
+			sunxi_put_gain_volsw,
+			headphone_gain_tlv),
 };
 
 /* lineout controls */
@@ -1171,21 +1330,6 @@ static const struct snd_soc_dapm_widget sunxi_codec_dapm_widgets[] = {
 				sunxi_codec_playback_event,
 				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_AIF_OUT_E("ADC1", "Capture", 0, SUNXI_ADC1_REG,
-				ADC1_EN, 0,
-				sunxi_codec_capture_event,
-				SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-
-	SND_SOC_DAPM_AIF_OUT_E("ADC2", "Capture", 0, SUNXI_ADC2_REG,
-				ADC2_EN, 0,
-				sunxi_codec_capture_event,
-				SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-
-	SND_SOC_DAPM_AIF_OUT_E("ADC3", "Capture", 0, SUNXI_ADC3_REG,
-				ADC3_EN, 0,
-				sunxi_codec_capture_event,
-				SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-	/*
 	SND_SOC_DAPM_AIF_OUT_E("ADC1", "Capture", 0, SND_SOC_NOPM, 0, 0,
 			       sunxi_codec_adc1_event,
 			       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
@@ -1195,7 +1339,10 @@ static const struct snd_soc_dapm_widget sunxi_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT_E("ADC3", "Capture", 0, SND_SOC_NOPM, 0, 0,
 			       sunxi_codec_adc3_event,
 			       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-	*/
+
+	SND_SOC_DAPM_PGA_E("HP PGA", SND_SOC_NOPM, 0, 0, NULL, 0,
+			     sunxi_hp_gain_event,
+			     SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_MUX("LINEOUTL Output Select", SND_SOC_NOPM, 0, 0,
 			 &left_lineout_mux),
@@ -1209,6 +1356,16 @@ static const struct snd_soc_dapm_widget sunxi_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("MIC3 Input Select", SND_SOC_NOPM, 0, 0,
 			 &mic3_input_mux),
 
+	SND_SOC_DAPM_PGA_E("MIC1 PGA", SND_SOC_NOPM, 0, 0, NULL, 0,
+			     sunxi_mic1_gain_event,
+			     SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_PGA_E("MIC2 PGA", SND_SOC_NOPM, 0, 0, NULL, 0,
+			     sunxi_mic2_gain_event,
+			     SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_PGA_E("MIC3 PGA", SND_SOC_NOPM, 0, 0, NULL, 0,
+			     sunxi_mic3_gain_event,
+			     SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
 	SND_SOC_DAPM_MIXER_E("ADC1 Input", SND_SOC_NOPM, 0, 0,
 			     adc1_input_mixer, ARRAY_SIZE(adc1_input_mixer),
 			     sunxi_codec_adc_mixer_event,
@@ -1221,12 +1378,6 @@ static const struct snd_soc_dapm_widget sunxi_codec_dapm_widgets[] = {
 			     adc3_input_mixer, ARRAY_SIZE(adc3_input_mixer),
 			     sunxi_codec_adc_mixer_event,
 			     SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
-
-	/*
-	SND_SOC_DAPM_PGA("MIC1 PGA", SUNXI_ADC1_REG, MIC1_PGA_EN, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("MIC2 PGA", SUNXI_ADC2_REG, MIC2_PGA_EN, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("MIC3 PGA", SUNXI_ADC3_REG, MIC3_PGA_EN, 0, NULL, 0),
-	*/
 
 	SND_SOC_DAPM_MICBIAS("MainMic Bias", SUNXI_MICBIAS_REG, MMICBIASEN, 0),
 
@@ -1257,15 +1408,19 @@ static const struct snd_soc_dapm_route sunxi_codec_dapm_routes[] = {
 	{"MIC3 Input Select", "MIC_SINGLE", "MIC3"},
 	{"MIC3 Input Select", "MIC_DIFFER", "MIC3"},
 
-	{"ADC1 Input", "MIC1 Boost Switch", "MIC1 Input Select"},
+	{"MIC1 PGA", NULL, "MIC1 Input Select"},
+	{"MIC2 PGA", NULL, "MIC2 Input Select"},
+	{"MIC3 PGA", NULL, "MIC3 Input Select"},
+
+	{"ADC1 Input", "MIC1 Boost Switch", "MIC1 PGA"},
 	{"ADC1 Input", "FMINL Switch", "FMINL"},
 	{"ADC1 Input", "LINEINL Switch", "LINEINL"},
 
-	{"ADC2 Input", "MIC2 Boost Switch", "MIC2 Input Select"},
+	{"ADC2 Input", "MIC2 Boost Switch", "MIC2 PGA"},
 	{"ADC2 Input", "FMINR Switch", "FMINR"},
 	{"ADC2 Input", "LINEINR Switch", "LINEINR"},
 
-	{"ADC3 Input", "MIC3 Boost Switch", "MIC3 Input Select"},
+	{"ADC3 Input", "MIC3 Boost Switch", "MIC3 PGA"},
 
 	{"ADC1", NULL, "ADC1 Input"},
 	{"ADC2", NULL, "ADC2 Input"},
@@ -1287,11 +1442,11 @@ static const struct snd_soc_dapm_route sunxi_codec_dapm_routes[] = {
 	{"LINEOUT", NULL, "LINEOUTL"},
 	{"LINEOUT", NULL, "LINEOUTR"},
 
-	{"Headphone", NULL, "HPOUTL"},
-	{"Headphone", NULL, "HPOUTR"},
+	{"HP PGA", NULL, "HPOUTL"},
+	{"HP PGA", NULL, "HPOUTR"},
 
-	{"HpSpeaker", NULL, "HPOUTR"},
-	{"HpSpeaker", NULL, "HPOUTL"},
+	{"Headphone", NULL, "HP PGA"},
+	{"HpSpeaker", NULL, "HP PGA"},
 };
 
 static void sunxi_codec_init(struct snd_soc_component *component)
@@ -1301,7 +1456,10 @@ static void sunxi_codec_init(struct snd_soc_component *component)
 	/* In order to ensure that the ADC sampling is normal,
 	 * the A chip SOC needs to always open HPLDO and RMC_EN
 	 */
-	if (!(sunxi_get_soc_ver() & 0x7)) {
+	if (sunxi_get_soc_ver() & 0x7) {
+		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
+				(0x1 << RMC_EN), (0x0 << RMC_EN));
+	} else {
 		snd_soc_component_update_bits(component, SUNXI_POWER_REG,
 				(0x1 << HPLDO_EN), (0x1 << HPLDO_EN));
 		snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
@@ -1312,9 +1470,22 @@ static void sunxi_codec_init(struct snd_soc_component *component)
 	snd_soc_component_update_bits(component, SUNXI_DAC_VOL_CTRL,
 			(0x1 << DAC_VOL_SEL), (0x1 << DAC_VOL_SEL));
 
-	/* Enable ADCFDT to overcome niose at the beginning */
-	snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
-			(0x3 << ADCDFEN), (0x3 << ADCDFEN));
+	if (sunxi_codec->rx_sync_en) {
+		/* disabled ADCFDT */
+		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
+				(0x1 << ADCDFEN), (0x0 << ADCDFEN));
+		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
+				(0x3 << ADCFDT), (0x2 << ADCFDT));
+		/* Enable RX_SYNC_EN */
+		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
+				(0x1 << RX_SYNC_EN), (0x1 << RX_SYNC_EN));
+	} else {
+		/* Enable ADCFDT to overcome niose at the beginning */
+		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
+				(0x1 << ADCDFEN), (0x1 << ADCDFEN));
+		snd_soc_component_update_bits(component, SUNXI_ADC_FIFOC,
+				(0x3 << ADCFDT), (0x2 << ADCFDT));
+	}
 
 	/* Digital VOL defeult setting */
 	snd_soc_component_update_bits(component, SUNXI_DAC_DPC,
@@ -1329,20 +1500,20 @@ static void sunxi_codec_init(struct snd_soc_component *component)
 	/* Headphone Gain defeult setting */
 	snd_soc_component_update_bits(component, SUNXI_HP2_REG,
 			0x7 << HEADPHONE_GAIN,
-			sunxi_codec->headphonegain << HEADPHONE_GAIN);
+			0x0 << HEADPHONE_GAIN);
 
 	/* ADCL MIC1 gain defeult setting */
 	snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
 			0x1F << ADC1_PGA_GAIN_CTRL,
-			sunxi_codec->mic1gain << ADC1_PGA_GAIN_CTRL);
+			0x0 << ADC1_PGA_GAIN_CTRL);
 	/* ADCR MIC2 gain defeult setting */
 	snd_soc_component_update_bits(component, SUNXI_ADC2_REG,
 			0x1F << ADC2_PGA_GAIN_CTRL,
-			sunxi_codec->mic2gain << ADC2_PGA_GAIN_CTRL);
+			0x0 << ADC2_PGA_GAIN_CTRL);
 	/* ADCR MIC3 gain defeult setting */
 	snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
 			0x1F << ADC3_PGA_GAIN_CTRL,
-			sunxi_codec->mic3gain << ADC3_PGA_GAIN_CTRL);
+			0x0 << ADC3_PGA_GAIN_CTRL);
 
 	/* ADC IOP params default setting */
 	snd_soc_component_update_bits(component, SUNXI_ADC1_REG,
@@ -1362,7 +1533,6 @@ static void sunxi_codec_init(struct snd_soc_component *component)
 			0x01 << MIC2_SIN_EN, 0x00 << MIC2_SIN_EN);
 	snd_soc_component_update_bits(component, SUNXI_ADC3_REG,
 			0x01 << MIC3_SIN_EN, 0x00 << MIC3_SIN_EN);
-
 #ifdef SUNXI_CODEC_DAP_ENABLE
 	if (sunxi_codec->hw_config.adcdrc_cfg)
 		adcdrc_config(component);
@@ -1374,6 +1544,20 @@ static void sunxi_codec_init(struct snd_soc_component *component)
 	if (sunxi_codec->hw_config.dachpf_cfg)
 		dachpf_config(component);
 #endif
+}
+
+static void sunxi_codec_rx_enable(void *data, bool enable)
+{
+	struct snd_soc_component *component = data;
+	struct sunxi_codec_info *sunxi_codec = snd_soc_component_get_drvdata(component);
+
+	if (enable)
+		regmap_update_bits(sunxi_codec->regmap, SUNXI_ADC_FIFOC,
+			(1 << RX_SYNC_EN_STA), (1 << RX_SYNC_EN_STA));
+	else
+		regmap_update_bits(sunxi_codec->regmap, SUNXI_ADC_FIFOC,
+			(1 << RX_SYNC_EN_STA), (0 << RX_SYNC_EN_STA));
+
 }
 
 static int sunxi_codec_startup(struct snd_pcm_substream *substream,
@@ -1388,6 +1572,13 @@ static int sunxi_codec_startup(struct snd_pcm_substream *substream,
 			adchpf_enable(component, 1);
 	}
 #endif
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_codec->rx_sync_en) {
+		sunxi_rx_sync_startup((void *)dai->component,
+			sunxi_codec->rx_sync_domain, sunxi_codec->rx_sync_id,
+			sunxi_codec_rx_enable);
+	}
 
 	return 0;
 }
@@ -1487,24 +1678,6 @@ static int sunxi_codec_hw_params(struct snd_pcm_substream *substream,
 			LOG_WARN("not support channels:%u", params_channels(params));
 			return -EINVAL;
 		}
-	} else {
-		switch (params_channels(params)) {
-		case 1:
-			snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-					(0x7<<ADC_CHANNEL_EN), (1<<ADC_CHANNEL_EN));
-			break;
-		case 2:
-			snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-					(0x7<<ADC_CHANNEL_EN), (3<<ADC_CHANNEL_EN));
-			break;
-		case 3:
-			snd_soc_component_update_bits(component, SUNXI_ADC_DIG_CTRL,
-					(0x7<<ADC_CHANNEL_EN), (7<<ADC_CHANNEL_EN));
-			break;
-		default:
-			LOG_WARN("not support channels:%u", params_channels(params));
-			return -EINVAL;
-		}
 	}
 
 	return 0;
@@ -1585,6 +1758,12 @@ static void sunxi_codec_shutdown(struct snd_pcm_substream *substream,
 			adchpf_enable(component, 0);
 	}
 #endif
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_codec->rx_sync_en) {
+		sunxi_rx_sync_shutdown(sunxi_codec->rx_sync_domain,
+				sunxi_codec->rx_sync_id);
+	}
 }
 
 static int sunxi_codec_prepare(struct snd_pcm_substream *substream,
@@ -1618,22 +1797,30 @@ static int sunxi_codec_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			regmap_update_bits(sunxi_codec->regmap, SUNXI_DAC_FIFOC,
 				(1 << DAC_DRQ_EN), (1 << DAC_DRQ_EN));
-		else
+		} else {
 			regmap_update_bits(sunxi_codec->regmap, SUNXI_ADC_FIFOC,
 				(1 << ADC_DRQ_EN), (1 << ADC_DRQ_EN));
+			if (sunxi_codec->rx_sync_en)
+				sunxi_rx_sync_control(sunxi_codec->rx_sync_domain,
+						sunxi_codec->rx_sync_id, 1);
+		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			regmap_update_bits(sunxi_codec->regmap, SUNXI_DAC_FIFOC,
 				(1 << DAC_DRQ_EN), (0 << DAC_DRQ_EN));
-		else
+		} else {
 			regmap_update_bits(sunxi_codec->regmap, SUNXI_ADC_FIFOC,
 				(1 << ADC_DRQ_EN), (0 << ADC_DRQ_EN));
+			if (sunxi_codec->rx_sync_en)
+				sunxi_rx_sync_control(sunxi_codec->rx_sync_domain,
+						sunxi_codec->rx_sync_id, 0);
+		}
 		break;
 	default:
 		return -EINVAL;
@@ -2170,20 +2357,20 @@ static int sunxi_codec_parse_params(struct device_node *np,
 	ret = of_property_read_u32(np, "mic1gain", &temp_val);
 	if (ret < 0) {
 		LOG_WARN("mic1gain get failed, use default vol");
-		sunxi_codec->mic1gain = 32;
+		sunxi_codec->mic1gain = 31;
 	} else {
 		sunxi_codec->mic1gain = temp_val;
 	}
 	ret = of_property_read_u32(np, "mic2gain", &temp_val);
 	if (ret < 0) {
 		LOG_WARN("mic2gain get failed, use default vol");
-		sunxi_codec->mic2gain = 32;
+		sunxi_codec->mic2gain = 31;
 	} else {
 		sunxi_codec->mic2gain = temp_val;
 	}
 	ret = of_property_read_u32(np, "mic3gain", &temp_val);
 	if (ret < 0) {
-		sunxi_codec->mic3gain = 32;
+		sunxi_codec->mic3gain = 31;
 		LOG_WARN("mic3gain get failed, use default vol");
 	} else {
 		sunxi_codec->mic3gain = temp_val;
@@ -2303,6 +2490,27 @@ static int sunxi_codec_parse_params(struct device_node *np,
 		sunxi_codec->spk_pwr_config.used = 0;
 	}
 
+	ret = of_property_read_u32(np, "rx_sync_en", &temp_val);
+	if (ret < 0) {
+		LOG_ERR("rx_sync_en configs missing or invalid");
+		sunxi_codec->rx_sync_en = 0;
+	} else {
+		sunxi_codec->rx_sync_en = temp_val;
+	}
+
+	if (sunxi_codec->rx_sync_en) {
+		sunxi_codec->rx_sync_domain = RX_SYNC_SYS_DOMAIN;
+		sunxi_codec->rx_sync_id =
+			sunxi_rx_sync_probe(sunxi_codec->rx_sync_domain);
+		if (sunxi_codec->rx_sync_id < 0) {
+			LOG_ERR("sunxi_rx_sync_probe failed");
+			return -EINVAL;
+		}
+		LOG_INFO("sunxi_rx_sync_probe successful. domain=%d, id=%d",
+			sunxi_codec->rx_sync_domain,
+			sunxi_codec->rx_sync_id);
+	}
+
 	return 0;
 }
 
@@ -2419,6 +2627,9 @@ static int  __exit sunxi_internal_codec_remove(struct platform_device *pdev)
 {
 	struct sunxi_codec_info *sunxi_codec = dev_get_drvdata(&pdev->dev);
 	struct codec_spk_config *spk_cfg = &(sunxi_codec->spk_config);
+
+	if (sunxi_codec->rx_sync_en)
+		sunxi_rx_sync_remove(sunxi_codec->rx_sync_domain);
 
 	if (spk_cfg->used) {
 		devm_gpio_free(&pdev->dev,

@@ -41,6 +41,10 @@ obj-$(CONFIG_SND_SUNXI_SOC_SUNXI_HDMIAUDIO) += snd-soc-sunxi-hdmi.o
 obj-$(CONFIG_SND_SUN50IW10_CODEC) += sun50iw10-codec.o
 obj-$(CONFIG_SND_SUNXI_SOC_SUN50IW10_CODEC) += sun50iw10-sndcodec.o
 
+# SUNXI Sun50iw12 Codec Support
+obj-$(CONFIG_SND_SUN50IW12_CODEC) += sun50iw12-codec.o
+obj-$(CONFIG_SND_SUNXI_SOC_SUN50IW12_CODEC) += sun50iw12-sndcodec.o
+
 # SUNXI Sun8iw20 Codec Support
 obj-$(CONFIG_SND_SUN8IW20_CODEC) += sun8iw20-codec.o
 obj-$(CONFIG_SND_SUNXI_SOC_SUN8IW20_CODEC) += sun8iw20-sndcodec.o
@@ -52,3 +56,6 @@ obj-$(CONFIG_SND_SUNXI_SOC_SUN20IW1_CODEC) += sun20iw1-sndcodec.o
 # SUNXI RPAF For DSP
 obj-$(CONFIG_SND_SUNXI_RPAF) += sunxi-rpaf/component/ \
 				sunxi-rpaf/sunxi-hifi/
+
+# SUNXI RX SYNC
+obj-$(CONFIG_SUNXI_RX_SYNC) += sunxi-rx-sync.o

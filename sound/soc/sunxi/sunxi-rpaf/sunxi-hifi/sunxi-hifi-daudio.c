@@ -240,6 +240,7 @@ static int sunxi_hifi_daudio_init(struct sunxi_daudio_info *sunxi_daudio,
 	if (sunxi_daudio->playback_dma_param.cma_kbytes != 0) {
 		/* init for playback */
 		init_waitqueue_head(&msg_playback->tsleep);
+		spin_lock_init(&msg_playback->lock);
 		msg_playback->wakeup_flag = 0;
 		soc_substream = &msg_playback->soc_substream;
 		pcm_params = &soc_substream->params;
@@ -266,12 +267,14 @@ static int sunxi_hifi_daudio_init(struct sunxi_daudio_info *sunxi_daudio,
 		dsp_component = &sunxi_daudio->dsp_playcomp;
 		msg_component = &dsp_component->msg_component;
 		init_waitqueue_head(&msg_component->tsleep);
+		spin_lock_init(&msg_component->lock);
 		msg_component->wakeup_flag = 0;
 	}
 
 	if (sunxi_daudio->capture_dma_param.cma_kbytes != 0) {
 		/* init for capture */
 		init_waitqueue_head(&msg_capture->tsleep);
+		spin_lock_init(&msg_capture->lock);
 		msg_capture->wakeup_flag = 0;
 		soc_substream = &msg_capture->soc_substream;
 		pcm_params = &soc_substream->params;
@@ -291,14 +294,17 @@ static int sunxi_hifi_daudio_init(struct sunxi_daudio_info *sunxi_daudio,
 		dsp_component = &sunxi_daudio->dsp_capcomp;
 		msg_component = &dsp_component->msg_component;
 		init_waitqueue_head(&msg_component->tsleep);
+		spin_lock_init(&msg_component->lock);
 		msg_component->wakeup_flag = 0;
 
 		/* init for mixer */
 		init_waitqueue_head(&msg_mixer->tsleep);
+		spin_lock_init(&msg_mixer->lock);
 		msg_mixer->wakeup_flag = 0;
 
 		/* init for debug */
 		init_waitqueue_head(&msg_debug->tsleep);
+		spin_lock_init(&msg_debug->lock);
 		msg_debug->wakeup_flag = 0;
 	}
 
@@ -900,8 +906,11 @@ static void trigger_work_playback_func(struct work_struct *work)
 			/* 拷贝并发送通知component */
 			snd_soc_rpaf_pcm_update_stream_process(&sunxi_daudio->dsp_playcomp);
 
-			if ((ret == 0) &&
-				(runtime->status->state == SNDRV_PCM_STATE_RUNNING))
+			if (ret != 0) {
+				dev_err(sunxi_daudio->cpu_dai->dev,
+					"%s state:%d, ret=%d\n", __func__, runtime->status->state, ret);
+			}
+			if (runtime->status->state == SNDRV_PCM_STATE_RUNNING)
 				queue_work(sunxi_daudio->wq_playback, &sunxi_daudio->trigger_work_playback);
 			break;
 		} else if (soc_substream->cmd_val == SND_SOC_DSP_PCM_STOP) {
@@ -976,8 +985,11 @@ static void trigger_work_capture_func(struct work_struct *work)
 			/* 拷贝并发送通知component */
 			snd_soc_rpaf_pcm_update_stream_process(&sunxi_daudio->dsp_capcomp);
 
-			if ((ret == 0) &&
-				(runtime->status->state == SNDRV_PCM_STATE_RUNNING))
+			if (ret != 0) {
+				dev_err(sunxi_daudio->cpu_dai->dev,
+					"%s state:%d, ret=%d\n", __func__, runtime->status->state, ret);
+			}
+			if (runtime->status->state == SNDRV_PCM_STATE_RUNNING)
 				queue_work(sunxi_daudio->wq_capture, &sunxi_daudio->trigger_work_capture);
 			break;
 		} else if (soc_substream->cmd_val == SND_SOC_DSP_PCM_STOP) {

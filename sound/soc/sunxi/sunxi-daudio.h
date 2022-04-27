@@ -396,7 +396,6 @@ struct sunxi_daudio_pinctl_info {
 struct sunxi_daudio_platform_data_info {
 	unsigned int daudio_type;
 //	unsigned int external_type;
-	unsigned int daudio_rxsync_en;
 
 	unsigned int pcm_lrck_period;
 	unsigned int msb_lsb_first:1;
@@ -456,6 +455,10 @@ struct sunxi_daudio_info {
 	unsigned int hdmi_en;
 	struct snd_soc_dai *cpu_dai;
 	struct daudio_label *reg_label;
+
+	unsigned int rx_sync_en;
+	int rx_sync_id;
+	rx_sync_domain_t rx_sync_domain;
 
 #if IS_ENABLED(CONFIG_SND_SUNXI_SOC_DAUDIO_ASRC)
 	int asrc_function_en;

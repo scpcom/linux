@@ -102,7 +102,7 @@ static struct snd_pcm_hardware sunxi_pcm_hardware = {
 	.fifo_size		= 128,
 };
 
-int sunxi_ahub_get_rawflag(void)
+int sunxi_get_rawflag(void)
 {
 	return raw_flag;
 }
@@ -288,6 +288,10 @@ static int sunxi_pcm_hdmi_hw_params(struct snd_pcm_substream *substream,
 		if (!dev->coherent_dma_mask)
 			dev->coherent_dma_mask = 0xffffffff;
 
+		/* note: change the follow function
+		 * sound/core/pcm_dmaengine.c -> dmaengine_pcm_prepare_and_submit()
+		 * snd_pcm_lib_buffer_bytes(substream) * 2 when rawflag > 1
+		 */
 		hdmiraw_dma_area = dma_alloc_coherent(dev,
 				(2 * params_buffer_bytes(params)),
 				&hdmiraw_dma_addr, GFP_KERNEL);

@@ -44,6 +44,8 @@
 
 #define	DRV_NAME	"sunxi-spdif"
 
+#define SUNXI_SPDIF_DEBUG
+
 struct sample_rate {
 	unsigned int samplerate;
 	unsigned int rate_bit;
@@ -230,8 +232,6 @@ static int sunxi_spdif_set_audio_mode(struct snd_kcontrol *kcontrol,
 	}
 
 	regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_TXCFG,
-			(1 << TXCFG_CHAN_STA_EN), (reg_val << TXCFG_CHAN_STA_EN));
-	regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_TXCFG,
 			(1 << TXCFG_DATA_TYPE), (reg_val << TXCFG_DATA_TYPE));
 	regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_TXCH_STA0,
 			(1 << TXCHSTA0_AUDIO), (reg_val << TXCHSTA0_AUDIO));
@@ -406,11 +406,19 @@ static void sunxi_spdif_rxctrl_enable(struct sunxi_spdif_info *sunxi_spdif,
 				(1 << INT_RXDRQEN), (1 << INT_RXDRQEN));
 		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_RXCFG,
 				(1 << RXCFG_RXEN), (1 << RXCFG_RXEN));
+		if (sunxi_spdif->rx_sync_en) {
+			sunxi_rx_sync_control(sunxi_spdif->rx_sync_domain,
+					sunxi_spdif->rx_sync_id, 1);
+		}
 	} else {
 		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_RXCFG,
 				(1 << RXCFG_RXEN), (0 << RXCFG_RXEN));
 		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_INT,
 				(1 << INT_RXDRQEN), (0 << INT_RXDRQEN));
+		if (sunxi_spdif->rx_sync_en) {
+			sunxi_rx_sync_control(sunxi_spdif->rx_sync_domain,
+					sunxi_spdif->rx_sync_id, 0);
+		}
 	}
 }
 
@@ -426,10 +434,18 @@ static void sunxi_spdif_init(struct sunxi_spdif_info *sunxi_spdif)
 			(CTL_RXTL_MASK << FIFO_CTL_RXTL),
 			(CTL_RXTL_DEFAULT << FIFO_CTL_RXTL));
 
+	/* send tx channel status info */
+	regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_TXCFG,
+		(1 << TXCFG_CHAN_STA_EN), (1 << TXCFG_CHAN_STA_EN));
+
 	regmap_write(mem_info->regmap, SUNXI_SPDIF_TXCH_STA0,
 			0x2 << TXCHSTA0_CHNUM);
 	regmap_write(mem_info->regmap, SUNXI_SPDIF_RXCH_STA0,
 			0x2 << RXCHSTA0_CHNUM);
+
+	if (sunxi_spdif->rx_sync_en)
+		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_FIFO_CTL,
+				(0x1 << SPDIF_RX_SYNC_EN), (0x1 << SPDIF_RX_SYNC_EN));
 }
 
 static int sunxi_spdif_dai_hw_params(struct snd_pcm_substream *substream,
@@ -591,28 +607,24 @@ static int sunxi_spdif_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 {
 	struct sunxi_spdif_info *sunxi_spdif = snd_soc_dai_get_drvdata(dai);
 	struct sunxi_spdif_clk_info *clk_info = &sunxi_spdif->clk_info;
+	struct clk *clk_parent;
 
 	mutex_lock(&sunxi_spdif->mutex);
-	if (sunxi_spdif->active == 0) {
-		dev_info(sunxi_spdif->dev, "active: %u\n", sunxi_spdif->active);
-		if (clk_set_rate(clk_info->clk_pll, freq)) {
-			dev_err(sunxi_spdif->dev,
-				"clk pll set rate to %uHz failed\n", freq);
-			mutex_unlock(&sunxi_spdif->mutex);
-			return -EBUSY;
-		}
+	sunxi_spdif->active++;
+	if (sunxi_spdif->active != 1) {
+		mutex_unlock(&sunxi_spdif->mutex);
+		return 0;
+	}
+	dev_info(sunxi_spdif->dev, "active: %u\n", sunxi_spdif->active);
+	if (freq == 24576000) {
+		clk_parent = clk_info->clk_pll1_div;
+	} else if (freq == 22579200) {
+		clk_parent = clk_info->clk_pll;
 		switch (clk_info->clk_parent) {
 		case SPDIF_CLK_PLL_AUDIO_X1:
 			if (clk_set_rate(clk_info->clk_pll, freq)) {
 				dev_err(sunxi_spdif->dev,
 					"clk pll set rate to %uHz failed\n", freq);
-				mutex_unlock(&sunxi_spdif->mutex);
-				return -EBUSY;
-			}
-
-			if (clk_set_rate(clk_info->clk_module, freq)) {
-				dev_err(sunxi_spdif->dev,
-					"clk module set rate to %uHz failed\n", freq);
 				mutex_unlock(&sunxi_spdif->mutex);
 				return -EBUSY;
 			}
@@ -625,28 +637,33 @@ static int sunxi_spdif_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 				mutex_unlock(&sunxi_spdif->mutex);
 				return -EBUSY;
 			}
-
-			if (clk_set_rate(clk_info->clk_module, freq)) {
-				dev_err(sunxi_spdif->dev,
-					"clk module set rate to %uHz failed\n", freq);
-				mutex_unlock(&sunxi_spdif->mutex);
-				return -EBUSY;
-			}
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
-			if (clk_set_parent(clk_info->clk_module_rx, clk_info->clk_pll1_div)) {
-				pr_err("set parent of clk_module to clk_pll failed!\n");
-				return -EBUSY;
-			}
-
-			if (clk_set_rate(clk_info->clk_pll1, 1000000000)) {
-				pr_err("spdif: spdif rx source set pll1 rate failed\n");
-				return -EBUSY;
-			}
-#endif
 			break;
 		}
 	}
-	sunxi_spdif->active++;
+	if (clk_set_parent(clk_info->clk_module, clk_parent)) {
+		pr_err("set parent of clk_module failed!\n");
+		mutex_unlock(&sunxi_spdif->mutex);
+		return -EBUSY;
+	}
+	if (clk_set_rate(clk_info->clk_module, freq)) {
+		dev_err(sunxi_spdif->dev,
+			"clk module set rate to %uHz failed\n", freq);
+		mutex_unlock(&sunxi_spdif->mutex);
+		return -EBUSY;
+	}
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	if (clk_set_parent(clk_info->clk_module_rx, clk_info->clk_pll_periph)) {
+		pr_err("set parent of clk_module to clk_pll failed!\n");
+		mutex_unlock(&sunxi_spdif->mutex);
+		return -EBUSY;
+	}
+
+	if (clk_set_rate(clk_info->clk_module_rx, 200000000)) {
+		pr_err("spdif: spdif rx source set pll1 rate failed\n");
+		mutex_unlock(&sunxi_spdif->mutex);
+		return -EBUSY;
+	}
+#endif
 	mutex_unlock(&sunxi_spdif->mutex);
 
 	return 0;
@@ -678,6 +695,24 @@ static int sunxi_spdif_dai_set_clkdiv(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static void sunxi_spdif_rx_enable(void *data, bool enable)
+{
+	struct snd_soc_component *component = data;
+	struct sunxi_spdif_info *sunxi_spdif = snd_soc_component_get_drvdata(component);
+	struct sunxi_spdif_mem_info *mem_info = NULL;
+
+	mem_info = &sunxi_spdif->mem_info;
+	if (enable)
+		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_FIFO_CTL,
+				(0x1 << SPDIF_RX_SYNC_EN_START),
+				(0x1 << SPDIF_RX_SYNC_EN_START));
+	else
+		regmap_update_bits(mem_info->regmap, SUNXI_SPDIF_FIFO_CTL,
+				(0x1 << SPDIF_RX_SYNC_EN_START),
+				(0x0 << SPDIF_RX_SYNC_EN_START));
+
+}
+
 static int sunxi_spdif_dai_startup(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
@@ -689,6 +724,13 @@ static int sunxi_spdif_dai_startup(struct snd_pcm_substream *substream,
 	} else {
 		snd_soc_dai_set_dma_data(dai, substream,
 				&sunxi_spdif->capture_dma_param);
+	}
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_spdif->rx_sync_en) {
+		sunxi_rx_sync_startup((void *)dai->component,
+			sunxi_spdif->rx_sync_domain, sunxi_spdif->rx_sync_id,
+			sunxi_spdif_rx_enable);
 	}
 
 	return 0;
@@ -706,6 +748,12 @@ static void sunxi_spdif_dai_shutdown(struct snd_pcm_substream *substream,
 			sunxi_spdif->configured = false;
 	}
 	mutex_unlock(&sunxi_spdif->mutex);
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
+		sunxi_spdif->rx_sync_en) {
+		sunxi_rx_sync_shutdown(sunxi_spdif->rx_sync_domain,
+			sunxi_spdif->rx_sync_id);
+	}
 }
 
 static int sunxi_spdif_trigger(struct snd_pcm_substream *substream,
@@ -826,10 +874,11 @@ static int sunxi_spdif_suspend(struct snd_soc_dai *dai)
 
 	clk_disable_unprepare(clk_info->clk_module);
 	clk_disable_unprepare(clk_info->clk_pll);
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
-	clk_disable_unprepare(clk_info->clk_module_rx);
 	clk_disable_unprepare(clk_info->clk_pll1_div);
 	clk_disable_unprepare(clk_info->clk_pll1);
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	clk_disable_unprepare(clk_info->clk_module_rx);
+	clk_disable_unprepare(clk_info->clk_pll_periph);
 #endif
 	clk_disable_unprepare(clk_info->clk_bus);
 	reset_control_assert(clk_info->clk_rst);
@@ -847,10 +896,11 @@ static int sunxi_spdif_resume(struct snd_soc_dai *dai)
 	reset_control_deassert(clk_info->clk_rst);
 	clk_prepare_enable(clk_info->clk_bus);
 	clk_prepare_enable(clk_info->clk_pll);
-	clk_prepare_enable(clk_info->clk_module);
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
 	clk_prepare_enable(clk_info->clk_pll1);
 	clk_prepare_enable(clk_info->clk_pll1_div);
+	clk_prepare_enable(clk_info->clk_module);
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	clk_prepare_enable(clk_info->clk_pll_periph);
 	clk_prepare_enable(clk_info->clk_module_rx);
 #endif
 
@@ -993,7 +1043,7 @@ static int sunxi_spdif_get_params_info(struct sunxi_spdif_info *sunxi_spdif)
 		rx_info->rx_params.orig_freq = 0;
 	}
 
-#if 0
+#if 1
 	/* 200MHZ - Sysclk */
 	if (rx_info->rx_params.refreq > 9065 && rx_info->rx_params.freq < 9075) {
 		rx_info->rx_params.orig_freq = 22050;
@@ -1014,7 +1064,7 @@ static int sunxi_spdif_get_params_info(struct sunxi_spdif_info *sunxi_spdif)
 	} else {
 		rx_info->rx_params.orig_freq = 0;
 	}
-#endif
+#else
 	/* 196.608MHZ - Sysclk */
 	if (rx_info->rx_params.refreq > 8911 && rx_info->rx_params.freq < 8921) {
 		rx_info->rx_params.orig_freq = 22050;
@@ -1035,6 +1085,7 @@ static int sunxi_spdif_get_params_info(struct sunxi_spdif_info *sunxi_spdif)
 	} else {
 		rx_info->rx_params.orig_freq = 0;
 	}
+#endif
 
 	return 0;
 };
@@ -1188,89 +1239,124 @@ static int sunxi_spdif_clk_init(struct platform_device *pdev,
 		clk_info->clk_parent = SPDIF_CLK_PLL_AUDIO_X4;
 	}
 
-	clk_info->clk_pll = of_clk_get_by_name(np, "pll_audio");
+	clk_info->clk_pll = of_clk_get_by_name(np, "pll_audio0");
 	clk_info->clk_module = of_clk_get_by_name(np, "spdif");
 	clk_info->clk_bus = of_clk_get_by_name(np, "spdif_bus");
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
 	clk_info->clk_pll1 = of_clk_get_by_name(np, "pll_audio1");
 	clk_info->clk_pll1_div = of_clk_get_by_name(np, "pll_audio1_div5");
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	clk_info->clk_pll_periph = of_clk_get_by_name(np, "pll_periph");
 	clk_info->clk_module_rx = of_clk_get_by_name(np, "spdif_rx");
 #endif
 	clk_info->clk_rst = devm_reset_control_get(&pdev->dev, NULL);
 
-	if (clk_set_parent(clk_info->clk_module, clk_info->clk_pll)) {
+	if (clk_set_parent(clk_info->clk_module, clk_info->clk_pll1_div)) {
 		dev_err(&pdev->dev,
 			"set parent of clk_module to clk_pll failed!\n");
 		ret = -EINVAL;
-		goto err_clk_set_parent;
+		goto err_clk_set;
 	}
+
+	if (clk_set_rate(clk_info->clk_module, 24576000)) {
+		dev_err(&pdev->dev,
+			"set clk module rate failed\n");
+		goto err_clk_set;
+	}
+
 #if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
-	if (clk_set_parent(clk_info->clk_pll1_div, clk_info->clk_pll1)) {
+	if (clk_set_parent(clk_info->clk_module_rx, clk_info->clk_pll_periph)) {
 		dev_err(&pdev->dev,
 			"set parent of clk_module to clk_pll failed!\n");
 		ret = -EINVAL;
-		return ret;
+		goto err_clk_set;
 	}
 
-	if (clk_set_parent(clk_info->clk_module_rx, clk_info->clk_pll1_div)) {
-		dev_err(&pdev->dev,
-			"set parent of clk_module to clk_pll failed!\n");
+	if (clk_set_rate(clk_info->clk_module_rx, 200000000)) {
+		pr_err("spdif: set spdif rx rate failed\n");
 		ret = -EINVAL;
-		return ret;
-	}
-
-	if (clk_set_rate(clk_info->clk_pll1, 1000000000)) {
-		pr_err("spdif: spdif rx source set pll1 rate failed\n");
-		return ret;
+		goto err_clk_set;
 	}
 #endif
 
 	if (reset_control_deassert(clk_info->clk_rst)) {
 		pr_err("spdif: deassert the spdif reset failed\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_clk_set;
 	}
+
 	if (clk_prepare_enable(clk_info->clk_bus)) {
 		dev_err(&pdev->dev, "spdif clk bus enable failed\n");
 		ret = -EBUSY;
-		goto err_clk_enable_bus;
+		goto err_clk_bus_enable;
 	}
+
 	if (clk_prepare_enable(clk_info->clk_pll)) {
 		dev_err(&pdev->dev, "clk_pll enable failed\n");
 		ret = -EBUSY;
-		goto err_clk_enable_pll;
+		goto err_clk_pll_enable;
 	}
-	if (clk_prepare_enable(clk_info->clk_module)) {
-		dev_err(&pdev->dev, "moduleclk enable failed\n");
-		ret = -EBUSY;
-		goto err_clk_enable_module;
-	}
-#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+
 	if (clk_prepare_enable(clk_info->clk_pll1)) {
 		dev_err(&pdev->dev, "clk_pll1 enable failed\n");
 		ret = -EBUSY;
-		return ret;
+		goto err_clk_pll1_enable;
 	}
+
 	if (clk_prepare_enable(clk_info->clk_pll1_div)) {
 		dev_err(&pdev->dev, "clk_pll1_div enable failed\n");
 		ret = -EBUSY;
-		return ret;
+		goto err_clk_pll1_div_enable;
 	}
+
+	if (clk_prepare_enable(clk_info->clk_module)) {
+		dev_err(&pdev->dev, "moduleclk enable failed\n");
+		ret = -EBUSY;
+		goto err_clk_module_enable;
+	}
+
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	if (clk_prepare_enable(clk_info->clk_pll_periph)) {
+		dev_err(&pdev->dev, "clk_pll1_div enable failed\n");
+		ret = -EBUSY;
+		goto err_clk_periph_enable;
+	}
+
 	if (clk_prepare_enable(clk_info->clk_module_rx)) {
 		dev_err(&pdev->dev, "clk_module_rx enable failed\n");
 		ret = -EBUSY;
-		return ret;
+		goto err_clk_module_rx_enable;
 	}
 #endif
 
 	return 0;
 
-err_clk_enable_module:
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+err_clk_module_rx_enable:
+	clk_disable_unprepare(clk_info->clk_pll_periph);
+err_clk_periph_enable:
+	clk_disable_unprepare(clk_info->clk_module);
+#endif
+err_clk_module_enable:
+	clk_disable_unprepare(clk_info->clk_pll1_div);
+err_clk_pll1_div_enable:
+	clk_disable_unprepare(clk_info->clk_pll1);
+err_clk_pll1_enable:
 	clk_disable_unprepare(clk_info->clk_pll);
-err_clk_enable_pll:
-err_clk_set_parent:
-	clk_put(clk_info->clk_bus);
-err_clk_enable_bus:
+err_clk_pll_enable:
+	clk_disable_unprepare(clk_info->clk_bus);
+err_clk_bus_enable:
 	reset_control_assert(clk_info->clk_rst);
+err_clk_set:
+#if IS_ENABLED(CONFIG_SND_SUNXI_SOC_SPDIF_RX_IEC61937)
+	clk_put(clk_info->clk_module_rx);
+	clk_put(clk_info->clk_pll_periph);
+#endif
+	clk_put(clk_info->clk_pll1_div);
+	clk_put(clk_info->clk_pll1);
+	clk_put(clk_info->clk_bus);
+	clk_put(clk_info->clk_module);
+	clk_put(clk_info->clk_pll);
+
 	return ret;
 };
 
@@ -1369,6 +1455,27 @@ static int sunxi_spdif_dts_params_init(struct platform_device *pdev,
 		else if (temp_val < SUNXI_AUDIO_CMA_MIN_KBYTES)
 			temp_val = SUNXI_AUDIO_CMA_MIN_KBYTES;
 		dts_info->capture_cma = temp_val;
+	}
+
+	ret = of_property_read_u32(np, "rx_sync_en", &temp_val);
+	if (ret != 0) {
+		dev_warn(&pdev->dev, "rx_sync_en config missing or invalid.\n");
+		sunxi_spdif->rx_sync_en = 0;
+	} else {
+		sunxi_spdif->rx_sync_en = temp_val;
+	}
+
+	if (sunxi_spdif->rx_sync_en) {
+		sunxi_spdif->rx_sync_domain = RX_SYNC_SYS_DOMAIN;
+		sunxi_spdif->rx_sync_id =
+			sunxi_rx_sync_probe(sunxi_spdif->rx_sync_domain);
+		if (sunxi_spdif->rx_sync_id < 0) {
+			dev_err(&pdev->dev, "sunxi_rx_sync_probe failed\n");
+			return -EINVAL;
+		}
+		dev_info(&pdev->dev, "sunxi_rx_sync_probe successful. domain=%d, id=%d\n",
+			sunxi_spdif->rx_sync_domain,
+			sunxi_spdif->rx_sync_id);
 	}
 
 	return 0;
@@ -1494,6 +1601,8 @@ static int __exit sunxi_spdif_dev_remove(struct platform_device *pdev)
 	struct sunxi_spdif_clk_info *clk_info = &sunxi_spdif->clk_info;
 	struct sunxi_spdif_pinctl_info *pin_info = &sunxi_spdif->pin_info;
 
+	if (sunxi_spdif->rx_sync_en)
+		sunxi_rx_sync_remove(sunxi_spdif->rx_sync_domain);
 
 #ifdef SUNXI_SPDIF_DEBUG
 	sysfs_remove_group(&pdev->dev.kobj, &spdif_debug_attr_group);

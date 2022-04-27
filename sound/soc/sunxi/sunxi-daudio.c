@@ -319,31 +319,52 @@ static void sunxi_daudio_txctrl_enable(struct sunxi_daudio_info *sunxi_daudio,
 	struct sunxi_daudio_dts_info *dts_info = &sunxi_daudio->dts_info;
 	struct sunxi_daudio_platform_data_info *pdata_info = &dts_info->pdata_info;
 	unsigned int DAUDIO_SDO_MASK = 0;
+	unsigned int reg_val;
 	unsigned int i = 0;
 
 	for (i = 0; i < pdata_info->tx_num; i++)
 		DAUDIO_SDO_MASK |= 0x1 << i;
 
 	if (enable) {
+		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_INTCTL,
+				(1 << TXDRQEN), (1 << TXDRQEN));
+
 		/* HDMI audio Transmit Clock just enable at startup */
 		if (pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE) {
 			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-						(DAUDIO_SDO_MASK << SDO0_EN),
-						(DAUDIO_SDO_MASK << SDO0_EN));
-			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-						(1 << CTL_TXEN), (1 << CTL_TXEN));
-		}
+					(DAUDIO_SDO_MASK << SDO0_EN),
+					(DAUDIO_SDO_MASK << SDO0_EN));
 
-		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_INTCTL,
-					(1 << TXDRQEN), (1 << TXDRQEN));
+			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
+					(1 << CTL_TXEN), (1 << CTL_TXEN));
+		}
 	} else {
 		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_INTCTL,
 					(1 << TXDRQEN), (0 << TXDRQEN));
 
 		if (pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE) {
+			/* add this to avoid the i2s pop */
+			while (1) {
+				regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_FIFOCTL,
+					(1 << FIFO_CTL_FTX), (1 << FIFO_CTL_FTX));
+				regmap_write(mem_info->regmap,
+						SUNXI_DAUDIO_TXCNT, 0);
+
+				regmap_read(mem_info->regmap,
+						SUNXI_DAUDIO_FIFOSTA, &reg_val);
+				reg_val = ((reg_val & 0xFF0000) >> 16);
+				if (reg_val == 0x80) {
+					break;
+				}
+			}
+			udelay(250);
+
 			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-					(DAUDIO_SDO_MASK << SDO0_EN) | (1 << CTL_TXEN),
-					(0 << SDO0_EN) | (0 << CTL_TXEN));
+					(1 << CTL_TXEN), (0 << CTL_TXEN));
+
+			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
+					(DAUDIO_SDO_MASK << SDO0_EN),
+					(0 << SDO0_EN));
 		}
 	}
 }
@@ -368,25 +389,11 @@ static void sunxi_daudio_rxctrl_enable(struct sunxi_daudio_info *sunxi_daudio,
 				(1 << CTL_RXEN), (1 << CTL_RXEN));
 		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_INTCTL,
 				(1 << RXDRQEN), (1 << RXDRQEN));
-
-		if (pdata_info->daudio_rxsync_en) {
-			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-					(1 << RX_EN_MUX), (1 << RX_EN_MUX));
-			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-					(1 << RX_SYNC_EN), (1 << RX_SYNC_EN));
-		}
 	} else {
 		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_INTCTL,
 				(1 << RXDRQEN), (0 << RXDRQEN));
 		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
 				(1 << CTL_RXEN), (0 << CTL_RXEN));
-
-		if (pdata_info->daudio_rxsync_en) {
-			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-					(1 << RX_EN_MUX), (0 << RX_EN_MUX));
-			regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
-					(1 << RX_SYNC_EN), (0 << RX_SYNC_EN));
-		}
 	}
 }
 
@@ -645,6 +652,11 @@ static int sunxi_daudio_init(struct sunxi_daudio_info *sunxi_daudio)
 	regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_FMT1,
 			(0x3 <<  RX_PDM),
 			(pdata_info->rx_data_mode << RX_PDM));
+
+	if (sunxi_daudio->rx_sync_en) {
+		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
+				(0x1 <<  RX_EN_MUX), (0x1 << RX_PDM));
+	}
 
 	return sunxi_daudio_mclk_setting(sunxi_daudio);
 }
@@ -1084,6 +1096,22 @@ static int sunxi_daudio_set_clkdiv(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static void sunxi_rx_sync_daudio_rx_enable(void *data, bool enable)
+{
+	struct snd_soc_dai *dai = data;
+	struct sunxi_daudio_info *sunxi_daudio = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_daudio_mem_info *mem_info = NULL;
+
+	mem_info = &sunxi_daudio->mem_info;
+	if (enable)
+		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
+			(0x1 << RX_SYNC_EN), (0x1 << RX_SYNC_EN));
+	else
+		regmap_update_bits(mem_info->regmap, SUNXI_DAUDIO_CTL,
+			(0x1 << RX_SYNC_EN), (0x0 << RX_SYNC_EN));
+
+}
+
 static int sunxi_daudio_dai_startup(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
@@ -1117,6 +1145,12 @@ static int sunxi_daudio_dai_startup(struct snd_pcm_substream *substream,
 	} else {
 		snd_soc_dai_set_dma_data(dai, substream,
 					&sunxi_daudio->capture_dma_param);
+		if (sunxi_daudio->rx_sync_en) {
+			sunxi_rx_sync_startup((void *)dai,
+					sunxi_daudio->rx_sync_domain,
+					sunxi_daudio->rx_sync_id,
+					sunxi_rx_sync_daudio_rx_enable);
+		}
 	}
 
 	return 0;
@@ -1134,36 +1168,44 @@ static int sunxi_daudio_trigger(struct snd_pcm_substream *substream,
 	case	SNDRV_PCM_TRIGGER_RESUME:
 	case	SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			sunxi_daudio_txctrl_enable(sunxi_daudio, true);
 			/* Global enable I2S/TDM module */
 			if ((pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE)
 					&& (!sunxi_daudio->playback_en)) {
 				sunxi_daudio_global_enable(sunxi_daudio, true);
 				sunxi_daudio->playback_en = 1;
 			}
+			sunxi_daudio_txctrl_enable(sunxi_daudio, true);
 		} else {
-			sunxi_daudio_rxctrl_enable(sunxi_daudio, true);
 			if (pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE)
 				sunxi_daudio_global_enable(sunxi_daudio, true);
+			sunxi_daudio_rxctrl_enable(sunxi_daudio, true);
+			if (sunxi_daudio->rx_sync_en) {
+				sunxi_rx_sync_control(sunxi_daudio->rx_sync_domain,
+					sunxi_daudio->rx_sync_id, true);
+			}
 		}
 		break;
 	case	SNDRV_PCM_TRIGGER_STOP:
 	case	SNDRV_PCM_TRIGGER_SUSPEND:
 	case	SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			sunxi_daudio_txctrl_enable(sunxi_daudio, false);
 			/* Global enable I2S/TDM module */
 			if ((pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE)
 					&& (sunxi_daudio->playback_en)) {
 				sunxi_daudio_global_enable(sunxi_daudio, false);
 				sunxi_daudio->playback_en = 0;
 			}
+			sunxi_daudio_txctrl_enable(sunxi_daudio, false);
 		} else {
 			if (pdata_info->daudio_type != SUNXI_DAUDIO_HDMIAUDIO_TYPE) {
-				sunxi_daudio_rxctrl_enable(sunxi_daudio, false);
 				sunxi_daudio_global_enable(sunxi_daudio, false);
+				sunxi_daudio_rxctrl_enable(sunxi_daudio, false);
 			} else {
 				sunxi_daudio_rxctrl_enable(sunxi_daudio, false);
+			}
+			if (sunxi_daudio->rx_sync_en) {
+				sunxi_rx_sync_control(sunxi_daudio->rx_sync_domain,
+					sunxi_daudio->rx_sync_id, false);
 			}
 		}
 		break;
@@ -1263,6 +1305,12 @@ static void sunxi_daudio_shutdown(struct snd_pcm_substream *substream,
 		}
 
 		return;
+	}
+
+	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE) &&
+			(sunxi_daudio->rx_sync_en)) {
+		sunxi_rx_sync_shutdown(sunxi_daudio->rx_sync_domain,
+				sunxi_daudio->rx_sync_id);
 	}
 }
 
@@ -1755,14 +1803,6 @@ static int sunxi_daudio_dts_params_init(struct platform_device *pdev,
 		pdata_info->tdm_num = temp_val;
 	}
 
-	ret = of_property_read_u32(np, "daudio_rxsync_en", &temp_val);
-	if (ret < 0) {
-		dev_warn(&pdev->dev, "daudio_rxsync_en config missing\n");
-		pdata_info->daudio_rxsync_en = 0;
-	} else {
-		pdata_info->daudio_rxsync_en = temp_val;
-	}
-
 	ret = of_property_read_u32(np, "pcm_lrck_period", &temp_val);
 	if (ret < 0) {
 		dev_warn(&pdev->dev, "pcm_lrck_period config missing or invalid\n");
@@ -1904,6 +1944,27 @@ static int sunxi_daudio_dts_params_init(struct platform_device *pdev,
 		pdata_info->daudio_type = SUNXI_DAUDIO_EXTERNAL_TYPE;
 	} else {
 		pdata_info->daudio_type = temp_val;
+	}
+
+	ret = of_property_read_u32(np, "rx_sync_en", &temp_val);
+	if (ret < 0) {
+		dev_warn(&pdev->dev, "rx_sync_en config missing or invalid.\n");
+		sunxi_daudio->rx_sync_en = 0;
+	} else {
+		sunxi_daudio->rx_sync_en = temp_val;
+	}
+	if (sunxi_daudio->rx_sync_en) {
+		sunxi_daudio->rx_sync_domain = RX_SYNC_SYS_DOMAIN;
+		sunxi_daudio->rx_sync_id =
+			sunxi_rx_sync_probe(sunxi_daudio->rx_sync_domain);
+		if (sunxi_daudio->rx_sync_id < 0) {
+			dev_err(&pdev->dev, "sunxi_rx_sync_probe failed\n");
+			return -EINVAL;
+		}
+		dev_info(&pdev->dev, "sunxi_rx_sync_probe successful. "
+					"domain=%d, id=%d\n",
+					sunxi_daudio->rx_sync_domain,
+					sunxi_daudio->rx_sync_id);
 	}
 
 #if IS_ENABLED(CONFIG_SND_SUNXI_SOC_DAUDIO_ASRC)
@@ -2169,6 +2230,9 @@ static int __exit sunxi_daudio_dev_remove(struct platform_device *pdev)
 //	struct sunxi_daudio_dts_info *dts_info = &sunxi_daudio->dts_info;
 //	struct sunxi_daudio_platform_data_info *pdata_info = &dts_info->pdata_info;
 	struct sunxi_daudio_regulator_info *regulator_info = &sunxi_daudio->regulator_info;
+
+	if (sunxi_daudio->rx_sync_en)
+		sunxi_rx_sync_remove(sunxi_daudio->rx_sync_domain);
 
 #ifdef SUNXI_DAUDIO_DEBUG
 	sysfs_remove_group(&pdev->dev.kobj, &daudio_debug_attr_group);

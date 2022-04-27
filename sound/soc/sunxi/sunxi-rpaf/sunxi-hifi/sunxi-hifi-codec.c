@@ -228,6 +228,7 @@ static int  sunxi_hifi_codec_dev_probe(struct platform_device *pdev)
 
 	msg_mixer = &sunxi_codec->msg_mixer;
 	init_waitqueue_head(&msg_mixer->tsleep);
+	spin_lock_init(&msg_mixer->lock);
 	msg_mixer->wakeup_flag = 0;
 	/* TODO, config by dts? */
 	msg_mixer->soc_mixer.card = 0;

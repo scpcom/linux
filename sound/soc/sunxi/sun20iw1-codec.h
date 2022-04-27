@@ -454,6 +454,13 @@
 #define CODEC_TX_FIFO_SIZE	128
 #define CODEC_RX_FIFO_SIZE	256
 
+/* gain select */
+#define MIC1_GAIN_SHIFT		1
+#define MIC2_GAIN_SHIFT		2
+#define MIC3_GAIN_SHIFT		3
+
+#define HP_GAIN_SHIFT		4
+
 /*125ms * (HP_DEBOUCE_TIME+1)*/
 #define HP_DEBOUCE_TIME	0x3
 
@@ -528,10 +535,19 @@ struct sunxi_codec_info {
 	u32 digital_vol;
 	u32 lineout_vol;
 	u32 dac_digital_vol;
+
+	bool mic1gain_now;
+	bool mic2gain_now;
+	bool mic3gain_now;
+	bool hpgain_now;
 	u32 mic1gain;
 	u32 mic2gain;
 	u32 mic3gain;
 	u32 headphonegain;
+
+	u32 rx_sync_en;
+	int rx_sync_id;
+	rx_sync_domain_t rx_sync_domain;
 
 	struct codec_spk_config spk_config;
 	struct codec_spk_config spk_pwr_config;

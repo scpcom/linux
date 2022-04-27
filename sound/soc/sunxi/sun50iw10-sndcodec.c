@@ -22,14 +22,19 @@
 #include <linux/io.h>
 #include <linux/input.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
 #include <sound/pcm_params.h>
 #include <sound/soc-dapm.h>
+#include <linux/extcon.h>
 
+#include "sunxi_sound_log.h"
 #include "sun50iw10-codec.h"
+
+/* #define CONFIG_EXTCON_TYPEC_JACK */
 
 static int mdata_threshold = 0x10;
 module_param(mdata_threshold, int, 0644);
@@ -55,6 +60,14 @@ enum dectect_jack {
 static bool is_irq;
 static int switch_state;
 
+#ifdef CONFIG_EXTCON_TYPEC_JACK
+struct typec_jack_cfg {
+	u32 pin;
+	bool used;
+	bool level;
+};
+#endif
+
 struct sunxi_card_priv {
 	struct snd_soc_card *card;
 	struct snd_soc_component *component;
@@ -64,6 +77,15 @@ struct sunxi_card_priv {
 	struct delayed_work hs_checkplug_work;
 	struct mutex jack_mlock;
 	struct snd_soc_jack jack;
+#ifdef CONFIG_EXTCON_TYPEC_JACK
+	u32 typec_analog_jack_enable;
+	struct extcon_dev *extdev;
+	struct notifier_block hp_nb;
+	struct delayed_work typec_jack_detect_work;
+	struct typec_jack_cfg usb_sel;
+	struct typec_jack_cfg usb_noe;
+	struct typec_jack_cfg mic_sel;
+#endif
 	struct timespec64 tv_headset_plugin;	/*4*/
 	_jack_irq_times jack_irq_times;
 	u32 detect_state;
@@ -91,9 +113,8 @@ static int sunxi_check_jack_type(struct snd_soc_jack *jack)
 	tempdata = (reg_val >> HMIC_DATA) & 0x1f;
 
 	priv->headset_basedata = tempdata;
+	SOUND_LOG_DEBUG("headset_basedata-> 0x%x\n", priv->headset_basedata);
 	if (tempdata >= priv->HEADSET_DATA) {
-		pr_debug("[SND_JACK_HEADSET], priv->HEADSET_DATA:0x%x\n",
-		       priv->HEADSET_DATA);
 		/*
 		 * headset:4
 		 */
@@ -103,8 +124,6 @@ static int sunxi_check_jack_type(struct snd_soc_jack *jack)
 		 * headphone:3
 		 * disable hbias and adc
 		 */
-		pr_debug("[SND_JACK_HEADPHONE] priv->HEADSET_DATA:0x%x\n",
-			priv->HEADSET_DATA);
 		snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG,
 				(0x1 << HMICBIASEN), (0x0 << HMICBIASEN));
 		snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG,
@@ -174,7 +193,7 @@ static void sunxi_check_hs_detect_status(struct work_struct *work)
 		if (jack_type != priv->switch_status) {
 			priv->switch_status = jack_type;
 			snd_jack_report(priv->jack.jack, jack_type);
-			pr_err("plugin --> switch:%d\n", jack_type);
+			SOUND_LOG_INFO("plugin --> switch:%d\n", jack_type);
 			switch_state = jack_type;
 		}
 
@@ -210,7 +229,7 @@ static void sunxi_check_hs_detect_status(struct work_struct *work)
 		/*clear headset pulgout pending.*/
 		snd_jack_report(priv->jack.jack, priv->switch_status);
 		switch_state = priv->switch_status;
-		pr_err("plugout --> switch:%d\n", priv->switch_status);
+		SOUND_LOG_INFO("plugout --> switch:%d\n", priv->switch_status);
 		/*enable hbias and adc*/
 		snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG,
 				    (0x1 << HMICBIASEN), (0x1 << HMICBIASEN));
@@ -243,7 +262,7 @@ static void sunxi_hs_init_work(struct work_struct *work)
 			 * can not know the state, so we should reset here
 			 * when resume.
 			 */
-			pr_debug("[codec-machine] resume-->report switch.\n");
+			SOUND_LOG_DEBUG("resume-->report switch\n");
 			priv->switch_status = 0;
 			snd_jack_report(priv->jack.jack, priv->switch_status);
 			switch_state = 0;
@@ -263,7 +282,7 @@ static void sunxi_check_hs_button_status(struct work_struct *work)
 	mutex_lock(&priv->jack_mlock);
 	for (i = 0; i < 1; i++) {
 		if (priv->key_hook == 0) {
-			pr_info("Hook (2)!!\n");
+			SOUND_LOG_INFO("Hook (2)!!\n");
 			priv->switch_status &= ~SND_JACK_BTN_0;
 			snd_jack_report(priv->jack.jack, priv->switch_status);
 			break;
@@ -290,8 +309,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 		priv->jack_irq_times = OTHER_IRQ;
 	}
 
-	pr_debug("[%s] SUNXI_HMIC_STS:0x%x\n", __func__,
-				snd_soc_component_read32(priv->component, SUNXI_HMIC_STS));
+	SOUND_LOG_DEBUG("SUNXI_HMIC_STS:0x%x\n", snd_soc_component_read32(priv->component, SUNXI_HMIC_STS));
 
 	jack_state = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
 
@@ -367,7 +385,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 		if (abs(tv.tv_sec - priv->tv_headset_plugin.tv_sec) > 1) {
 			tempdata = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
 			tempdata = (tempdata & 0x1f00) >> 8;
-			pr_err("[%s]: KEY tempdata: %d\n", __func__, tempdata);
+			SOUND_LOG_DEBUG("KEY tempdata: %d\n", tempdata);
 
 			if (tempdata == 2) {
 				priv->key_hook = 0;
@@ -375,7 +393,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 				priv->key_voiceassist = 0;
 				priv->key_volup++;
 				if (priv->key_volup == 1) {
-					pr_debug("Volume ++\n");
+					SOUND_LOG_INFO("Volume ++\n");
 					priv->key_volup = 0;
 					priv->switch_status |= SND_JACK_BTN_1;
 					snd_jack_report(priv->jack.jack,
@@ -390,7 +408,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 				priv->key_voiceassist = 0;
 				priv->key_voldown++;
 				if (priv->key_voldown == 1) {
-					pr_debug("Volume --\n");
+					SOUND_LOG_INFO("Volume --\n");
 					priv->key_voldown = 0;
 					priv->switch_status |= SND_JACK_BTN_2;
 					snd_jack_report(priv->jack.jack,
@@ -406,7 +424,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 				priv->key_voldown = 0;
 				priv->key_voiceassist++;
 				if (priv->key_voiceassist == 1) {
-					pr_debug("Voice Assistant Open\n");
+					SOUND_LOG_INFO("Voice Assistant Open\n");
 					priv->key_voiceassist = 0;
 					priv->switch_status |= SND_JACK_BTN_3;
 					snd_jack_report(priv->jack.jack,
@@ -429,7 +447,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 						snd_jack_report(
 						    priv->jack.jack,
 						    priv->switch_status);
-						pr_debug("Hook (1)!!\n");
+						SOUND_LOG_INFO("Hook (1)!!\n");
 					}
 					schedule_delayed_work(
 					    &priv->hs_button_work,
@@ -437,8 +455,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 				}
 			} else {
 				/*This could be key release,fix me ! */
-				pr_err("tempdata:0x%x,Key data err:\n",
-					 tempdata);
+				SOUND_LOG_DEBUG("tempdata:0x%x,Key data err:\n", tempdata);
 				priv->key_volup = 0;
 				priv->key_voldown = 0;
 				priv->key_hook = 0;
@@ -450,6 +467,89 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+
+#ifdef CONFIG_EXTCON_TYPEC_JACK
+static void wait_and_detect_mic_gnd_state(struct sunxi_card_priv *priv)
+{
+	int i, reg_val;
+	int interval_ms = 10;
+	int total_ms = 180;
+	int count = 5;
+	int threshold = 0x8;
+
+	if (!priv->mic_sel.used)
+		return;
+
+	snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG,
+		    (0x1 << HMICBIASEN), (0x1 << HMICBIASEN));
+	snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG,
+		    (0x1 << MICADCEN), (0x1 << MICADCEN));
+
+	gpio_set_value(priv->mic_sel.pin, 0);
+	for (i = 0; i < count; i++) {
+		reg_val = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+		reg_val = (reg_val >> HMIC_DATA) & 0x1f;
+		if (reg_val >= threshold) {
+			int ms = total_ms - interval_ms * i;
+			msleep(ms);
+			return;
+		}
+		msleep(interval_ms);
+	}
+
+	gpio_set_value(priv->mic_sel.pin, 1);
+	for (i = 0; i < count; i++) {
+		reg_val = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+		reg_val = (reg_val >> HMIC_DATA) & 0x1f;
+		if (reg_val >= threshold) {
+			int ms = total_ms - interval_ms * i;
+			msleep(ms);
+			return;
+		}
+		msleep(interval_ms);
+	}
+
+	return;
+}
+
+static void sunxi_typec_jack_detect_status(struct work_struct *work)
+{
+	struct sunxi_card_priv *priv =
+		container_of(work, struct sunxi_card_priv, typec_jack_detect_work.work);
+
+	mutex_lock(&priv->jack_mlock);
+	if (priv->detect_state == PLUG_OUT) {
+		/* disable typec jack */
+		if (priv->usb_sel.used)
+			gpio_set_value(priv->usb_sel.pin, !priv->usb_sel.level);
+	} else {
+		wait_and_detect_mic_gnd_state(priv);
+
+		/* enable typec jack */
+		if (priv->usb_sel.used)
+			gpio_set_value(priv->usb_sel.pin, priv->usb_sel.level);
+	}
+
+	schedule_delayed_work(&priv->hs_detect_work, msecs_to_jiffies(10));
+
+	mutex_unlock(&priv->jack_mlock);
+}
+
+static int hp_plugin_notifier(struct notifier_block *nb, unsigned long event, void *ptr)
+{
+	struct sunxi_card_priv *priv = container_of(nb, struct sunxi_card_priv, hp_nb);
+
+	SOUND_LOG_DEBUG("event -> %lu\n", event);
+	if (event)
+		priv->detect_state = PLUG_IN;
+	else
+		priv->detect_state = PLUG_OUT;
+
+	schedule_delayed_work(&priv->typec_jack_detect_work, msecs_to_jiffies(10));
+
+	return NOTIFY_DONE;
+}
+#endif
 
 static const struct snd_kcontrol_new sunxi_card_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Headphone"),
@@ -548,7 +648,7 @@ static int sunxi_card_init(struct snd_soc_pcm_runtime *rtd)
 				   SND_JACK_BTN_2 | SND_JACK_BTN_3,
 			       &priv->jack, NULL, 0);
 	if (ret) {
-		pr_err("jack creation failed\n");
+		SOUND_LOG_ERR("jack creation failed\n");
 		return ret;
 	}
 
@@ -566,7 +666,6 @@ static int sunxi_card_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_sync(dapm);
 
-	pr_warn("[%s] card init finished.\n", __func__);
 	return 0;
 }
 
@@ -575,7 +674,6 @@ static int sunxi_card_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_card *card = rtd->card;
 	unsigned int freq;
 	int ret;
 	int stream_flag;
@@ -597,20 +695,20 @@ static int sunxi_card_hw_params(struct snd_pcm_substream *substream,
 		freq = 22579200;
 		break;
 	default:
-		dev_err(card->dev, "invalid rate setting\n");
+		SOUND_LOG_ERR("invalid rate setting\n");
 		return -EINVAL;
 	}
 
 	/* the substream type: 0->playback, 1->capture */
 	stream_flag = substream->stream;
-	pr_debug("sndcodec: stream_flag: %d\n", stream_flag);
+	SOUND_LOG_DEBUG("stream_flag: %d\n", stream_flag);
 
 	/* To surpport playback and capture func in different freq point */
 	if (freq == 22579200) {
 		if (stream_flag == 0) {
 			ret = snd_soc_dai_set_sysclk(codec_dai, 0, freq, 0);
 			if (ret < 0) {
-				dev_err(card->dev, "sndcodec:set codec dai sysclk faided, freq:%d\n", freq);
+				SOUND_LOG_ERR("set codec dai sysclk faided, freq:%d\n", freq);
 				return ret;
 			}
 		}
@@ -620,7 +718,7 @@ static int sunxi_card_hw_params(struct snd_pcm_substream *substream,
 		if (stream_flag == 1) {
 			ret = snd_soc_dai_set_sysclk(codec_dai, 1, freq, 0);
 			if (ret < 0) {
-				dev_err(card->dev, "sndcodec:set codec dai sysclk faided, freq:%d\n", freq);
+				SOUND_LOG_ERR("set codec dai sysclk faided, freq:%d\n", freq);
 				return ret;
 			}
 		}
@@ -630,7 +728,7 @@ static int sunxi_card_hw_params(struct snd_pcm_substream *substream,
 		if (stream_flag == 0) {
 			ret = snd_soc_dai_set_sysclk(codec_dai, 2, freq, 0);
 			if (ret < 0) {
-				dev_err(card->dev, "sndcodec:set codec dai sysclk faided, freq:%d\n", freq);
+				SOUND_LOG_ERR("set codec dai sysclk faided, freq:%d\n", freq);
 				return ret;
 			}
 		}
@@ -640,7 +738,7 @@ static int sunxi_card_hw_params(struct snd_pcm_substream *substream,
 			if (stream_flag == 1) {
 			ret = snd_soc_dai_set_sysclk(codec_dai, 3, freq, 0);
 			if (ret < 0) {
-				dev_err(card->dev, "sndcodec:set codec dai sysclk faided, freq:%d\n", freq);
+				SOUND_LOG_ERR("set codec dai sysclk faided, freq:%d\n", freq);
 				return ret;
 			}
 		}
@@ -684,7 +782,7 @@ static int sunxi_card_suspend(struct snd_soc_card *card)
 			    (0x1 << JACK_OUT_IRQ_EN), (0x0 << JACK_OUT_IRQ_EN));
 	snd_soc_component_update_bits(priv->component, SUNXI_MICBIAS_REG, (0x1 << JACKDETEN),
 			    (0x0 << JACKDETEN));
-	pr_debug("[codec-machine]  suspend.\n");
+	SOUND_LOG_DEBUG("suspend\n");
 
 	return 0;
 }
@@ -697,7 +795,7 @@ static int sunxi_card_resume(struct snd_soc_card *card)
 	priv->jack_irq_times = RESUME_IRQ;
 	priv->detect_state = PLUG_OUT;/*todo..?*/
 	sunxi_hs_reg_init(priv);
-	pr_debug("[codec-machine]  resume.\n");
+	SOUND_LOG_DEBUG("resume\n");
 
 	return 0;
 }
@@ -709,7 +807,6 @@ static struct snd_soc_card snd_soc_sunxi_card = {
 	.num_links		= ARRAY_SIZE(sunxi_card_dai_link),
 	.suspend_post		= sunxi_card_suspend,
 	.resume_post		= sunxi_card_resume,
-
 };
 
 static int sunxi_card_dev_probe(struct platform_device *pdev)
@@ -722,7 +819,7 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	struct snd_soc_dapm_context *dapm = &card->dapm;
 
 	if (!np) {
-		dev_err(&pdev->dev, "can not get dt node for this device.\n");
+		SOUND_LOG_ERR("can not get dt node for this device\n");
 		return -EINVAL;
 	}
 
@@ -731,7 +828,7 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	sunxi_card_dai_link[0].cpus->of_node = of_parse_phandle(np,
 					"sunxi,cpudai-controller", 0);
 	if (!sunxi_card_dai_link[0].cpus->of_node) {
-		dev_err(&pdev->dev, "Property 'sunxi,cpudai-controller' missing or invalid\n");
+		SOUND_LOG_ERR("Property 'sunxi,cpudai-controller' missing or invalid\n");
 		ret = -EINVAL;
 		goto err_devm_kfree;
 	} else {
@@ -743,7 +840,7 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	sunxi_card_dai_link[0].codecs->of_node = of_parse_phandle(np,
 						"sunxi,audio-codec", 0);
 	if (!sunxi_card_dai_link[0].codecs->of_node) {
-		dev_err(&pdev->dev, "Property 'sunxi,audio-codec' missing or invalid\n");
+		SOUND_LOG_ERR("Property 'sunxi,audio-codec' missing or invalid\n");
 		ret = -EINVAL;
 		goto err_devm_kfree;
 	}
@@ -754,7 +851,7 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(&pdev->dev,
 		sizeof(struct sunxi_card_priv), GFP_KERNEL);
 	if (!priv) {
-		dev_err(&pdev->dev, "devm_kzalloc failed %d\n", ret);
+		SOUND_LOG_ERR("devm_kzalloc failed %d\n", ret);
 		return -ENOMEM;
 	}
 	priv->card = card;
@@ -763,14 +860,14 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
+		SOUND_LOG_ERR("snd_soc_register_card failed %d\n", ret);
 		goto err_devm_kfree;
 	}
 
 	ret = snd_soc_add_card_controls(card, sunxi_card_controls,
 					ARRAY_SIZE(sunxi_card_controls));
 	if (ret)
-		pr_err("failed to register codec controls!\n");
+		SOUND_LOG_ERR("failed to register codec controls!\n");
 
 	snd_soc_dapm_new_controls(dapm, sunxi_card_dapm_widgets,
 				ARRAY_SIZE(sunxi_card_dapm_widgets));
@@ -779,15 +876,15 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(np, "hp_detect_case", &temp_val);
 	if (ret < 0) {
-		pr_err("[audio] hp_detect_case  missing or invalid.\n");
+		SOUND_LOG_WARN("hp_detect_case  missing or invalid.\n");
 	} else {
 		priv->hp_detect_case = temp_val;
-		pr_err("[audio] hp_detect_case: %d\n", priv->hp_detect_case);
+		SOUND_LOG_INFO("hp_detect_case: %d\n", priv->hp_detect_case);
 	}
 
 	priv->jackirq = platform_get_irq(pdev, 0);
 	if (priv->jackirq < 0) {
-		pr_err("[audio] irq failed\n");
+		SOUND_LOG_ERR("irq failed\n");
 		ret = -ENODEV;
 	}
 
@@ -796,7 +893,13 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	/*
 	 * initial the parameters for judge switch state
 	 */
-	priv->HEADSET_DATA = 0x10;
+	ret = of_property_read_u32(np, "jack_threshold", &temp_val);
+	if (ret < 0) {
+		SOUND_LOG_WARN("headset_threshold get failed, use default vol -> 0x10\n");
+		priv->HEADSET_DATA = 0x10;
+	} else {
+		priv->HEADSET_DATA = temp_val;
+	}
 	priv->detect_state = PLUG_OUT;
 	INIT_DELAYED_WORK(&priv->hs_detect_work, sunxi_check_hs_detect_status);
 	INIT_DELAYED_WORK(&priv->hs_button_work, sunxi_check_hs_button_status);
@@ -804,18 +907,124 @@ static int sunxi_card_dev_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&priv->hs_checkplug_work, sunxi_check_hs_plug);
 	mutex_init(&priv->jack_mlock);
 
-	ret = request_irq(priv->jackirq, jack_interrupt,
-		   0, "audio jack irq", priv);
+	ret = request_irq(priv->jackirq, jack_interrupt, 0, "audio jack irq", priv);
+
+#ifdef CONFIG_EXTCON_TYPEC_JACK
+	ret = of_property_read_u32(np, "typec_analog_jack_enable", &temp_val);
+	if (ret < 0) {
+		SOUND_LOG_WARN("typec_analog_jack_enable get failed, default disable\n");
+		priv->typec_analog_jack_enable = 0;
+	} else {
+		priv->typec_analog_jack_enable = temp_val;
+	}
+
+	if (priv->typec_analog_jack_enable) {
+
+	ret = of_property_read_u32(np, "usb_sel_level", &temp_val);
+	if (ret < 0) {
+		SOUND_LOG_WARN("usb_sel_level get failed, use default vol -> H\n");
+		priv->usb_sel.level = 0;
+	} else {
+		priv->usb_sel.level = temp_val;
+	}
+	ret = of_property_read_u32(np, "usb_noe_level", &temp_val);
+	if (ret < 0) {
+		SOUND_LOG_WARN("usb_noe_level get failed, use default vol -> L\n");
+		priv->usb_noe.level = 0;
+	} else {
+		priv->usb_noe.level = temp_val;
+	}
+
+	ret = of_get_named_gpio(np, "usb_sel_gpio", 0);
+	priv->usb_sel.used = 0;
+	if (ret >= 0) {
+		priv->usb_sel.pin = ret;
+		if (!gpio_is_valid(priv->usb_sel.pin)) {
+			SOUND_LOG_ERR("usb_sel_gpio is invalid\n");
+		} else {
+			ret = devm_gpio_request(&pdev->dev,
+					priv->usb_sel.pin, "USB_SEL");
+			if (ret) {
+				SOUND_LOG_ERR("failed to request usb_sel_gpio\n");
+			} else {
+				priv->usb_sel.used = 1;
+				gpio_direction_output(priv->usb_sel.pin, 1);
+			}
+		}
+	}
+	ret = of_get_named_gpio(np, "usb_noe_gpio", 0);
+	priv->usb_noe.used = 0;
+	if (ret >= 0) {
+		priv->usb_noe.pin = ret;
+		if (!gpio_is_valid(priv->usb_noe.pin)) {
+			SOUND_LOG_ERR("usb_noe_gpio is invalid\n");
+		} else {
+			ret = devm_gpio_request(&pdev->dev,
+					priv->usb_noe.pin, "USB_NOE");
+			if (ret) {
+				SOUND_LOG_ERR("failed to request usb_noe_gpio\n");
+			} else {
+				priv->usb_noe.used = 1;
+				gpio_direction_output(priv->usb_noe.pin, 1);
+				/* default connect */
+				gpio_set_value(priv->usb_noe.pin, priv->usb_noe.level);
+			}
+		}
+	}
+	ret = of_get_named_gpio(np, "mic_sel_gpio", 0);
+	priv->mic_sel.used = 0;
+	if (ret >= 0) {
+		priv->mic_sel.pin = ret;
+		if (!gpio_is_valid(priv->mic_sel.pin)) {
+			SOUND_LOG_ERR("mic_sel_gpio is invalid\n");
+		} else {
+			ret = devm_gpio_request(&pdev->dev,
+					priv->mic_sel.pin, "MIC_SEL");
+			if (ret) {
+				SOUND_LOG_ERR("failed to request mic_sel_gpio\n");
+			} else {
+				priv->mic_sel.used = 1;
+				gpio_direction_output(priv->mic_sel.pin, 1);
+			}
+		}
+	}
+
+	if (of_property_read_bool(np, "extcon")) {
+		priv->extdev = extcon_get_edev_by_phandle(&pdev->dev, 0);
+		if (IS_ERR(priv->extdev)) {
+			ret = -ENODEV;
+			goto err_devm_kfree;
+		}
+		priv->hp_nb.notifier_call = hp_plugin_notifier;
+		ret = extcon_register_notifier(priv->extdev,
+				EXTCON_JACK_HEADPHONE, &priv->hp_nb);
+		if (ret < 0) {
+			SOUND_LOG_ERR("register hp notifier failed\n");
+			goto err_devm_kfree;
+		}
+		INIT_DELAYED_WORK(&priv->typec_jack_detect_work,
+				  sunxi_typec_jack_detect_status);
+		priv->detect_state = PLUG_OUT;
+		ret = extcon_get_state(priv->extdev, EXTCON_JACK_HEADPHONE);
+		if (ret > 0) {
+			priv->detect_state = PLUG_IN;
+		}
+
+		schedule_delayed_work(&priv->typec_jack_detect_work,
+				      msecs_to_jiffies(10));
+	}
+	}
+#endif
 
 	sunxi_hs_reg_init(priv);
-	pr_debug("[%s] 0x310:0x%X,0x314:0x%X,0x318:0x%X,0x1C:0x%X,0x1D:0x%X\n",
-			__func__, snd_soc_component_read32(priv->component, 0x310),
+	SOUND_LOG_DEBUG("0x310:0x%X,0x314:0x%X,0x318:0x%X,0x1C:0x%X,0x1D:0x%X\n",
+			snd_soc_component_read32(priv->component, 0x310),
 			snd_soc_component_read32(priv->component, 0x314),
 			snd_soc_component_read32(priv->component, 0x318),
 			snd_soc_component_read32(priv->component, 0x1C),
 			snd_soc_component_read32(priv->component, 0x1D));
 
-	dev_warn(&pdev->dev, "[%s] register card finished.\n", __func__);
+	SOUND_LOG_INFO("register card finished\n");
 
 	return 0;
 
@@ -828,6 +1037,17 @@ static int __exit sunxi_card_dev_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct sunxi_card_priv *priv = snd_soc_card_get_drvdata(card);
+
+#ifdef CONFIG_EXTCON_TYPEC_JACK
+	if (priv->typec_analog_jack_enable) {
+
+	extcon_unregister_notifier(priv->extdev, EXTCON_JACK_HEADPHONE, &priv->hp_nb);
+	/* disable typec jack */
+	if (priv->usb_sel.used)
+		gpio_set_value(priv->usb_sel.pin, !priv->usb_sel.level);
+
+	}
+#endif
 
 	snd_soc_component_update_bits(priv->component, SUNXI_HMIC_CTRL,
 			    (0x1 << JACK_IN_IRQ_EN), (0x0 << JACK_IN_IRQ_EN));
@@ -842,7 +1062,7 @@ static int __exit sunxi_card_dev_remove(struct platform_device *pdev)
 	snd_soc_unregister_card(card);
 	devm_kfree(&pdev->dev, priv);
 
-	dev_warn(&pdev->dev, "[%s] unregister card finished.\n", __func__);
+	SOUND_LOG_INFO("unregister card finished\n");
 
 	return 0;
 }
