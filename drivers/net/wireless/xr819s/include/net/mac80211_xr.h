@@ -38,7 +38,7 @@
 /**
  * DOC: Calling mac80211 from interrupts
  *
- * Only mac80211_tx_status_irqsafe() and mac80211_rx_irqsafe() can be
+ * Only xr_mac80211_tx_status_irqsafe() and xr_mac80211_rx_irqsafe() can be
  * called in hardware interrupt context. The low-level driver must not call any
  * other functions in hardware interrupt context. If there is a need for such
  * call, the low-level driver should first ACK the interrupt and perform the
@@ -760,7 +760,7 @@ ieee80211_tx_info_clear_status(struct ieee80211_tx_info *info)
 
 
 /**
- * enum mac80211_rx_flags - receive flags
+ * enum xr_mac80211_rx_flags - receive flags
  *
  * These flags are used with the @flag member of &struct ieee80211_rx_status.
  * @RX_FLAG_MMIC_ERROR: Michael MIC error was reported on this frame.
@@ -784,7 +784,7 @@ ieee80211_tx_info_clear_status(struct ieee80211_tx_info *info)
  * @RX_FLAG_40MHZ: HT40 (40 MHz) was used
  * @RX_FLAG_SHORT_GI: Short guard interval was used
  */
-enum mac80211_rx_flags {
+enum xr_mac80211_rx_flags {
 	RX_FLAG_MMIC_ERROR	= 1<<0,
 	RX_FLAG_DECRYPTED	= 1<<1,
 	RX_FLAG_MMIC_STRIPPED	= 1<<3,
@@ -1369,7 +1369,7 @@ enum ieee80211_hw_flags {
  *
  * @rate_control_algorithm: rate control algorithm for this hardware.
  *	If unset (NULL), the default algorithm will be used. Must be
- *	set before calling mac80211_register_hw().
+ *	set before calling xr_mac80211_register_hw().
  *
  * @vif_data_size: size (in bytes) of the drv_priv data area
  *	within &struct ieee80211_vif.
@@ -1426,7 +1426,7 @@ struct ieee80211_hw {
 };
 
 /**
- * wiphy_to_ieee80211_hw - return a mac80211 driver hw struct from a wiphy
+ * xr_wiphy_to_ieee80211_hw - return a mac80211 driver hw struct from a wiphy
  *
  * @wiphy: the &struct wiphy which we want to query
  *
@@ -1436,7 +1436,7 @@ struct ieee80211_hw {
  * not use wiphy_priv() to try to get their private driver structure as this
  * is already used internally by mac80211.
  */
-struct ieee80211_hw *wiphy_to_ieee80211_hw(struct wiphy *wiphy);
+struct ieee80211_hw *xr_wiphy_to_ieee80211_hw(struct wiphy *wiphy);
 
 /**
  * SET_IEEE80211_DEV - set device for 802.11 hardware
@@ -1618,11 +1618,11 @@ ieee80211_get_alt_retry_rate(const struct ieee80211_hw *hw,
  * hardware capability. The driver needs to enable beacon filter support
  * whenever power save is enabled, that is %IEEE80211_CONF_PS is set. When
  * power save is enabled, the stack will not check for beacon loss and the
- * driver needs to notify about loss of beacons with mac80211_beacon_loss().
+ * driver needs to notify about loss of beacons with xr_mac80211_beacon_loss().
  *
  * The time (or number of beacons missed) until the firmware notifies the
  * driver of a beacon loss event (which in turn causes the driver to call
- * mac80211_beacon_loss()) should be configurable and will be controlled
+ * xr_mac80211_beacon_loss()) should be configurable and will be controlled
  * by mac80211 and the roaming algorithm in the future.
  *
  * Since there may be constantly changing information elements that nothing
@@ -1745,7 +1745,7 @@ ieee80211_get_alt_retry_rate(const struct ieee80211_hw *hw,
  * driver implementation: %IEEE80211_HW_AP_LINK_PS. If this flag is set,
  * mac80211 expects the driver to handle most of the state machine for
  * powersaving clients and will ignore the PM bit in incoming frames.
- * Drivers then use mac80211_sta_ps_transition() to inform mac80211 of
+ * Drivers then use xr_mac80211_sta_ps_transition() to inform mac80211 of
  * stations' powersave transitions. In this mode, mac80211 also doesn't
  * handle PS-Poll/uAPSD.
  *
@@ -1782,13 +1782,13 @@ ieee80211_get_alt_retry_rate(const struct ieee80211_hw *hw,
  * processing of the EOSP. The cause is that allowing frames to be
  * transmitted to a certain station is out-of-band communication to
  * the device. To allow this problem to be solved, the driver can
- * call mac80211_sta_block_awake() if frames are buffered when it
+ * call xr_mac80211_sta_block_awake() if frames are buffered when it
  * is notified that the station went to sleep. When all these frames
  * have been filtered (see above), it must call the function again
  * to indicate that the station is no longer blocked.
  *
  * If the driver buffers frames in the driver for aggregation in any
- * way, it must use the mac80211_sta_set_buffered() call when it is
+ * way, it must use the xr_mac80211_sta_set_buffered() call when it is
  * notified of the station going to sleep to inform mac80211 of any
  * TIDs that have frames buffered. Note that when a station wakes up
  * this information is reset (hence the requirement to call it when
@@ -1807,14 +1807,14 @@ ieee80211_get_alt_retry_rate(const struct ieee80211_hw *hw,
  * filter those response frames except in the case of frames that
  * are buffered in the driver -- those must remain buffered to avoid
  * reordering. Because it is possible that no frames are released
- * in this case, the driver must call mac80211_sta_eosp_irqsafe()
+ * in this case, the driver must call xr_mac80211_sta_eosp_irqsafe()
  * to indicate to mac80211 that the service period ended anyway.
  *
  * Finally, if frames from multiple TIDs are released from mac80211
  * but the driver might reorder them, it must clear & set the flags
  * appropriately (only the last frame may have %IEEE80211_TX_STATUS_EOSP)
  * and also take care of the EOSP and MORE_DATA bits in the frame.
- * The driver may also use mac80211_sta_eosp_irqsafe() in this case.
+ * The driver may also use xr_mac80211_sta_eosp_irqsafe() in this case.
  */
 
 /**
@@ -1839,7 +1839,7 @@ ieee80211_get_alt_retry_rate(const struct ieee80211_hw *hw,
  * if necessary will queue the frame on the right software queue that mirrors
  * the hardware queue.
  * Additionally, the driver has to then use these HW queue IDs for the queue
- * management functions (mac80211_stop_queue() et al.)
+ * management functions (xr_mac80211_stop_queue() et al.)
  *
  * The driver is free to set up the queue mappings as needed, multiple virtual
  * interfaces may map to the same hardware queues if needed. The setup has to
@@ -1930,7 +1930,7 @@ enum ieee80211_filter_flags {
  *
  * Note that drivers MUST be able to deal with a TX aggregation
  * session being stopped even before they OK'ed starting it by
- * calling mac80211_start_tx_ba_cb_irqsafe, because the peer
+ * calling xr_mac80211_start_tx_ba_cb_irqsafe, because the peer
  * might receive the addBA frame and send a delBA right away!
  *
  * @IEEE80211_AMPDU_RX_START: start Rx aggregation
@@ -2108,7 +2108,7 @@ enum ieee80211_frame_release_type {
  *	host is suspended, it can assign this callback to retrieve the data
  *	necessary to do GTK rekeying, this is the KEK, KCK and replay counter.
  *	After rekeying was done it should (for example during resume) notify
- *	userspace of the new replay counter using mac80211_gtk_rekey_notify().
+ *	userspace of the new replay counter using xr_mac80211_gtk_rekey_notify().
  *
  * @hw_scan: Ask the hardware to service the scan request, no need to start
  *	the scan state machine in stack. The scan must honour the channel
@@ -2119,7 +2119,7 @@ enum ieee80211_frame_release_type {
  *	entire IEs after the SSID, so that drivers need not look at these
  *	at all but just send them after the SSID -- mac80211 includes the
  *	(extended) supported rates and HT information (where applicable).
- *	When the scan finishes, mac80211_scan_completed() must be called;
+ *	When the scan finishes, xr_mac80211_scan_completed() must be called;
  *	note that it also must be called when the scan cannot finish due to
  *	any error unless this callback returned a negative error code.
  *	The callback can sleep.
@@ -2127,14 +2127,14 @@ enum ieee80211_frame_release_type {
  * @cancel_hw_scan: Ask the low-level tp cancel the active hw scan.
  *	The driver should ask the hardware to cancel the scan (if possible),
  *	but the scan will be completed only after the driver will call
- *	mac80211_scan_completed().
+ *	xr_mac80211_scan_completed().
  *	This callback is needed for wowlan, to prevent enqueueing a new
  *	scan_work after the low-level driver was already suspended.
  *	The callback can sleep.
  *
  * @sched_scan_start: Ask the hardware to start scanning repeatedly at
  *	specific intervals.  The driver must call the
- *	mac80211_sched_scan_results() function whenever it finds results.
+ *	xr_mac80211_sched_scan_results() function whenever it finds results.
  *	This process will continue until sched_scan_stop is called.
  *
  * @sched_scan_stop: Tell the hardware to stop an ongoing scheduled scan.
@@ -2248,7 +2248,7 @@ enum ieee80211_frame_release_type {
  *
  * @channel_switch: Drivers that need (or want) to offload the channel
  *	switch operation for CSAs received from the AP may implement this
- *	callback. They must then call mac80211_chswitch_done() to indicate
+ *	callback. They must then call xr_mac80211_chswitch_done() to indicate
  *	completion of the channel switch.
  *
  * @napi_poll: Poll Rx queue for incoming data frames.
@@ -2261,12 +2261,12 @@ enum ieee80211_frame_release_type {
  * @get_antenna: Get current antenna configuration from device (tx_ant, rx_ant).
  *
  * @remain_on_channel: Starts an off-channel period on the given channel, must
- *	call back to mac80211_ready_on_channel() when on that channel. Note
+ *	call back to xr_mac80211_ready_on_channel() when on that channel. Note
  *	that normal channel traffic is not stopped as this is intended for hw
  *	offload. Frames to transmit on the off-channel channel are transmitted
  *	normally except for the %IEEE80211_TX_CTL_TX_OFFCHAN flag. When the
  *	duration (which will always be non-zero) expires, the driver must call
- *	mac80211_remain_on_channel_expired(). This callback may sleep.
+ *	xr_mac80211_remain_on_channel_expired(). This callback may sleep.
  * @cancel_remain_on_channel: Requests that an ongoing off-channel period is
  *	aborted before it expires. This callback may sleep.
  *
@@ -2306,7 +2306,7 @@ enum ieee80211_frame_release_type {
  *	setting the EOSP flag in the QoS header of the frames. Also, when the
  *	service period ends, the driver must set %IEEE80211_TX_STATUS_EOSP
  *	on the last frame in the SP. Alternatively, it may call the function
- *	mac80211_sta_eosp_irqsafe() to inform mac80211 of the end of the SP.
+ *	xr_mac80211_sta_eosp_irqsafe() to inform mac80211 of the end of the SP.
  *	This callback must be atomic.
  * @allow_buffered_frames: Prepare device to allow the given number of frames
  *	to go out to the given station. The frames will be sent by mac80211
@@ -2317,7 +2317,7 @@ enum ieee80211_frame_release_type {
  *	them between the TIDs, it must set the %IEEE80211_TX_STATUS_EOSP flag
  *	on the last frame and clear it on all others and also handle the EOSP
  *	bit in the QoS header correctly. Alternatively, it can also call the
- *	mac80211_sta_eosp_irqsafe() function.
+ *	xr_mac80211_sta_eosp_irqsafe() function.
  *	The @tids parameter is a bitmap and tells the driver which TIDs the
  *	frames will be on; it will at most have two bits set.
  *	This callback must be atomic.
@@ -2470,7 +2470,7 @@ struct ieee80211_ops {
 };
 
 /**
- * mac80211_alloc_hw -  Allocate a new hardware device
+ * xr_mac80211_alloc_hw -  Allocate a new hardware device
  *
  * This must be called once for each hardware device. The returned pointer
  * must be used to refer to this device when calling other functions.
@@ -2481,19 +2481,19 @@ struct ieee80211_ops {
  * @priv_data_len: length of private data
  * @ops: callbacks for this device
  */
-struct ieee80211_hw *mac80211_alloc_hw(size_t priv_data_len,
+struct ieee80211_hw *xr_mac80211_alloc_hw(size_t priv_data_len,
 					const struct ieee80211_ops *ops);
 
 /**
- * mac80211_register_hw - Register hardware device
+ * xr_mac80211_register_hw - Register hardware device
  *
  * You must call this function before any other functions in
  * mac80211. Note that before a hardware can be registered, you
  * need to fill the contained wiphy's information.
  *
- * @hw: the device to register as returned by mac80211_alloc_hw()
+ * @hw: the device to register as returned by xr_mac80211_alloc_hw()
  */
-int mac80211_register_hw(struct ieee80211_hw *hw);
+int xr_mac80211_register_hw(struct ieee80211_hw *hw);
 
 /**
  * struct ieee80211_tpt_blink - throughput blink description
@@ -2614,7 +2614,7 @@ static inline char *ieee80211_get_radio_led_name(struct ieee80211_hw *hw)
  *
  * This function returns %NULL (in case of error, or if no LED
  * triggers are configured) or the name of the new trigger.
- * This function must be called before mac80211_register_hw().
+ * This function must be called before xr_mac80211_register_hw().
  */
 static inline char *
 ieee80211_create_tpt_led_trigger(struct ieee80211_hw *hw, unsigned int flags,
@@ -2630,28 +2630,28 @@ ieee80211_create_tpt_led_trigger(struct ieee80211_hw *hw, unsigned int flags,
 }
 
 /**
- * mac80211_unregister_hw - Unregister a hardware device
+ * xr_mac80211_unregister_hw - Unregister a hardware device
  *
  * This function instructs mac80211 to free allocated resources
  * and unregister netdevices from the networking subsystem.
  *
  * @hw: the hardware to unregister
  */
-void mac80211_unregister_hw(struct ieee80211_hw *hw);
+void xr_mac80211_unregister_hw(struct ieee80211_hw *hw);
 
 /**
- * mac80211_free_hw - free hardware descriptor
+ * xr_mac80211_free_hw - free hardware descriptor
  *
  * This function frees everything that was allocated, including the
- * private data for the driver. You must call mac80211_unregister_hw()
+ * private data for the driver. You must call xr_mac80211_unregister_hw()
  * before calling this function.
  *
  * @hw: the hardware to free
  */
-void mac80211_free_hw(struct ieee80211_hw *hw);
+void xr_mac80211_free_hw(struct ieee80211_hw *hw);
 
 /**
- * mac80211_restart_hw - restart hardware completely
+ * xr_mac80211_restart_hw - restart hardware completely
  *
  * Call this function when the hardware was restarted for some reason
  * (hardware error, ...) and the driver is unable to restore its state
@@ -2662,9 +2662,9 @@ void mac80211_free_hw(struct ieee80211_hw *hw);
  *
  * @hw: the hardware to restart
  */
-void mac80211_restart_hw(struct ieee80211_hw *hw);
+void xr_mac80211_restart_hw(struct ieee80211_hw *hw);
 
-int mac80211_ifdev_move(struct ieee80211_hw *hw,
+int xr_mac80211_ifdev_move(struct ieee80211_hw *hw,
 		struct device *new_parent, int dpm_order);
 
 /**
@@ -2678,7 +2678,7 @@ int mac80211_ifdev_move(struct ieee80211_hw *hw,
  *
  * This function may not be called in IRQ context. Calls to this function
  * for a single hardware must be synchronized against each other. Calls to
- * this function, ieee80211_rx_ni() and mac80211_rx_irqsafe() may not be
+ * this function, ieee80211_rx_ni() and xr_mac80211_rx_irqsafe() may not be
  * mixed for a single hardware.
  *
  * In process context use instead ieee80211_rx_ni().
@@ -2686,10 +2686,10 @@ int mac80211_ifdev_move(struct ieee80211_hw *hw,
  * @hw: the hardware this frame came in on
  * @skb: the buffer to receive, owned by mac80211 after this call
  */
-void mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb);
+void xr_mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb);
 
 /**
- * mac80211_rx_irqsafe - receive frame
+ * xr_mac80211_rx_irqsafe - receive frame
  *
  * Like ieee80211_rx() but can be called in IRQ context
  * (internally defers to a tasklet.)
@@ -2700,7 +2700,7 @@ void mac80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb);
  * @hw: the hardware this frame came in on
  * @skb: the buffer to receive, owned by mac80211 after this call
  */
-void mac80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb);
+void xr_mac80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb);
 
 /**
  * ieee80211_rx_ni - receive frame (in process context)
@@ -2708,7 +2708,7 @@ void mac80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb);
  * Like ieee80211_rx() but can be called in process context
  * (internally disables bottom halves).
  *
- * Calls to this function, ieee80211_rx() and mac80211_rx_irqsafe() may
+ * Calls to this function, ieee80211_rx() and xr_mac80211_rx_irqsafe() may
  * not be mixed for a single hardware.
  *
  * @hw: the hardware this frame came in on
@@ -2718,12 +2718,12 @@ static inline void ieee80211_rx_ni(struct ieee80211_hw *hw,
 				   struct sk_buff *skb)
 {
 	local_bh_disable();
-	mac80211_rx(hw, skb);
+	xr_mac80211_rx(hw, skb);
 	local_bh_enable();
 }
 
 /**
- * mac80211_sta_ps_transition - PS transition for connected sta
+ * xr_mac80211_sta_ps_transition - PS transition for connected sta
  *
  * When operating in AP mode with the %IEEE80211_HW_AP_LINK_PS
  * flag set, use this function to inform mac80211 about a connected station
@@ -2739,26 +2739,26 @@ static inline void ieee80211_rx_ni(struct ieee80211_hw *hw,
  * @sta: currently connected sta
  * @start: start or stop PS
  */
-int mac80211_sta_ps_transition(struct ieee80211_sta *sta, bool start);
+int xr_mac80211_sta_ps_transition(struct ieee80211_sta *sta, bool start);
 
 /**
- * mac80211_sta_ps_transition_ni - PS transition for connected sta
+ * xr_mac80211_sta_ps_transition_ni - PS transition for connected sta
  *                                  (in process context)
  *
- * Like mac80211_sta_ps_transition() but can be called in process context
+ * Like xr_mac80211_sta_ps_transition() but can be called in process context
  * (internally disables bottom halves). Concurrent call restriction still
  * applies.
  *
  * @sta: currently connected sta
  * @start: start or stop PS
  */
-static inline int mac80211_sta_ps_transition_ni(struct ieee80211_sta *sta,
+static inline int xr_mac80211_sta_ps_transition_ni(struct ieee80211_sta *sta,
 						  bool start)
 {
 	int ret;
 
 	local_bh_disable();
-	ret = mac80211_sta_ps_transition(sta, start);
+	ret = xr_mac80211_sta_ps_transition(sta, start);
 	local_bh_enable();
 
 	return ret;
@@ -2771,7 +2771,7 @@ static inline int mac80211_sta_ps_transition_ni(struct ieee80211_sta *sta,
 #define IEEE80211_TX_STATUS_HEADROOM	14
 
 /**
- * mac80211_sta_set_buffered - inform mac80211 about driver-buffered frames
+ * xr_mac80211_sta_set_buffered - inform mac80211 about driver-buffered frames
  * @sta: &struct ieee80211_sta pointer for the sleeping station
  * @tid: the TID that has buffered frames
  * @buffered: indicates whether or not frames are buffered for this TID
@@ -2798,11 +2798,11 @@ static inline int mac80211_sta_ps_transition_ni(struct ieee80211_sta *sta,
  * TID to the AC as required instead of keeping track in all drivers that
  * use this API.
  */
-void mac80211_sta_set_buffered(struct ieee80211_sta *sta,
+void xr_mac80211_sta_set_buffered(struct ieee80211_sta *sta,
 				u8 tid, bool buffered);
 
 /**
- * mac80211_tx_status - transmit status callback
+ * xr_mac80211_tx_status - transmit status callback
  *
  * Call this function for all transmitted frames after they have been
  * transmitted. It is permissible to not call this function for
@@ -2810,52 +2810,52 @@ void mac80211_sta_set_buffered(struct ieee80211_sta *sta,
  *
  * This function may not be called in IRQ context. Calls to this function
  * for a single hardware must be synchronized against each other. Calls
- * to this function, mac80211_tx_status_ni() and mac80211_tx_status_irqsafe()
+ * to this function, xr_mac80211_tx_status_ni() and xr_mac80211_tx_status_irqsafe()
  * may not be mixed for a single hardware.
  *
  * @hw: the hardware the frame was transmitted by
  * @skb: the frame that was transmitted, owned by mac80211 after this call
  */
-void mac80211_tx_status(struct ieee80211_hw *hw,
+void xr_mac80211_tx_status(struct ieee80211_hw *hw,
 			 struct sk_buff *skb);
 
 /**
- * mac80211_tx_status_ni - transmit status callback (in process context)
+ * xr_mac80211_tx_status_ni - transmit status callback (in process context)
  *
- * Like mac80211_tx_status() but can be called in process context.
+ * Like xr_mac80211_tx_status() but can be called in process context.
  *
- * Calls to this function, mac80211_tx_status() and
- * mac80211_tx_status_irqsafe() may not be mixed
+ * Calls to this function, xr_mac80211_tx_status() and
+ * xr_mac80211_tx_status_irqsafe() may not be mixed
  * for a single hardware.
  *
  * @hw: the hardware the frame was transmitted by
  * @skb: the frame that was transmitted, owned by mac80211 after this call
  */
-static inline void mac80211_tx_status_ni(struct ieee80211_hw *hw,
+static inline void xr_mac80211_tx_status_ni(struct ieee80211_hw *hw,
 					  struct sk_buff *skb)
 {
 	local_bh_disable();
-	mac80211_tx_status(hw, skb);
+	xr_mac80211_tx_status(hw, skb);
 	local_bh_enable();
 }
 
 /**
- * mac80211_tx_status_irqsafe - IRQ-safe transmit status callback
+ * xr_mac80211_tx_status_irqsafe - IRQ-safe transmit status callback
  *
- * Like mac80211_tx_status() but can be called in IRQ context
+ * Like xr_mac80211_tx_status() but can be called in IRQ context
  * (internally defers to a tasklet.)
  *
- * Calls to this function, mac80211_tx_status() and
- * mac80211_tx_status_ni() may not be mixed for a single hardware.
+ * Calls to this function, xr_mac80211_tx_status() and
+ * xr_mac80211_tx_status_ni() may not be mixed for a single hardware.
  *
  * @hw: the hardware the frame was transmitted by
  * @skb: the frame that was transmitted, owned by mac80211 after this call
  */
-void mac80211_tx_status_irqsafe(struct ieee80211_hw *hw,
+void xr_mac80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 				 struct sk_buff *skb);
 
 /**
- * mac80211_report_low_ack - report non-responding station
+ * xr_mac80211_report_low_ack - report non-responding station
  *
  * When operating in AP-mode, call this function to report a non-responding
  * connected STA.
@@ -2863,11 +2863,11 @@ void mac80211_tx_status_irqsafe(struct ieee80211_hw *hw,
  * @sta: the non-responding connected sta
  * @num_packets: number of packets sent to @sta without a response
  */
-void mac80211_report_low_ack(struct ieee80211_sta *sta, u32 num_packets);
+void xr_mac80211_report_low_ack(struct ieee80211_sta *sta, u32 num_packets);
 
 /**
- * mac80211_beacon_get_tim - beacon generation function
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_beacon_get_tim - beacon generation function
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @tim_offset: pointer to variable that will receive the TIM IE offset.
  *	Set to 0 if invalid (in non-AP modes).
@@ -2889,36 +2889,36 @@ void mac80211_report_low_ack(struct ieee80211_sta *sta, u32 num_packets);
  *
  * The driver is responsible for freeing the returned skb.
  */
-struct sk_buff *mac80211_beacon_get_tim(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_beacon_get_tim(struct ieee80211_hw *hw,
 					 struct ieee80211_vif *vif,
 					 u16 *tim_offset, u16 *tim_length);
 
 /**
  * ieee80211_beacon_get - beacon generation function
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
- * See mac80211_beacon_get_tim().
+ * See xr_mac80211_beacon_get_tim().
  */
 static inline struct sk_buff *ieee80211_beacon_get(struct ieee80211_hw *hw,
 						   struct ieee80211_vif *vif)
 {
-	return mac80211_beacon_get_tim(hw, vif, NULL, NULL);
+	return xr_mac80211_beacon_get_tim(hw, vif, NULL, NULL);
 }
 
 #ifdef PROBE_RESP_EXTRA_IE
 /**
- * mac80211_proberesp_get - probe response generation function
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_proberesp_get - probe response generation function
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  */
-struct sk_buff *mac80211_proberesp_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_proberesp_get(struct ieee80211_hw *hw,
 						   struct ieee80211_vif *vif);
 #endif
 
 /**
- * mac80211_pspoll_get - retrieve a PS Poll template
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_pspoll_get - retrieve a PS Poll template
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * Creates a PS Poll a template which can, for example, uploaded to
@@ -2928,12 +2928,12 @@ struct sk_buff *mac80211_proberesp_get(struct ieee80211_hw *hw,
  * Note: Caller (or hardware) is responsible for setting the
  * &IEEE80211_FCTL_PM bit.
  */
-struct sk_buff *mac80211_pspoll_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_pspoll_get(struct ieee80211_hw *hw,
 				     struct ieee80211_vif *vif);
 
 /**
- * mac80211_nullfunc_get - retrieve a nullfunc template
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_nullfunc_get - retrieve a nullfunc template
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * Creates a Nullfunc template which can, for example, uploaded to
@@ -2943,12 +2943,12 @@ struct sk_buff *mac80211_pspoll_get(struct ieee80211_hw *hw,
  * Note: Caller (or hardware) is responsible for setting the
  * &IEEE80211_FCTL_PM bit as well as Duration and Sequence Control fields.
  */
-struct sk_buff *mac80211_nullfunc_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_nullfunc_get(struct ieee80211_hw *hw,
 				       struct ieee80211_vif *vif);
 
 /**
- * ieee80211_qosnullfunc_get - retrieve a qos nullfunc template
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_ieee80211_qosnullfunc_get - retrieve a qos nullfunc template
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * Creates a QOS Nullfunc template which can, for example, be uploaded to
@@ -2960,11 +2960,11 @@ struct sk_buff *mac80211_nullfunc_get(struct ieee80211_hw *hw,
  * The qos ctl field is set to zero by the function. Caller must
  * fill up proper value.
  */
-struct sk_buff *ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
 					  struct ieee80211_vif *vif);
 /**
- * mac80211_probereq_get - retrieve a Probe Request template
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_probereq_get - retrieve a Probe Request template
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @ssid: SSID buffer
  * @ssid_len: length of SSID
@@ -2974,14 +2974,14 @@ struct sk_buff *ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
  * Creates a Probe Request template which can, for example, be uploaded to
  * hardware.
  */
-struct sk_buff *mac80211_probereq_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_probereq_get(struct ieee80211_hw *hw,
 				       struct ieee80211_vif *vif,
 				       const u8 *ssid, size_t ssid_len,
 				       const u8 *ie, size_t ie_len);
 
 /**
- * mac80211_rts_get - RTS frame generation function
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_rts_get - RTS frame generation function
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @frame: pointer to the frame that is going to be protected by the RTS.
  * @frame_len: the frame length (in octets).
@@ -2993,14 +2993,14 @@ struct sk_buff *mac80211_probereq_get(struct ieee80211_hw *hw,
  * the next RTS frame from the 802.11 code. The low-level is responsible
  * for calling this function before and RTS frame is needed.
  */
-void mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+void xr_mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		       const void *frame, size_t frame_len,
 		       const struct ieee80211_tx_info *frame_txctl,
 		       struct ieee80211_rts *rts);
 
 /**
- * mac80211_rts_duration - Get the duration field for an RTS frame
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_rts_duration - Get the duration field for an RTS frame
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @frame_len: the length of the frame that is going to be protected by the RTS.
  * @frame_txctl: &struct ieee80211_tx_info of the frame.
@@ -3009,13 +3009,13 @@ void mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
  * the duration field, the low-level driver uses this function to receive
  * the duration field value in little-endian byteorder.
  */
-__le16 mac80211_rts_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_rts_duration(struct ieee80211_hw *hw,
 			      struct ieee80211_vif *vif, size_t frame_len,
 			      const struct ieee80211_tx_info *frame_txctl);
 
 /**
- * mac80211_ctstoself_get - CTS-to-self frame generation function
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_ctstoself_get - CTS-to-self frame generation function
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @frame: pointer to the frame that is going to be protected by the CTS-to-self.
  * @frame_len: the frame length (in octets).
@@ -3027,15 +3027,15 @@ __le16 mac80211_rts_duration(struct ieee80211_hw *hw,
  * the next CTS-to-self frame from the 802.11 code. The low-level is responsible
  * for calling this function before and CTS-to-self frame is needed.
  */
-void mac80211_ctstoself_get(struct ieee80211_hw *hw,
+void xr_mac80211_ctstoself_get(struct ieee80211_hw *hw,
 			     struct ieee80211_vif *vif,
 			     const void *frame, size_t frame_len,
 			     const struct ieee80211_tx_info *frame_txctl,
 			     struct ieee80211_cts *cts);
 
 /**
- * mac80211_ctstoself_duration - Get the duration field for a CTS-to-self frame
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_ctstoself_duration - Get the duration field for a CTS-to-self frame
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @frame_len: the length of the frame that is going to be protected by the CTS-to-self.
  * @frame_txctl: &struct ieee80211_tx_info of the frame.
@@ -3044,14 +3044,14 @@ void mac80211_ctstoself_get(struct ieee80211_hw *hw,
  * the duration field, the low-level driver uses this function to receive
  * the duration field value in little-endian byteorder.
  */
-__le16 mac80211_ctstoself_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_ctstoself_duration(struct ieee80211_hw *hw,
 				    struct ieee80211_vif *vif,
 				    size_t frame_len,
 				    const struct ieee80211_tx_info *frame_txctl);
 
 /**
- * mac80211_generic_frame_duration - Calculate the duration field for a frame
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_generic_frame_duration - Calculate the duration field for a frame
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @frame_len: the length of the frame.
  * @rate: the rate at which the frame is going to be transmitted.
@@ -3059,7 +3059,7 @@ __le16 mac80211_ctstoself_duration(struct ieee80211_hw *hw,
  * Calculate the duration field of some generic frame, given its
  * length and transmission rate (in 100kbps).
  */
-__le16 mac80211_generic_frame_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_generic_frame_duration(struct ieee80211_hw *hw,
 					struct ieee80211_vif *vif,
 					enum nl80211_band band,
 					size_t frame_len,
@@ -3067,7 +3067,7 @@ __le16 mac80211_generic_frame_duration(struct ieee80211_hw *hw,
 
 /**
  * mac80211_get_buffered_bc - accessing buffered broadcast and multicast frames
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * Function for accessing buffered broadcast and multicast frames. If
@@ -3089,7 +3089,7 @@ struct sk_buff *
 mac80211_get_buffered_bc(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 
 /**
- * mac80211_get_tkip_p1k_iv - get a TKIP phase 1 key for IV32
+ * xr_mac80211_get_tkip_p1k_iv - get a TKIP phase 1 key for IV32
  *
  * This function returns the TKIP phase 1 key for the given IV32.
  *
@@ -3097,7 +3097,7 @@ mac80211_get_buffered_bc(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
  * @iv32: IV32 to get the P1K for
  * @p1k: a buffer to which the key will be written, as 5 u16 values
  */
-void mac80211_get_tkip_p1k_iv(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_p1k_iv(struct ieee80211_key_conf *keyconf,
 			       u32 iv32, u16 *p1k);
 
 /**
@@ -3118,11 +3118,11 @@ static inline void ieee80211_get_tkip_p1k(struct ieee80211_key_conf *keyconf,
 	const u8 *data = (u8 *)hdr + ieee80211_hdrlen(hdr->frame_control);
 	u32 iv32 = get_unaligned_le32(&data[4]);
 
-	mac80211_get_tkip_p1k_iv(keyconf, iv32, p1k);
+	xr_mac80211_get_tkip_p1k_iv(keyconf, iv32, p1k);
 }
 
 /**
- * mac80211_get_tkip_rx_p1k - get a TKIP phase 1 key for RX
+ * xr_mac80211_get_tkip_rx_p1k - get a TKIP phase 1 key for RX
  *
  * This function returns the TKIP phase 1 key for the given IV32
  * and transmitter address.
@@ -3132,11 +3132,11 @@ static inline void ieee80211_get_tkip_p1k(struct ieee80211_key_conf *keyconf,
  * @iv32: IV32 to get the P1K for
  * @p1k: a buffer to which the key will be written, as 5 u16 values
  */
-void mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
 			       const u8 *ta, u32 iv32, u16 *p1k);
 
 /**
- * mac80211_get_tkip_p2k - get a TKIP phase 2 key
+ * xr_mac80211_get_tkip_p2k - get a TKIP phase 2 key
  *
  * This function computes the TKIP RC4 key for the IV values
  * in the packet.
@@ -3146,7 +3146,7 @@ void mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
  *	encrypted with this key
  * @p2k: a buffer to which the key will be written, 16 bytes
  */
-void mac80211_get_tkip_p2k(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_p2k(struct ieee80211_key_conf *keyconf,
 			    struct sk_buff *skb, u8 *p2k);
 
 /**
@@ -3174,7 +3174,7 @@ struct ieee80211_key_seq {
 };
 
 /**
- * mac80211_get_key_tx_seq - get key TX sequence counter
+ * xr_mac80211_get_key_tx_seq - get key TX sequence counter
  *
  * @keyconf: the parameter passed with the set key
  * @seq: buffer to receive the sequence data
@@ -3187,11 +3187,11 @@ struct ieee80211_key_seq {
  * can be done concurrently, for example when queues are stopped
  * and the stop has been synchronized.
  */
-void mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
 			      struct ieee80211_key_seq *seq);
 
 /**
- * mac80211_get_key_rx_seq - get key RX sequence counter
+ * xr_mac80211_get_key_rx_seq - get key RX sequence counter
  *
  * @keyconf: the parameter passed with the set key
  * @tid: The TID, or -1 for the management frame value (CCMP only);
@@ -3206,65 +3206,65 @@ void mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
  * Note that this function may only be called when no RX processing
  * can be done concurrently.
  */
-void mac80211_get_key_rx_seq(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_key_rx_seq(struct ieee80211_key_conf *keyconf,
 			      int tid, struct ieee80211_key_seq *seq);
 
 /**
- * mac80211_gtk_rekey_notify - notify userspace supplicant of rekeying
+ * xr_mac80211_gtk_rekey_notify - notify userspace supplicant of rekeying
  * @vif: virtual interface the rekeying was done on
  * @bssid: The BSSID of the AP, for checking association
  * @replay_ctr: the new replay counter after GTK rekeying
  * @gfp: allocation flags
  */
-void mac80211_gtk_rekey_notify(struct ieee80211_vif *vif, const u8 *bssid,
+void xr_mac80211_gtk_rekey_notify(struct ieee80211_vif *vif, const u8 *bssid,
 				const u8 *replay_ctr, gfp_t gfp);
 
 /**
- * mac80211_wake_queue - wake specific queue
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * xr_mac80211_wake_queue - wake specific queue
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  * @queue: queue number (counted from zero).
  *
  * Drivers should use this function instead of netif_wake_queue.
  */
-void mac80211_wake_queue(struct ieee80211_hw *hw, int queue);
+void xr_mac80211_wake_queue(struct ieee80211_hw *hw, int queue);
 
 /**
- * mac80211_stop_queue - stop specific queue
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * xr_mac80211_stop_queue - stop specific queue
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  * @queue: queue number (counted from zero).
  *
  * Drivers should use this function instead of netif_stop_queue.
  */
-void mac80211_stop_queue(struct ieee80211_hw *hw, int queue);
+void xr_mac80211_stop_queue(struct ieee80211_hw *hw, int queue);
 
 /**
- * mac80211_queue_stopped - test status of the queue
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * xr_mac80211_queue_stopped - test status of the queue
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  * @queue: queue number (counted from zero).
  *
  * Drivers should use this function instead of netif_stop_queue.
  */
 
-int mac80211_queue_stopped(struct ieee80211_hw *hw, int queue);
+int xr_mac80211_queue_stopped(struct ieee80211_hw *hw, int queue);
 
 /**
- * mac80211_stop_queues - stop all queues
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * xr_mac80211_stop_queues - stop all queues
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  *
  * Drivers should use this function instead of netif_stop_queue.
  */
-void mac80211_stop_queues(struct ieee80211_hw *hw);
+void xr_mac80211_stop_queues(struct ieee80211_hw *hw);
 
 /**
- * mac80211_wake_queues - wake all queues
- * @hw: pointer as obtained from mac80211_alloc_hw().
+ * xr_mac80211_wake_queues - wake all queues
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw().
  *
  * Drivers should use this function instead of netif_wake_queue.
  */
-void mac80211_wake_queues(struct ieee80211_hw *hw);
+void xr_mac80211_wake_queues(struct ieee80211_hw *hw);
 
 /**
- * mac80211_scan_completed - completed hardware scan
+ * xr_mac80211_scan_completed - completed hardware scan
  *
  * When hardware scan offload is used (i.e. the hw_scan() callback is
  * assigned) this function needs to be called by the driver to notify
@@ -3274,21 +3274,21 @@ void mac80211_wake_queues(struct ieee80211_hw *hw);
  * @hw: the hardware that finished the scan
  * @info: information about the completed scan
  */
-void mac80211_scan_completed(struct ieee80211_hw *hw,
+void xr_mac80211_scan_completed(struct ieee80211_hw *hw,
 			      struct cfg80211_scan_info *info);
 
 /**
- * mac80211_sched_scan_results - got results from scheduled scan
+ * xr_mac80211_sched_scan_results - got results from scheduled scan
  *
  * When a scheduled scan is running, this function needs to be called by the
  * driver whenever there are new scan results available.
  *
  * @hw: the hardware that is performing scheduled scans
  */
-void mac80211_sched_scan_results(struct ieee80211_hw *hw);
+void xr_mac80211_sched_scan_results(struct ieee80211_hw *hw);
 
 /**
- * mac80211_sched_scan_stopped - inform that the scheduled scan has stopped
+ * xr_mac80211_sched_scan_stopped - inform that the scheduled scan has stopped
  *
  * When a scheduled scan is running, this function can be called by
  * the driver if it needs to stop the scan to perform another task.
@@ -3297,15 +3297,15 @@ void mac80211_sched_scan_results(struct ieee80211_hw *hw);
  *
  * @hw: the hardware that is performing scheduled scans
  */
-void mac80211_sched_scan_stopped(struct ieee80211_hw *hw);
+void xr_mac80211_sched_scan_stopped(struct ieee80211_hw *hw);
 
 /**
- * mac80211_iterate_active_interfaces - iterate active interfaces
+ * xr_mac80211_iterate_active_interfaces - iterate active interfaces
  *
  * This function iterates over the interfaces associated with a given
  * hardware that are currently active and calls the callback for them.
  * This function allows the iterator function to sleep, when the iterator
- * function is atomic @mac80211_iterate_active_interfaces_atomic can
+ * function is atomic @xr_mac80211_iterate_active_interfaces_atomic can
  * be used.
  * Does not iterate over a new interface during add_interface()
  *
@@ -3313,32 +3313,32 @@ void mac80211_sched_scan_stopped(struct ieee80211_hw *hw);
  * @iterator: the iterator function to call
  * @data: first argument of the iterator function
  */
-void mac80211_iterate_active_interfaces(struct ieee80211_hw *hw,
+void xr_mac80211_iterate_active_interfaces(struct ieee80211_hw *hw,
 					 void (*iterator)(void *data, u8 *mac,
 						struct ieee80211_vif *vif),
 					 void *data);
 
 /**
- * mac80211_iterate_active_interfaces_atomic - iterate active interfaces
+ * xr_mac80211_iterate_active_interfaces_atomic - iterate active interfaces
  *
  * This function iterates over the interfaces associated with a given
  * hardware that are currently active and calls the callback for them.
  * This function requires the iterator callback function to be atomic,
- * if that is not desired, use @mac80211_iterate_active_interfaces instead.
+ * if that is not desired, use @xr_mac80211_iterate_active_interfaces instead.
  * Does not iterate over a new interface during add_interface()
  *
  * @hw: the hardware struct of which the interfaces should be iterated over
  * @iterator: the iterator function to call, cannot sleep
  * @data: first argument of the iterator function
  */
-void mac80211_iterate_active_interfaces_atomic(struct ieee80211_hw *hw,
+void xr_mac80211_iterate_active_interfaces_atomic(struct ieee80211_hw *hw,
 						void (*iterator)(void *data,
 						    u8 *mac,
 						    struct ieee80211_vif *vif),
 						void *data);
 
 /**
- * mac80211_queue_work - add work onto the mac80211 workqueue
+ * xr_mac80211_queue_work - add work onto the mac80211 workqueue
  *
  * Drivers and mac80211 use this to add work onto the mac80211 workqueue.
  * This helper ensures drivers are not queueing work when they should not be.
@@ -3346,10 +3346,10 @@ void mac80211_iterate_active_interfaces_atomic(struct ieee80211_hw *hw,
  * @hw: the hardware struct for the interface we are adding work for
  * @work: the work we want to add onto the mac80211 workqueue
  */
-void mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work);
+void xr_mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work);
 
 /**
- * mac80211_queue_delayed_work - add work onto the mac80211 workqueue
+ * xr_mac80211_queue_delayed_work - add work onto the mac80211 workqueue
  *
  * Drivers and mac80211 use this to queue delayed work onto the mac80211
  * workqueue.
@@ -3358,12 +3358,12 @@ void mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work);
  * @dwork: delayable work to queue onto the mac80211 workqueue
  * @delay: number of jiffies to wait before queueing
  */
-void mac80211_queue_delayed_work(struct ieee80211_hw *hw,
+void xr_mac80211_queue_delayed_work(struct ieee80211_hw *hw,
 				  struct delayed_work *dwork,
 				  unsigned long delay);
 
 /**
- * mac80211_start_tx_ba_session - Start a tx Block Ack session.
+ * xr_mac80211_start_tx_ba_session - Start a tx Block Ack session.
  * @sta: the station for which to start a BA session
  * @tid: the TID to BA on.
  * @timeout: session timeout value (in TUs)
@@ -3374,11 +3374,11 @@ void mac80211_queue_delayed_work(struct ieee80211_hw *hw,
  * the need to start aggregation on a certain RA/TID, the session level
  * will be managed by the mac80211.
  */
-int mac80211_start_tx_ba_session(struct ieee80211_sta *sta, u16 tid,
+int xr_mac80211_start_tx_ba_session(struct ieee80211_sta *sta, u16 tid,
 				  u16 timeout);
 
 /**
- * mac80211_start_tx_ba_cb_irqsafe - low level driver ready to aggregate.
+ * xr_mac80211_start_tx_ba_cb_irqsafe - low level driver ready to aggregate.
  * @vif: &struct ieee80211_vif pointer from the add_interface callback
  * @ra: receiver address of the BA session recipient.
  * @tid: the TID to BA on.
@@ -3387,11 +3387,11 @@ int mac80211_start_tx_ba_session(struct ieee80211_sta *sta, u16 tid,
  * finished with preparations for the BA session. It can be called
  * from any context.
  */
-void mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
+void xr_mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
 				      u16 tid);
 
 /**
- * mac80211_stop_tx_ba_session - Stop a Block Ack session.
+ * xr_mac80211_stop_tx_ba_session - Stop a Block Ack session.
  * @sta: the station whose BA session to stop
  * @tid: the TID to stop BA.
  *
@@ -3401,10 +3401,10 @@ void mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
  * the need to stop aggregation on a certain RA/TID, the session level
  * will be managed by the mac80211.
  */
-int mac80211_stop_tx_ba_session(struct ieee80211_sta *sta, u16 tid);
+int xr_mac80211_stop_tx_ba_session(struct ieee80211_sta *sta, u16 tid);
 
 /**
- * mac80211_stop_tx_ba_cb_irqsafe - low level driver ready to stop aggregate.
+ * xr_mac80211_stop_tx_ba_cb_irqsafe - low level driver ready to stop aggregate.
  * @vif: &struct ieee80211_vif pointer from the add_interface callback
  * @ra: receiver address of the BA session recipient.
  * @tid: the desired TID to BA on.
@@ -3413,11 +3413,11 @@ int mac80211_stop_tx_ba_session(struct ieee80211_sta *sta, u16 tid);
  * finished with preparations for the BA session tear down. It
  * can be called from any context.
  */
-void mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
+void xr_mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
 				     u16 tid);
 
 /**
- * mac80211_find_sta - find a station
+ * xr_mac80211_find_sta - find a station
  *
  * @vif: virtual interface to look for station on
  * @addr: station's address
@@ -3425,13 +3425,13 @@ void mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif, const u8 *ra,
  * This function must be called under RCU lock and the
  * resulting pointer is only valid under RCU lock as well.
  */
-struct ieee80211_sta *mac80211_find_sta(struct ieee80211_vif *vif,
+struct ieee80211_sta *xr_mac80211_find_sta(struct ieee80211_vif *vif,
 					 const u8 *addr);
 
 /**
- * mac80211_find_sta_by_ifaddr - find a station on hardware
+ * xr_mac80211_find_sta_by_ifaddr - find a station on hardware
  *
- * @hw: pointer as obtained from mac80211_alloc_hw()
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw()
  * @addr: remote station's address
  * @localaddr: local address (vif->sdata->vif.addr). Use NULL for 'any'.
  *
@@ -3448,12 +3448,12 @@ struct ieee80211_sta *mac80211_find_sta(struct ieee80211_vif *vif,
  *
  * DO NOT USE THIS FUNCTION with localaddr NULL if at all possible.
  */
-struct ieee80211_sta *mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
+struct ieee80211_sta *xr_mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
 					       const u8 *addr,
 					       const u8 *localaddr);
 
 /**
- * mac80211_sta_block_awake - block station from waking up
+ * xr_mac80211_sta_block_awake - block station from waking up
  * @hw: the hardware
  * @pubsta: the station
  * @block: whether to block or unblock
@@ -3481,7 +3481,7 @@ struct ieee80211_sta *mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
  * it is unblocked, regardless of whether the station actually
  * woke up while blocked or not.
  */
-void mac80211_sta_block_awake(struct ieee80211_hw *hw,
+void xr_mac80211_sta_block_awake(struct ieee80211_hw *hw,
 			       struct ieee80211_sta *pubsta, bool block);
 
 /**
@@ -3500,11 +3500,11 @@ void mac80211_sta_block_awake(struct ieee80211_hw *hw,
  * all irqsafe, or all non-irqsafe, don't mix! If you need
  * the non-irqsafe version of this, you need to add it.
  */
-void mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta);
+void xr_mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta);
 
 /**
- * mac80211_iter_keys - iterate keys programmed into the device
- * @hw: pointer obtained from mac80211_alloc_hw()
+ * xr_mac80211_iter_keys - iterate keys programmed into the device
+ * @hw: pointer obtained from xr_mac80211_alloc_hw()
  * @vif: virtual interface to iterate, may be %NULL for all
  * @iter: iterator function that will be called for each key
  * @iter_data: custom data to pass to the iterator function
@@ -3520,7 +3520,7 @@ void mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta);
  * in which they were originally installed and handed to the
  * set_key callback.
  */
-void mac80211_iter_keys(struct ieee80211_hw *hw,
+void xr_mac80211_iter_keys(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,
 			 void (*iter)(struct ieee80211_hw *hw,
 				      struct ieee80211_vif *vif,
@@ -3530,8 +3530,8 @@ void mac80211_iter_keys(struct ieee80211_hw *hw,
 			 void *iter_data);
 
 /**
- * mac80211_ap_probereq_get - retrieve a Probe Request template
- * @hw: pointer obtained from mac80211_alloc_hw().
+ * xr_mac80211_ap_probereq_get - retrieve a Probe Request template
+ * @hw: pointer obtained from xr_mac80211_alloc_hw().
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * Creates a Probe Request template which can, for example, be uploaded to
@@ -3541,11 +3541,11 @@ void mac80211_iter_keys(struct ieee80211_hw *hw,
  * is only useful when the interface is associated, otherwise it will return
  * NULL.
  */
-struct sk_buff *mac80211_ap_probereq_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_ap_probereq_get(struct ieee80211_hw *hw,
 					  struct ieee80211_vif *vif);
 
 /**
- * mac80211_beacon_loss - inform hardware does not receive beacons
+ * xr_mac80211_beacon_loss - inform hardware does not receive beacons
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
@@ -3553,10 +3553,10 @@ struct sk_buff *mac80211_ap_probereq_get(struct ieee80211_hw *hw,
  * %IEEE80211_CONF_PS is set, the driver needs to inform whenever the
  * hardware is not receiving beacons with this function.
  */
-void mac80211_beacon_loss(struct ieee80211_vif *vif);
+void xr_mac80211_beacon_loss(struct ieee80211_vif *vif);
 
 /**
- * mac80211_connection_loss - inform hardware has lost connection to the AP
+ * xr_mac80211_connection_loss - inform hardware has lost connection to the AP
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
@@ -3567,10 +3567,10 @@ void mac80211_beacon_loss(struct ieee80211_vif *vif);
  * This function will cause immediate change to disassociated state,
  * without connection recovery attempts.
  */
-void mac80211_connection_loss(struct ieee80211_vif *vif);
+void xr_mac80211_connection_loss(struct ieee80211_vif *vif);
 
 /**
- * mac80211_resume_disconnect - disconnect from AP after resume
+ * xr_mac80211_resume_disconnect - disconnect from AP after resume
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
@@ -3590,10 +3590,10 @@ void mac80211_connection_loss(struct ieee80211_vif *vif);
  * calls this function, or at least not any locks it needs in the
  * key configuration paths (if it supports HW crypto).
  */
-void mac80211_resume_disconnect(struct ieee80211_vif *vif);
+void xr_mac80211_resume_disconnect(struct ieee80211_vif *vif);
 
 /**
- * mac80211_disable_dyn_ps - force mac80211 to temporarily disable dynamic psm
+ * xr_mac80211_disable_dyn_ps - force mac80211 to temporarily disable dynamic psm
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
@@ -3605,25 +3605,25 @@ void mac80211_resume_disconnect(struct ieee80211_vif *vif);
  * This function will only temporarily disable dynamic PS, not enable PSM if
  * it was not already enabled.
  * The driver must make sure to re-enable dynamic PS using
- * mac80211_enable_dyn_ps() if the driver has disabled it.
+ * xr_mac80211_enable_dyn_ps() if the driver has disabled it.
  *
  */
-void mac80211_disable_dyn_ps(struct ieee80211_vif *vif);
+void xr_mac80211_disable_dyn_ps(struct ieee80211_vif *vif);
 
 /**
- * mac80211_enable_dyn_ps - restore dynamic psm after being disabled
+ * xr_mac80211_enable_dyn_ps - restore dynamic psm after being disabled
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * This function restores dynamic PS after being temporarily disabled via
- * mac80211_disable_dyn_ps(). Each mac80211_disable_dyn_ps() call must
+ * xr_mac80211_disable_dyn_ps(). Each xr_mac80211_disable_dyn_ps() call must
  * be coupled with an eventual call to this function.
  *
  */
-void mac80211_enable_dyn_ps(struct ieee80211_vif *vif);
+void xr_mac80211_enable_dyn_ps(struct ieee80211_vif *vif);
 
 /**
- * mac80211_cqm_rssi_notify - inform a configured connection quality monitoring
+ * xr_mac80211_cqm_rssi_notify - inform a configured connection quality monitoring
  *	rssi threshold triggered
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
@@ -3634,22 +3634,22 @@ void mac80211_enable_dyn_ps(struct ieee80211_vif *vif);
  * monitoring is configured with an rssi threshold, the driver will inform
  * whenever the rssi level reaches the threshold.
  */
-void mac80211_cqm_rssi_notify(struct ieee80211_vif *vif,
+void xr_mac80211_cqm_rssi_notify(struct ieee80211_vif *vif,
 			       enum nl80211_cqm_rssi_threshold_event rssi_event,
 			       s32 rssi_level, gfp_t gfp);
 
 /**
- * mac80211_get_operstate - get the operstate of the vif
+ * xr_mac80211_get_operstate - get the operstate of the vif
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  *
  * The driver might need to know the operstate of the net_device
  * (specifically, whether the link is IF_OPER_UP after resume)
  */
-unsigned char mac80211_get_operstate(struct ieee80211_vif *vif);
+unsigned char xr_mac80211_get_operstate(struct ieee80211_vif *vif);
 
 /**
- * ieee80211_cqm_beacon_miss_notify - inform a configured connection quality
+ * xr_ieee80211_cqm_beacon_miss_notify - inform a configured connection quality
  *	monitoring beacon miss threshold triggered
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
@@ -3659,11 +3659,11 @@ unsigned char mac80211_get_operstate(struct ieee80211_vif *vif);
  * quality monitoring is configured with an beacon miss threshold, the driver
  * will inform whenever the desired amount of consecutive beacons is missed.
  */
-void ieee80211_cqm_beacon_miss_notify(struct ieee80211_vif *vif,
+void xr_ieee80211_cqm_beacon_miss_notify(struct ieee80211_vif *vif,
 				      gfp_t gfp);
 
 /**
- * ieee80211_cqm_tx_fail_notify - inform a configured connection quality
+ * xr_ieee80211_cqm_tx_fail_notify - inform a configured connection quality
  *	monitoring beacon miss threshold triggered
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
@@ -3673,43 +3673,43 @@ void ieee80211_cqm_beacon_miss_notify(struct ieee80211_vif *vif,
  * quality monitoring is configured with an tx failure threshold, the driver
  * whenever the desired amount of consecutive TX attempts is failed.
  */
-void ieee80211_cqm_tx_fail_notify(struct ieee80211_vif *vif,
+void xr_ieee80211_cqm_tx_fail_notify(struct ieee80211_vif *vif,
 				  gfp_t gfp);
 
 /**
- * ieee80211_p2p_noa_notify - driver set/change NOA params
+ * xr_ieee80211_p2p_noa_notify - driver set/change NOA params
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @p2p_ps: new NOA params set/change by driver
  * @gfp: context flag
  *
  * Inform upper layer about NOA change
  */
-void ieee80211_p2p_noa_notify(struct ieee80211_vif *vif,
+void xr_ieee80211_p2p_noa_notify(struct ieee80211_vif *vif,
 			      struct cfg80211_p2p_ps *p2p_ps,
 			      gfp_t gfp);
 
 /**
- * ieee80211_driver_hang_notify - inform upper layer about driver hang
+ * xr_ieee80211_driver_hang_notify - inform upper layer about driver hang
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @gfp: context flag
  *
  * In case of FW/driver failure, send a notification to upper layers
  * to take a recovery actions.
  */
-void ieee80211_driver_hang_notify(struct ieee80211_vif *vif, gfp_t gfp);
+void xr_ieee80211_driver_hang_notify(struct ieee80211_vif *vif, gfp_t gfp);
 
 /**
- * mac80211_chswitch_done - Complete channel switch process
+ * xr_mac80211_chswitch_done - Complete channel switch process
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @success: make the channel switch successful or not
  *
  * Complete the channel switch post-process: set the new operational channel
  * and wake up the suspended queues.
  */
-void mac80211_chswitch_done(struct ieee80211_vif *vif, bool success);
+void xr_mac80211_chswitch_done(struct ieee80211_vif *vif, bool success);
 
 /**
- * mac80211_request_smps - request SM PS transition
+ * xr_mac80211_request_smps - request SM PS transition
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @smps_mode: new SM PS mode
  *
@@ -3717,11 +3717,11 @@ void mac80211_chswitch_done(struct ieee80211_vif *vif, bool success);
  * mode. This is useful when the driver has more information than
  * the stack about possible interference, for example by bluetooth.
  */
-void mac80211_request_smps(struct ieee80211_vif *vif,
+void xr_mac80211_request_smps(struct ieee80211_vif *vif,
 			    enum ieee80211_smps_mode smps_mode);
 
 /**
- * mac80211_key_removed - disable hw acceleration for key
+ * xr_mac80211_key_removed - disable hw acceleration for key
  * @key_conf: The key hw acceleration should be disabled for
  *
  * This allows drivers to indicate that the given key has been
@@ -3734,22 +3734,22 @@ void mac80211_request_smps(struct ieee80211_vif *vif,
  * @set_key. This function must be allowed to sleep, and the
  * key it tries to disable may still be used until it returns.
  */
-void mac80211_key_removed(struct ieee80211_key_conf *key_conf);
+void xr_mac80211_key_removed(struct ieee80211_key_conf *key_conf);
 
 /**
- * mac80211_ready_on_channel - notification of remain-on-channel start
- * @hw: pointer as obtained from mac80211_alloc_hw()
+ * xr_mac80211_ready_on_channel - notification of remain-on-channel start
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw()
  */
-void mac80211_ready_on_channel(struct ieee80211_hw *hw);
+void xr_mac80211_ready_on_channel(struct ieee80211_hw *hw);
 
 /**
- * mac80211_remain_on_channel_expired - remain_on_channel duration expired
- * @hw: pointer as obtained from mac80211_alloc_hw()
+ * xr_mac80211_remain_on_channel_expired - remain_on_channel duration expired
+ * @hw: pointer as obtained from xr_mac80211_alloc_hw()
  */
-void mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie);
+void xr_mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie);
 
 /**
- * mac80211_stop_rx_ba_session - callback to stop existing BA sessions
+ * xr_mac80211_stop_rx_ba_session - callback to stop existing BA sessions
  *
  * in order not to harm the system performance and user experience, the device
  * may request not to allow any rx ba session and tear down existing rx ba
@@ -3762,11 +3762,11 @@ void mac80211_remain_on_channel_expired(struct ieee80211_hw *hw, u64 cookie);
  * @ba_rx_bitmap: Bit map of open rx ba per tid
  * @addr: & to bssid mac address
  */
-void mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
+void xr_mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
 				  const u8 *addr);
 
 /**
- * mac80211_send_bar - send a BlockAckReq frame
+ * xr_mac80211_send_bar - send a BlockAckReq frame
  *
  * can be used to flush pending frames from the peer's aggregation reorder
  * buffer.
@@ -3776,7 +3776,7 @@ void mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
  * @tid: the TID of the aggregation session
  * @ssn: the new starting sequence number for the receiver
  */
-void mac80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn);
+void xr_mac80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn);
 
 /* Rate control API */
 
@@ -3909,8 +3909,8 @@ bool rate_usable_index_exists(struct ieee80211_supported_band *sband,
 	return false;
 }
 
-int mac80211_rate_control_register(struct rate_control_ops *ops);
-void mac80211_rate_control_unregister(struct rate_control_ops *ops);
+int xr_mac80211_rate_control_register(struct rate_control_ops *ops);
+void xr_mac80211_rate_control_unregister(struct rate_control_ops *ops);
 
 static inline bool
 conf_is_ht20(struct ieee80211_channel_conf *conf)
@@ -3964,14 +3964,14 @@ ieee80211_vif_type_p2p(struct ieee80211_vif *vif)
 	return ieee80211_iftype_p2p(vif->type, vif->p2p);
 }
 
-void mac80211_enable_rssi_reports(struct ieee80211_vif *vif,
+void xr_mac80211_enable_rssi_reports(struct ieee80211_vif *vif,
 				   int rssi_min_thold,
 				   int rssi_max_thold);
 
-void mac80211_disable_rssi_reports(struct ieee80211_vif *vif);
+void xr_mac80211_disable_rssi_reports(struct ieee80211_vif *vif);
 
-int mac80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb);
+int xr_mac80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb);
 
-int mac80211_add_ext_srates_ie(struct ieee80211_vif *vif,
+int xr_mac80211_add_ext_srates_ie(struct ieee80211_vif *vif,
 				struct sk_buff *skb);
 #endif /* MAC80211_H */

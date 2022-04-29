@@ -20,7 +20,7 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio.h>
 #include <linux/spinlock.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 
 #include "platform.h"
 #include "xradio.h"

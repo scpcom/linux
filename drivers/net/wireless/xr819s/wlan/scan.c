@@ -224,9 +224,9 @@ int xradio_hw_scan(struct ieee80211_hw *hw,
 		return -EINVAL;
 	}
 
-	frame.skb = mac80211_probereq_get(hw, vif, NULL, 0, req->ie, req->ie_len);
+	frame.skb = xr_mac80211_probereq_get(hw, vif, NULL, 0, req->ie, req->ie_len);
 	if (!frame.skb) {
-		scan_printk(XRADIO_DBG_ERROR, "%s: mac80211_probereq_get failed!\n",
+		scan_printk(XRADIO_DBG_ERROR, "%s: xr_mac80211_probereq_get failed!\n",
 			__func__);
 		return -ENOMEM;
 	}
@@ -420,10 +420,10 @@ int xradio_hw_sched_scan_start(struct ieee80211_hw *hw,
 		return -EINVAL;
 	}
 
-	frame.skb = mac80211_probereq_get(hw, priv->vif, NULL, 0,
+	frame.skb = xr_mac80211_probereq_get(hw, priv->vif, NULL, 0,
 			ies->ie[0], ies->len[0]);
 	if (!frame.skb) {
-		scan_printk(XRADIO_DBG_ERROR, "%s: mac80211_probereq_get failed!\n",
+		scan_printk(XRADIO_DBG_ERROR, "%s: xr_mac80211_probereq_get failed!\n",
 			__func__);
 		return -ENOMEM;
 	}
@@ -654,9 +654,9 @@ void xradio_scan_work(struct work_struct *work)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
 		memset(&info, 0, sizeof(info));
 		info.aborted = hw_priv->scan.status ? 1 : 0;
-		mac80211_scan_completed(hw_priv->hw, &info);
+		xr_mac80211_scan_completed(hw_priv->hw, &info);
 #else
-		mac80211_scan_completed(hw_priv->hw, hw_priv->scan.status ? 1 : 0);
+		xr_mac80211_scan_completed(hw_priv->hw, hw_priv->scan.status ? 1 : 0);
 #endif
 		up(&hw_priv->scan.lock);
 #ifdef SCAN_FAILED_WORKAROUND_OF_FW_EXCEPTION
@@ -1045,7 +1045,7 @@ void xradio_scan_timeout(struct work_struct *work)
 #ifdef ROAM_OFFLOAD
 	} else if (hw_priv->auto_scanning) {
 		hw_priv->auto_scanning = 0;
-		mac80211_sched_scan_results(hw_priv->hw);
+		xr_mac80211_sched_scan_results(hw_priv->hw);
 #endif /*ROAM_OFFLOAD*/
 	}
 }
@@ -1085,7 +1085,7 @@ void xradio_advance_scan_timeout(struct work_struct *work)
 		hw_priv->enable_advance_scan = false;
 		wsm_unlock_tx(hw_priv);
 		up(&hw_priv->conf_lock);
-		mac80211_scan_completed(hw_priv->hw,
+		xr_mac80211_scan_completed(hw_priv->hw,
 				 hw_priv->scan.status ? true : false);
 		up(&hw_priv->scan.lock);
 	}

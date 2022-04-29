@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
 

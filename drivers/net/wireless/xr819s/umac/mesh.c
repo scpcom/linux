@@ -61,7 +61,7 @@ static void ieee80211_mesh_housekeeping_timer(unsigned long data)
 		return;
 	}
 
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 /**
@@ -354,7 +354,7 @@ static void ieee80211_xrmac_mesh_path_timer(unsigned long data)
 		return;
 	}
 
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 static void ieee80211_mesh_path_root_timer(unsigned long data)
@@ -371,7 +371,7 @@ static void ieee80211_mesh_path_root_timer(unsigned long data)
 		return;
 	}
 
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 void mac80211_mesh_root_setup(struct ieee80211_if_mesh *ifmsh)
@@ -526,7 +526,7 @@ void mac80211_start_mesh(struct ieee80211_sub_if_data *sdata)
 	ifmsh->mesh_auth_id = 0;	/* Disabled */
 	set_bit(MESH_WORK_HOUSEKEEPING, &ifmsh->wrkq_flags);
 	mac80211_mesh_root_setup(ifmsh);
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 	sdata->vif.bss_conf.beacon_int = MESH_DEFAULT_BEACON_INTERVAL;
 	mac80211_bss_info_change_notify(sdata, BSS_CHANGED_BEACON |
 						BSS_CHANGED_BEACON_ENABLED |
@@ -679,7 +679,7 @@ void mac80211_mesh_notify_scan_completed(struct ieee80211_local *local)
 	rcu_read_lock();
 	list_for_each_entry_rcu(sdata, &local->interfaces, list)
 		if (ieee80211_vif_is_mesh(&sdata->vif))
-			mac80211_queue_work(&local->hw, &sdata->work);
+			xr_mac80211_queue_work(&local->hw, &sdata->work);
 	rcu_read_unlock();
 }
 

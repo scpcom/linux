@@ -18,7 +18,7 @@
 #include <linux/vmalloc.h>
 #include <linux/random.h>
 #include <linux/sched.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/platform_device.h>
 #include <linux/timer.h>
 
@@ -605,7 +605,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 	xradio_dbg(XRADIO_DBG_TRC, "%s\n", __func__);
 
 	/* Alloc ieee_802.11 hw and xradio_common struct. */
-	hw = mac80211_alloc_hw(hw_priv_data_len, &xradio_ops);
+	hw = xr_mac80211_alloc_hw(hw_priv_data_len, &xradio_ops);
 	if (!hw)
 		return NULL;
 	hw_priv = hw->priv;
@@ -771,7 +771,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 
 	if (unlikely(xradio_queue_stats_init(&hw_priv->tx_queue_stats,
 			WLAN_LINK_ID_MAX, xradio_skb_dtor, hw_priv))) {
-		mac80211_free_hw(hw);
+		xr_mac80211_free_hw(hw);
 		return NULL;
 	}
 	for (i = 0; i < AC_QUEUE_NUM; ++i) {
@@ -781,7 +781,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 			for (; i > 0; i--)
 				xradio_queue_deinit(&hw_priv->tx_queue[i - 1]);
 			xradio_queue_stats_deinit(&hw_priv->tx_queue_stats);
-			mac80211_free_hw(hw);
+			xr_mac80211_free_hw(hw);
 			return NULL;
 		}
 	}
@@ -851,7 +851,7 @@ struct ieee80211_hw *xradio_init_common(size_t hw_priv_data_len)
 		g_hw_priv = hw_priv;
 		return hw;
 	} else {		/*error:didn't release hw_priv last time. */
-		mac80211_free_hw(hw);
+		xr_mac80211_free_hw(hw);
 		xradio_dbg(XRADIO_DBG_ERROR, "g_hw_priv is not NULL @ %p!\n", g_hw_priv);
 		return NULL;
 	}
@@ -899,7 +899,7 @@ void xradio_free_common(struct ieee80211_hw *dev)
 	wsm_deinit_release_buffer(hw_priv);
 #endif
 	/* unsigned int i; */
-	mac80211_free_hw(dev);
+	xr_mac80211_free_hw(dev);
 	g_hw_priv = NULL;
 }
 
@@ -918,7 +918,7 @@ int xradio_register_common(struct ieee80211_hw *dev)
 	}
 
 	SET_IEEE80211_DEV(dev, hw_priv->pdev);
-	err = mac80211_register_hw(dev);
+	err = xr_mac80211_register_hw(dev);
 	if (err) {
 		xradio_dbg(XRADIO_DBG_ERROR, "Cannot register device (%d).\n", err);
 		return err;
@@ -942,7 +942,7 @@ void xradio_unregister_common(struct ieee80211_hw *dev)
 #endif
 
 	if (wiphy_dev(dev->wiphy)) {
-		mac80211_unregister_hw(dev);
+		xr_mac80211_unregister_hw(dev);
 		SET_IEEE80211_DEV(dev, NULL);
 		xradio_debug_release_common(hw_priv);
 	}
@@ -986,7 +986,7 @@ int xradio_core_reinit(struct xradio_common *hw_priv)
 		if (!priv)
 			continue;
 		if (priv->join_status == XRADIO_JOIN_STATUS_STA) {
-			mac80211_connection_loss(priv->vif);
+			xr_mac80211_connection_loss(priv->vif);
 			msleep(200);
 		} else if (priv->join_status == XRADIO_JOIN_STATUS_AP) {
 			wsm_send_disassoc_to_self(hw_priv, priv);
@@ -1028,7 +1028,7 @@ int xradio_core_reinit(struct xradio_common *hw_priv)
 		xradio_dbg(XRADIO_DBG_ERROR, "%s:device move parent to plat_device failed\n", __func__);
 		goto exit;
 	}
-	ret = mac80211_ifdev_move(hw_priv->hw, &hw_priv->plat_device->dev, 0);
+	ret = xr_mac80211_ifdev_move(hw_priv->hw, &hw_priv->plat_device->dev, 0);
 	if (ret < 0) {
 		xradio_dbg(XRADIO_DBG_ERROR, "%s:net_device move parent to plat_device failed\n", __func__);
 		goto exit;
@@ -1051,7 +1051,7 @@ int xradio_core_reinit(struct xradio_common *hw_priv)
 		goto exit;
 	}
 	SET_IEEE80211_DEV(hw_priv->hw, hw_priv->pdev);
-	ret = mac80211_ifdev_move(hw_priv->hw, hw_priv->pdev, 1);
+	ret = xr_mac80211_ifdev_move(hw_priv->hw, hw_priv->pdev, 1);
 	if (ret < 0) {
 		xradio_dbg(XRADIO_DBG_ERROR, "%s:net_device move parent to sdio failed\n", __func__);
 		goto exit;
@@ -1136,11 +1136,11 @@ int xradio_core_reinit(struct xradio_common *hw_priv)
 	hw_priv->hw->wiphy->max_scan_ie_len = IEEE80211_MAX_DATA_LEN;
 #endif
 	/*
-	 * Restart umac, use mac80211_restart_hw.
+	 * Restart umac, use xr_mac80211_restart_hw.
 	 * Use xradio_register_common may cause umac scan sync problems.
 	 */
 	if (!ret) {
-		mac80211_restart_hw(hw_priv->hw);
+		xr_mac80211_restart_hw(hw_priv->hw);
 	}
 
 	/*
@@ -1152,7 +1152,7 @@ int xradio_core_reinit(struct xradio_common *hw_priv)
 		spin_lock_bh(&queue->lock);
 		if (queue->tx_locked_cnt > 0) {
 			queue->tx_locked_cnt = 0;
-			mac80211_wake_queue(hw_priv->hw, queue->queue_id);
+			xr_mac80211_wake_queue(hw_priv->hw, queue->queue_id);
 		}
 		spin_unlock_bh(&queue->lock);
 	}

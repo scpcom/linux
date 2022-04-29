@@ -15,7 +15,7 @@
 
 #include <linux/ieee80211.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "rate.h"
 
@@ -291,7 +291,7 @@ int mac80211_send_smps_action(struct ieee80211_sub_if_data *sdata,
 	return 0;
 }
 
-void mac80211_request_smps_work(struct work_struct *work)
+void xr_mac80211_request_smps_work(struct work_struct *work)
 {
 	struct ieee80211_sub_if_data *sdata =
 		container_of(work, struct ieee80211_sub_if_data,
@@ -302,7 +302,7 @@ void mac80211_request_smps_work(struct work_struct *work)
 	mutex_unlock(&sdata->u.mgd.mtx);
 }
 
-void mac80211_request_smps(struct ieee80211_vif *vif,
+void xr_mac80211_request_smps(struct ieee80211_vif *vif,
 			    enum ieee80211_smps_mode smps_mode)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
@@ -315,7 +315,7 @@ void mac80211_request_smps(struct ieee80211_vif *vif,
 
 	sdata->u.mgd.driver_smps_mode = smps_mode;
 
-	mac80211_queue_work(&sdata->local->hw,
+	xr_mac80211_queue_work(&sdata->local->hw,
 			     &sdata->u.mgd.request_smps_work);
 }
 /* this might change ... don't want non-open drivers using it */

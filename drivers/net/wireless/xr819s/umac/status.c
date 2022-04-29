@@ -10,7 +10,7 @@
  */
 
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "rate.h"
 #include "mesh.h"
@@ -18,7 +18,7 @@
 #include "wme.h"
 
 
-void mac80211_tx_status_irqsafe(struct ieee80211_hw *hw,
+void xr_mac80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 				 struct sk_buff *skb)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -171,7 +171,7 @@ static void ieee80211_check_pending_bar(struct sta_info *sta, u8 *addr, u8 tid)
 		return;
 
 	tid_tx->bar_pending = false;
-	mac80211_send_bar(&sta->sdata->vif, addr, tid, tid_tx->failed_bar_ssn);
+	xr_mac80211_send_bar(&sta->sdata->vif, addr, tid, tid_tx->failed_bar_ssn);
 }
 
 static void ieee80211_frame_acked(struct sta_info *sta, struct sk_buff *skb)
@@ -212,7 +212,7 @@ static void ieee80211_frame_acked(struct sta_info *sta, struct sk_buff *skb)
 			break;
 		}
 
-		mac80211_queue_work(&local->hw, &local->recalc_smps);
+		xr_mac80211_queue_work(&local->hw, &local->recalc_smps);
 	}
 }
 
@@ -362,7 +362,7 @@ static void ieee80211_add_tx_radiotap_header(struct ieee80211_supported_band
  */
 #define STA_LOST_PKT_THRESHOLD	50
 
-void mac80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
+void xr_mac80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct sk_buff *skb2;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
@@ -436,7 +436,7 @@ void mac80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 			tid = qc[0] & 0xf;
 			ssn = ((le16_to_cpu(hdr->seq_ctrl) + 0x10)
 						& IEEE80211_SCTL_SEQ);
-			mac80211_send_bar(&sta->sdata->vif, hdr->addr1,
+			xr_mac80211_send_bar(&sta->sdata->vif, hdr->addr1,
 					   tid, ssn);
 		}
 
@@ -593,7 +593,7 @@ void mac80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 	/* send frame to monitor interfaces now */
 	rtap_len = ieee80211_tx_radiotap_len(info);
 	if (WARN_ON_ONCE(skb_headroom(skb) < rtap_len)) {
-		printk(KERN_ERR "mac80211_tx_status: headroom too small\n");
+		printk(KERN_ERR "xr_mac80211_tx_status: headroom too small\n");
 		dev_kfree_skb(skb);
 		return;
 	}
@@ -636,7 +636,7 @@ void mac80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 	dev_kfree_skb(skb);
 }
 
-void mac80211_report_low_ack(struct ieee80211_sta *pubsta, u32 num_packets)
+void xr_mac80211_report_low_ack(struct ieee80211_sta *pubsta, u32 num_packets)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
 	cfg80211_cqm_pktloss_notify(sta->sdata->dev, sta->sta.addr,

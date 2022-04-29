@@ -19,7 +19,7 @@
 #include <linux/if_arp.h>
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <asm/unaligned.h>
 
 #include "ieee80211_i.h"
@@ -410,7 +410,7 @@ static void ieee80211_rx_bss_info(struct ieee80211_sub_if_data *sdata,
 	}
 
  put_bss:
-	mac80211_rx_bss_put(local, bss);
+	xr_mac80211_rx_bss_put(local, bss);
 }
 
 /*
@@ -611,7 +611,7 @@ static void ieee80211_sta_find_ibss(struct ieee80211_sub_if_data *sdata)
 		       sdata->name, cbss->bssid);
 
 		ieee80211_sta_join_ibss(sdata, bss);
-		mac80211_rx_bss_put(local, bss);
+		xr_mac80211_rx_bss_put(local, bss);
 		return;
 	}
 
@@ -840,7 +840,7 @@ static void ieee80211_ibss_timer(struct timer_list *t)
 		return;
 	}
 
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 #ifdef CONFIG_PM
@@ -883,7 +883,7 @@ void mac80211_ibss_notify_scan_completed(struct ieee80211_local *local)
 		if (sdata->vif.type != NL80211_IFTYPE_ADHOC)
 			continue;
 		sdata->u.ibss.last_scan_completed = jiffies;
-		mac80211_queue_work(&local->hw, &sdata->work);
+		xr_mac80211_queue_work(&local->hw, &sdata->work);
 	}
 	mutex_unlock(&local->iflist_mtx);
 }
@@ -948,7 +948,7 @@ int mac80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 	mac80211_recalc_idle(sdata->local);
 	mutex_unlock(&sdata->local->mtx);
 
-	mac80211_queue_work(&sdata->local->hw, &sdata->work);
+	xr_mac80211_queue_work(&sdata->local->hw, &sdata->work);
 
 	return 0;
 }

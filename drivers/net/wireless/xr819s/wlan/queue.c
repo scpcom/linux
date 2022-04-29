@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/sched.h>
 #include "xradio.h"
 #include "queue.h"
@@ -39,7 +39,7 @@ static inline void __xradio_queue_lock(struct xradio_queue *queue)
 	if (queue->tx_locked_cnt++ == 0) {
 		txrx_printk(XRADIO_DBG_MSG, "[TX] Queue %d is locked.\n",
 				queue->queue_id);
-		mac80211_stop_queue(stats->hw_priv->hw, queue->queue_id);
+		xr_mac80211_stop_queue(stats->hw_priv->hw, queue->queue_id);
 	}
 }
 
@@ -50,7 +50,7 @@ static inline void __xradio_queue_unlock(struct xradio_queue *queue)
 	if (--queue->tx_locked_cnt == 0) {
 		txrx_printk(XRADIO_DBG_MSG, "[TX] Queue %d is unlocked.\n",
 				queue->queue_id);
-		mac80211_wake_queue(stats->hw_priv->hw, queue->queue_id);
+		xr_mac80211_wake_queue(stats->hw_priv->hw, queue->queue_id);
 	}
 }
 

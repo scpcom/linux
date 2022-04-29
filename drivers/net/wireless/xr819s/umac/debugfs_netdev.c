@@ -15,7 +15,7 @@
 #include <linux/rtnetlink.h>
 #include <linux/slab.h>
 #include <linux/notifier.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <net/cfg80211.h>
 #include "ieee80211_i.h"
 #include "rate.h"

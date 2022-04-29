@@ -16,7 +16,7 @@
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "wme.h"
@@ -32,12 +32,12 @@
  *
  * When TX aggregation is started by some subsystem (usually the rate
  * control algorithm would be appropriate) by calling the
- * mac80211_start_tx_ba_session() function, the driver will be
+ * xr_mac80211_start_tx_ba_session() function, the driver will be
  * notified via its @ampdu_action function, with the
  * %IEEE80211_AMPDU_TX_START action.
  *
  * In response to that, the driver is later required to call the
- * mac80211_start_tx_ba_cb_irqsafe() function, which will really
+ * xr_mac80211_start_tx_ba_cb_irqsafe() function, which will really
  * start the aggregation session after the peer has also responded.
  * If the peer responds negatively, the session will be stopped
  * again right away. Note that it is possible for the aggregation
@@ -51,10 +51,10 @@
  * @ampdu_action callback.
  *
  * Similarly, when the aggregation session is stopped by the peer
- * or something calling mac80211_stop_tx_ba_session(), the driver's
+ * or something calling xr_mac80211_stop_tx_ba_session(), the driver's
  * @ampdu_action function will be called with the action
  * %IEEE80211_AMPDU_TX_STOP. In this case, the call must not fail,
- * and the driver must later call mac80211_stop_tx_ba_cb_irqsafe().
+ * and the driver must later call xr_mac80211_stop_tx_ba_cb_irqsafe().
  */
 
 static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
@@ -105,7 +105,7 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
 	ieee80211_tx_skb(sdata, skb);
 }
 
-void mac80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn)
+void xr_mac80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 	struct ieee80211_local *local = sdata->local;
@@ -264,7 +264,7 @@ static void sta_addba_resp_timer_expired(struct timer_list *t)
 			printk(KERN_DEBUG "addBA response timer expired on tid %d\n", tid);
 #endif
 
-	mac80211_stop_tx_ba_session(&sta->sta, tid);
+	xr_mac80211_stop_tx_ba_session(&sta->sta, tid);
 	rcu_read_unlock();
 }
 
@@ -286,24 +286,24 @@ static inline int ieee80211_ac_from_tid(int tid)
  * a global "agg_queue_stop" refcount.
  */
 static void __acquires(agg_queue)
-mac80211_stop_queue_agg(struct ieee80211_sub_if_data *sdata, int tid)
+xr_mac80211_stop_queue_agg(struct ieee80211_sub_if_data *sdata, int tid)
 {
 	int queue = sdata->vif.hw_queue[ieee80211_ac_from_tid(tid)];
 
 	if (atomic_inc_return(&sdata->local->agg_queue_stop[queue]) == 1)
-		mac80211_stop_queue_by_reason(
+		xr_mac80211_stop_queue_by_reason(
 			&sdata->local->hw, queue,
 			IEEE80211_QUEUE_STOP_REASON_AGGREGATION);
 	__acquire(agg_queue);
 }
 
 static void __releases(agg_queue)
-mac80211_wake_queue_agg(struct ieee80211_sub_if_data *sdata, int tid)
+xr_mac80211_wake_queue_agg(struct ieee80211_sub_if_data *sdata, int tid)
 {
 	int queue = sdata->vif.hw_queue[ieee80211_ac_from_tid(tid)];
 
 	if (atomic_dec_return(&sdata->local->agg_queue_stop[queue]) == 0)
-		mac80211_wake_queue_by_reason(
+		xr_mac80211_wake_queue_by_reason(
 			&sdata->local->hw, queue,
 			IEEE80211_QUEUE_STOP_REASON_AGGREGATION);
 	__release(agg_queue);
@@ -321,7 +321,7 @@ ieee80211_agg_splice_packets(struct ieee80211_sub_if_data *sdata,
 	int queue = sdata->vif.hw_queue[ieee80211_ac_from_tid(tid)];
 	unsigned long flags;
 
-	mac80211_stop_queue_agg(sdata, tid);
+	xr_mac80211_stop_queue_agg(sdata, tid);
 
 	if (WARN(!tid_tx, "TID %d gone but expected when splicing aggregates"
 			  " from the pending queue\n", tid))
@@ -339,7 +339,7 @@ ieee80211_agg_splice_packets(struct ieee80211_sub_if_data *sdata,
 static void __releases(agg_queue)
 ieee80211_agg_splice_finish(struct ieee80211_sub_if_data *sdata, u16 tid)
 {
-	mac80211_wake_queue_agg(sdata, tid);
+	xr_mac80211_wake_queue_agg(sdata, tid);
 }
 
 void mac80211_tx_ba_session_handle_start(struct sta_info *sta, int tid)
@@ -407,7 +407,7 @@ void mac80211_tx_ba_session_handle_start(struct sta_info *sta, int tid)
 				     tid_tx->timeout);
 }
 
-int mac80211_start_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid,
+int xr_mac80211_start_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid,
 				  u16 timeout)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
@@ -496,7 +496,7 @@ int mac80211_start_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid,
 	 */
 	sta->ampdu_mlme.tid_start_tx[tid] = tid_tx;
 
-	mac80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+	xr_mac80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
 
 	/* this flow continues off the work */
  err_unlock_sta:
@@ -587,7 +587,7 @@ void mac80211_start_tx_ba_cb(struct ieee80211_vif *vif, u8 *ra, u16 tid)
 	mutex_unlock(&local->sta_mtx);
 }
 
-void mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
+void xr_mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
 				      const u8 *ra, u16 tid)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
@@ -604,7 +604,7 @@ void mac80211_start_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
 
 	skb->pkt_type = IEEE80211_SDATA_QUEUE_AGG_START;
 	skb_queue_tail(&sdata->skb_queue, skb);
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 int __mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
@@ -622,7 +622,7 @@ int __mac80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
 	return ret;
 }
 
-int mac80211_stop_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid)
+int xr_mac80211_stop_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
@@ -653,7 +653,7 @@ int mac80211_stop_tx_ba_session(struct ieee80211_sta *pubsta, u16 tid)
 	}
 
 	set_bit(HT_AGG_STATE_WANT_STOP, &tid_tx->state);
-	mac80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+	xr_mac80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
 
  unlock:
 	spin_unlock_bh(&sta->lock);
@@ -737,7 +737,7 @@ void mac80211_stop_tx_ba_cb(struct ieee80211_vif *vif, u8 *ra, u8 tid)
 	mutex_unlock(&local->sta_mtx);
 }
 
-void mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
+void xr_mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
 				     const u8 *ra, u16 tid)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
@@ -754,7 +754,7 @@ void mac80211_stop_tx_ba_cb_irqsafe(struct ieee80211_vif *vif,
 
 	skb->pkt_type = IEEE80211_SDATA_QUEUE_AGG_STOP;
 	skb_queue_tail(&sdata->skb_queue, skb);
-	mac80211_queue_work(&local->hw, &sdata->work);
+	xr_mac80211_queue_work(&local->hw, &sdata->work);
 }
 
 void mac80211_process_addba_resp(struct ieee80211_local *local,

@@ -17,7 +17,7 @@
 #include <linux/timer.h>
 #include <linux/rtnetlink.h>
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "rate.h"
@@ -250,7 +250,7 @@ void sta_info_free_rcu(struct rcu_head *rcu_h)
 	rate_control_remove_sta_debugfs(sta);
 	mac80211_sta_debugfs_remove(sta);
 #endif /* CONFIG_XRMAC_DEBUGFS */
-	mac80211_queue_work(hw, &sta->sta_free_wk);
+	xr_mac80211_queue_work(hw, &sta->sta_free_wk);
 }
 #endif
 /* Caller must hold local->sta_lock */
@@ -513,7 +513,7 @@ static int xrmac_sta_info_insert_ibss(struct sta_info *sta) __acquires(RCU)
 			sta->sta.addr);
 #endif /* CONFIG_XRMAC_VERBOSE_DEBUG */
 
-	mac80211_queue_work(&local->hw, &local->sta_finish_work);
+	xr_mac80211_queue_work(&local->hw, &local->sta_finish_work);
 
 	return 0;
 }
@@ -1124,7 +1124,7 @@ void mac80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 	mutex_unlock(&local->sta_mtx);
 }
 
-struct ieee80211_sta *mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
+struct ieee80211_sta *xr_mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
 					       const u8 *addr,
 					       const u8 *localaddr)
 {
@@ -1146,7 +1146,7 @@ struct ieee80211_sta *mac80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
 	return NULL;
 }
 
-struct ieee80211_sta *mac80211_find_sta(struct ieee80211_vif *vif,
+struct ieee80211_sta *xr_mac80211_find_sta(struct ieee80211_vif *vif,
 					 const u8 *addr)
 {
 	struct sta_info *sta;
@@ -1519,7 +1519,7 @@ void mac80211_sta_ps_deliver_uapsd(struct sta_info *sta)
 					  IEEE80211_FRAME_RELEASE_UAPSD);
 }
 
-void mac80211_sta_block_awake(struct ieee80211_hw *hw,
+void xr_mac80211_sta_block_awake(struct ieee80211_hw *hw,
 			       struct ieee80211_sta *pubsta, bool block)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
@@ -1529,10 +1529,10 @@ void mac80211_sta_block_awake(struct ieee80211_hw *hw,
 	if (block)
 		set_sta_flag(sta, WLAN_STA_PS_DRIVER);
 	else if (test_sta_flag(sta, WLAN_STA_PS_DRIVER))
-		mac80211_queue_work(hw, &sta->drv_unblock_wk);
+		xr_mac80211_queue_work(hw, &sta->drv_unblock_wk);
 }
 
-void mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta)
+void xr_mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);
 	struct ieee80211_local *local = sta->local;
@@ -1556,7 +1556,7 @@ void mac80211_sta_eosp_irqsafe(struct ieee80211_sta *pubsta)
 	tasklet_schedule(&local->tasklet);
 }
 
-void mac80211_sta_set_buffered(struct ieee80211_sta *pubsta,
+void xr_mac80211_sta_set_buffered(struct ieee80211_sta *pubsta,
 				u8 tid, bool buffered)
 {
 	struct sta_info *sta = container_of(pubsta, struct sta_info, sta);

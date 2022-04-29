@@ -17,7 +17,7 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 #include <crypto/arc4.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "debugfs_key.h"
@@ -214,7 +214,7 @@ static void ieee80211_key_disable_hw_accel(struct ieee80211_key *key)
 	key->flags &= ~KEY_FLAG_UPLOADED_TO_HARDWARE;
 }
 
-void mac80211_key_removed(struct ieee80211_key_conf *key_conf)
+void xr_mac80211_key_removed(struct ieee80211_key_conf *key_conf)
 {
 	struct ieee80211_key *key;
 
@@ -629,7 +629,7 @@ void mac80211_enable_keys(struct ieee80211_sub_if_data *sdata)
 	mutex_unlock(&sdata->local->key_mtx);
 }
 
-void mac80211_iter_keys(struct ieee80211_hw *hw,
+void xr_mac80211_iter_keys(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,
 			 void (*iter)(struct ieee80211_hw *hw,
 				      struct ieee80211_vif *vif,
@@ -695,7 +695,7 @@ void mac80211_free_keys(struct ieee80211_sub_if_data *sdata)
 }
 
 
-void mac80211_gtk_rekey_notify(struct ieee80211_vif *vif, const u8 *bssid,
+void xr_mac80211_gtk_rekey_notify(struct ieee80211_vif *vif, const u8 *bssid,
 				const u8 *replay_ctr, gfp_t gfp)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
@@ -705,7 +705,7 @@ void mac80211_gtk_rekey_notify(struct ieee80211_vif *vif, const u8 *bssid,
 	cfg80211_gtk_rekey_notify(sdata->dev, bssid, replay_ctr, gfp);
 }
 
-void mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
 			      struct ieee80211_key_seq *seq)
 {
 	struct ieee80211_key *key;
@@ -744,7 +744,7 @@ void mac80211_get_key_tx_seq(struct ieee80211_key_conf *keyconf,
 	}
 }
 
-void mac80211_get_key_rx_seq(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_key_rx_seq(struct ieee80211_key_conf *keyconf,
 			      int tid, struct ieee80211_key_seq *seq)
 {
 	struct ieee80211_key *key;

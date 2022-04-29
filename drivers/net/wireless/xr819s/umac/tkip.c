@@ -13,7 +13,7 @@
 #include <linux/export.h>
 #include <asm/unaligned.h>
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "driver-ops.h"
 #include "key.h"
 #include "tkip.h"
@@ -170,7 +170,7 @@ static void ieee80211_compute_tkip_p1k(struct ieee80211_key *key, u32 iv32)
 		tkip_mixing_phase1(tk, ctx, sdata->vif.addr, iv32);
 }
 
-void mac80211_get_tkip_p1k_iv(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_p1k_iv(struct ieee80211_key_conf *keyconf,
 			       u32 iv32, u16 *p1k)
 {
 	struct ieee80211_key *key = (struct ieee80211_key *)
@@ -184,7 +184,7 @@ void mac80211_get_tkip_p1k_iv(struct ieee80211_key_conf *keyconf,
 	spin_unlock_irqrestore(&key->u.tkip.txlock, flags);
 }
 
-void mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
 							const u8 *ta, u32 iv32, u16 *p1k)
 {
 	const u8 *tk = &keyconf->key[NL80211_TKIP_DATA_OFFSET_ENCR_KEY];
@@ -194,7 +194,7 @@ void mac80211_get_tkip_rx_p1k(struct ieee80211_key_conf *keyconf,
 	memcpy(p1k, ctx.p1k, sizeof(ctx.p1k));
 }
 
-void mac80211_get_tkip_p2k(struct ieee80211_key_conf *keyconf,
+void xr_mac80211_get_tkip_p2k(struct ieee80211_key_conf *keyconf,
 			    struct sk_buff *skb, u8 *p2k)
 {
 	struct ieee80211_key *key = (struct ieee80211_key *)
@@ -227,7 +227,7 @@ int mac80211_tkip_encrypt_data(struct arc4_ctx *ctx,
 {
 	u8 rc4key[16];
 
-	mac80211_get_tkip_p2k(&key->conf, skb, rc4key);
+	xr_mac80211_get_tkip_p2k(&key->conf, skb, rc4key);
 
 	return mac80211_wep_encrypt_data(ctx, rc4key, 16,
 					  payload, payload_len);

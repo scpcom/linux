@@ -2604,7 +2604,7 @@ static ssize_t xradio_hang_write(struct file *file,
 #ifdef CONFIG_PM
 		xradio_pm_stay_awake(&hw_priv->pm_state, 3 * HZ);
 #endif
-		/* ieee80211_driver_hang_notify(priv->vif, GFP_KERNEL); */
+		/* xr_ieee80211_driver_hang_notify(priv->vif, GFP_KERNEL); */
 	} else
 		return -ENODEV;
 

@@ -1,4 +1,4 @@
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <net/rtnetlink.h>
 #include <linux/pm_qos.h>
 
@@ -69,7 +69,7 @@ int __mac80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		mutex_unlock(&local->sta_mtx);
 	}
 
-	mac80211_stop_queues_by_reason(hw,
+	xr_mac80211_stop_queues_by_reason(hw,
 			IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 
 	/* flush out all packets */
@@ -101,7 +101,7 @@ int __mac80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		int err = drv_suspend(local, wowlan);
 		if (err < 0) {
 			local->quiescing = false;
-			mac80211_wake_queues_by_reason(hw,
+			xr_mac80211_wake_queues_by_reason(hw,
 					IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 			return err;
 		} else if (err > 0) {

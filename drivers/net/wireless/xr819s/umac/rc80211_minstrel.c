@@ -51,7 +51,7 @@
 #include <linux/random.h>
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "rate.h"
 #include "rc80211_minstrel.h"
 
@@ -568,12 +568,12 @@ struct rate_control_ops xrmac_minstrel = {
 int __init
 xrmac_rc80211_minstrel_init(void)
 {
-	return mac80211_rate_control_register(&xrmac_minstrel);
+	return xr_mac80211_rate_control_register(&xrmac_minstrel);
 }
 
 void
 xrmac_rc80211_minstrel_exit(void)
 {
-	mac80211_rate_control_unregister(&xrmac_minstrel);
+	xr_mac80211_rate_control_unregister(&xrmac_minstrel);
 }
 

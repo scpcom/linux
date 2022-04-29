@@ -14,7 +14,7 @@
 #include <linux/ieee80211.h>
 #include <linux/gfp.h>
 #include <asm/unaligned.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <crypto/aes.h>
 
 #include "ieee80211_i.h"

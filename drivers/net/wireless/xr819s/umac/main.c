@@ -8,7 +8,7 @@
  * published by the Free Software Foundation.
  */
 #include <generated/uapi/linux/version.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/module.h>
 #include <linux/fips.h>
 #include <linux/init.h>
@@ -384,11 +384,11 @@ static void ieee80211_tasklet_handler(unsigned long data)
 			/* Clear skb->pkt_type in order to not confuse kernel
 			 * netstack. */
 			skb->pkt_type = 0;
-			mac80211_rx(local_to_hw(local), skb);
+			xr_mac80211_rx(local_to_hw(local), skb);
 			break;
 		case IEEE80211_TX_STATUS_MSG:
 			skb->pkt_type = 0;
-			mac80211_tx_status(local_to_hw(local), skb);
+			xr_mac80211_tx_status(local_to_hw(local), skb);
 			break;
 		case IEEE80211_EOSP_MSG:
 			eosp_data = (void *)skb->cb;
@@ -431,7 +431,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 	rtnl_unlock();
 }
 
-void mac80211_restart_hw(struct ieee80211_hw *hw)
+void xr_mac80211_restart_hw(struct ieee80211_hw *hw)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 
@@ -441,7 +441,7 @@ void mac80211_restart_hw(struct ieee80211_hw *hw)
 		   "Hardware restart was requested\n");
 
 	/* use this reason, mac80211_reconfig will unblock it */
-	mac80211_stop_queues_by_reason(hw,
+	xr_mac80211_stop_queues_by_reason(hw,
 		IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 
 	/*
@@ -454,7 +454,7 @@ void mac80211_restart_hw(struct ieee80211_hw *hw)
 	queue_work(system_freezable_wq, &local->restart_work);
 }
 
-int mac80211_ifdev_move(struct ieee80211_hw *hw,
+int xr_mac80211_ifdev_move(struct ieee80211_hw *hw,
 			struct device *new_parent, int dpm_order)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -728,7 +728,7 @@ ieee80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
 
 };
 
-struct ieee80211_hw *mac80211_alloc_hw(size_t priv_data_len,
+struct ieee80211_hw *xr_mac80211_alloc_hw(size_t priv_data_len,
 					const struct ieee80211_ops *ops)
 {
 	struct ieee80211_local *local;
@@ -833,7 +833,7 @@ struct ieee80211_hw *mac80211_alloc_hw(size_t priv_data_len,
 	local->smps_mode = IEEE80211_SMPS_OFF;
 
 	INIT_WORK(&local->sched_scan_stopped_work,
-		  mac80211_sched_scan_stopped_work);
+		  xr_mac80211_sched_scan_stopped_work);
 
 	xrmac_sta_info_init(local);
 
@@ -953,7 +953,7 @@ static int ieee80211_init_cipher_suites(struct ieee80211_local *local)
 	return 0;
 }
 
-int mac80211_register_hw(struct ieee80211_hw *hw)
+int xr_mac80211_register_hw(struct ieee80211_hw *hw)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 	struct ieee80211_channel_state *chan_state = &local->chan_state;
@@ -1244,7 +1244,7 @@ int mac80211_register_hw(struct ieee80211_hw *hw)
 	return result;
 }
 
-void mac80211_unregister_hw(struct ieee80211_hw *hw)
+void xr_mac80211_unregister_hw(struct ieee80211_hw *hw)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 
@@ -1309,7 +1309,7 @@ void mac80211_unregister_hw(struct ieee80211_hw *hw)
 	kfree(local->int_scan_req);
 }
 
-void mac80211_free_hw(struct ieee80211_hw *hw)
+void xr_mac80211_free_hw(struct ieee80211_hw *hw)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 

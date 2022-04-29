@@ -16,7 +16,7 @@
 
 #include <linux/ieee80211.h>
 #include <net/cfg80211.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "sta_info.h"
 #include "wme.h"

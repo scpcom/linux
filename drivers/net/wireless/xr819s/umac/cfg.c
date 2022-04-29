@@ -2496,7 +2496,7 @@ static int ieee80211_start_roc_work(struct ieee80211_local *local,
 
 	/* if not HW assist, just queue & schedule work */
 	if (!local->ops->remain_on_channel) {
-		mac80211_queue_delayed_work(&local->hw, &roc->work, 0);
+		xr_mac80211_queue_delayed_work(&local->hw, &roc->work, 0);
 		goto out_queue;
 	}
 
@@ -2731,7 +2731,7 @@ static int ieee80211_cancel_roc(struct ieee80211_local *local,
 	} else {
 		/* work may be pending so use it all the time */
 		found->abort = true;
-		mac80211_queue_delayed_work(&local->hw, &found->work, 0);
+		xr_mac80211_queue_delayed_work(&local->hw, &found->work, 0);
 
 		mutex_unlock(&local->mtx);
 
@@ -2932,7 +2932,7 @@ static void ieee80211_mgmt_frame_register(struct wiphy *wiphy,
 	else
 		sdata->req_filt_flags &= ~FIF_PROBE_REQ;
 
-	mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
+	xr_mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
 }
 
 static int ieee80211_set_antenna(struct wiphy *wiphy, u32 tx_ant, u32 rx_ant)
@@ -3091,8 +3091,8 @@ ieee80211_prep_tdls_encap_data(struct wiphy *wiphy, struct net_device *dev,
 		tf->u.setup_req.capability =
 			cpu_to_le16(ieee80211_get_tdls_sta_capab(sdata));
 
-		mac80211_add_srates_ie(&sdata->vif, skb);
-		mac80211_add_ext_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_ext_srates_ie(&sdata->vif, skb);
 		ieee80211_tdls_add_ext_capab(skb);
 		break;
 	case WLAN_TDLS_SETUP_RESPONSE:
@@ -3105,8 +3105,8 @@ ieee80211_prep_tdls_encap_data(struct wiphy *wiphy, struct net_device *dev,
 		tf->u.setup_resp.capability =
 			cpu_to_le16(ieee80211_get_tdls_sta_capab(sdata));
 
-		mac80211_add_srates_ie(&sdata->vif, skb);
-		mac80211_add_ext_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_ext_srates_ie(&sdata->vif, skb);
 		ieee80211_tdls_add_ext_capab(skb);
 		break;
 	case WLAN_TDLS_SETUP_CONFIRM:
@@ -3166,8 +3166,8 @@ ieee80211_prep_tdls_direct(struct wiphy *wiphy, struct net_device *dev,
 		mgmt->u.action.u.tdls_discover_resp.capability =
 			cpu_to_le16(ieee80211_get_tdls_sta_capab(sdata));
 
-		mac80211_add_srates_ie(&sdata->vif, skb);
-		mac80211_add_ext_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_srates_ie(&sdata->vif, skb);
+		xr_mac80211_add_ext_srates_ie(&sdata->vif, skb);
 		ieee80211_tdls_add_ext_capab(skb);
 		break;
 	default:

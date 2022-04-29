@@ -11,7 +11,7 @@
 #include <linux/debugfs.h>
 #include <linux/random.h>
 #include <linux/ieee80211.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "rate.h"
 #include "rc80211_minstrel.h"
 #include "rc80211_minstrel_ht.h"
@@ -376,7 +376,7 @@ minstrel_aggr_check(struct minstrel_priv *mp, struct ieee80211_sta *pubsta, stru
 	if (skb_get_queue_mapping(skb) == IEEE80211_AC_VO)
 		return;
 
-	mac80211_start_tx_ba_session(pubsta, tid, 5000);
+	xr_mac80211_start_tx_ba_session(pubsta, tid, 5000);
 }
 
 static void
@@ -896,11 +896,11 @@ int __init
 xrmac_rc80211_minstrel_ht_init(void)
 {
 	init_sample_table();
-	return mac80211_rate_control_register(&xrmac_minstrel_ht);
+	return xr_mac80211_rate_control_register(&xrmac_minstrel_ht);
 }
 
 void
 xrmac_rc80211_minstrel_ht_exit(void)
 {
-	mac80211_rate_control_unregister(&xrmac_minstrel_ht);
+	xr_mac80211_rate_control_unregister(&xrmac_minstrel_ht);
 }

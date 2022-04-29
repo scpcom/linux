@@ -22,7 +22,7 @@
 #include <net/net_namespace.h>
 #include <net/ieee80211_radiotap.h>
 #include <net/cfg80211.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <asm/unaligned.h>
 
 #include "ieee80211_i.h"
@@ -236,10 +236,10 @@ ieee80211_tx_h_dynamic_ps(struct ieee80211_tx_data *tx)
 
 	if (tx->sdata->vif.bss_conf.ps_enabled) {
 		// XXX: update this to new queue locking API
-		mac80211_stop_queues_by_reason(&local->hw,
+		xr_mac80211_stop_queues_by_reason(&local->hw,
 						IEEE80211_QUEUE_STOP_REASON_PS);
 		ifmgd->flags &= ~IEEE80211_STA_NULLFUNC_ACKED;
-		mac80211_queue_work(&local->hw,
+		xr_mac80211_queue_work(&local->hw,
 				     &tx->sdata->dynamic_ps_disable_work);
 	}
 
@@ -2224,7 +2224,7 @@ static void ieee80211_beacon_add_tim(struct ieee80211_if_ap *bss,
 	}
 }
 
-struct sk_buff *mac80211_beacon_get_tim(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_beacon_get_tim(struct ieee80211_hw *hw,
 					 struct ieee80211_vif *vif,
 					 u16 *tim_offset, u16 *tim_length)
 {
@@ -2347,9 +2347,9 @@ struct sk_buff *mac80211_beacon_get_tim(struct ieee80211_hw *hw,
 		*pos++ = WLAN_EID_SSID;
 		*pos++ = 0x0;
 
-		if (mac80211_add_srates_ie(&sdata->vif, skb) ||
+		if (xr_mac80211_add_srates_ie(&sdata->vif, skb) ||
 		    xrmac_mesh_add_ds_params_ie(skb, sdata) ||
-		    mac80211_add_ext_srates_ie(&sdata->vif, skb) ||
+		    xr_mac80211_add_ext_srates_ie(&sdata->vif, skb) ||
 		    xrmac_mesh_add_rsn_ie(skb, sdata) ||
 		    xrmac_mesh_add_meshid_ie(skb, sdata) ||
 		    xrmac_mesh_add_meshconf_ie(skb, sdata) ||
@@ -2393,7 +2393,7 @@ struct sk_buff *mac80211_beacon_get_tim(struct ieee80211_hw *hw,
 }
 
 #ifdef PROBE_RESP_EXTRA_IE
-struct sk_buff *mac80211_proberesp_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_proberesp_get(struct ieee80211_hw *hw,
 						   struct ieee80211_vif *vif)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -2481,7 +2481,7 @@ struct sk_buff *mac80211_proberesp_get(struct ieee80211_hw *hw,
 }
 #endif
 
-struct sk_buff *mac80211_pspoll_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_pspoll_get(struct ieee80211_hw *hw,
 				     struct ieee80211_vif *vif)
 {
 	struct ieee80211_sub_if_data *sdata;
@@ -2518,7 +2518,7 @@ struct sk_buff *mac80211_pspoll_get(struct ieee80211_hw *hw,
 	return skb;
 }
 
-struct sk_buff *mac80211_nullfunc_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_nullfunc_get(struct ieee80211_hw *hw,
 				       struct ieee80211_vif *vif)
 {
 	struct ieee80211_hdr_3addr *nullfunc;
@@ -2553,7 +2553,7 @@ struct sk_buff *mac80211_nullfunc_get(struct ieee80211_hw *hw,
 	return skb;
 }
 
-struct sk_buff *ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
 					  struct ieee80211_vif *vif)
 {
 	struct ieee80211_qos_hdr *nullfunc;
@@ -2590,7 +2590,7 @@ struct sk_buff *ieee80211_qosnullfunc_get(struct ieee80211_hw *hw,
 	return skb;
 }
 
-struct sk_buff *mac80211_probereq_get(struct ieee80211_hw *hw,
+struct sk_buff *xr_mac80211_probereq_get(struct ieee80211_hw *hw,
 				       struct ieee80211_vif *vif,
 				       const u8 *ssid, size_t ssid_len,
 				       const u8 *ie, size_t ie_len)
@@ -2636,7 +2636,7 @@ struct sk_buff *mac80211_probereq_get(struct ieee80211_hw *hw,
 	return skb;
 }
 
-void mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+void xr_mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		       const void *frame, size_t frame_len,
 		       const struct ieee80211_tx_info *frame_txctl,
 		       struct ieee80211_rts *rts)
@@ -2645,13 +2645,13 @@ void mac80211_rts_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 	rts->frame_control =
 	    cpu_to_le16(IEEE80211_FTYPE_CTL | IEEE80211_STYPE_RTS);
-	rts->duration = mac80211_rts_duration(hw, vif, frame_len,
+	rts->duration = xr_mac80211_rts_duration(hw, vif, frame_len,
 					       frame_txctl);
 	memcpy(rts->ra, hdr->addr1, sizeof(rts->ra));
 	memcpy(rts->ta, hdr->addr2, sizeof(rts->ta));
 }
 
-void mac80211_ctstoself_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+void xr_mac80211_ctstoself_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			     const void *frame, size_t frame_len,
 			     const struct ieee80211_tx_info *frame_txctl,
 			     struct ieee80211_cts *cts)
@@ -2660,7 +2660,7 @@ void mac80211_ctstoself_get(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 	cts->frame_control =
 	    cpu_to_le16(IEEE80211_FTYPE_CTL | IEEE80211_STYPE_CTS);
-	cts->duration = mac80211_ctstoself_duration(hw, vif,
+	cts->duration = xr_mac80211_ctstoself_duration(hw, vif,
 						     frame_len, frame_txctl);
 	memcpy(cts->ra, hdr->addr1, sizeof(cts->ra));
 }

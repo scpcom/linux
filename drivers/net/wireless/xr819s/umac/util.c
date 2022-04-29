@@ -11,7 +11,7 @@
  * utilities for mac80211
  */
 
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include <linux/netdevice.h>
 #include <linux/export.h>
 #include <linux/types.h>
@@ -159,7 +159,7 @@ int mac80211_frame_duration(enum nl80211_band band, size_t len,
 }
 
 /* Exported duration function for driver use */
-__le16 mac80211_generic_frame_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_generic_frame_duration(struct ieee80211_hw *hw,
 					struct ieee80211_vif *vif,
 					enum nl80211_band band,
 					size_t frame_len,
@@ -184,7 +184,7 @@ __le16 mac80211_generic_frame_duration(struct ieee80211_hw *hw,
 	return cpu_to_le16(dur);
 }
 
-__le16 mac80211_rts_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_rts_duration(struct ieee80211_hw *hw,
 			      struct ieee80211_vif *vif, size_t frame_len,
 			      const struct ieee80211_tx_info *frame_txctl)
 {
@@ -223,7 +223,7 @@ __le16 mac80211_rts_duration(struct ieee80211_hw *hw,
 	return cpu_to_le16(dur);
 }
 
-__le16 mac80211_ctstoself_duration(struct ieee80211_hw *hw,
+__le16 xr_mac80211_ctstoself_duration(struct ieee80211_hw *hw,
 				    struct ieee80211_vif *vif,
 				    size_t frame_len,
 				    const struct ieee80211_tx_info *frame_txctl)
@@ -267,7 +267,7 @@ static bool ieee80211_all_queues_started(struct ieee80211_hw *hw)
 	unsigned int queue;
 
 	for (queue = 0; queue < hw->queues; queue++)
-		if (mac80211_queue_stopped(hw, queue))
+		if (xr_mac80211_queue_stopped(hw, queue))
 			return false;
 	return true;
 }
@@ -333,7 +333,7 @@ static void __mac80211_wake_queue(struct ieee80211_hw *hw, int queue,
 		tasklet_schedule(&local->tx_pending_tasklet);
 }
 
-void mac80211_wake_queue_by_reason(struct ieee80211_hw *hw, int queue,
+void xr_mac80211_wake_queue_by_reason(struct ieee80211_hw *hw, int queue,
 				    enum queue_stop_reason reason)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -344,9 +344,9 @@ void mac80211_wake_queue_by_reason(struct ieee80211_hw *hw, int queue,
 	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
 }
 
-void mac80211_wake_queue(struct ieee80211_hw *hw, int queue)
+void xr_mac80211_wake_queue(struct ieee80211_hw *hw, int queue)
 {
-	mac80211_wake_queue_by_reason(hw, queue,
+	xr_mac80211_wake_queue_by_reason(hw, queue,
 				       IEEE80211_QUEUE_STOP_REASON_DRIVER);
 }
 
@@ -382,7 +382,7 @@ static void __mac80211_stop_queue(struct ieee80211_hw *hw, int queue,
 	rcu_read_unlock();
 }
 
-void mac80211_stop_queue_by_reason(struct ieee80211_hw *hw, int queue,
+void xr_mac80211_stop_queue_by_reason(struct ieee80211_hw *hw, int queue,
 				    enum queue_stop_reason reason)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -393,9 +393,9 @@ void mac80211_stop_queue_by_reason(struct ieee80211_hw *hw, int queue,
 	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
 }
 
-void mac80211_stop_queue(struct ieee80211_hw *hw, int queue)
+void xr_mac80211_stop_queue(struct ieee80211_hw *hw, int queue)
 {
-	mac80211_stop_queue_by_reason(hw, queue,
+	xr_mac80211_stop_queue_by_reason(hw, queue,
 				       IEEE80211_QUEUE_STOP_REASON_DRIVER);
 }
 
@@ -460,7 +460,7 @@ void mac80211_add_pending_skbs(struct ieee80211_local *local,
 	mac80211_add_pending_skbs_fn(local, skbs, NULL, NULL);
 }
 
-void mac80211_stop_queues_by_reason(struct ieee80211_hw *hw,
+void xr_mac80211_stop_queues_by_reason(struct ieee80211_hw *hw,
 				    enum queue_stop_reason reason)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -475,13 +475,13 @@ void mac80211_stop_queues_by_reason(struct ieee80211_hw *hw,
 	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
 }
 
-void mac80211_stop_queues(struct ieee80211_hw *hw)
+void xr_mac80211_stop_queues(struct ieee80211_hw *hw)
 {
-	mac80211_stop_queues_by_reason(hw,
+	xr_mac80211_stop_queues_by_reason(hw,
 					IEEE80211_QUEUE_STOP_REASON_DRIVER);
 }
 
-int mac80211_queue_stopped(struct ieee80211_hw *hw, int queue)
+int xr_mac80211_queue_stopped(struct ieee80211_hw *hw, int queue)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 	unsigned long flags;
@@ -496,7 +496,7 @@ int mac80211_queue_stopped(struct ieee80211_hw *hw, int queue)
 	return ret;
 }
 
-void mac80211_wake_queues_by_reason(struct ieee80211_hw *hw,
+void xr_mac80211_wake_queues_by_reason(struct ieee80211_hw *hw,
 				     enum queue_stop_reason reason)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -511,12 +511,12 @@ void mac80211_wake_queues_by_reason(struct ieee80211_hw *hw,
 	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
 }
 
-void mac80211_wake_queues(struct ieee80211_hw *hw)
+void xr_mac80211_wake_queues(struct ieee80211_hw *hw)
 {
-	mac80211_wake_queues_by_reason(hw, IEEE80211_QUEUE_STOP_REASON_DRIVER);
+	xr_mac80211_wake_queues_by_reason(hw, IEEE80211_QUEUE_STOP_REASON_DRIVER);
 }
 
-void mac80211_iterate_active_interfaces(
+void xr_mac80211_iterate_active_interfaces(
 	struct ieee80211_hw *hw,
 	void (*iterator)(void *data, u8 *mac,
 			 struct ieee80211_vif *vif),
@@ -543,7 +543,7 @@ void mac80211_iterate_active_interfaces(
 	mutex_unlock(&local->iflist_mtx);
 }
 
-void mac80211_iterate_active_interfaces_atomic(
+void xr_mac80211_iterate_active_interfaces_atomic(
 	struct ieee80211_hw *hw,
 	void (*iterator)(void *data, u8 *mac,
 			 struct ieee80211_vif *vif),
@@ -586,7 +586,7 @@ static bool ieee80211_can_queue_work(struct ieee80211_local *local)
 	return true;
 }
 
-void mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work)
+void xr_mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
 
@@ -596,7 +596,7 @@ void mac80211_queue_work(struct ieee80211_hw *hw, struct work_struct *work)
 	queue_work(local->workqueue, work);
 }
 
-void mac80211_queue_delayed_work(struct ieee80211_hw *hw,
+void xr_mac80211_queue_delayed_work(struct ieee80211_hw *hw,
 				  struct delayed_work *dwork,
 				  unsigned long delay)
 {
@@ -1157,7 +1157,7 @@ struct sk_buff *mac80211_build_probe_req(struct ieee80211_sub_if_data *sdata,
 					   chan_state->conf.channel->band,
 					   ratemask, chan);
 
-	skb = mac80211_probereq_get(&local->hw, &sdata->vif,
+	skb = xr_mac80211_probereq_get(&local->hw, &sdata->vif,
 				     ssid, ssid_len,
 				     buf, buf_len);
 	if (!skb)
@@ -1453,7 +1453,7 @@ int mac80211_reconfig(struct ieee80211_local *local)
 		barrier();
 	}
 
-	mac80211_wake_queues_by_reason(hw,
+	xr_mac80211_wake_queues_by_reason(hw,
 			IEEE80211_QUEUE_STOP_REASON_SUSPEND);
 
 	/*
@@ -1497,7 +1497,7 @@ int mac80211_reconfig(struct ieee80211_local *local)
 	return 0;
 }
 
-void mac80211_resume_disconnect(struct ieee80211_vif *vif)
+void xr_mac80211_resume_disconnect(struct ieee80211_vif *vif)
 {
 	struct ieee80211_sub_if_data *sdata;
 	struct ieee80211_local *local;
@@ -1660,7 +1660,7 @@ static void _mac80211_enable_rssi_reports(struct ieee80211_sub_if_data *sdata,
 	sdata->u.mgd.rssi_max_thold = rssi_max_thold*16;
 }
 
-void mac80211_enable_rssi_reports(struct ieee80211_vif *vif,
+void xr_mac80211_enable_rssi_reports(struct ieee80211_vif *vif,
 				    int rssi_min_thold,
 				    int rssi_max_thold)
 {
@@ -1673,14 +1673,14 @@ void mac80211_enable_rssi_reports(struct ieee80211_vif *vif,
 				       rssi_max_thold);
 }
 
-void mac80211_disable_rssi_reports(struct ieee80211_vif *vif)
+void xr_mac80211_disable_rssi_reports(struct ieee80211_vif *vif)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 
 	_mac80211_enable_rssi_reports(sdata, 0, 0);
 }
 
-int mac80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
+int xr_mac80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 	struct ieee80211_local *local = sdata->local;
@@ -1708,7 +1708,7 @@ int mac80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
 	return 0;
 }
 
-int mac80211_add_ext_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
+int xr_mac80211_add_ext_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 	struct ieee80211_local *local = sdata->local;

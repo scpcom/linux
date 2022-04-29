@@ -39,7 +39,7 @@
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/mac80211.h>
+#include <net/mac80211_xr.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 
@@ -101,7 +101,7 @@ void __mac80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
 	mutex_unlock(&sta->ampdu_mlme.mtx);
 }
 
-void mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
+void xr_mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
 				  const u8 *addr)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
@@ -119,7 +119,7 @@ void mac80211_stop_rx_ba_session(struct ieee80211_vif *vif, u16 ba_rx_bitmap,
 		if (ba_rx_bitmap & BIT(i))
 			set_bit(i, sta->ampdu_mlme.tid_rx_stop_requested);
 
-	mac80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
+	xr_mac80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
 	rcu_read_unlock();
 }
 
@@ -146,7 +146,7 @@ static void sta_rx_agg_session_timer_expired(struct timer_list *t)
 #endif
 
 	set_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired);
-	mac80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
+	xr_mac80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
 }
 
 static void sta_rx_agg_reorder_timer_expired(struct timer_list *t)
