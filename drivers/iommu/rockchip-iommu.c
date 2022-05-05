@@ -122,6 +122,7 @@ struct rk_iommu {
 	struct list_head node; /* entry in rk_iommu_domain.iommus */
 	struct iommu_domain *domain; /* domain to which iommu is attached */
 	bool shootdown_entire;
+	bool iommu_enabled;
 };
 
 struct rk_iommudata {
@@ -1063,6 +1064,8 @@ static void rk_iommu_disable(struct rk_iommu *iommu)
 	}
 	rk_iommu_disable_stall(iommu);
 	clk_bulk_disable(iommu->num_clocks, iommu->clocks);
+
+	iommu->iommu_enabled = false;
 }
 
 int rockchip_iommu_disable(struct device *dev)
@@ -1117,6 +1120,10 @@ out_disable_stall:
 	rk_iommu_disable_stall(iommu);
 out_disable_clocks:
 	clk_bulk_disable(iommu->num_clocks, iommu->clocks);
+
+	if (!ret)
+		iommu->iommu_enabled = true;
+
 	return ret;
 }
 
@@ -1140,7 +1147,7 @@ bool rockchip_iommu_is_enabled(struct device *dev)
 	if (!iommu)
 		return false;
 
-	return rk_iommu_is_paging_enabled(iommu);
+	return iommu->iommu_enabled;
 }
 EXPORT_SYMBOL(rockchip_iommu_is_enabled);
 
