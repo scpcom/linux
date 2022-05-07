@@ -209,6 +209,8 @@ static struct irq_chip plic_edge_chip = {
 #endif
 	.irq_set_type	= plic_irq_set_type,
 	.flags		= IRQCHIP_SKIP_SET_WAKE |
+			  IRQCHIP_ONESHOT_SAFE |
+			  IRQCHIP_EOI_THREADED |
 			  IRQCHIP_AFFINITY_PRE_STARTUP,
 };
 
