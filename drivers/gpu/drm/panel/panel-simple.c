@@ -551,7 +551,7 @@ static int panel_simple_resume(struct device *dev)
 
 	gpiod_direction_output(p->enable_gpio, 1);
 
-	if (p->desc->delay.reset)
+	if (p->desc->delay.prepare)
 		msleep(p->desc->delay.prepare);
 
 	gpiod_direction_output(p->reset_gpio, 1);
@@ -560,9 +560,6 @@ static int panel_simple_resume(struct device *dev)
 		msleep(p->desc->delay.reset);
 
 	gpiod_direction_output(p->reset_gpio, 0);
-
-	if (p->desc->delay.prepare)
-		msleep(p->desc->delay.prepare);
 
 	if (p->desc->init_seq)
 		if (p->dsi)
