@@ -61,6 +61,9 @@ struct rockchip_drm_sub_dev {
 	void (*loader_protect)(struct drm_encoder *encoder, bool on);
 };
 
+#define VOP_COLOR_KEY_NONE	(0 << 31)
+#define VOP_COLOR_KEY_MASK	(1 << 31)
+
 #define VOP_OUTPUT_IF_RGB	BIT(0)
 #define VOP_OUTPUT_IF_BT1120	BIT(1)
 #define VOP_OUTPUT_IF_BT656	BIT(2)
