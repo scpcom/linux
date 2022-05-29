@@ -44,5 +44,9 @@ extern struct __lcd_panel kld2844b_panel;
 extern struct __lcd_panel nv3029s_panel;
 #endif
 
+#ifdef CONFIG_LCD_SUPPORT_ST7789_SPI
+extern struct __lcd_panel st7789_spi_panel;
+#endif
+
 
 #endif
