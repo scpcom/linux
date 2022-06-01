@@ -30,6 +30,8 @@
 
 #define HSD20_IPS 1
 
+#define CGRAM_OFFSET 1
+
 /**
  * enum st7789v_command - ST7789V display controller commands
  *
@@ -261,6 +263,81 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	return ret;
 }
 
+static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	int colstart = 0, rowstart = 0;
+	int _init_width = par->pdata->display.width;
+	int _init_height = par->pdata->display.height;
+
+	switch (par->info->var.rotate) {
+	case 0: // Portrait
+	    #ifdef CGRAM_OFFSET
+	    if (_init_width == 135) {
+	        colstart = 52;
+	        rowstart = 40;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 270: // Landscape (Portrait + 90)
+	    #ifdef CGRAM_OFFSET
+	    if (_init_width == 135) {
+	        colstart = 40;
+	        rowstart = 53;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 180: // Inverter portrait
+	    #ifdef CGRAM_OFFSET
+	    if (_init_width == 135) {
+	        colstart = 53;
+	        rowstart = 40;
+	    } else if ((_init_width == 240) && (_init_height == 240)) {
+	        colstart = 0;
+	        rowstart = 80;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 90: // Inverted landscape
+	    #ifdef CGRAM_OFFSET
+	    if (_init_width == 135) {
+	        colstart = 40;
+	        rowstart = 52;
+	    } else if ((_init_width == 240) && (_init_height == 240)) {
+	        colstart = 80;
+	        rowstart = 0;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	}
+
+	#ifdef CGRAM_OFFSET
+	xs += colstart;
+	xe += colstart;
+	ys += rowstart;
+	ye += rowstart;
+	#endif
+
+	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS,
+		  xs >> 8, xs & 0xFF, xe >> 8, xe & 0xFF);
+
+	write_reg(par, MIPI_DCS_SET_PAGE_ADDRESS,
+		  ys >> 8, ys & 0xFF, ye >> 8, ye & 0xFF);
+
+	write_reg(par, MIPI_DCS_WRITE_MEMORY_START);
+}
+
 /**
  * set_var() - apply LCD properties like rotation and BGR mode
  *
@@ -376,6 +453,7 @@ static struct fbtft_display display = {
 	.fbtftops = {
 		.init_display = init_display,
 		.write_vmem = write_vmem,
+		.set_addr_win = set_addr_win,
 		.set_var = set_var,
 		.set_gamma = set_gamma,
 		.blank = blank,
