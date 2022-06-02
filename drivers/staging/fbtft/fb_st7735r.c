@@ -16,6 +16,8 @@
 #define DEFAULT_GAMMA   "0F 1A 0F 18 2F 28 20 22 1F 1B 23 37 00 07 02 10\n" \
 			"0F 1B 0F 17 33 2C 29 2E 30 30 39 3F 00 07 03 10"
 
+#define CGRAM_OFFSET 1
+
 static const s16 default_init_sequence[] = {
 	-1, MIPI_DCS_SOFT_RESET,
 	-2, 150,                               /* delay */
@@ -85,6 +87,66 @@ static const s16 default_init_sequence[] = {
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
+#ifdef CGRAM_OFFSET
+	int colstart = 0, rowstart = 0;
+	int _init_width = par->pdata->display.width;
+	int _init_height = par->pdata->display.height;
+#endif
+
+	switch (par->info->var.rotate) {
+	case 0: // Portrait
+	    #ifdef CGRAM_OFFSET
+            if ((_init_width == 80) && (_init_height == 160)) {
+                colstart = 26;
+                rowstart = 1;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 270: // Landscape (Portrait + 90)
+	    #ifdef CGRAM_OFFSET
+	    if ((_init_width == 80) && (_init_height == 160)) {
+                colstart = 1;
+                rowstart = 26;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 180: // Inverter portrait
+	    #ifdef CGRAM_OFFSET
+	    if ((_init_width == 80) && (_init_height == 160)) {
+                colstart = 26;
+                rowstart = 1;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	case 90: // Inverted landscape
+	    #ifdef CGRAM_OFFSET
+	    if ((_init_width == 80) && (_init_height == 160)) {
+                colstart = 1;
+                rowstart = 26;
+	    } else {
+	        colstart = 0;
+	        rowstart = 0;
+	    }
+	    #endif
+	    break;
+	}
+
+	#ifdef CGRAM_OFFSET
+	xs += colstart;
+	xe += colstart;
+	ys += rowstart;
+	ye += rowstart;
+	#endif
+
 	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS,
 		  xs >> 8, xs & 0xFF, xe >> 8, xe & 0xFF);
 
