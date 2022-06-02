@@ -78,7 +78,7 @@ static const s16 default_init_sequence[] = {
 	-1, MIPI_DCS_SET_DISPLAY_ON,
 	-2, 100,                               /* delay */
 
-	-1, MIPI_DCS_ENTER_NORMAL_MODE,
+	-1, MIPI_DCS_ENTER_INVERT_MODE, //MIPI_DCS_ENTER_NORMAL_MODE,
 	-2, 10,                               /* delay */
 
 	/* end marker */
