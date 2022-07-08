@@ -547,6 +547,11 @@ struct dma_pl330_desc {
 	/* For cyclic capability */
 	bool cyclic;
 	size_t num_periods;
+#ifdef CONFIG_NO_GKI
+	/* interlace size */
+	unsigned int src_interlace_size;
+	unsigned int dst_interlace_size;
+#endif
 };
 
 struct _xfer_spec {
@@ -577,6 +582,22 @@ static inline bool _manager_ns(struct pl330_thread *thrd)
 static inline u32 get_revision(u32 periph_id)
 {
 	return (periph_id >> PERIPH_REV_SHIFT) & PERIPH_REV_MASK;
+}
+
+static inline u32 _emit_ADDH(unsigned dry_run, u8 buf[],
+		enum pl330_dst da, u16 val)
+{
+	if (dry_run)
+		return SZ_DMAADDH;
+
+	buf[0] = CMD_DMAADDH;
+	buf[0] |= (da << 1);
+	*((__le16 *)&buf[1]) = cpu_to_le16(val);
+
+	PL330_DBGCMD_DUMP(SZ_DMAADDH, "\tDMAADDH %s %u\n",
+		da == 1 ? "DA" : "SA", val);
+
+	return SZ_DMAADDH;
 }
 
 static inline u32 _emit_END(unsigned dry_run, u8 buf[])
@@ -1203,6 +1224,24 @@ static inline int _ldst_peripheral(struct pl330_dmac *pl330,
 			pxs->desc->peri);
 		off += _emit_store(dry_run, &buf[off], cond, pxs->desc->rqtype,
 			pxs->desc->peri);
+#ifdef CONFIG_NO_GKI
+		switch (pxs->desc->rqtype) {
+		case DMA_DEV_TO_MEM:
+
+			if (pxs->desc->dst_interlace_size)
+				off += _emit_ADDH(dry_run, &buf[off], DST,
+						  pxs->desc->dst_interlace_size);
+			break;
+		case DMA_MEM_TO_DEV:
+			if (pxs->desc->src_interlace_size)
+				off += _emit_ADDH(dry_run, &buf[off], SRC,
+						  pxs->desc->src_interlace_size);
+			break;
+		default:
+			WARN_ON(1);
+			break;
+		}
+#endif
 	}
 
 	return off;
@@ -1238,9 +1277,9 @@ static int _bursts(struct pl330_dmac *pl330, unsigned dry_run, u8 buf[],
 }
 
 /*
- * only the unaligned burst transfers have the dregs.
- * so, still transfer dregs with a reduced size burst
- * for mem-to-mem, mem-to-dev or dev-to-mem.
+ * only the unaligned bursts transfers have the dregs.
+ * transfer dregs with a reduced size burst to peripheral,
+ * or a reduced size burst for mem-to-mem.
  */
 static int _dregs(struct pl330_dmac *pl330, unsigned int dry_run, u8 buf[],
 		const struct _xfer_spec *pxs, int transfer_length)
@@ -1251,30 +1290,37 @@ static int _dregs(struct pl330_dmac *pl330, unsigned int dry_run, u8 buf[],
 	if (transfer_length == 0)
 		return off;
 
-	/*
-	 * dregs_len = (total bytes - BURST_TO_BYTE(bursts, ccr)) /
-	 *             BRST_SIZE(ccr)
-	 * the dregs len must be smaller than burst len,
-	 * so, for higher efficiency, we can modify CCR
-	 * to use a reduced size burst len for the dregs.
-	 */
-	dregs_ccr = pxs->ccr;
-	dregs_ccr &= ~((0xf << CC_SRCBRSTLEN_SHFT) |
-		(0xf << CC_DSTBRSTLEN_SHFT));
-	dregs_ccr |= (((transfer_length - 1) & 0xf) <<
-		CC_SRCBRSTLEN_SHFT);
-	dregs_ccr |= (((transfer_length - 1) & 0xf) <<
-		CC_DSTBRSTLEN_SHFT);
-
 	switch (pxs->desc->rqtype) {
 	case DMA_MEM_TO_DEV:
+		fallthrough;
 	case DMA_DEV_TO_MEM:
+		/*
+		 * dregs_len = (total bytes - BURST_TO_BYTE(bursts, ccr)) /
+		 *             BRST_SIZE(ccr)
+		 * the dregs len must be smaller than burst len,
+		 * so, for higher efficiency, we can modify CCR
+		 * to use a reduced size burst len for the dregs.
+		 */
+		dregs_ccr = pxs->ccr;
+		dregs_ccr &= ~((0xf << CC_SRCBRSTLEN_SHFT) |
+			(0xf << CC_DSTBRSTLEN_SHFT));
+		dregs_ccr |= (((transfer_length - 1) & 0xf) <<
+			CC_SRCBRSTLEN_SHFT);
+		dregs_ccr |= (((transfer_length - 1) & 0xf) <<
+			CC_DSTBRSTLEN_SHFT);
 		off += _emit_MOV(dry_run, &buf[off], CCR, dregs_ccr);
 		off += _ldst_peripheral(pl330, dry_run, &buf[off], pxs, 1,
 					BURST);
 		break;
 
 	case DMA_MEM_TO_MEM:
+		dregs_ccr = pxs->ccr;
+		dregs_ccr &= ~((0xf << CC_SRCBRSTLEN_SHFT) |
+			(0xf << CC_DSTBRSTLEN_SHFT));
+		dregs_ccr |= (((transfer_length - 1) & 0xf) <<
+			CC_SRCBRSTLEN_SHFT);
+		dregs_ccr |= (((transfer_length - 1) & 0xf) <<
+			CC_DSTBRSTLEN_SHFT);
 		off += _emit_MOV(dry_run, &buf[off], CCR, dregs_ccr);
 		off += _ldst_memtomem(dry_run, &buf[off], pxs, 1);
 		break;
@@ -1410,12 +1456,24 @@ static int _period(struct pl330_dmac *pl330, unsigned int dry_run, u8 buf[],
 		off += _emit_LPEND(dry_run, &buf[off], &lpend);
 	}
 
+#ifdef CONFIG_NO_GKI
+	if (!pxs->desc->src_interlace_size &&
+	    !pxs->desc->dst_interlace_size) {
+		num_dregs = BYTE_MOD_BURST_LEN(x->bytes, pxs->ccr);
+
+		if (num_dregs) {
+			off += _dregs(pl330, dry_run, &buf[off], pxs, num_dregs);
+			off += _emit_MOV(dry_run, &buf[off], CCR, pxs->ccr);
+		}
+	}
+#else
 	num_dregs = BYTE_MOD_BURST_LEN(x->bytes, pxs->ccr);
 
 	if (num_dregs) {
 		off += _dregs(pl330, dry_run, &buf[off], pxs, num_dregs);
 		off += _emit_MOV(dry_run, &buf[off], CCR, pxs->ccr);
 	}
+#endif
 
 	off += _emit_SEV(dry_run, &buf[off], ev);
 
@@ -1483,13 +1541,26 @@ static inline int _setup_loops(struct pl330_dmac *pl330,
 		BRST_SIZE(ccr);
 	int off = 0;
 
+#ifdef CONFIG_NO_GKI
+	if (pxs->desc->rqtype == DMA_DEV_TO_MEM)
+		bursts = x->bytes / (BRST_SIZE(ccr) * BRST_LEN(ccr) +
+				     pxs->desc->dst_interlace_size);
+	else if (pxs->desc->rqtype == DMA_MEM_TO_DEV)
+		bursts = x->bytes / (BRST_SIZE(ccr) * BRST_LEN(ccr) +
+				     pxs->desc->src_interlace_size);
+#endif
 	while (bursts) {
 		c = bursts;
 		off += _loop(pl330, dry_run, &buf[off], &c, pxs);
 		bursts -= c;
 	}
+#ifdef CONFIG_NO_GKI
+	if (!pxs->desc->src_interlace_size &&
+	    !pxs->desc->dst_interlace_size)
+		off += _dregs(pl330, dry_run, &buf[off], pxs, num_dregs);
+#else
 	off += _dregs(pl330, dry_run, &buf[off], pxs, num_dregs);
-
+#endif
 	return off;
 }
 
@@ -1520,6 +1591,14 @@ static inline int _setup_xfer_cyclic(struct pl330_dmac *pl330,
 	unsigned long bursts = BYTE_TO_BURST(x->bytes, ccr);
 	int off = 0;
 
+#ifdef CONFIG_NO_GKI
+	if (pxs->desc->rqtype == DMA_DEV_TO_MEM)
+		bursts = x->bytes / (BRST_SIZE(ccr) * BRST_LEN(ccr)
+			+ pxs->desc->dst_interlace_size);
+	else if (pxs->desc->rqtype == DMA_MEM_TO_DEV)
+		bursts = x->bytes / (BRST_SIZE(ccr) * BRST_LEN(ccr)
+			+ pxs->desc->src_interlace_size);
+#endif
 	/* Setup Loop(s) */
 	off += _loop_cyclic(pl330, dry_run, &buf[off], bursts, pxs, ev);
 
@@ -2379,6 +2458,10 @@ static int pl330_config_write(struct dma_chan *chan,
 			pch->fifo_addr = slave_config->dst_addr;
 		if (slave_config->dst_addr_width)
 			pch->burst_sz = __ffs(slave_config->dst_addr_width);
+#ifdef CONFIG_NO_GKI
+		if (slave_config->src_interlace_size)
+			pch->slave_config.src_interlace_size = slave_config->src_interlace_size;
+#endif
 		pch->burst_len = fixup_burst_len(slave_config->dst_maxburst,
 			pch->dmac->quirks);
 	} else if (direction == DMA_DEV_TO_MEM) {
@@ -2386,6 +2469,10 @@ static int pl330_config_write(struct dma_chan *chan,
 			pch->fifo_addr = slave_config->src_addr;
 		if (slave_config->src_addr_width)
 			pch->burst_sz = __ffs(slave_config->src_addr_width);
+#ifdef CONFIG_NO_GKI
+		if (slave_config->dst_interlace_size)
+			pch->slave_config.dst_interlace_size = slave_config->dst_interlace_size;
+#endif
 		pch->burst_len = fixup_burst_len(slave_config->src_maxburst,
 			pch->dmac->quirks);
 	}
@@ -2861,7 +2948,10 @@ static struct dma_async_tx_descriptor *pl330_prep_dma_cyclic(
 
 	desc->cyclic = true;
 	desc->num_periods = len / period_len;
-
+#ifdef CONFIG_NO_GKI
+	desc->src_interlace_size = pch->slave_config.src_interlace_size;
+	desc->dst_interlace_size = pch->slave_config.dst_interlace_size;
+#endif
 	return &desc->txd;
 }
 
@@ -2992,6 +3082,10 @@ pl330_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 		desc->rqcfg.brst_len = pch->burst_len;
 		desc->rqtype = direction;
 		desc->bytes_requested = sg_dma_len(sg);
+#ifdef CONFIG_NO_GKI
+		desc->src_interlace_size = pch->slave_config.src_interlace_size;
+		desc->dst_interlace_size = pch->slave_config.dst_interlace_size;
+#endif
 	}
 
 	/* Return the last desc in the chain */
