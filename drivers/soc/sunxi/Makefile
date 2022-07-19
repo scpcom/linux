@@ -3,6 +3,7 @@ obj-$(CONFIG_SUNXI_MBUS) +=	sunxi_mbus.o
 obj-$(CONFIG_SUNXI_SRAM) +=	sunxi_sram.o
 obj-$(CONFIG_GPU_PM_DOMAINS) += gpu_domain.o
 obj-$(CONFIG_SUNXI_PM_DOMAINS) += pm_domains.o
+obj-$(CONFIG_SUNXI_PCK600_DOMAINS) += pck600_domains.o
 obj-$(CONFIG_SUNXI_SID) +=        sunxi-sid.o
 obj-$(CONFIG_SUNXI_RISCV_SUSPEND) += sunxi_riscv_pm.o
 obj-$(CONFIG_PM_TRACE_NVMEM) += pm_trace_nvmem.o

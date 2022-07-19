@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Allwinner power domain support.
+ * Allwinner pck-600 power domain support.
  *
  * Copyright (c) 2021 ALLWINNER, Co. Ltd.
  */
@@ -24,20 +24,22 @@
 
 struct sunxi_domain_info {
 	u32 domain_id;
-	u32 wait_mode;
-	u32 pwr_on_delay;
-	u32 pwr_off_delay;
-	u32 idle_mask;
+	u32 device_ctrl0_delay;
+	u32 device_ctrl1_delay;
+	u32 logic_power_switch0_delay;
+	u32 logic_power_switch1_delay;
+	u32 off2on_delay;
 	u32 status_mask;
-	u32 trans_complete_mask;
 };
 
 struct sunxi_pmu_info {
-	u32 wait_mode_offset;
-	u32 pwr_off_delay_offset;
-	u32 pwr_on_delay_offset;
 	u32 pwr_offset;
 	u32 status_offset;
+	u32 device_ctrl0_delay_offset;
+	u32 device_ctrl1_delay_offset;
+	u32 logic_power_switch0_delay_offset;
+	u32 logic_power_switch1_delay_offset;
+	u32 off2on_delay_offset;
 	u32 num_domains;
 	const struct sunxi_domain_info *domain_info;
 };
@@ -59,37 +61,26 @@ struct sunxi_pmu {
 	struct generic_pm_domain *domains[];
 };
 
-#define DRIVER_NAME	"power domain driver"
+#define DRIVER_NAME	"pck-600 domain driver"
 
 #define to_sunxi_pd(gpd) container_of(gpd, struct sunxi_pm_domain, genpd)
 
-#define DOMAIN(id, wait, pwr_on, pwr_off, imask, smask, trans_mask)	\
+#define DOMAIN(id, ctrl0, ctrl1, logic0, logic1, off2on, status_mask)	\
 {							\
 	.domain_id = (id),			\
-	.wait_mode = (wait),			\
-	.pwr_on_delay = (pwr_on),				\
-	.pwr_off_delay = (pwr_off),			\
-	.idle_mask = (imask),			\
-	.status_mask = (smask),				\
-	.trans_complete_mask = (trans_mask),			\
+	.device_ctrl0_delay = (wait),			\
+	.device_ctrl1_delay = (pwr_on),				\
+	.logic_power_switch0_delay = (pwr_off),			\
+	.logic_power_switch1_delay = (imask),			\
+	.off2on_delay = (smask),				\
+	.status_mask = (trans_mask),			\
 }
 
-#define COMMAND_ON	0x1
-#define COMMAND_OFF	0x2
-#define STATUS_ON	0x10000
-#define STATUS_OFF	0x20000
-#define COMPLETE	BIT(1)
-#define BASE(id)	((id) << 7)
-
-static bool sunxi_pmu_domain_is_idle(struct sunxi_pm_domain *pd)
-{
-	struct sunxi_pmu *pmu = pd->pmu;
-	const struct sunxi_domain_info *pd_info = pd->info;
-	unsigned int val;
-
-	regmap_read(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->status_offset, &val);
-	return (val & pd_info->idle_mask) == 0;
-}
+#define COMMAND_ON	0x8
+#define COMMAND_OFF	0x0
+#define STATUS_ON	0x8
+#define STATUS_OFF	0x0
+#define BASE(id)	((id) << 12)
 
 static bool sunxi_pmu_domain_is_on(struct sunxi_pm_domain *pd)
 {
@@ -102,17 +93,6 @@ static bool sunxi_pmu_domain_is_on(struct sunxi_pm_domain *pd)
 	return (val & pd->info->status_mask) == STATUS_ON;
 }
 
-static bool sunxi_pmu_domain_is_complete(struct sunxi_pm_domain *pd)
-{
-	struct sunxi_pmu *pmu = pd->pmu;
-	const struct sunxi_domain_info *pd_info = pd->info;
-	unsigned int val;
-
-	regmap_read(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->status_offset, &val);
-
-	return (val & pd->info->trans_complete_mask) == COMPLETE;
-}
-
 static void sunxi_do_pmu_set_power_domain(struct sunxi_pm_domain *pd,
 					     bool on)
 {
@@ -122,22 +102,10 @@ static void sunxi_do_pmu_set_power_domain(struct sunxi_pm_domain *pd,
 	bool is_on, is_complete;
 	unsigned int val;
 
-	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->pwr_offset,
+	regmap_write_bits(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->pwr_offset, pd_info->status_mask,
 			     on ? COMMAND_ON : COMMAND_OFF);
 
 	dsb(sy);
-
-	if (readx_poll_timeout_atomic(sunxi_pmu_domain_is_complete, pd, is_complete,
-				      is_complete == true, 0, 10000)) {
-		dev_err(pmu->dev,
-			"failed to set domain '%s', val=%d\n",
-			genpd->name, is_on);
-		return;
-	}
-
-	/* clear the complete bit */
-	regmap_read(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->status_offset, &val);
-	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->status_offset, val);
 
 	if (readx_poll_timeout_atomic(sunxi_pmu_domain_is_on, pd, is_on,
 				      is_on == on, 0, 10000)) {
@@ -153,12 +121,16 @@ static int sunxi_pd_init(struct sunxi_pm_domain *pd)
 	struct sunxi_pmu *pmu = pd->pmu;
 	const struct sunxi_domain_info *pd_info = pd->info;
 
-	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->wait_mode_offset,
-			     pd_info->wait_mode);
-	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->pwr_on_delay_offset,
-			     pd_info->pwr_on_delay);
-	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->pwr_off_delay_offset,
-			     pd_info->pwr_off_delay);
+	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->device_ctrl0_delay_offset,
+			     pd_info->device_ctrl0_delay);
+	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->device_ctrl1_delay_offset,
+			     pd_info->device_ctrl1_delay);
+	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->logic_power_switch0_delay_offset,
+			     pd_info->logic_power_switch0_delay);
+	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->logic_power_switch1_delay_offset,
+			     pd_info->logic_power_switch1_delay);
+	regmap_write(pmu->regmap, BASE(pd_info->domain_id) + pmu->info->off2on_delay_offset,
+			     pd_info->off2on_delay);
 	return 0;
 }
 
@@ -168,15 +140,6 @@ static int sunxi_pd_power(struct sunxi_pm_domain *pd, bool power_on)
 	struct generic_pm_domain *genpd = &pd->genpd;
 	bool is_idle;
 	int ret;
-
-	ret = readx_poll_timeout_atomic(sunxi_pmu_domain_is_idle, pd,
-						is_idle, is_idle == true, 0, 10000);
-	if (ret) {
-		dev_err(pmu->dev,
-			"failed to set idle on domain '%s', val=%d\n",
-			genpd->name, is_idle);
-		return ret;
-	}
 
 	mutex_lock(&pmu->mutex);
 
@@ -519,70 +482,33 @@ static int sunxi_pm_domain_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct sunxi_domain_info tv303_pm_domains[] = {
-	[TV303_PD_GPU] = DOMAIN(TV303_PD_GPU,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[TV303_PD_TVFE] = DOMAIN(TV303_PD_TVFE,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[TV303_PD_TVCAP] = DOMAIN(TV303_PD_TVCAP, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[TV303_PD_VE] = DOMAIN(TV303_PD_VE, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[TV303_PD_AV1] = DOMAIN(TV303_PD_AV1, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
+static const struct sunxi_domain_info pck600_pm_domains[] = {
+	[0] = DOMAIN(A523_PCK_VE,  0xffffff, 0xffff,  0x8080808,  0x808,  0x8,  0xf),
+	[1] = DOMAIN(A523_PCK_GPU,  0xffffff, 0xffff,  0x8080808,  0x808,  0x8,  0xf),
+	[2] = DOMAIN(A523_PCK_VI, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
+	[3] = DOMAIN(A523_PCK_VO0, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
+	[4] = DOMAIN(A523_PCK_VO1, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
+	[5] = DOMAIN(A523_PCK_DE, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
+	[6] = DOMAIN(A523_PCK_NAND, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
+	[7] = DOMAIN(A523_PCK_PCIE, 0xffffff, 0xffff, 0x8080808,  0x808,  0x8,  0xf),
 };
 
-static const struct sunxi_pmu_info tv303_pmu = {
-	.wait_mode_offset = 0x14,
-	.pwr_off_delay_offset = 0x18,
-	.pwr_on_delay_offset = 0x1c,
-	.pwr_offset = 0x20,
-	.status_offset = 0x24,
-	.num_domains = ARRAY_SIZE(tv303_pm_domains),
-	.domain_info = tv303_pm_domains,
-};
-
-static const struct sunxi_domain_info r528_pm_domains[] = {
-	[R528_PD_CPU] = DOMAIN(R528_PD_CPU,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[R528_PD_VE] = DOMAIN(R528_PD_VE,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[R528_PD_DSP] = DOMAIN(R528_PD_DSP, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-};
-
-static const struct sunxi_pmu_info r528_pmu = {
-	.wait_mode_offset = 0x14,
-	.pwr_off_delay_offset = 0x18,
-	.pwr_on_delay_offset = 0x1c,
-	.pwr_offset = 0x20,
-	.status_offset = 0x24,
-	.num_domains = ARRAY_SIZE(r528_pm_domains),
-	.domain_info = r528_pm_domains,
-};
-
-static const struct sunxi_domain_info a523_pm_domains[] = {
-	[A523_PD_DSP] = DOMAIN(A523_PD_DSP,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[A523_PD_NPU] = DOMAIN(A523_PD_NPU,  0x8, 0x080808,  0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[A523_PD_AUDIO] = DOMAIN(A523_PD_AUDIO, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[A523_PD_SRAM] = DOMAIN(A523_PD_SRAM, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-	[A523_PD_RISCV] = DOMAIN(A523_PD_RISCV, 0x8, 0x080808, 0x080808,  BIT(3),  0x30000,  BIT(1)),
-};
-
-static const struct sunxi_pmu_info a523_pmu = {
-	.wait_mode_offset = 0x14,
-	.pwr_off_delay_offset = 0x18,
-	.pwr_on_delay_offset = 0x1c,
-	.pwr_offset = 0x20,
-	.status_offset = 0x24,
-	.num_domains = ARRAY_SIZE(a523_pm_domains),
-	.domain_info = a523_pm_domains,
+static const struct sunxi_pmu_info pck600_pmu = {
+	.pwr_offset = 0x0,
+	.status_offset = 0x8,
+	.device_ctrl0_delay_offset = 0x170,
+	.device_ctrl1_delay_offset = 0x174,
+	.logic_power_switch0_delay_offset = 0xc00,
+	.logic_power_switch1_delay_offset = 0xc04,
+	.off2on_delay_offset = 0xc10,
+	.num_domains = ARRAY_SIZE(pck600_pm_domains),
+	.domain_info = pck600_pm_domains,
 };
 
 static const struct of_device_id sunxi_pm_domain_dt_match[] = {
 	{
-		.compatible = "allwinner,tv303-power-controller",
-		.data = (void *)&tv303_pmu,
-	},
-	{
-		.compatible = "allwinner,r528-power-controller",
-		.data = (void *)&r528_pmu,
-	},
-	{
-		.compatible = "allwinner,a523-power-controller",
-		.data = (void *)&a523_pmu,
+		.compatible = "allwinner,a523-pck-600",
+		.data = (void *)&pck600_pmu,
 	},
 	{ /* sentinel */ },
 };
@@ -591,7 +517,7 @@ static struct platform_driver power_domain_driver = {
 	.probe = sunxi_pm_domain_probe,
 	.remove  = sunxi_pm_domain_remove,
 	.driver = {
-		.name   = "sunxi-pm-domain",
+		.name   = "sunxi-pck600-domain",
 		.of_match_table = sunxi_pm_domain_dt_match,
 		/*
 		 * We can't forcibly eject devices form power domain,

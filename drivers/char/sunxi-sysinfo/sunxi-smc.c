@@ -67,6 +67,10 @@
 #define OPTEE_SMC_GET_DRM_INFO \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_GET_DRMINFO)
 
+#define OPTEE_SMC_FUNCID_SUNXI_TCOFFER_VER (27 | sunxi_smc_call_offset())
+#define OPTEE_SMC_SUNXI_TCOFFER_VER \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_SUNXI_TCOFFER_VER)
+
 #ifdef CONFIG_ARM64
 /*cmd to call ATF service*/
 #define ARM_SVC_EFUSE_PROBE_SECURE_ENABLE    (0xc000fe03)
@@ -216,6 +220,26 @@ int  optee_probe_drm_configure(unsigned long *drm_base,
 	return 0;
 }
 EXPORT_SYMBOL(optee_probe_drm_configure);
+
+int sunxi_smc_get_tcoffer_ver(uint32_t *major, uint32_t *minor, uint32_t *patch)
+{
+	struct arm_smccc_res param = { 0 };
+
+	arm_smccc_smc(OPTEE_SMC_SUNXI_TCOFFER_VER, 0, 0, 0, 0, 0, 0, 0, &param);
+
+	if (param.a0 == 0xFFFFFFFF) {
+		/* optee os not supported, assume t-coffer v1.0.0 */
+		*major = 1;
+		*minor = 0;
+		*patch = 0;
+	} else {
+		*major = param.a1;
+		*minor = param.a2;
+		*patch = param.a3;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(sunxi_smc_get_tcoffer_ver);
 
 static int __init sunxi_smc_init(void)
 {

@@ -21,7 +21,7 @@
 #define ADDR_MGT_ERR(fmt, arg...) printk(KERN_ERR "[ADDR_MGT] %s: " fmt "\n",\
 				__func__, ## arg)
 
-#define MODULE_CUR_VERSION  "v1.0.10"
+#define MODULE_CUR_VERSION  "v1.0.11"
 
 #define MATCH_STR_LEN       20
 #define ADDR_VAL_LEN        6
@@ -228,6 +228,11 @@ static int addr_factory(struct device_node *np,
 				return -1;
 			}
 			memset(cmp_buf, 0x00, ID_LEN);
+			if (memcmp(id, cmp_buf, ID_LEN) == 0) {
+				initial = 0;
+				return -1;
+			}
+			memset(cmp_buf, 0xFF, ID_LEN);
 			if (memcmp(id, cmp_buf, ID_LEN) == 0) {
 				initial = 0;
 				return -1;

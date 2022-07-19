@@ -37,7 +37,7 @@ config GPU_PM_DOMAINS
 config SUNXI_PM_DOMAINS
 	tristate "Allwinner power domain"
 	depends on PM
-	depends on ARCH_SUN50IW12 || ARCH_SUN8IW20
+	depends on ARCH_SUN50IW12 || ARCH_SUN8IW20 || ARCH_SUN55IW3
 	select PM_GENERIC_DOMAINS
 	select PM_GENERIC_DOMAINS_OF
 	select MFD_SYSCON
@@ -46,6 +46,21 @@ config SUNXI_PM_DOMAINS
 	 In order to meet high performance and low power requirements, a power
 	 management unit is designed or saving power when domain in low power
 	 mode. The PPU is dedicated for managing the power of the domain.
+
+	 If unsure, say N.
+
+config SUNXI_PCK600_DOMAINS
+	tristate "Allwinner pck-600 domain"
+	depends on PM
+	depends on ARCH_SUN55IW3
+	select PM_GENERIC_DOMAINS
+	select PM_GENERIC_DOMAINS_OF
+	select MFD_SYSCON
+	help
+	 Say y here to enable pck-600 power domain support.
+	 In order to meet high performance and low power requirements, a power
+	 management unit is designed or saving power when domain in low power
+	 mode. The pck-600 is dedicated for managing the power of the domain.
 
 	 If unsure, say N.
 

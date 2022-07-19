@@ -28,5 +28,7 @@ extern int sunxi_smc_copy_arisc_paras(phys_addr_t dest, phys_addr_t src, u32 len
 extern int sunxi_smc_call_offset(void);
 extern int  optee_probe_drm_configure(unsigned long *drm_base,
 	size_t *drm_size, unsigned long  *tee_base);
+extern int sunxi_smc_get_tcoffer_ver(u32 *major, u32 *minor,
+				     u32 *patch);
 
 #endif  /* __SUNXI_SMC_H */
