@@ -1,8 +1,7 @@
-/*
- * sound\soc\sunxi\sunxi_ahub.h
- * (C) Copyright 2015-2017
+/* sound\soc\sunxi\snd_sunxi_ahub_dam.h
+ * (C) Copyright 2021-2025
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
- * Wolfgang huang <huangjinhui@allwinnertechtech.com>
+ * Dby <dby@allwinnertech.com>
  *
  * some simple description for this code
  *
@@ -12,52 +11,33 @@
  * the License, or (at your option) any later version.
  *
  */
-
-#ifndef _SUNXI_AHUB_H_
-#define _SUNXI_AHUB_H_
-
-#include <linux/of_device.h>
-#include <linux/regmap.h>
-#include <linux/module.h>
-
-/* select pll_audiox4 as clock source */
-#if defined(CONFIG_ARCH_SUN50IW9)
-#define AHUB_PLL_AUDIO_X4
-#else
-#undef AHUB_PLL_AUDIO_X4
-#endif
-
-/* ahub loopback func for sun50iw9 */
-#if defined(CONFIG_ARCH_SUN50IW9)
-//#define LOOPBACK_FOR_DAUDIO
-//#else
-#undef LOOPBACK_FOR_DAUDIO
-#endif
+#ifndef __SND_SUNXI_AHUB_DAM_H
+#define __SND_SUNXI_AHUB_DAM_H
 
 /* SUNXI Audio Hub registers list */
-#define SUNXI_AHUB_CTL		0x00
-#define SUNXI_AHUB_VER		0x04
-#define SUNXI_AHUB_RST		0x08
-#define SUNXI_AHUB_GAT		0x0c
-/* Left blank */
+#define SUNXI_AHUB_CTL				0x00
+#define SUNXI_AHUB_VER				0x04
+#define SUNXI_AHUB_RST				0x08
+#define SUNXI_AHUB_GAT				0x0c
+
 #define SUNXI_AHUB_APBIF_TX_CTL(n)		(0x10 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_TX_IRQ_CTL(n)		(0x14 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_TX_IRQ_STA(n)		(0x18 + ((n) * 0x30))
-/* Left Blank */
+
 #define SUNXI_AHUB_APBIF_TXFIFO_CTL(n)		(0x20 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_TXFIFO_STA(n)		(0x24 + ((n) * 0x30))
-/* Left Blank */
+
 #define SUNXI_AHUB_APBIF_TXFIFO(n)		(0x30 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_TXFIFO_CNT(n)		(0x34 + ((n) * 0x30))
-/* Left Blank */
+
 #define SUNXI_AHUB_APBIF_RX_CTL(n)		(0x100 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_RX_IRQ_CTL(n)		(0x104 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_RX_IRQ_STA(n)		(0x108 + ((n) * 0x30))
-/* Left Blank */
+
 #define SUNXI_AHUB_APBIF_RXFIFO_CTL(n)		(0x110 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_RXFIFO_STA(n)		(0x114 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_RXFIFO_CONT(n)		(0x118 + ((n) * 0x30))
-/* Left Blank */
+
 #define SUNXI_AHUB_APBIF_RXFIFO(n)		(0x120 + ((n) * 0x30))
 #define SUNXI_AHUB_APBIF_RXFIFO_CNT(n)		(0x124 + ((n) * 0x30))
 
@@ -65,38 +45,27 @@
 #define SUNXI_AHUB_I2S_FMT0(n)			(0x204 + ((n) << 8))
 #define SUNXI_AHUB_I2S_FMT1(n)			(0x208 + ((n) << 8))
 #define SUNXI_AHUB_I2S_CLKD(n)			(0x20c + ((n) << 8))
-/* Left Blank */
+
 #define SUNXI_AHUB_I2S_RXCONT(n)		(0x220 + ((n) << 8))
 #define SUNXI_AHUB_I2S_CHCFG(n)			(0x224 + ((n) << 8))
 #define SUNXI_AHUB_I2S_IRQ_CTL(n)		(0x228 + ((n) << 8))
 #define SUNXI_AHUB_I2S_IRQ_STA(n)		(0x22C + ((n) << 8))
-#define SUNXI_AHUB_I2S_OUT_SLOT0(n)		(0x230 + ((n) << 8) + (0 << 4))
-#define SUNXI_AHUB_I2S_OUT_SLOT1(n)		(0x230 + ((n) << 8) + (1 << 4))
-#define SUNXI_AHUB_I2S_OUT_SLOT2(n)		(0x230 + ((n) << 8) + (2 << 4))
-#define SUNXI_AHUB_I2S_OUT_SLOT3(n)		(0x230 + ((n) << 8) + (3 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH0MAP0(n)		(0x234 + ((n) << 8) + (0 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH1MAP0(n)		(0x234 + ((n) << 8) + (1 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH2MAP0(n)		(0x234 + ((n) << 8) + (2 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH3MAP0(n)		(0x234 + ((n) << 8) + (3 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH0MAP1(n)		(0x238 + ((n) << 8) + (0 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH1MAP1(n)		(0x238 + ((n) << 8) + (1 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH2MAP1(n)		(0x238 + ((n) << 8) + (2 << 4))
-#define SUNXI_AHUB_I2S_OUT_CH3MAP1(n)		(0x238 + ((n) << 8) + (3 << 4))
+#define SUNXI_AHUB_I2S_OUT_SLOT(n, m)		(0x230 + ((n) << 8) + ((m) << 4))
+#define SUNXI_AHUB_I2S_OUT_CHMAP0(n, m)		(0x234 + ((n) << 8) + ((m) << 4))
+#define SUNXI_AHUB_I2S_OUT_CHMAP1(n, m)		(0x238 + ((n) << 8) + ((m) << 4))
 
-
-
-
-/* Left Blank */
 #define SUNXI_AHUB_I2S_IN_SLOT(n)		(0x270 + ((n) << 8))
 #define SUNXI_AHUB_I2S_IN_CHMAP0(n)		(0x274 + ((n) << 8))
 #define SUNXI_AHUB_I2S_IN_CHMAP1(n)		(0x278 + ((n) << 8))
-/* Left Blank */
+#define SUNXI_AHUB_I2S_IN_CHMAP2(n)		(0x27C + ((n) << 8))
+#define SUNXI_AHUB_I2S_IN_CHMAP3(n)		(0x280 + ((n) << 8))
+
 #define SUNXI_AHUB_DAM_CTL(n)			(0xA00 + ((n) << 7))
-/* Left Blank */
+
 #define SUNXI_AHUB_DAM_RX0_SRC(n)		(0xA10 + ((n) << 7))
 #define SUNXI_AHUB_DAM_RX1_SRC(n)		(0xA14 + ((n) << 7))
 #define SUNXI_AHUB_DAM_RX2_SRC(n)		(0xA18 + ((n) << 7))
-/* Left Blank */
+
 #define SUNXI_AHUB_DAM_MIX_CTL0(n)		(0xA30 + ((n) << 7))
 #define SUNXI_AHUB_DAM_MIX_CTL1(n)		(0xA34 + ((n) << 7))
 #define SUNXI_AHUB_DAM_MIX_CTL2(n)		(0xA38 + ((n) << 7))
@@ -114,82 +83,84 @@
 #define SUNXI_AHUB_DAM_GAIN_CTL6(n)		(0xA68 + ((n) << 7))
 #define SUNXI_AHUB_DAM_GAIN_CTL7(n)		(0xA6C + ((n) << 7))
 
+#define SUNXI_AHUB_MAX_REG			SUNXI_AHUB_DAM_GAIN_CTL7(1)
+
 /* SUNXI_AHUB_CTL */
-#define HDMI_SRC_SEL		0x04
+#define HDMI_SRC_SEL			0x04
 
 /* SUNXI_AHUB_RST */
-#define APBIF_TXDIF0_RST	31
-#define APBIF_TXDIF1_RST	30
-#define APBIF_TXDIF2_RST	29
-#define APBIF_RXDIF0_RST	27
-#define APBIF_RXDIF1_RST	26
-#define APBIF_RXDIF2_RST	25
-#define I2S0_RST		23
-#define I2S1_RST		22
-#define I2S2_RST		21
-#define I2S3_RST		20
-#define DAM0_RST		15
-#define DAM1_RST		14
+#define APBIF_TXDIF0_RST		31
+#define APBIF_TXDIF1_RST		30
+#define APBIF_TXDIF2_RST		29
+#define APBIF_RXDIF0_RST		27
+#define APBIF_RXDIF1_RST		26
+#define APBIF_RXDIF2_RST		25
+#define I2S0_RST			23
+#define I2S1_RST			22
+#define I2S2_RST			21
+#define I2S3_RST			20
+#define DAM0_RST			15
+#define DAM1_RST			14
 
 /* SUNXI_AHUB_GAT */
-#define APBIF_TXDIF0_GAT	31
-#define APBIF_TXDIF1_GAT	30
-#define APBIF_TXDIF2_GAT	29
-#define APBIF_RXDIF0_GAT	27
-#define APBIF_RXDIF1_GAT	26
-#define APBIF_RXDIF2_GAT	25
-#define I2S0_GAT		23
-#define I2S1_GAT		22
-#define I2S2_GAT		21
-#define I2S3_GAT		20
-#define DAM0_GAT		15
-#define DAM1_GAT		14
+#define APBIF_TXDIF0_GAT		31
+#define APBIF_TXDIF1_GAT		30
+#define APBIF_TXDIF2_GAT		29
+#define APBIF_RXDIF0_GAT		27
+#define APBIF_RXDIF1_GAT		26
+#define APBIF_RXDIF2_GAT		25
+#define I2S0_GAT			23
+#define I2S1_GAT			22
+#define I2S2_GAT			21
+#define I2S3_GAT			20
+#define DAM0_GAT			15
+#define DAM1_GAT			14
 
 /* SUNXI_AHUB_APBIF_TX_CTL */
-#define APBIF_TX_WS		16
-#define APBIF_TX_CHAN_NUM	8
-#define	APBIF_TX_START		4
+#define APBIF_TX_WS			16
+#define APBIF_TX_CHAN_NUM		8
+#define	APBIF_TX_START			4
 
 /* SUNXI_AHUB_APBIF_TX_IRQ_CTL */
-#define APBIF_TX_DRQ		3
-#define APBIF_TX_OVEN		1
-#define APBIF_TX_EMEN		0
+#define APBIF_TX_DRQ			3
+#define APBIF_TX_OVEN			1
+#define APBIF_TX_EMEN			0
 
 /* SUNXI_AHUB_APBIF_TX_IRQ_STA */
-#define APBIF_TX_OV_PEND	1
-#define APBIF_TX_EM_PEND	0
+#define APBIF_TX_OV_PEND		2
+#define APBIF_TX_EM_PEND		0
 
 /* SUNXI_AHUB_APBIF_TXFIFO_CTL */
-#define APBIF_TX_FTX		12
-#define APBIF_TX_LEVEL		4
-#define APBIF_TX_TXIM		0
+#define APBIF_TX_FTX			12
+#define APBIF_TX_LEVEL			4
+#define APBIF_TX_TXIM			0
 
 /* SUNXI_AHUB_APBIF_TXFIFO_STA */
-#define APBIF_TX_EMPTY		8
-#define APBIF_TX_EMCNT		0
+#define APBIF_TX_EMPTY			8
+#define APBIF_TX_EMCNT			0
 
 /* SUNXI_AHUB_APBIF_RX_CTL */
-#define APBIF_RX_WS		16
-#define APBIF_RX_CHAN_NUM	8
-#define	APBIF_RX_START		4
+#define APBIF_RX_WS			16
+#define APBIF_RX_CHAN_NUM		8
+#define	APBIF_RX_START			4
 
 /* SUNXI_AHUB_APBIF_RX_IRQ_CTL */
-#define APBIF_RX_DRQ		3
-#define APBIF_RX_UVEN		2
-#define APBIF_RX_AVEN		0
+#define APBIF_RX_DRQ			3
+#define APBIF_RX_UVEN			2
+#define APBIF_RX_AVEN			0
 
 /* SUNXI_AHUB_APBIF_RX_IRQ_STA */
-#define APBIF_RX_UV_PEND	1
-#define APBIF_RX_AV_PEND	0
+#define APBIF_RX_UV_PEND		2
+#define APBIF_RX_AV_PEND		0
 
 /* SUNXI_AHUB_APBIF_RXFIFO_CTL */
-#define APBIF_RX_FRX		12
-#define APBIF_RX_LEVEL		4
-#define APBIF_RX_RXOM		0
+#define APBIF_RX_FRX			12
+#define APBIF_RX_LEVEL			4
+#define APBIF_RX_RXOM			0
 
 /* SUNXI_AHUB_APBIF_RXFIFO_STA */
-#define APBIF_RX_AVAIL		8
-#define APBIF_RX_AVCNT		0
+#define APBIF_RX_AVAIL			8
+#define APBIF_RX_AVCNT			0
 
 /* SUNXI_AHUB_APBIF_RXFIFO_CONT */
 #define APBIF_RX_APBIF_TXDIF0		31
@@ -203,8 +174,6 @@
 #define APBIF_RX_DAM1_TXDIF		15
 
 /* SUNXI_AHUB_I2S_CTL */
-//sun50iw9 change loopback bit and SDI_EN
-#ifdef CONFIG_ARCH_SUN50IW9
 #define I2S_CTL_LOOP3			23
 #define I2S_CTL_LOOP2			22
 #define I2S_CTL_LOOP1			21
@@ -213,9 +182,6 @@
 #define I2S_CTL_SDI2_EN			14
 #define I2S_CTL_SDI1_EN			13
 #define I2S_CTL_SDI0_EN			12
-#else
-#define I2S_CTL_LOOP			3
-#endif
 #define I2S_CTL_CLK_OUT			18
 #define I2S_CTL_SDO3_EN			11
 #define I2S_CTL_SDO2_EN			10
@@ -303,18 +269,26 @@
 #define DAM_RX_DAM0_TXDIF		19
 #define DAM_RX_DAM1_TXDIF		15
 
-/* For sun50iw6, if others should redefine */
-#define SUNXI_AHUB_I2S0_ID			0
-#define SUNXI_AHUB_HDMI_ID			1
-#define SUNXI_AHUB_I2S2_ID			2
-#define SUNXI_AHUB_I2S3_ID			3
+struct sunxi_ahub_mem_info {
+	char *dev_name;
+	struct resource *res;
+	void __iomem *membase;
+	struct resource *memregion;
+	struct regmap *regmap;
+};
 
-extern struct regmap *sunxi_ahub_regmap_init(struct platform_device *pdev);
-extern unsigned int sunxi_ahub_read(unsigned int reg);
-extern int sunxi_ahub_update_bits(unsigned int reg, unsigned int mask,
-				unsigned int val);
-extern int sunxi_ahub_cpudai_init(void);
+struct sunxi_ahub_clk_info {
+	struct clk *clk_pll;
+	struct clk *clk_pllx4;
+	struct clk *clk_module;
+	struct clk *clk_bus;
+	struct reset_control *clk_rst;
+};
 
-/* used for sunxi netlink to auto open others card */
-extern void sunxi_netlink_printd(const char *fmt, ...);
-#endif
+extern int snd_soc_sunxi_ahub_mem_get(struct sunxi_ahub_mem_info *mem_info);
+extern int snd_soc_sunxi_ahub_clk_get(struct sunxi_ahub_clk_info *clk_info);
+
+extern void sunxi_ahub_dam_ctrl(bool enable,
+				unsigned int apb_num, unsigned int tdm_num, unsigned int channels);
+
+#endif /* __SND_SUNXI_AHUB_DAM_H */

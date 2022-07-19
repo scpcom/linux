@@ -17,12 +17,20 @@
 #define simple_priv_to_dev(priv)	(simple_priv_to_card(priv)->dev)
 #define simple_priv_to_link(priv, i)	(simple_priv_to_card(priv)->dai_link + (i))
 
-#define asoc_simple_parse_cpu(node, dai_link, is_single_link)	\
-	asoc_simple_parse_dai(node, dai_link->cpus, is_single_link)
-#define asoc_simple_parse_codec(node, dai_link)	\
-	asoc_simple_parse_dai(node, dai_link->codecs, NULL)
-#define asoc_simple_parse_platform(node, dai_link)	\
-	asoc_simple_parse_dai(node, dai_link->platforms, NULL)
+#define asoc_simple_parse_cpu(node, dai_link,				\
+			      list_name, cells_name, is_single_link)	\
+	asoc_simple_parse_dai(node, dai_link->cpus,			\
+			      list_name, cells_name, is_single_link)
+
+#define asoc_simple_parse_codec(node, dai_link,				\
+				list_name, cells_name)			\
+	asoc_simple_parse_dai(node, dai_link->codecs,			\
+			      list_name, cells_name, NULL)
+
+#define asoc_simple_parse_platform(node, dai_link,			\
+				   list_name, cells_name)		\
+	asoc_simple_parse_dai(node, dai_link->platforms,		\
+			      list_name, cells_name, NULL)
 
 struct asoc_simple_dai {
 	const char *name;
@@ -56,7 +64,10 @@ struct asoc_simple_priv {
 		struct snd_soc_dai_link_component platforms;
 		struct asoc_simple_data adata;
 		struct snd_soc_codec_conf *codec_conf;
+		bool mclk_fp;
 		unsigned int mclk_fs;
+		unsigned int cpu_pll_fs;
+		unsigned int codec_pll_fs;
 	} *dai_props;
 	struct asoc_simple_jack hp_jack;
 	struct asoc_simple_jack mic_jack;
@@ -66,46 +77,39 @@ struct asoc_simple_priv {
 	struct gpio_desc *pa_gpio;
 };
 
-struct link_info {
-	int dais; /* number of dai  */
-	int link; /* number of link */
-	int conf; /* number of codec_conf */
-	int cpu;  /* turn for CPU / Codec */
-};
-
 int asoc_simple_clean_reference(struct snd_soc_card *card);
-int asoc_simple_init_priv(struct asoc_simple_priv *priv,
-			  struct link_info *li);
+int asoc_simple_init_priv(struct asoc_simple_priv *priv);
 
-int asoc_simple_parse_widgets(struct snd_soc_card *card,
-			      char *prefix);
-int asoc_simple_parse_routing(struct snd_soc_card *card,
-			      char *prefix);
-int asoc_simple_parse_pin_switches(struct snd_soc_card *card,
-				   char *prefix);
+int asoc_simple_parse_widgets(struct snd_soc_card *card, char *prefix);
+int asoc_simple_parse_routing(struct snd_soc_card *card, char *prefix);
+int asoc_simple_parse_pin_switches(struct snd_soc_card *card, char *prefix);
 
-int asoc_simple_parse_daistream(struct device *dev,
-				struct device_node *node,
+int asoc_simple_parse_daistream(struct device_node *node,
 				char *prefix,
 				struct snd_soc_dai_link *dai_link);
-int asoc_simple_parse_daifmt(struct device *dev,
-			     struct device_node *node,
+int asoc_simple_parse_daifmt(struct device_node *node,
 			     struct device_node *codec,
 			     char *prefix,
 			     unsigned int *retfmt);
-int asoc_simple_card_parse_dai(struct device_node *node,
-			       struct device_node **dai_of_node,
-			       const char **dai_name,
-			       const char *list_name,
-			       const char *cells_name,
-			       int *is_single_link);
+int asoc_simple_parse_tdm_slot(struct device_node *node,
+			       char *prefix,
+			       struct asoc_simple_dai *dais);
+int asoc_simple_parse_tdm_clk(struct device_node *cpu,
+			      struct device_node *codec,
+			      char *prefix,
+			      struct simple_dai_props *dai_props);
 
-int asoc_simple_parse_card_name(struct snd_soc_card *card,
-				char *prefix);
+int asoc_simple_parse_card_name(struct snd_soc_card *card, char *prefix);
+int asoc_simple_parse_dai(struct device_node *node,
+			  struct snd_soc_dai_link_component *dlc,
+			  const char *list_name,
+			  const char *cells_name,
+			  int *is_single_link);
+int asoc_simple_parse_dai_name(struct device_node *node, struct snd_soc_dai_link_component *dlc);
+
 int asoc_simple_set_dailink_name(struct device *dev,
 				 struct snd_soc_dai_link *dai_link,
 				 const char *fmt, ...);
-
 void asoc_simple_canonicalize_platform(struct snd_soc_dai_link *dai_link);
 void asoc_simple_canonicalize_cpu(struct snd_soc_dai_link *dai_link,
 				  int is_single_links);

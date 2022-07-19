@@ -19,6 +19,8 @@
 #include "snd_sunxi_log.h"
 #include "snd_sunxi_mach_utils.h"
 
+#define HLOG		"mach_utils"
+
 int asoc_simple_clean_reference(struct snd_soc_card *card)
 {
 	struct snd_soc_dai_link *dai_link;
@@ -31,8 +33,7 @@ int asoc_simple_clean_reference(struct snd_soc_card *card)
 	return 0;
 }
 
-int asoc_simple_init_priv(struct asoc_simple_priv *priv,
-			  struct link_info *li)
+int asoc_simple_init_priv(struct asoc_simple_priv *priv)
 {
 	struct snd_soc_card *card = simple_priv_to_card(priv);
 	struct device *dev = simple_priv_to_dev(priv);
@@ -40,19 +41,20 @@ int asoc_simple_init_priv(struct asoc_simple_priv *priv,
 	struct simple_dai_props *dai_props;
 	struct asoc_simple_dai *dais;
 	struct snd_soc_codec_conf *cconf = NULL;
-	int i;
 
-	dai_props = devm_kcalloc(dev, li->link, sizeof(*dai_props), GFP_KERNEL);
-	dai_link  = devm_kcalloc(dev, li->link, sizeof(*dai_link),  GFP_KERNEL);
-	dais      = devm_kcalloc(dev, li->dais, sizeof(*dais),      GFP_KERNEL);
+	dai_props = devm_kcalloc(dev, 1, sizeof(*dai_props), GFP_KERNEL);
+	dai_link  = devm_kcalloc(dev, 1, sizeof(*dai_link),  GFP_KERNEL);
+	dais      = devm_kcalloc(dev, 1, sizeof(*dais),      GFP_KERNEL);
 	if (!dai_props || !dai_link || !dais)
 		return -ENOMEM;
 
+	/*
 	if (li->conf) {
 		cconf = devm_kcalloc(dev, li->conf, sizeof(*cconf), GFP_KERNEL);
 		if (!cconf)
 			return -ENOMEM;
 	}
+	*/
 
 	/*
 	 * Use snd_soc_dai_link_component instead of legacy style
@@ -64,14 +66,12 @@ int asoc_simple_init_priv(struct asoc_simple_priv *priv,
 	 * see
 	 *	simple-card-utils.c :: asoc_simple_canonicalize_platform()
 	 */
-	for (i = 0; i < li->link; i++) {
-		dai_link[i].cpus		= &dai_props[i].cpus;
-		dai_link[i].num_cpus		= 1;
-		dai_link[i].codecs		= &dai_props[i].codecs;
-		dai_link[i].num_codecs		= 1;
-		dai_link[i].platforms		= &dai_props[i].platforms;
-		dai_link[i].num_platforms	= 1;
-	}
+	dai_link->cpus		= &dai_props->cpus;
+	dai_link->num_cpus	= 1;
+	dai_link->codecs	= &dai_props->codecs;
+	dai_link->num_codecs	= 1;
+	dai_link->platforms	= &dai_props->platforms;
+	dai_link->num_platforms	= 1;
 
 	priv->dai_props		= dai_props;
 	priv->dai_link		= dai_link;
@@ -79,15 +79,14 @@ int asoc_simple_init_priv(struct asoc_simple_priv *priv,
 	priv->codec_conf	= cconf;
 
 	card->dai_link		= priv->dai_link;
-	card->num_links		= li->link;
+	card->num_links		= 1;
 	card->codec_conf	= cconf;
-	card->num_configs	= li->conf;
+	card->num_configs	= 0;
 
 	return 0;
 }
 
-int asoc_simple_parse_widgets(struct snd_soc_card *card,
-			      char *prefix)
+int asoc_simple_parse_widgets(struct snd_soc_card *card, char *prefix)
 {
 	struct device_node *node = card->dev->of_node;
 	char prop[128];
@@ -104,8 +103,7 @@ int asoc_simple_parse_widgets(struct snd_soc_card *card,
 	return 0;
 }
 
-int asoc_simple_parse_routing(struct snd_soc_card *card,
-			      char *prefix)
+int asoc_simple_parse_routing(struct snd_soc_card *card, char *prefix)
 {
 	struct device_node *node = card->dev->of_node;
 	char prop[128];
@@ -121,8 +119,7 @@ int asoc_simple_parse_routing(struct snd_soc_card *card,
 	return snd_soc_of_parse_audio_routing(card, prop);
 }
 
-int asoc_simple_parse_pin_switches(struct snd_soc_card *card,
-				   char *prefix)
+int asoc_simple_parse_pin_switches(struct snd_soc_card *card, char *prefix)
 {
 	const unsigned int nb_controls_max = 16;
 	const char **strings, *control_name;
@@ -177,47 +174,7 @@ int asoc_simple_parse_pin_switches(struct snd_soc_card *card,
 	return 0;
 }
 
-int asoc_simple_parse_daistream(struct device *dev,
-				struct device_node *node,
-				char *prefix,
-				struct snd_soc_dai_link *dai_link)
-{
-	char prop[128];
-	unsigned int dai_stream = 0;
-	unsigned int playback_only = BIT(0);
-	unsigned int capture_only = BIT(1);
-
-	if (!prefix)
-		prefix = "";
-
-	/* check "[prefix]playback_only" */
-	snprintf(prop, sizeof(prop), "%splayback_only", prefix);
-	if (of_property_read_bool(node, prop))
-		dai_stream |= playback_only;
-
-	/* check "[prefix]capture_only" */
-	snprintf(prop, sizeof(prop), "%scapture_only", prefix);
-	if (of_property_read_bool(node, prop))
-		dai_stream |= capture_only;
-
-	if (dai_stream == (playback_only | capture_only)) {
-		pr_err("unsupport stream\n");
-		dai_link->playback_only = 0;
-		dai_link->capture_only = 0;
-	} else if (dai_stream == playback_only) {
-		dai_link->playback_only = 1;
-	} else if (dai_stream == capture_only) {
-		dai_link->capture_only = 1;
-	} else {
-		dai_link->playback_only = 0;
-		dai_link->capture_only = 0;
-	}
-
-	return 0;
-}
-
-int asoc_simple_parse_daifmt(struct device *dev,
-			     struct device_node *node,
+int asoc_simple_parse_daifmt(struct device_node *node,
 			     struct device_node *codec,
 			     char *prefix,
 			     unsigned int *retfmt)
@@ -236,7 +193,7 @@ int asoc_simple_parse_daifmt(struct device *dev,
 		 * sound node level, revert back to legacy DT parsing and
 		 * take the settings from codec node.
 		 */
-		dev_dbg(dev, "Revert to legacy daifmt parsing\n");
+		SND_LOG_DEBUG(HLOG, "Revert to legacy daifmt parsing\n");
 
 		daifmt = snd_soc_of_parse_daifmt(codec, NULL, NULL, NULL) |
 			(daifmt & ~SND_SOC_DAIFMT_CLOCK_MASK);
@@ -253,6 +210,88 @@ int asoc_simple_parse_daifmt(struct device *dev,
 	of_node_put(framemaster);
 
 	*retfmt = daifmt;
+
+	return 0;
+}
+
+int asoc_simple_parse_daistream(struct device_node *node, char *prefix,
+				struct snd_soc_dai_link *dai_link)
+{
+	char prop[128];
+
+	if (!prefix)
+		prefix = "";
+
+	/* check "[prefix]playback-only" */
+	snprintf(prop, sizeof(prop), "%splayback-only", prefix);
+	if (of_property_read_bool(node, prop))
+		dai_link->playback_only = 1;
+
+	/* check "[prefix]capture-only" */
+	snprintf(prop, sizeof(prop), "%scapture-only", prefix);
+	if (of_property_read_bool(node, prop))
+		dai_link->capture_only = 1;
+
+	return 0;
+}
+
+int asoc_simple_parse_tdm_slot(struct device_node *node, char *prefix,
+			       struct asoc_simple_dai *dais)
+{
+	int ret;
+	char prop[128];
+	unsigned int val;
+
+	if (!prefix)
+		prefix = "";
+
+	snprintf(prop, sizeof(prop), "%sslot-num", prefix);
+	ret = of_property_read_u32(node, prop, &val);
+	if (!ret)
+		dais->slots = val;
+
+	snprintf(prop, sizeof(prop), "%sslot-width", prefix);
+	ret = of_property_read_u32(node, prop, &val);
+	if (!ret)
+		dais->slot_width = val;
+
+	return 0;
+}
+
+int asoc_simple_parse_tdm_clk(struct device_node *cpu,
+			      struct device_node *codec,
+			      char *prefix,
+			      struct simple_dai_props *dai_props)
+{
+	int ret;
+	char prop[128];
+	unsigned int val;
+
+	if (!prefix)
+		prefix = "";
+
+	snprintf(prop, sizeof(prop), "%spll-fs", prefix);
+	ret = of_property_read_u32(cpu, prop, &val);
+	if (ret)
+		dai_props->cpu_pll_fs = 1;	/* default sysclk 24.576 or 22.5792MHz * 1 */
+	else
+		dai_props->cpu_pll_fs = val;
+
+	ret = of_property_read_u32(codec, prop, &val);
+	if (ret)
+		dai_props->codec_pll_fs = 1;	/* default sysclk 24.576 or 22.5792MHz * 1 */
+	else
+		dai_props->codec_pll_fs = val;
+
+	snprintf(prop, sizeof(prop), "%smclk-fp", prefix);
+	dai_props->mclk_fp = of_property_read_bool(cpu, prop);
+
+	snprintf(prop, sizeof(prop), "%smclk-fs", prefix);
+	ret = of_property_read_u32(cpu, prop, &val);
+	if (ret)
+		dai_props->mclk_fs = 0;		/* default mclk 0Hz(un output) */
+	else
+		dai_props->mclk_fs = val;
 
 	return 0;
 }
@@ -278,6 +317,74 @@ int asoc_simple_parse_card_name(struct snd_soc_card *card,
 
 	if (!card->name && card->dai_link)
 		card->name = card->dai_link->name;
+
+	return 0;
+}
+
+int asoc_simple_parse_dai(struct device_node *node,
+			  struct snd_soc_dai_link_component *dlc,
+			  const char *list_name, const char *cells_name,
+			  int *is_single_link)
+{
+	struct of_phandle_args args;
+	int ret;
+
+	if (!node)
+		return 0;
+
+	/*
+	 * Get node via "sound-dai = <&phandle port>"
+	 * it will be used as xxx_of_node on soc_bind_dai_link()
+	 */
+	ret = of_parse_phandle_with_args(node, list_name, cells_name, 0, &args);
+	if (ret)
+		return ret;
+
+	/*
+	 * FIXME
+	 *
+	 * Here, dlc->dai_name is pointer to CPU/Codec DAI name.
+	 * If user unbinded CPU or Codec driver, but not for Sound Card,
+	 * dlc->dai_name is keeping unbinded CPU or Codec
+	 * driver's pointer.
+	 *
+	 * If user re-bind CPU or Codec driver again, ALSA SoC will try
+	 * to rebind Card via snd_soc_try_rebind_card(), but because of
+	 * above reason, it might can't bind Sound Card.
+	 * Because Sound Card is pointing to released dai_name pointer.
+	 *
+	 * To avoid this rebind Card issue,
+	 * 1) It needs to alloc memory to keep dai_name eventhough
+	 *    CPU or Codec driver was unbinded, or
+	 * 2) user need to rebind Sound Card everytime
+	 *    if he unbinded CPU or Codec.
+	 */
+	ret = snd_soc_of_get_dai_name(node, &dlc->dai_name);
+	if (ret < 0)
+		return ret;
+
+	dlc->of_node = args.np;
+
+	if (is_single_link)
+		*is_single_link = !args.args_count;
+
+	return 0;
+}
+
+int asoc_simple_parse_dai_name(struct device_node *node, struct snd_soc_dai_link_component *dlc)
+{
+	int ret;
+
+	if (!node)
+		return 0;
+
+	ret = of_property_read_string(node, "sound-codec-name", &dlc->name);
+	if (ret < 0)
+		return ret;
+
+	ret = of_property_read_string(node, "sound-codec-dainame", &dlc->dai_name);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }

@@ -2603,6 +2603,7 @@ config SND_SOC_LPASS_TX_MACRO
 	select SND_SOC_LPASS_MACRO_COMMON
 	tristate "Qualcomm TX Macro in LPASS(Low Power Audio SubSystem)"
 
+# Sunxi
 config SND_SOC_AC107
 	tristate "Sunxi AC107 Codec"
 	depends on I2C
@@ -2610,14 +2611,18 @@ config SND_SOC_AC107
 	help
 	  say Y or M if you want to add support for AC107.
 
-# Sunxi add AC108
 config SND_SOC_AC108
-        tristate "Sunxi AC108 Codec"
-	select MFD_AC108
-        depends on I2C
-        default n
-        help
-          AC108 now used as SUNXI external codec, Connect Through I2S.
-          Say Y or M if you want to add support external audio codec.
+	tristate "Sunxi AC108 Codec"
+	depends on I2C
+	default n
+	help
+	  say Y or M if you want to add support for AC108.
+
+config SND_SOC_TD100
+	tristate "Sunxi TD100 Codec"
+	depends on I2C
+	default n
+	help
+	  say Y or M if you want to add support for TD100.
 
 endmenu

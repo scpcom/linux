@@ -25,9 +25,11 @@ struct sunxi_cpudai_info {
 };
 
 static int sunxi_aaudio_dai_startup(struct snd_pcm_substream *substream,
-					struct snd_soc_dai *dai)
+				    struct snd_soc_dai *dai)
 {
 	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_dai_get_drvdata(dai);
+
+	SND_LOG_DEBUG(HLOG, "stream -> %d\n", substream->stream);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		snd_soc_dai_set_dma_data(dai, substream,
@@ -43,30 +45,40 @@ static const struct snd_soc_dai_ops sunxi_aaudio_dai_ops = {
 	.startup	= sunxi_aaudio_dai_startup,
 };
 
-static struct snd_soc_dai_driver sunxi_aaudio_dai[] = {
-	{
-		.playback = {
-			.stream_name	= "Playback",
-			.channels_min	= 1,
-			.channels_max	= 2,
-			.rates		= SNDRV_PCM_RATE_8000_192000
-					| SNDRV_PCM_RATE_KNOT,
-			.formats	= SNDRV_PCM_FMTBIT_S16_LE
-					| SNDRV_PCM_FMTBIT_S24_LE
-					| SNDRV_PCM_FMTBIT_S32_LE,
-		},
-		.capture = {
-			.stream_name	= "Capture",
-			.channels_min	= 1,
-			.channels_max	= 3,
-			.rates		= SNDRV_PCM_RATE_8000_192000
-					| SNDRV_PCM_RATE_KNOT,
-			.formats	= SNDRV_PCM_FMTBIT_S16_LE
-					| SNDRV_PCM_FMTBIT_S24_LE
-					| SNDRV_PCM_FMTBIT_S32_LE,
-		},
-		.ops = &sunxi_aaudio_dai_ops,
+static int sunxi_cpudai_probe(struct snd_soc_dai *dai)
+{
+	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_dai_get_drvdata(dai);
+
+	/* pcm_new will using the dma_param about the cma and fifo params. */
+	snd_soc_dai_init_dma_data(dai,
+				  &sunxi_cpudai->playback_dma_param,
+				  &sunxi_cpudai->capture_dma_param);
+	return 0;
+}
+
+static struct snd_soc_dai_driver sunxi_aaudio_dai = {
+	.probe = sunxi_cpudai_probe,
+	.playback = {
+		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_8000_192000
+				| SNDRV_PCM_RATE_KNOT,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE
+				| SNDRV_PCM_FMTBIT_S24_LE
+				| SNDRV_PCM_FMTBIT_S32_LE,
 	},
+	.capture = {
+		.stream_name	= "Capture",
+		.channels_min	= 1,
+		.channels_max	= 3,
+		.rates		= SNDRV_PCM_RATE_8000_192000
+				| SNDRV_PCM_RATE_KNOT,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE
+				| SNDRV_PCM_FMTBIT_S24_LE
+				| SNDRV_PCM_FMTBIT_S32_LE,
+	},
+	.ops = &sunxi_aaudio_dai_ops,
 };
 
 static struct snd_soc_component_driver sunxi_aaudio_dev = {
@@ -142,12 +154,12 @@ static int sunxi_aaudio_parse_dma_param(struct device_node *np,
 	sunxi_cpudai->capture_dma_param.src_maxburst = 4;
 	sunxi_cpudai->capture_dma_param.dst_maxburst = 4;
 
-	SND_LOG_INFO(HLOG, "playback_cma : %u\n", sunxi_cpudai->playback_dma_param.cma_kbytes);
-	SND_LOG_INFO(HLOG, "capture_cma  : %u\n", sunxi_cpudai->capture_dma_param.cma_kbytes);
-	SND_LOG_INFO(HLOG, "tx_fifo_size : %u\n", sunxi_cpudai->playback_dma_param.fifo_size);
-	SND_LOG_INFO(HLOG, "rx_fifo_size : %u\n", sunxi_cpudai->capture_dma_param.fifo_size);
-	SND_LOG_INFO(HLOG, "dac_txdata   : 0x%llx\n", sunxi_cpudai->playback_dma_param.dma_addr);
-	SND_LOG_INFO(HLOG, "adc_txdata   : 0x%llx\n", sunxi_cpudai->capture_dma_param.dma_addr);
+	SND_LOG_DEBUG(HLOG, "playback_cma : %zu\n", sunxi_cpudai->playback_dma_param.cma_kbytes);
+	SND_LOG_DEBUG(HLOG, "capture_cma  : %zu\n", sunxi_cpudai->capture_dma_param.cma_kbytes);
+	SND_LOG_DEBUG(HLOG, "tx_fifo_size : %zu\n", sunxi_cpudai->playback_dma_param.fifo_size);
+	SND_LOG_DEBUG(HLOG, "rx_fifo_size : %zu\n", sunxi_cpudai->capture_dma_param.fifo_size);
+	SND_LOG_DEBUG(HLOG, "dac_txdata   : 0x%llx\n", sunxi_cpudai->playback_dma_param.dma_addr);
+	SND_LOG_DEBUG(HLOG, "adc_txdata   : 0x%llx\n", sunxi_cpudai->capture_dma_param.dma_addr);
 
 	return 0;
 }
@@ -176,22 +188,21 @@ static int sunxi_aaudio_dev_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_component(&pdev->dev,
 					 &sunxi_aaudio_dev,
-					 sunxi_aaudio_dai,
-					 ARRAY_SIZE(sunxi_aaudio_dai));
+					 &sunxi_aaudio_dai, 1);
 	if (ret) {
 		SND_LOG_ERR(HLOG, "component register failed\n");
 		ret = -ENOMEM;
 		goto err_devm_kfree;
 	}
 
-	ret = snd_soc_sunxi_dma_platform_register(&pdev->dev);
+	ret = snd_soc_sunxi_dma_platform_register(&pdev->dev, 0);
 	if (ret) {
 		SND_LOG_ERR(HLOG, "register ASoC platform failed\n");
 		ret = -ENOMEM;
 		goto err_unregister_component;
 	}
 
-	SND_LOG_INFO(HLOG, "register aaudio platform success\n");
+	SND_LOG_DEBUG(HLOG, "register aaudio platform success\n");
 
 	return 0;
 
@@ -206,9 +217,10 @@ err_node_put:
 
 static int sunxi_aaudio_dev_remove(struct platform_device *pdev)
 {
+	snd_soc_sunxi_dma_platform_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
 
-	SND_LOG_INFO(HLOG, "unregister aaudio platform success\n");
+	SND_LOG_DEBUG(HLOG, "unregister aaudio platform success\n");
 
 	return 0;
 }
@@ -229,7 +241,26 @@ static struct platform_driver sunxi_aaudio_driver = {
 	.remove	= sunxi_aaudio_dev_remove,
 };
 
-module_platform_driver(sunxi_aaudio_driver);
+int __init sunxi_aaudio_dev_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&sunxi_aaudio_driver);
+	if (ret != 0) {
+		SND_LOG_ERR(HLOG, "platform driver register failed\n");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+void __exit sunxi_aaudio_dev_exit(void)
+{
+	platform_driver_unregister(&sunxi_aaudio_driver);
+}
+
+late_initcall(sunxi_aaudio_dev_init);
+module_exit(sunxi_aaudio_dev_exit);
 
 MODULE_AUTHOR("Dby@allwinnertech.com");
 MODULE_LICENSE("GPL");

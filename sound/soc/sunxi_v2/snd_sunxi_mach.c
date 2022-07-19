@@ -18,81 +18,38 @@
 #include "snd_sunxi_log.h"
 #include "snd_sunxi_mach.h"
 
-#define HLOG	"MACH"
-#define DAI	"sound-dai"
-#define CELL	"#sound-dai-cells"
-#define PREFIX	"soundcard-mach,"
+#define HLOG		"MACH"
+#define DAI		"sound-dai"
+#define CELL		"#sound-dai-cells"
+#define PREFIX		"soundcard-mach,"
 
 #define DRV_NAME	"sunxi-snd-mach"
 
-static int asoc_simple_parse_dai(struct device_node *node,
-				 struct snd_soc_dai_link_component *dlc,
-				 int *is_single_link)
-{
-	struct of_phandle_args args;
-	int ret;
-
-	if (!node)
-		return 0;
-
-	/*
-	 * Get node via "sound-dai = <&phandle port>"
-	 * it will be used as xxx_of_node on soc_bind_dai_link()
-	 */
-	ret = of_parse_phandle_with_args(node, DAI, CELL, 0, &args);
-	if (ret)
-		return ret;
-
-	/*
-	 * FIXME
-	 *
-	 * Here, dlc->dai_name is pointer to CPU/Codec DAI name.
-	 * If user unbinded CPU or Codec driver, but not for Sound Card,
-	 * dlc->dai_name is keeping unbinded CPU or Codec
-	 * driver's pointer.
-	 *
-	 * If user re-bind CPU or Codec driver again, ALSA SoC will try
-	 * to rebind Card via snd_soc_try_rebind_card(), but because of
-	 * above reason, it might can't bind Sound Card.
-	 * Because Sound Card is pointing to released dai_name pointer.
-	 *
-	 * To avoid this rebind Card issue,
-	 * 1) It needs to alloc memory to keep dai_name eventhough
-	 *    CPU or Codec driver was unbinded, or
-	 * 2) user need to rebind Sound Card everytime
-	 *    if he unbinded CPU or Codec.
-	 */
-	ret = snd_soc_of_get_dai_name(node, &dlc->dai_name);
-	if (ret < 0)
-		return ret;
-
-	dlc->of_node = args.np;
-
-	if (is_single_link)
-		*is_single_link = !args.args_count;
-
-	return 0;
-}
-
-static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
+static void asoc_simple_shutdown(struct snd_pcm_substream *substream)
 {
 }
 
-static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
+static int asoc_simple_startup(struct snd_pcm_substream *substream)
 {
 	return 0;
 }
 
-static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
-				      struct snd_pcm_hw_params *params)
+static int asoc_simple_hw_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct asoc_simple_priv *priv = snd_soc_card_get_drvdata(rtd->card);
-	struct snd_soc_dai_link *dai_link = simple_priv_to_link(priv, rtd->num);
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	int ret, clk_div;
-	unsigned int freq;
+	struct asoc_simple_priv *priv = snd_soc_card_get_drvdata(rtd->card);
+	struct snd_soc_dai_link *dai_link = simple_priv_to_link(priv, rtd->num);
+	struct simple_dai_props *dai_props = simple_priv_to_props(priv, rtd->num);
+	struct asoc_simple_dai *dais = priv->dais;
+	unsigned int mclk;
+	unsigned int cpu_pll_clk, codec_pll_clk;
+	unsigned int cpu_bclk_ratio, codec_bclk_ratio;
+	unsigned int freq_point;
+	int cpu_clk_div, codec_clk_div;
+	int ret = 0;
 
 	switch (params_rate(params)) {
 	case 8000:
@@ -104,59 +61,134 @@ static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
 	case 64000:
 	case 96000:
 	case 192000:
-		freq = 24576000;
+		freq_point = 24576000;
 		break;
 	case 11025:
 	case 22050:
 	case 44100:
 	case 88200:
 	case 176400:
-		freq = 22579200;
+		freq_point = 22579200;
 		break;
 	default:
 		SND_LOG_ERR(HLOG, "Invalid rate %d\n", params_rate(params));
 		return -EINVAL;
 	}
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, freq, SND_SOC_CLOCK_IN);
-	if (ret && ret != -ENOTSUPP) {
-		SND_LOG_ERR(HLOG, "cadec_dai set sysclk failed.\n");
-		return ret;
+	/* for cpudai pll clk */
+	cpu_pll_clk	= freq_point * dai_props->cpu_pll_fs;
+	codec_pll_clk	= freq_point * dai_props->codec_pll_fs;
+	cpu_clk_div	= cpu_pll_clk / params_rate(params);
+	codec_clk_div	= codec_pll_clk / params_rate(params);
+	SND_LOG_DEBUG(HLOG, "freq point   : %u\n", freq_point);
+	SND_LOG_DEBUG(HLOG, "cpu pllclk   : %u\n", cpu_pll_clk);
+	SND_LOG_DEBUG(HLOG, "codec pllclk : %u\n", codec_pll_clk);
+	SND_LOG_DEBUG(HLOG, "cpu clk_div  : %u\n", cpu_clk_div);
+	SND_LOG_DEBUG(HLOG, "codec clk_div: %u\n", codec_clk_div);
+
+	if (cpu_dai->driver->ops->set_pll) {
+		ret = snd_soc_dai_set_pll(cpu_dai, substream->stream, 0,
+					  cpu_pll_clk, cpu_pll_clk);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu_dai set pllclk failed\n");
+			return ret;
+		}
 	}
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, freq, SND_SOC_CLOCK_OUT);
-	if (ret && ret != -ENOTSUPP) {
-		SND_LOG_ERR(HLOG, "cpu_dai set sysclk failed.\n");
-		return ret;
+	if (codec_dai->driver->ops->set_pll) {
+		ret = snd_soc_dai_set_pll(codec_dai, substream->stream, 0,
+					  codec_pll_clk, codec_pll_clk);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "codec_dai set pllclk failed\n");
+			return ret;
+		}
 	}
-
-	ret = snd_soc_dai_set_pll(codec_dai, 0, 0, freq, freq);
-	/* if (ret < 0) */
-	/* 	SND_LOG_WARN(HLOG, "codec_dai set set_pll failed.\n"); */
-
-	/* set codec dai fmt */
-	ret = snd_soc_dai_set_fmt(codec_dai, dai_link->dai_fmt);
-	if (ret && ret != -ENOTSUPP)
-		SND_LOG_WARN(HLOG, "codec dai set fmt failed\n");
-
-	/* set cpu dai fmt */
-	ret = snd_soc_dai_set_fmt(cpu_dai, dai_link->dai_fmt);
-	if (ret && ret != -ENOTSUPP)
-		SND_LOG_WARN(HLOG, "cpu dai set fmt failed\n");
-
-	clk_div = freq / params_rate(params);
 
 	if (cpu_dai->driver->ops->set_clkdiv) {
-		ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, clk_div);
-		if (ret < 0) {
-			SND_LOG_ERR(HLOG, "set clkdiv failed.\n");
+		ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, cpu_clk_div);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu_dai set clk_div failed\n");
+			return ret;
+		}
+	}
+	if (codec_dai->driver->ops->set_clkdiv) {
+		ret = snd_soc_dai_set_clkdiv(codec_dai, 0, codec_clk_div);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cadec_dai set clk_div failed.\n");
 			return ret;
 		}
 	}
 
-	if (codec_dai->driver->ops->set_clkdiv) {
-		ret = snd_soc_dai_set_clkdiv(codec_dai, 0, clk_div);
-		if (ret < 0) {
-			SND_LOG_ERR(HLOG, "codec_dai set clkdiv failed\n");
+	/* use for tdm only */
+	if (!(dais->slots && dais->slot_width))
+		return 0;
+
+	/* for cpudai & codecdai mclk */
+	if (dai_props->mclk_fp)
+		mclk = (freq_point >> 1) * dai_props->mclk_fs;
+	else
+		mclk = params_rate(params) * dai_props->mclk_fs;
+	cpu_bclk_ratio = cpu_pll_clk / (params_rate(params) * dais->slot_width * dais->slots);
+	codec_bclk_ratio = codec_pll_clk / (params_rate(params) * dais->slot_width * dais->slots);
+	SND_LOG_DEBUG(HLOG, "mclk            : %u\n", mclk);
+	SND_LOG_DEBUG(HLOG, "cpu_bclk_ratio  : %u\n", cpu_bclk_ratio);
+	SND_LOG_DEBUG(HLOG, "codec_bclk_ratio: %u\n", codec_bclk_ratio);
+
+	if (cpu_dai->driver->ops->set_sysclk) {
+		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, mclk, SND_SOC_CLOCK_OUT);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu_dai set sysclk(mclk) failed\n");
+			return ret;
+		}
+	}
+	if (codec_dai->driver->ops->set_sysclk) {
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, mclk, SND_SOC_CLOCK_IN);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cadec_dai set sysclk(mclk) failed\n");
+			return ret;
+		}
+	}
+
+	if (cpu_dai->driver->ops->set_bclk_ratio) {
+		ret = snd_soc_dai_set_bclk_ratio(cpu_dai, cpu_bclk_ratio);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu_dai set bclk failed\n");
+			return ret;
+		}
+	}
+	if (codec_dai->driver->ops->set_bclk_ratio) {
+		ret = snd_soc_dai_set_bclk_ratio(codec_dai, codec_bclk_ratio);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "codec_dai set bclk failed\n");
+			return ret;
+		}
+	}
+
+	if (cpu_dai->driver->ops->set_fmt) {
+		ret = snd_soc_dai_set_fmt(cpu_dai, dai_link->dai_fmt);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu dai set fmt failed\n");
+			return ret;
+		}
+	}
+	if (codec_dai->driver->ops->set_fmt) {
+		ret = snd_soc_dai_set_fmt(codec_dai, dai_link->dai_fmt);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "codec dai set fmt failed\n");
+			return ret;
+		}
+	}
+
+	if (cpu_dai->driver->ops->set_tdm_slot) {
+		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0, 0, dais->slots, dais->slot_width);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "cpu dai set tdm slot failed\n");
+			return ret;
+		}
+	}
+	if (codec_dai->driver->ops->set_tdm_slot) {
+		ret = snd_soc_dai_set_tdm_slot(codec_dai, 0, 0, dais->slots, dais->slot_width);
+		if (ret) {
+			SND_LOG_ERR(HLOG, "codec dai set tdm slot failed\n");
 			return ret;
 		}
 	}
@@ -164,24 +196,41 @@ static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static struct snd_soc_ops asoc_simple_card_ops = {
-	.startup = asoc_simple_card_startup,
-	.shutdown = asoc_simple_card_shutdown,
-	.hw_params = asoc_simple_card_hw_params,
+static struct snd_soc_ops simple_ops = {
+	.startup = asoc_simple_startup,
+	.shutdown = asoc_simple_shutdown,
+	.hw_params = asoc_simple_hw_params,
 };
 
-static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
+static int asoc_simple_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
+	int i;
+	struct snd_soc_component *component = rtd->codec_dai->component;
+	struct snd_soc_dapm_context *dapm = &component->dapm;
+	struct snd_soc_card *card = rtd->card;
+	const struct snd_kcontrol_new *controls = card->controls;
+
+	for (i = 0; i < card->num_controls; i++)
+		if (controls[i].info == snd_soc_dapm_info_pin_switch)
+			snd_soc_dapm_disable_pin(dapm,
+				(const char *)controls[i].private_value);
+
+	if (card->num_controls)
+		snd_soc_dapm_sync(dapm);
+
+	/* snd_soc_dai_set_sysclk(); */
+	/* snd_soc_dai_set_tdm_slot(); */
+
 	return 0;
 }
 
-static int asoc_simple_card_dai_link_of(struct device_node *node,
-					struct asoc_simple_priv *priv,
-					int idx,
-					bool is_top_level_node)
+static int simple_dai_link_of(struct device_node *node,
+			      struct asoc_simple_priv *priv)
 {
 	struct device *dev = simple_priv_to_dev(priv);
-	struct snd_soc_dai_link *dai_link = simple_priv_to_link(priv, idx);
+	struct snd_soc_dai_link *dai_link = simple_priv_to_link(priv, 0);
+	struct simple_dai_props *dai_props = simple_priv_to_props(priv, 0);
+	struct device_node *top_np = NULL;
 	struct device_node *cpu = NULL;
 	struct device_node *plat = NULL;
 	struct device_node *codec = NULL;
@@ -189,57 +238,83 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 	char *prefix = "";
 	int ret, single_cpu;
 
-	/* For single DAI link & old style of DT node */
-	if (is_top_level_node) {
-		prefix = PREFIX;
-	}
+	prefix = PREFIX;
+	top_np = node;
 
 	snprintf(prop, sizeof(prop), "%scpu", prefix);
-	cpu = of_get_child_by_name(node, prop);
+	cpu = of_get_child_by_name(top_np, prop);
 	if (!cpu) {
 		ret = -EINVAL;
 		SND_LOG_ERR(HLOG, "Can't find %s DT node\n", prop);
 		goto dai_link_of_err;
 	}
-
 	snprintf(prop, sizeof(prop), "%splat", prefix);
-	plat = of_get_child_by_name(node, prop);
+	plat = of_get_child_by_name(top_np, prop);
 
 	snprintf(prop, sizeof(prop), "%scodec", prefix);
-	codec = of_get_child_by_name(node, prop);
+	codec = of_get_child_by_name(top_np, prop);
 	if (!codec) {
 		ret = -EINVAL;
 		SND_LOG_ERR(HLOG, "Can't find %s DT node\n", prop);
 		goto dai_link_of_err;
 	}
 
-	ret = asoc_simple_parse_daistream(dev, node, prefix, dai_link);
+	ret = asoc_simple_parse_daifmt(top_np, codec, prefix, &dai_link->dai_fmt);
+	if (ret < 0)
+		goto dai_link_of_err;
+	/* sunxi: parse stream direction
+	 * ex1)
+	 * top_node {
+	 *	PREFIXplayback-only;
+	 * }
+	 * ex2)
+	 * top_node {
+	 *	PREFIXcapture-only;
+	 * }
+	 */
+	ret = asoc_simple_parse_daistream(top_np, prefix, dai_link);
+	if (ret < 0)
+		goto dai_link_of_err;
+	/* sunxi: parse slot-num & slot-width
+	 * ex)
+	 * top_node {
+	 *	PREFIXplayslot-num	= <x>;
+	 *	PREFIXplayslot-width	= <x>;
+	 * }
+	 */
+	ret = asoc_simple_parse_tdm_slot(top_np, prefix, priv->dais);
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	ret = asoc_simple_parse_daifmt(dev, node, codec,
-				       prefix, &dai_link->dai_fmt);
+	ret = asoc_simple_parse_cpu(cpu, dai_link, DAI, CELL, &single_cpu);
 	if (ret < 0)
 		goto dai_link_of_err;
-
-	ret = asoc_simple_parse_cpu(cpu, dai_link, &single_cpu);
-	if (ret < 0)
-		goto dai_link_of_err;
-
-	ret = asoc_simple_parse_codec(codec, dai_link);
+	ret = asoc_simple_parse_codec(codec, dai_link, DAI, CELL);
 	if (ret < 0) {
 		if (ret == -EPROBE_DEFER)
 			goto dai_link_of_err;
-		/*
-		dai_link->codecs->name = "snd-soc-dummy";
-		dai_link->codec_dai_name = "snd-soc-dummy-dai";
-		*/
-		dai_link->codecs->name = "sunxi-dummy-codec";
-		dai_link->codecs->dai_name = "sunxi-dummy-codec-dai";
-		SND_LOG_INFO(HLOG, "use dummy codec for simple card.\n");
-	}
 
-	ret = asoc_simple_parse_platform(plat, dai_link);
+		ret = asoc_simple_parse_dai_name(codec, dai_link->codecs);
+		if (ret < 0) {
+			dai_link->codecs->name = "snd-soc-dummy";
+			dai_link->codecs->dai_name = "snd-soc-dummy-dai";
+			SND_LOG_DEBUG(HLOG, "use dummy codec for simple card.\n");
+		}
+	}
+	ret = asoc_simple_parse_platform(plat, dai_link, DAI, CELL);
+	if (ret < 0)
+		goto dai_link_of_err;
+
+	/* sunxi: parse pll-fs & mclk-fs
+	 * ex)
+	 * top_node {
+	 *	PREFIXcpu {
+	 *		PREFIXpll-fs	= <x>;
+	 *		PREFIXmclk-fs	= <x>;
+	 *	}
+	 * }
+	 */
+	ret = asoc_simple_parse_tdm_clk(cpu, codec, prefix, dai_props);
 	if (ret < 0)
 		goto dai_link_of_err;
 
@@ -250,76 +325,58 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	dai_link->ops = &asoc_simple_card_ops;
-	dai_link->init = asoc_simple_card_dai_init;
+	dai_link->ops = &simple_ops;
+	dai_link->init = asoc_simple_dai_init;
 
-	SND_LOG_INFO(HLOG, "name   : %s\n", dai_link->stream_name);
-	SND_LOG_INFO(HLOG, "format : %x\n", dai_link->dai_fmt);
-	SND_LOG_INFO(HLOG, "cpu    : %s\n", dai_link->cpus->name);
-	SND_LOG_INFO(HLOG, "codec  : %s\n", dai_link->codecs->name);
+	SND_LOG_DEBUG(HLOG, "name   : %s\n", dai_link->stream_name);
+	SND_LOG_DEBUG(HLOG, "format : %x\n", dai_link->dai_fmt);
+	SND_LOG_DEBUG(HLOG, "cpu    : %s\n", dai_link->cpus->name);
+	SND_LOG_DEBUG(HLOG, "codec  : %s\n", dai_link->codecs->name);
 
 	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
 	asoc_simple_canonicalize_platform(dai_link);
 
 dai_link_of_err:
 	of_node_put(cpu);
+	of_node_put(plat);
 	of_node_put(codec);
 
 	return ret;
 }
 
-static int asoc_simple_card_parse_of(struct asoc_simple_priv *priv)
+static int simple_parse_of(struct asoc_simple_priv *priv)
 {
-	struct device *dev = simple_priv_to_dev(priv);
-	struct device_node *dai_link;
-	struct device_node *node = dev->of_node;
 	int ret;
+	struct device *dev = simple_priv_to_dev(priv);
+	struct snd_soc_card *card = simple_priv_to_card(priv);
+	struct device_node *top_np = dev->of_node;
 
-	if (!node)
+	SND_LOG_DEBUG(HLOG, "\n");
+
+	if (!top_np)
 		return -EINVAL;
 
-	/* The off-codec widgets */
-	ret = asoc_simple_parse_widgets(&priv->snd_card, PREFIX);
+	/* DAPM widgets */
+	ret = asoc_simple_parse_widgets(card, PREFIX);
 	if (ret < 0)
 		return ret;
 
 	/* DAPM routes */
-	ret = asoc_simple_parse_routing(&priv->snd_card, PREFIX);
+	ret = asoc_simple_parse_routing(card, PREFIX);
 	if (ret < 0)
 		return ret;
 
-	ret = asoc_simple_parse_pin_switches(&priv->snd_card, PREFIX);
+	/* DAPM pin_switches */
+	ret = asoc_simple_parse_pin_switches(card, PREFIX);
 	if (ret < 0)
 		return ret;
 
-	dai_link = of_get_child_by_name(node, PREFIX "dai-link");
-	/* Single/Muti DAI link(s) & New style of DT node */
-	if (dai_link) {
-		struct device_node *np = NULL;
-		int i = 0;
+	/* For single DAI link & old style of DT node */
+	ret = simple_dai_link_of(top_np, priv);
+	if (ret < 0)
+		return ret;
 
-		for_each_child_of_node(node, np) {
-			SND_LOG_DEBUG(HLOG, "\tlink %d:\n", i);
-			ret = asoc_simple_card_dai_link_of(np, priv,
-							   i, false);
-			if (ret < 0) {
-				of_node_put(np);
-				goto card_parse_end;
-			}
-			i++;
-		}
-	} else {
-		/* For single DAI link & old style of DT node */
-		ret = asoc_simple_card_dai_link_of(node, priv, 0, true);
-		if (ret < 0)
-			goto card_parse_end;
-	}
-
-	ret = asoc_simple_parse_card_name(&priv->snd_card, PREFIX);
-
-card_parse_end:
-	of_node_put(dai_link);
-
+	ret = asoc_simple_parse_card_name(card, PREFIX);
 	return ret;
 }
 
@@ -328,13 +385,12 @@ static int simple_soc_probe(struct snd_soc_card *card)
 	return 0;
 }
 
-static int asoc_simple_card_probe(struct platform_device *pdev)
+static int asoc_simple_probe(struct platform_device *pdev)
 {
-	struct asoc_simple_priv *priv;
 	struct device *dev = &pdev->dev;
-	struct device_node *np = dev->of_node;
+	struct device_node *top_np = dev->of_node;
+	struct asoc_simple_priv *priv;
 	struct snd_soc_card *card;
-	struct link_info li;
 	int ret;
 
 	/* Allocate the private data and the DAI link array */
@@ -347,44 +403,34 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 	card->dev		= dev;
 	card->probe		= simple_soc_probe;
 
-	memset(&li, 0, sizeof(li));
-
-	/* Get the number of DAI links */
-	if (np && of_get_child_by_name(np, PREFIX "dai-link"))
-		li.link = of_get_child_count(np);
-	else
-		li.link = 1;
-
-	ret = asoc_simple_init_priv(priv, &li);
+	ret = asoc_simple_init_priv(priv);
 	if (ret < 0)
 		return ret;
 
-	if (np && of_device_is_available(np)) {
-
-		ret = asoc_simple_card_parse_of(priv);
+	if (top_np && of_device_is_available(top_np)) {
+		ret = simple_parse_of(priv);
 		if (ret < 0) {
 			if (ret != -EPROBE_DEFER)
 				SND_LOG_ERR(HLOG, "parse error %d\n", ret);
 			goto err;
 		}
-
 	} else {
 		SND_LOG_ERR(HLOG, "simple card dts available\n");
 	}
 
-	snd_soc_card_set_drvdata(&priv->snd_card, priv);
+	snd_soc_card_set_drvdata(card, priv);
 
 	/* asoc_simple_debug_info(priv); */
-	ret = devm_snd_soc_register_card(&pdev->dev, &priv->snd_card);
+	ret = devm_snd_soc_register_card(dev, card);
 	if (ret >= 0)
 		return ret;
 err:
-	asoc_simple_clean_reference(&priv->snd_card);
+	asoc_simple_clean_reference(card);
 
 	return ret;
 }
 
-static int asoc_simple_card_remove(struct platform_device *pdev)
+static int asoc_simple_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 
@@ -403,11 +449,30 @@ static struct platform_driver sunxi_soundcard_machine_driver = {
 		.pm		= &snd_soc_pm_ops,
 		.of_match_table	= snd_soc_sunxi_of_match,
 	},
-	.probe	= asoc_simple_card_probe,
-	.remove	= asoc_simple_card_remove,
+	.probe	= asoc_simple_probe,
+	.remove	= asoc_simple_remove,
 };
 
-module_platform_driver(sunxi_soundcard_machine_driver);
+int __init sunxi_soundcard_machine_dev_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&sunxi_soundcard_machine_driver);
+	if (ret != 0) {
+		SND_LOG_ERR(HLOG, "platform driver register failed\n");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+void __exit sunxi_soundcard_machine_dev_exit(void)
+{
+	platform_driver_unregister(&sunxi_soundcard_machine_driver);
+}
+
+late_initcall(sunxi_soundcard_machine_dev_init);
+module_exit(sunxi_soundcard_machine_dev_exit);
 
 MODULE_AUTHOR("Dby@allwinnertech.com");
 MODULE_LICENSE("GPL");

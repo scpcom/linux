@@ -138,48 +138,35 @@
 #define RMCEN			1
 #define RDEN			0
 
-struct sunxi_codec_info {
-	/* regulator about */
-	RGLT_HANDLE avcc;
-	RGLT_HANDLE dvcc;
+struct sunxi_clk_info {
+	struct clk *clk_pll_audio;
+	struct clk *clk_audio;
 
-	/* clk about */
-	CLK_HANDLE clk_rst;
-	CLK_HANDLE clk_bus_audio;
-	CLK_HANDLE clk_pll_audio;
-	CLK_HANDLE clk_audio;
-
-	/* regmap about */
-	REG_HANDLE regmap;
-
-	/* gpio mute for peripheral circuit about */
-	u32 pa_pin_max;
-	struct pa_config *pa_cfg;
-
-	/* parse params about */
-	u32 digital_vol;
-	u32 lineout_vol;
-
-	/* others about */
-	struct adapter_cntlr *cntlr;
+	struct clk *clk_bus;
+	struct reset_control *clk_rst;
 };
 
-int internal_codec_probe(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info);
-int internal_codec_remove(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info);
-int internal_codec_init(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info);
+struct sunxi_regulator_info {
+	struct regulator *avcc;
+	struct regulator *dvcc;
+};
 
-int internal_codec_controls_add(struct snd_soc_component *component);
+struct sunxi_dts_info {
+	u32 lineout_vol;
 
-int internal_codec_suspend(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info);
-int internal_codec_resume(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info);
+	bool tx_hub_en;		/* tx_hub */
+};
 
-int internal_codec_hw_params(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info,
-			     int stream, int format, unsigned int  rate, unsigned int channels);
-int internal_codec_set_sysclk(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info,
-			      unsigned int freq);
-int internal_codec_prepare(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info,
-			   int stream);
-int internal_codec_trigger(struct adapter_cntlr *cntlr, struct sunxi_codec_info *codec_info,
-			   int stream, int drq_en);
+struct sunxi_codec_info {
+	struct platform_device *pdev;
+
+	struct sunxi_mem_info mem_info;
+	struct sunxi_clk_info clk_info;
+	struct sunxi_regulator_info rglt_info;
+	struct sunxi_dts_info dts_info;
+
+	unsigned int pa_pin_max;
+	struct pa_config *pa_cfg;
+};
 
 #endif /* __SND_SUN50IW9_CODEC_H */

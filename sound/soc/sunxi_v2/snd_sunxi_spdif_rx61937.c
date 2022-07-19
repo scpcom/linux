@@ -1,6 +1,7 @@
-/* sound\soc\sunxi\snd_sunxi_internal_codec.h
+/*
+ * sound\soc\sunxi\snd_sunxi_spdif_rx61937.c
  * (C) Copyright 2021-2025
- * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * AllWinner Technology Co., Ltd. <www.allwinnertech.com>
  * Dby <dby@allwinnertech.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -9,11 +10,11 @@
  * the License, or (at your option) any later version.
  */
 
-#ifndef __SND_SUNXI_INTERNAL_CODEC_H
-#define __SND_SUNXI_INTERNAL_CODEC_H
+#include <linux/module.h>
+#include <sound/soc.h>
 
-#if defined(CONFIG_ARCH_SUN50IW9)
-#include "snd_sun50iw9_codec.h"
-#endif
+#include "snd_sunxi_log.h"
+#include "snd_sunxi_pcm.h"
+#include "snd_sunxi_spdif_rx61937.h"
 
-#endif /* __SND_SUNXI_INTERNAL_CODEC_H */
+#define HLOG		"SPDIF_61937"

@@ -16,6 +16,8 @@
 
 #include "snd_sunxi_log.h"
 
+#define HLOG			"CODEC"
+
 #define DUMMY_CARD_NAME		"sunxi-dummy-codec"
 #define DUMMY_CARD_DAI_NAME	"sunxi-dummy-codec-dai"
 
@@ -64,11 +66,11 @@ static int sunxi_dummy_codec_probe(struct platform_device *pdev)
 					      &sunxi_dummy_codec_dai, 1);
 
 	if (ret) {
-		SND_LOG_ERR("dummy-codec component register failed\n");
+		SND_LOG_ERR(HLOG, "dummy-codec component register failed\n");
 		return ret;
 	}
 
-	SND_LOG_INFO("register dummy-codec codec success\n");
+	SND_LOG_INFO(HLOG, "register dummy-codec codec success\n");
 
 	return 0;
 }
@@ -89,14 +91,14 @@ int __init sunxi_dummy_codec_util_init(void)
 	sunxi_dummy_codec_dev =
 		platform_device_register_simple(DUMMY_CARD_NAME, -1, NULL, 0);
 	if (IS_ERR(sunxi_dummy_codec_dev)) {
-		SND_LOG_ERR("platform device register simple failed\n");
+		SND_LOG_ERR(HLOG, "platform device register simple failed\n");
 		return PTR_ERR(sunxi_dummy_codec_dev);
 	}
 
 	ret = platform_driver_register(&sunxi_dummy_codec_driver);
 	if (ret != 0) {
 		platform_device_unregister(sunxi_dummy_codec_dev);
-		SND_LOG_ERR("platform driver register failed\n");
+		SND_LOG_ERR(HLOG, "platform driver register failed\n");
 	}
 
 	return ret;
@@ -108,7 +110,7 @@ void __exit sunxi_dummy_codec_util_exit(void)
 	platform_device_unregister(sunxi_dummy_codec_dev);
 }
 
-module_init(sunxi_dummy_codec_util_init);
+late_initcall(sunxi_dummy_codec_util_init);
 module_exit(sunxi_dummy_codec_util_exit);
 
 MODULE_AUTHOR("Dby@allwinnertech.com");

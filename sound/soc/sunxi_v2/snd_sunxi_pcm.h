@@ -32,7 +32,7 @@ struct sunxi_dma_params {
 	unsigned int fifo_size;
 };
 
-extern int snd_soc_sunxi_dma_platform_register(struct device *dev);
+extern int snd_soc_sunxi_dma_platform_register(struct device *dev, bool raw_mode);
 extern void snd_soc_sunxi_dma_platform_unregister(struct device *dev);
 
 #endif /* __SND_SUNXI_PCM_H */

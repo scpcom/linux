@@ -12,9 +12,23 @@
 #ifndef __SND_SUNXI_COMMON_H
 #define __SND_SUNXI_COMMON_H
 
-#include "snd_sunxi_adapter.h"
+/* for regmap */
+struct sunxi_mem_info {
+	char *dev_name;
+	struct resource *res;
+	struct regmap_config *regmap_config;
 
-/* for REG LABEL */
+	void __iomem *membase;
+	struct resource *memregion;
+	struct regmap *regmap;
+};
+
+int snd_sunxi_mem_init(struct platform_device *pdev,
+		       struct sunxi_mem_info *mem_info);
+void snd_sunxi_mem_exit(struct platform_device *pdev,
+			struct sunxi_mem_info *mem_info);
+
+/* for reg debug */
 #define REG_LABEL(constant)	{#constant, constant, 0}
 #define REG_LABEL_END		{NULL, 0, 0}
 
@@ -24,18 +38,16 @@ struct reg_label {
 	unsigned int value;
 };
 
-int save_audio_reg(struct reg_cntlr *reg, REG_HANDLE regmap,
-		   struct reg_label *reg_labels);
-int echo_audio_reg(struct reg_cntlr *reg, REG_HANDLE regmap,
-		   struct reg_label *reg_labels);
-
-/* for rate conversion */
-#define RATE_CONV_END		{0, 0}
-
-struct sample_rate {
-	unsigned int samplerate;
-	unsigned int rate_bit;
-};
+/* EX:
+ * static struct reg_label reg_labels[] = {
+ * 	REG_LABEL(SUNXI_REG_0),
+ * 	REG_LABEL(SUNXI_REG_1),
+ * 	REG_LABEL(SUNXI_REG_n),
+ * 	REG_LABEL_END,
+ * };
+ */
+int snd_sunxi_save_reg(struct regmap *regmap, struct reg_label *reg_labels);
+int snd_sunxi_echo_reg(struct regmap *regmap, struct reg_label *reg_labels);
 
 /* for pa config */
 struct pa_config {
@@ -45,9 +57,11 @@ struct pa_config {
 	bool level;
 };
 
-struct pa_config* pa_pin_init(struct adapter_cntlr *cntlr, u32 *pa_pin_max);
-void pa_pin_exit(struct adapter_cntlr *cntlr, struct pa_config *pa_cfg, u32 pa_pin_max);
-int pa_pin_enable(struct adapter_cntlr *cntlr, struct pa_config *pa_cfg, u32 pa_pin_max);
-int pa_pin_disable(struct adapter_cntlr *cntlr, struct pa_config *pa_cfg, u32 pa_pin_max);
+struct pa_config *snd_sunxi_pa_pin_init(struct platform_device *pdev,
+					u32 *pa_pin_max);
+void snd_sunxi_pa_pin_exit(struct platform_device *pdev,
+			   struct pa_config *pa_cfg, u32 pa_pin_max);
+int snd_sunxi_pa_pin_enable(struct pa_config *pa_cfg, u32 pa_pin_max);
+void snd_sunxi_pa_pin_disable(struct pa_config *pa_cfg, u32 pa_pin_max);
 
 #endif /* __SND_SUNXI_COMMON_H */
