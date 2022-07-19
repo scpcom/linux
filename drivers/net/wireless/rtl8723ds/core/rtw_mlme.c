@@ -4383,6 +4383,9 @@ int rtw_rsn_sync_pmkid(_adapter *adapter, u8 *ie, uint ie_len, int i_ent)
 		return 0;
 	}
 
+	if (info.pmkid_list == NULL)
+		goto exit;
+		
 	if (i_ent < 0 && info.pmkid_cnt == 0)
 		goto exit;
 

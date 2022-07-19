@@ -12,48 +12,119 @@
  * more details.
  *
  *****************************************************************************/
+/*
+ * Description:
+ *	This file can be applied to following platforms:
+ *	CONFIG_PLATFORM_ARM_SUN6I
+ *	CONFIG_PLATFORM_ARM_SUN7I
+ *	CONFIG_PLATFORM_ARM_SUN8I
+ */
 #include <drv_types.h>
+#include <mach/sys_config.h>
 #ifdef CONFIG_GPIO_WAKEUP
 #include <linux/gpio.h>
 #endif
 
+#ifdef CONFIG_MMC
+static int sdc_id = -1;
+static signed int gpio_eint_wlan = -1;
+static u32 eint_wlan_handle = 0;
+
+#if defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I)
+extern void sw_mci_rescan_card(unsigned id, unsigned insert);
+#elif defined(CONFIG_PLATFORM_ARM_SUN8I)
+extern void sunxi_mci_rescan_card(unsigned id, unsigned insert);
+#endif
+
+#ifdef CONFIG_PLATFORM_ARM_SUN8I_W5P1
+extern int get_rf_mod_type(void);
+#else
+extern int wifi_pm_get_mod_type(void);
+#endif
+
+extern void wifi_pm_power(int on);
 #ifdef CONFIG_GPIO_WAKEUP
 extern unsigned int oob_irq;
 #endif
+#endif /* CONFIG_MMC */
 
-#include <linux/mmc/host.h>
-#include <linux/sunxi-gpio.h>
-#include <linux/power/aw_pm.h>
-
-extern void sunxi_mmc_rescan_card(unsigned ids);
-extern void sunxi_wlan_set_power(bool on);
-extern int sunxi_wlan_get_bus_index(void);
-extern int sunxi_wlan_get_oob_irq(void);
-extern int sunxi_wlan_get_oob_irq_flags(void);
-
+/*
+ * Return:
+ *	0:	power on successfully
+ *	others: power on failed
+ */
 int platform_wifi_power_on(void)
 {
-	int wlan_bus_index = 0;
-	sunxi_wlan_set_power(1);
-	mdelay(100);
+	int ret = 0;
 
-	wlan_bus_index = sunxi_wlan_get_bus_index();
-	if(wlan_bus_index < 0){
-		RTW_INFO("get wifi_sdc_id failed\n");
-		return -1;
-	} else {
-		RTW_INFO("----- %s sdc_id: %d\n", __FUNCTION__, wlan_bus_index);
-		sunxi_mmc_rescan_card(wlan_bus_index);
-	}
-#ifdef CONFIG_GPIO_WAKEUP
-	oob_irq = sunxi_wlan_get_oob_irq();
+#ifdef CONFIG_MMC
+	{
+		script_item_u val;
+		script_item_value_type_e type;
+
+#ifdef CONFIG_PLATFORM_ARM_SUN8I_W5P1
+		unsigned int mod_sel = get_rf_mod_type();
+#else
+		unsigned int mod_sel = wifi_pm_get_mod_type();
 #endif
-	return 0;
+
+		type = script_get_item("wifi_para", "wifi_sdc_id", &val);
+		if (SCIRPT_ITEM_VALUE_TYPE_INT != type) {
+		RTW_INFO("get wifi_sdc_id failed\n");
+			ret = -1;
+	} else {
+			sdc_id = val.val;
+			RTW_INFO("----- %s sdc_id: %d, mod_sel: %d\n", __FUNCTION__, sdc_id, mod_sel);
+
+#if defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I)
+			sw_mci_rescan_card(sdc_id, 1);
+#elif defined(CONFIG_PLATFORM_ARM_SUN8I)
+			sunxi_mci_rescan_card(sdc_id, 1);
+#endif
+			mdelay(100);
+			wifi_pm_power(1);
+
+			RTW_INFO("%s: power up, rescan card.\n", __FUNCTION__);
+	}
+
+#ifdef CONFIG_GPIO_WAKEUP
+#ifdef CONFIG_PLATFORM_ARM_SUN8I_W5P1
+		type = script_get_item("wifi_para", "wl_host_wake", &val);
+#else
+#ifdef CONFIG_RTL8723B
+		type = script_get_item("wifi_para", "rtl8723bs_wl_host_wake", &val);
+#endif
+#ifdef CONFIG_RTL8188E
+		type = script_get_item("wifi_para", "rtl8189es_host_wake", &val);
+#endif
+#endif /* CONFIG_PLATFORM_ARM_SUN8I_W5P1 */
+		if (SCIRPT_ITEM_VALUE_TYPE_PIO != type) {
+			RTW_INFO("No definition of wake up host PIN\n");
+			ret = -1;
+		} else {
+			gpio_eint_wlan = val.gpio.gpio;
+#ifdef CONFIG_PLATFORM_ARM_SUN8I
+			oob_irq = gpio_to_irq(gpio_eint_wlan);
+#endif
+		}
+#endif /* CONFIG_GPIO_WAKEUP */
+	}
+#endif /* CONFIG_MMC */
+
+	return ret;
 }
 
 void platform_wifi_power_off(void)
 {
-	sunxi_wlan_set_power(0);
+#ifdef CONFIG_MMC
+#if defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I)
+	sw_mci_rescan_card(sdc_id, 0);
+#elif defined(CONFIG_PLATFORM_ARM_SUN8I)
+	sunxi_mci_rescan_card(sdc_id, 0);
+#endif
 	mdelay(100);
+	wifi_pm_power(0);
+
 	RTW_INFO("%s: remove card, power off.\n", __FUNCTION__);
+#endif /* CONFIG_MMC */
 }

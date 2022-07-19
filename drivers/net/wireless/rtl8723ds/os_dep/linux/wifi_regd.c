@@ -112,17 +112,18 @@ int rtw_regd_init(struct wiphy *wiphy)
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
-	wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
 	wiphy->flags &= ~WIPHY_FLAG_STRICT_REGULATORY;
 	wiphy->flags &= ~WIPHY_FLAG_DISABLE_BEACON_HINTS;
 #else
-	wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
 	wiphy->regulatory_flags &= ~REGULATORY_STRICT_REG;
 	wiphy->regulatory_flags &= ~REGULATORY_DISABLE_BEACON_HINTS;
 #endif
 
-	rtw_regd_apply_flags(wiphy);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
+		wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
+#endif
 
 	return 0;
+
 }
 #endif /* CONFIG_IOCTL_CFG80211 */

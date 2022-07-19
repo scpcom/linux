@@ -590,9 +590,12 @@ thread_return rtl8723ds_xmit_thread(thread_context context)
 	u8 thread_name[20] = {0};
 #ifdef RTW_XMIT_THREAD_HIGH_PRIORITY_AGG
 #ifdef PLATFORM_LINUX
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0))
+	sched_setscheduler(current);
+#else
 	struct sched_param param = { .sched_priority = 1 };
-
 	sched_setscheduler(current, SCHED_FIFO, &param);
+#endif
 #endif /* PLATFORM_LINUX */
 #endif /* RTW_XMIT_THREAD_HIGH_PRIORITY_AGG */
 

@@ -25,9 +25,9 @@
 	#if defined(CONFIG_GSPI_HCI)
 		#define NR_RECVBUFF (32)
 	#elif defined(CONFIG_SDIO_HCI)
-		#define NR_RECVBUFF (32)
+		#define NR_RECVBUFF (8)
 	#else
-		#define NR_RECVBUFF (32)
+		#define NR_RECVBUFF (8)
 	#endif
 #endif /* CONFIG_SINGLE_RECV_BUF */
 #ifdef CONFIG_PREALLOC_RX_SKB_BUFFER
@@ -779,7 +779,7 @@ __inline static union recv_frame *rxmem_to_recvframe(u8 *rxmem)
 __inline static union recv_frame *pkt_to_recvframe(_pkt *pkt)
 {
 
-	u8 *buf_star = 0;
+	u8 *buf_star;
 	union recv_frame *precv_frame;
 	precv_frame = rxmem_to_recvframe((unsigned char *)buf_star);
 

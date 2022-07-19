@@ -864,7 +864,6 @@ struct dm_struct {
 	u8			ofdm_rxagc_l_bnd[16];
 	boolean			l_bnd_detect[16];
 	#endif
-	boolean			rf_write_no_protection;
 /*@-----------HOOK BEFORE REG INIT-----------*/
 /*@===========================================================*/
 /*@====[ CALL BY Reference ]=========================================*/

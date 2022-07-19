@@ -66,6 +66,10 @@
 	#include <linux/limits.h>
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	#include <uapi/linux/sched/types.h>
+#endif
+
 #ifdef RTK_DMP_PLATFORM
 	#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 12))
 		#include <linux/pageremap.h>

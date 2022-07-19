@@ -2906,6 +2906,7 @@ void _halrf_display_dpk_info(void *dm_void, u32 *_used, char *output, u32 *_out_
 	u32 used = *_used;
 	u32 out_len = *_out_len;
 	char *ic_name = NULL;
+	u8 path;
 
 	switch (dm->support_ic_type) {
 
@@ -3015,10 +3016,18 @@ void _halrf_display_dpk_info(void *dm_void, u32 *_used, char *output, u32 *_out_
 		 (dm->support_ic_type & ODM_IC_2SS) ? ((dpk_info->dpk_path_ok & BIT(1)) >> 1 ? "OK" : "Fail") : "NA",
 		 (dm->support_ic_type & ODM_IC_3SS) ? ((dpk_info->dpk_path_ok & BIT(2)) >> 2 ? "OK" : "Fail") : "NA",
 		 (dm->support_ic_type & ODM_IC_4SS) ? ((dpk_info->dpk_path_ok & BIT(3)) >> 3 ? "OK" : "Fail") : "NA");
-
+#if 0
 	PDM_SNPF(out_len, used, output + used, out_len - used, " %-25s = %d / %d / %d / %d\n",
 		 "DPK thermal (path)", dpk_info->thermal_dpk[0], dpk_info->thermal_dpk[1],
 		 dpk_info->thermal_dpk[2], dpk_info->thermal_dpk[3]);
+#endif
+	PDM_SNPF(out_len, used, output + used, out_len - used, " %-25s = ",
+		 "DPK thermal (path)");
+	for (path = 0; path < KPATH; path++) {
+		PDM_SNPF(out_len, used, output + used, out_len - used,
+			 path == (KPATH - 1) ? "%d\n" : "%d / ",
+			 dpk_info->thermal_dpk[path]);
+	}
 
 	PDM_SNPF(out_len, used, output + used, out_len - used, " %-25s = 0x%x\n",
 		 "DPK bkup GNT control", dpk_info->gnt_control);

@@ -3946,12 +3946,17 @@ static int rtw_p2p_set_go_nego_ssid(struct net_device *dev,
 				    struct iw_request_info *info,
 				    union iwreq_data *wrqu, char *extra)
 {
-
 	int ret = 0;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
 	struct wifidirect_info *pwdinfo = &(padapter->wdinfo);
 
 	RTW_INFO("[%s] ssid = %s, len = %zu\n", __FUNCTION__, extra, strlen(extra));
+	if( strlen(extra) >WPS_MAX_DEVICE_NAME_LEN)
+	{
+		RTW_ERR("Invalid strlen(extra): %zu\n", strlen(extra));
+		rtw_warn_on(1);
+		return -1;
+	}
 	_rtw_memcpy(pwdinfo->nego_ssid, extra, strlen(extra));
 	pwdinfo->nego_ssidlen = strlen(extra);
 
@@ -4097,8 +4102,16 @@ static int rtw_p2p_setDN(struct net_device *dev,
 
 
 	RTW_INFO("[%s] %s %d\n", __FUNCTION__, extra, wrqu->data.length - 1);
+
 	_rtw_memset(pwdinfo->device_name, 0x00, WPS_MAX_DEVICE_NAME_LEN);
+	if( wrqu->data.length - 1 >WPS_MAX_DEVICE_NAME_LEN)
+	{
+		RTW_ERR("Invalid wrqu->data.length:%d\n", wrqu->data.length - 1);
+		rtw_warn_on(1);
+		return -1;
+	}
 	_rtw_memcpy(pwdinfo->device_name, extra, wrqu->data.length - 1);
+		
 	pwdinfo->device_name_len = wrqu->data.length - 1;
 
 	return ret;
@@ -12624,7 +12637,7 @@ static int _rtw_ioctl_wext_private(struct net_device *dev, union iwreq_data *wrq
 			count = 0;
 			do {
 				str = strsep(&ptr, delim);
-				if (NULL == str)
+				if (NULL == str || count >= 4096)
 					break;
 				sscanf(str, "%i", &temp);
 				buffer[count++] = (u8)temp;
@@ -12643,7 +12656,7 @@ static int _rtw_ioctl_wext_private(struct net_device *dev, union iwreq_data *wrq
 			count = 0;
 			do {
 				str = strsep(&ptr, delim);
-				if (NULL == str)
+				if (NULL == str || count >= 1024)
 					break;
 				sscanf(str, "%i", &temp);
 				((s32 *)buffer)[count++] = (s32)temp;

@@ -165,12 +165,18 @@ phy_RFSerialRead_8723D(
 {
 	u32						retValue = 0;
 	HAL_DATA_TYPE				*pHalData = GET_HAL_DATA(Adapter);
-	BB_REGISTER_DEFINITION_T	*pPhyReg = &pHalData->PHYRegDef[eRFPath];
+	BB_REGISTER_DEFINITION_T	*pPhyReg;
 	u32						NewOffset;
 	u32						tmplong, tmplong2;
 	u8					RfPiEnable = 0;
 	u32						MaskforPhySet = 0;
 	int i = 0;
+
+	if(eRFPath >= MAX_RF_PATH)
+		return retValue;
+	else
+		pPhyReg = &pHalData->PHYRegDef[eRFPath];
+
 
 	_enter_critical_mutex(&(adapter_to_dvobj(Adapter)->rf_read_reg_mutex) , NULL);
 	/* */
