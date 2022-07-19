@@ -27,7 +27,7 @@
 
 #include "access.h"
 
-#if IS_ENABLED(CONFIG_AW_PHY)
+#ifdef CONFIG_AW_PHY
 #include "aw_phy.h"
 #else
 #include "phy.h"
@@ -42,27 +42,39 @@
 #include "hdcp22_tx.h"
 #include "api.h"
 
-static hdmi_tx_dev_t *hdmi_api;
+static hdmi_tx_dev_t				*hdmi_api;
 
 static int api_phy_write(u8 addr, u32 data)
 {
-#if IS_ENABLED(CONFIG_AW_PHY)
-	phy_write(addr, data);
-#else
-	phy_i2c_write(hdmi_api, addr, (u16)data);
-#endif
+#ifdef CONFIG_AW_PHY
+	aw_phy_write(addr, data);
 	return 0;
+#else
+	return phy_i2c_write(hdmi_api, addr, (u16)data);
+#endif
 }
 
 static int api_phy_read(u8 addr, u32 *value)
 {
-#if IS_ENABLED(CONFIG_AW_PHY)
-	phy_read(addr, value);
-#else
-	phy_i2c_read(hdmi_api, addr, (u16 *)value);
-#endif
+#ifdef CONFIG_AW_PHY
+	aw_phy_read(addr, value);
 	return 0;
+#else
+	return phy_i2c_read(hdmi_api, addr, (u16 *)value);
+#endif
 }
+
+#ifdef CONFIG_AW_PHY
+static void api_phy_reset(void)
+{
+	return hdmi_tx_phy_reset();
+}
+
+static int api_phy_config_resume(void)
+{
+	return phy_config_resume();
+}
+#endif
 
 #ifndef SUPPORT_ONLY_HDMI14
 static int api_scdc_read(u8 address, u8 size, u8 *data)
@@ -367,8 +379,13 @@ static int api_Configure(videoParams_t *video,
 	if ((dev->snps_hdmi_ctrl.tmds_clk  > 340000)
 		/* && (video->scdc_ability)*/) {
 		scrambling(dev, 1);
+		if (!video->scdc_ability) {
+			pr_info("HDMI20 WARN: This sink do NOT support scdc, can NOT scremble\n");
+			pr_info("HDMI20 WARN: Please set this video format to ycbcr420 so that tmds clock is lower than 340MHz\n");
+		}
+
 		VIDEO_INF("enable scrambling\n");
-	} else if (video->scdc_ability) {
+	} else if (video->scdc_ability || scrambling_state(hdmi_api)) {
 		scrambling(dev, 0);
 		VIDEO_INF("disable scrambling\n");
 	}
@@ -379,7 +396,11 @@ static int api_Configure(videoParams_t *video,
 	dev_write(dev, 0x40018, 0xc0);
 	dev_write(dev, 0x4001c, 0x80);
 
+#ifdef CONFIG_AW_PHY
 	success = hdmi_tx_phy_configure(dev, phy_model, video->mEncodingOut);
+#else
+	success = hdmi_tx_phy_configure(dev, phy_model);
+#endif
 	if (success == false)
 		pr_err("ERROR:Could not configure PHY\n");
 #endif
@@ -436,17 +457,6 @@ static u32 api_get_audio_channel_count(void)
 
 }
 
-#if IS_ENABLED(CONFIG_AW_PHY)
-static void api_phy_reset(void)
-{
-	return hdmi_tx_phy_reset();
-}
-
-static int api_phy_config_resume(void)
-{
-	return phy_config_resume();
-}
-#endif
 
 static u32 api_get_phy_power_state(void)
 {
@@ -513,6 +523,11 @@ static void api_fc_vsif_set(u8 *data)
 	fc_vsif_set(hdmi_api, data);
 }
 
+static void api_get_vsd_payload(u8 *video_format, u32 *code)
+{
+	fc_get_vsd_vendor_payload(hdmi_api, video_format, code);
+}
+
 static u32 api_get_color_depth(void)
 {
 
@@ -537,11 +552,6 @@ static void api_dvimode_enable(u8 enable)
 {
 	return fc_video_DviOrHdmi(hdmi_api, !enable);
 
-}
-
-static void api_set_phy_base(uintptr_t base)
-{
-	return phy_set_reg_base(base);
 }
 
 void hdmitx_api_init(hdmi_tx_dev_t *dev,
@@ -617,13 +627,14 @@ void hdmitx_api_init(hdmi_tx_dev_t *dev,
 	func.get_color_depth          = api_get_color_depth;
 	func.get_vsif                 = api_fc_vsif_get;
 	func.set_vsif                 = api_fc_vsif_set;
+	func.get_vsd_payload          = api_get_vsd_payload;
 
 	func.get_avmute_state         = api_get_avmute;
 	func.avmute_enable		      = api_avmute_enable;
 	func.phy_power_enable		  = api_phy_power_enable;
 	func.dvimode_enable			  = api_dvimode_enable;
-	func.set_phy_base_addr        = api_set_phy_base;
-#if IS_ENABLED(CONFIG_AW_PHY)
+
+#ifdef CONFIG_AW_PHY
 	func.phy_reset                = api_phy_reset;
 	func.phy_config_resume        = api_phy_config_resume;
 #endif

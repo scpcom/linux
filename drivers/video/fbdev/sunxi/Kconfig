@@ -131,7 +131,7 @@ menuconfig HDMI2_CEC_SUNXI
   If unsure, say N.
 
 config HDMI2_CEC_USER
-  tristate "HDMI2.0 CEC handled by user space"
+  bool "HDMI2.0 CEC handled by user space"
   depends on (HDMI2_CEC_SUNXI && HDMI2_DISP2_SUNXI)
   default n
   ---help---

@@ -212,16 +212,6 @@ int phy_test_data(hdmi_tx_dev_t *dev, u8 value)
 }
 #endif
 
-void phy_set_reg_base(uintptr_t base)
-{
-	return;
-}
-
-uintptr_t phy_get_reg_base(void)
-{
-	return 0;
-}
-
 static void phy_power_down(hdmi_tx_dev_t *dev, u8 bit)
 {
 	LOG_TRACE1(bit);
@@ -664,7 +654,7 @@ static struct phy_config phy301[] = {
 	{73250, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x72, 0x8, 0x1, 0x4, 0x232, 0x8009},
 #ifdef CONFIG_ARCH_SUN8IW16
 	{74250, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x72, 0x13, 0x1, 0x6, 0x2b0, 0x8039},
-#elif IS_ENABLED(CONFIG_ARCH_SUN50IW9)
+#elif CONFIG_ARCH_SUN50IW9
 	{74250, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x72, 0x13, 0x1, 0x4, 0x290, 0x8019},
 #else
 	{74250, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x72, 0x13, 0x1, 0x6, 0x22d, 0x8009},
@@ -726,7 +716,7 @@ static struct phy_config phy301[] = {
 	{148250, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x51, 0x001B, 0x2, 0x4, 0x232, 0x8009},
 #ifdef CONFIG_ARCH_SUN8IW16
 	{148500, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x51, 0x0019, 0x2, 0x6, 0x2b0, 0x8039},
-#elif IS_ENABLED(CONFIG_ARCH_SUN50IW9)
+#elif CONFIG_ARCH_SUN50IW9
 	{148500, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x51, 0x0019, 0x2, 0x4, 0x290, 0x8019},
 #else
 	{148500, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x51, 0x0019, 0x2, 0x6, 0x270, 0x8029},
@@ -789,7 +779,7 @@ static struct phy_config phy301[] = {
 	{288000, PIXEL_REPETITION_OFF, COLOR_DEPTH_16, HDMI_20, 0x7A50, 0x003D, 0x3, 0x4, 0x14A, 0x8039},
 #ifdef CONFIG_ARCH_SUN8IW16
 	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x40, 0x19, 0x3, 0x5, 0x210, 0x803d},
-#elif IS_ENABLED(CONFIG_ARCH_SUN50IW9)
+#elif CONFIG_ARCH_SUN50IW9
 	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x40, 0x19, 0x3, 0x4, 0x22b, 0x8039},
 #else
 	{297000, PIXEL_REPETITION_OFF, COLOR_DEPTH_8, HDMI_14, 0x40, 0x19, 0x3, 0x5, 0x1ab, 0x8039},
@@ -1559,6 +1549,7 @@ static struct phy_config *phy301_get_configs(u32 pClk, color_depth_t color,
 		if ((pClk == phy301[i].clock) &&
 				(color == phy301[i].color) &&
 				(pixel == phy301[i].pixel)) {
+			VIDEO_INF("tmds clk:%d phy choose index:%d\n", pClk, i);
 			return &(phy301[i]);
 		}
 	}
@@ -1635,7 +1626,7 @@ static int phy301_configure(hdmi_tx_dev_t *dev, u32 pClk, color_depth_t color,
 		pr_err("Error:PLLCURRCTRL Mismatch Write 0x%04x Read 0x%04x\n",
 				config->pllcurrctrl, phyRead);
 
-#if IS_ENABLED(CONFIG_ARCH_SUN50IW9)
+#ifdef CONFIG_ARCH_SUN50IW9
 	phy_write(dev, PLLGMPCTRL, 3);
 	phy_read(dev, PLLGMPCTRL, &phyRead);
 	if (phyRead != 3)
@@ -1927,10 +1918,9 @@ int phy_initialize(hdmi_tx_dev_t *dev, u16 phy_model)
 	return TRUE;
 }
 
-int hdmi_tx_phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
+int hdmi_tx_phy_configure(hdmi_tx_dev_t *dev, u16 phy_model)
 {
 	LOG_TRACE();
-	EncodingOut;
 	if (phy_model == PHY_MODEL_301) {
 		return phy301_configure(dev, dev->snps_hdmi_ctrl.pixel_clock,
 					dev->snps_hdmi_ctrl.color_resolution,

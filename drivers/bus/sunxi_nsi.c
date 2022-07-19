@@ -68,11 +68,24 @@
 #define MBUS_PORT_ABS_BWL	(MBUS_PMU_MAX + 4)
 #define MBUS_PORT_ABS_BWLEN	(MBUS_PMU_MAX + 5)
 
+#ifdef SUNXI_NSI_CPU_CHANNEL
+#define CPU_PMU_EN		0x0020
+#define CPU_PMU_CLR		0x0024
+#define CPU_PMU_PER		0x0028
+#define CPU_CHL0_PMU_REQ_R	0x0080
+#define CPU_CHL0_PMU_REQ_W	0x0084
+#define CPU_CHL0_PMU_DATA_R	0x0088
+#define CPU_CHL0_PMU_DATA_W	0x008c
+#define CPU_CHL0_PMU_LAT_R	0x0090
+#define CPU_CHL0_PMU_LAT_W	0x0094
+#endif
+
 
 struct nsi_bus {
 	struct cdev cdev;
 	struct device *dev;
 	void __iomem *base;
+	void __iomem *cpu_base;
 	struct clk *pclk;  /* PLL clock */
 	struct clk *mclk;  /* mbus clock */
 	struct clk *dclk; /* dram clock */
@@ -263,6 +276,35 @@ int notrace nsi_port_set_abs_bwlen(enum nsi_pmu port, bool en)
 }
 EXPORT_SYMBOL_GPL(nsi_port_set_abs_bwlen);
 
+#ifdef SUNXI_NSI_CPU_CHANNEL
+static void nsi_cpu_pmu_disable(void)
+{
+	unsigned int value;
+
+	value = readl_relaxed(sunxi_nsi.cpu_base + CPU_PMU_EN);
+	value &= ~(0x1);
+	writel_relaxed(value, sunxi_nsi.cpu_base + CPU_PMU_EN);
+}
+
+static void nsi_cpu_pmu_enable(void)
+{
+	unsigned int value;
+
+	value = readl_relaxed(sunxi_nsi.cpu_base + CPU_PMU_EN);
+	value |= (0x1);
+	writel_relaxed(value, sunxi_nsi.cpu_base + CPU_PMU_EN);
+}
+
+static void nsi_cpu_pmu_clear(void)
+{
+	unsigned int value;
+
+	value = readl_relaxed(sunxi_nsi.cpu_base + CPU_PMU_CLR);
+	value |= (0x1);
+	writel_relaxed(value, sunxi_nsi.cpu_base + CPU_PMU_CLR);
+}
+#endif
+
 static void nsi_pmu_disable(enum nsi_pmu port)
 {
 	unsigned int value;
@@ -292,11 +334,11 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-	unsigned int cycle, port;
+	u64 cycle;
 	unsigned long mrate = clk_get_rate(sunxi_nsi.mclk);
 	unsigned long drate;
 	unsigned char *buffer = kmalloc(64, GFP_KERNEL);
-	unsigned long period, flags;
+	unsigned long period, flags, port;
 	int ret = 0;
 	/*
 	 *if mclk = 400MHZ, the signel time = 1000*1000*1000/(400*1000*1000)=2.5ns
@@ -331,8 +373,8 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 		request_sum[port] = 0;
 	}
 
-	/* set pmu period */
-	cycle = period * mrate / 1000000;
+	/* set pmu period except cpu*/
+	cycle = period * (mrate / 1000000);
 	for (port = 1; port < MBUS_PMU_IAG_MAX; port++) {
 		writel_relaxed(cycle, sunxi_nsi.base + MBUS_PMU_CYCLE(port));
 
@@ -343,11 +385,21 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 		nsi_pmu_clear(port);
 
 	}
-	cycle = period * drate/ 1000000;
+
+	/* set cpu pmu period */
+	cycle = period * (drate / 1000000);
+
+#ifdef SUNXI_NSI_CPU_CHANNEL
+	writel_relaxed(cycle, sunxi_nsi.cpu_base + CPU_PMU_PER);
+	hw_nsi_pmu.period = period;
+	nsi_cpu_pmu_disable();
+	nsi_cpu_pmu_clear();
+#else
 	writel_relaxed(cycle, sunxi_nsi.base + MBUS_PMU_CYCLE(MBUS_PMU_CPU));
 	hw_nsi_pmu.period = period;
 	nsi_pmu_disable(MBUS_PMU_CPU);
 	nsi_pmu_clear(MBUS_PMU_CPU);
+#endif
 
 	writel_relaxed(cycle, sunxi_nsi.base + MBUS_PMU_CYCLE(MBUS_PMU_TAG));
 	nsi_pmu_disable(MBUS_PMU_TAG);
@@ -356,6 +408,10 @@ ssize_t nsi_pmu_timer_store(struct device *dev,
 	/* enable iag pmu */
 	for (port = 0; port < MBUS_PMU_IAG_MAX; port++)
 		nsi_pmu_enable(port);		/* enabled the pmu count */
+
+#ifdef SUNXI_NSI_CPU_CHANNEL
+	nsi_cpu_pmu_enable();
+#endif
 
 	/* enable tag pmu */
 	nsi_pmu_enable(MBUS_PMU_TAG);
@@ -379,12 +435,9 @@ static ssize_t nsi_pmu_timer_show(struct device *dev,
 }
 
 static const struct of_device_id sunxi_nsi_matches[] = {
-#if IS_ENABLED(CONFIG_ARCH_SUN8I)
 	{.compatible = "allwinner,sun8i-nsi", },
-#endif
-#if IS_ENABLED(CONFIG_ARCH_SUN50I)
 	{.compatible = "allwinner,sun50i-nsi", },
-#endif
+	{.compatible = "allwinner,sunxi-nsi", },
 	{},
 };
 
@@ -507,7 +560,16 @@ static int nsi_probe(struct platform_device *pdev)
 		WARN(1, "unable to ioremap nsi ctrl\n");
 		return -ENXIO;
 	}
+#ifdef SUNXI_NSI_CPU_CHANNEL
+	ret = of_address_to_resource(np, 1, &res);
+	if (!ret)
+		sunxi_nsi.cpu_base = ioremap(res.start, resource_size(&res));
 
+	if (ret || !sunxi_nsi.cpu_base) {
+		WARN(1, "unable to ioremap nsi_cpu ctrl\n");
+		return -ENXIO;
+	}
+#endif
 	reset = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR_OR_NULL(reset)) {
 		pr_err("Unable to get reset, return %x\n",
@@ -586,7 +648,6 @@ static int nsi_probe(struct platform_device *pdev)
 #endif
 
 	}
-
 	/* all the port is default opened */
 
 	/* set default bandwidth */
@@ -631,6 +692,9 @@ static ssize_t nsi_pmu_bandwidth_show(struct device *dev,
 			struct device_attribute *da, char *buf)
 {
 	unsigned int bread, bwrite, bandrw[MBUS_PMU_IAG_MAX];
+#ifdef SUNXI_NSI_CPU_CHANNE
+	unsigned int cpu_bread, cpu_bwrite;
+#endif
 	unsigned int port, len = 0;
 	unsigned long flags = 0;
 	char bwbuf[16];
@@ -638,20 +702,38 @@ static ssize_t nsi_pmu_bandwidth_show(struct device *dev,
 	spin_lock_irqsave(&hw_nsi_pmu.bwlock, flags);
 
 	/* read the iag pmu bandwidth, which is total master bandwidth */
+#ifdef SUNXI_NSI_CPU_CHANNEL
+	cpu_bread = readl_relaxed(sunxi_nsi.cpu_base + CPU_CHL0_PMU_DATA_R);
+	cpu_bwrite = readl_relaxed(sunxi_nsi.cpu_base + CPU_CHL0_PMU_DATA_W);
+	bandrw[0] = cpu_bread + cpu_bwrite;
+	len += sprintf(bwbuf, "%u  ", bandrw[0]/1024);
+	strcat(buf, bwbuf);
+	/* read the iag pmu bandwidth, which is total master bandwidth */
+	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
+		bread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_RD(port));
+		bwrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_WR(port));
+		bandrw[port + 1] = bread + bwrite;
+		len += sprintf(bwbuf, "%u  ", bandrw[port + 1]/1024);
+		strcat(buf, bwbuf);
+	}
+#else
 	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
 		bread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_RD(port));
 		bwrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_WR(port));
 		bandrw[port] = bread + bwrite;
-	}
-	for (port = 0; port < MBUS_PMU_IAG_MAX; port++) {
 		len += sprintf(bwbuf, "%u  ", bandrw[port]/1024);
 		strcat(buf, bwbuf);
 	}
+#endif
 
 	/* read the tag pmu bandwidth, which is total ddr bandwidth */
 	bread = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_RD(MBUS_PMU_TAG));
 	bwrite = readl_relaxed(sunxi_nsi.base + MBUS_PMU_DT_WR(MBUS_PMU_TAG));
+#ifdef SUNXI_NSI_CPU_CHANNEL
+	len += sprintf(bwbuf, "%u\n", (cpu_bread + cpu_bwrite + bread + bwrite)/1024);
+#else
 	len += sprintf(bwbuf, "%u\n", (bread + bwrite)/1024);
+#endif
 	strcat(buf, bwbuf);
 
 	spin_unlock_irqrestore(&hw_nsi_pmu.bwlock, flags);
@@ -729,7 +811,7 @@ static ssize_t nsi_available_pmu_show(struct device *dev,
 {
 	ssize_t i, len = 0;
 
-	for (i = 0; i <= MBUS_PMU_IAG_MAX ; i++)
+	for (i = 0; i < ARRAY_SIZE(pmu_name) ; i++)
 		len += sprintf(buf + len, "%s  ", get_name(i));
 	len += sprintf(buf + len, "\n");
 

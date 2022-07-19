@@ -9,42 +9,109 @@
  */
 #include <linux/delay.h>
 #include "cec.h"
-#include "core/irq.h"
+#include "../api/core/irq.h"
 
-/******************************************************************************
- *
- *****************************************************************************/
+static uintptr_t hdmi_base;
+static u8 cec_active;
+
+static int cec_CfgSignalFreeTime(int time);
+static int cec_CfgStandbyMode(int enable);
+
+static int cec_GetSend(void);
+static int cec_SetSend(void);
+static int cec_IntClear(unsigned char mask);
+
+static void cec_wakeupctrl_clear(void);
+static int cec_IntDisable(unsigned char mask);
+static int cec_IntEnable(unsigned char mask);
+static int cec_IntStatus(unsigned char mask);
+static int cec_IntStatusClear(unsigned char mask);
+static int cec_CfgTxBuf(char *buf, unsigned size);
+static int cec_CfgRxBuf(char *buf, unsigned size);
+static int cec_GetLocked(void);
+static int cec_SetLocked(void);
+
+void cec_set_base_addr(uintptr_t reg_base)
+{
+	hdmi_base = reg_base;
+}
+
+static void cec_write(uintptr_t addr, u32 data)
+{
+	*((volatile u8 *)(hdmi_base + (addr >> 2))) = data;
+}
+
+static u32 cec_read(uintptr_t addr)
+{
+	return *((volatile u8 *)(hdmi_base + (addr >> 2)));
+}
+
+/*calculate valid bit account*/
+static u8 lowest_bitset(u8 x)
+{
+	u8 result = 0;
+
+	/* x=0 is not properly handled by while-loop */
+	if (x == 0)
+		return 0;
+
+	while ((x & 1) == 0) {
+		x >>= 1;
+		result++;
+	}
+
+	return result;
+}
+static void cec_write_mask(u32 addr, u8 mask, u8 data)
+{
+	u8 temp = 0;
+	u8 shift = lowest_bitset(mask);
+
+	temp = cec_read(addr);
+	temp &= ~(mask);
+	temp |= (mask & (data << shift));
+	cec_write(addr, temp);
+}
+
+void cec_set_active(u8 active)
+{
+	cec_active = active;
+}
+
+static void mc_cec_clock_enable(u8 bit)
+{
+	LOG_TRACE1(bit);
+	cec_write_mask(MC_CLKDIS, MC_CLKDIS_CECCLK_DISABLE_MASK, bit);
+}
+
 /**
  * Wait for message (quit after a given period)
- * @param dev:     address and device information
  * @param buf:     buffer to hold data
  * @param size:    maximum data length [byte]
  * @param timeout: time out period [ms]
  * @return error code or received bytes
  */
-static int cec_msgRx(hdmi_tx_dev_t *dev, char *buf, unsigned size,
+static int cec_msgRx(char *buf, unsigned size,
 		 int timeout)
 {
 	int retval = -1;
 
-	if (cec_GetLocked(dev) != 0) {
-		retval = cec_CfgRxBuf(dev, buf, size);
-		cec_IntStatusClear(dev, CEC_MASK_EOM_MASK | CEC_MASK_ERROR_FLOW_MASK);
-		cec_SetLocked(dev);
+	if (cec_GetLocked() != 0) {
+		retval = cec_CfgRxBuf(buf, size);
+		cec_IntStatusClear(CEC_MASK_EOM_MASK | CEC_MASK_ERROR_FLOW_MASK);
+		cec_SetLocked();
 	}
 	return retval;
 }
 
-extern u32 hdmi_enable_mask;
 /**
  * Send a message (retry in case of failure)
- * @param dev:   address and device information
  * @param buf:   data to send
  * @param size:  data length [byte]
  * @param retry: maximum number of retries
  * @return error code or transmitted bytes
  */
-static int cec_msgTx(hdmi_tx_dev_t *dev, char *buf, unsigned size,
+static int cec_msgTx(char *buf, unsigned size,
 		 unsigned retry)
 {
 	int timeout = 10;
@@ -52,39 +119,38 @@ static int cec_msgTx(hdmi_tx_dev_t *dev, char *buf, unsigned size,
 	int i, retval = -1;
 
 	if (size > 0) {
-		if (cec_CfgTxBuf(dev, buf, size) == (int)size) {
+		if (cec_CfgTxBuf(buf, size) == (int)size) {
 			for (i = 0; i < (int)retry; i++) {
-				if (!hdmi_enable_mask)
-					return 0;
-
-				if (cec_CfgSignalFreeTime(dev, i ? 3 : 5))
+				if (cec_CfgSignalFreeTime(i ? 3 : 5))
 					break;
 
-				cec_IntEnable(dev, CEC_MASK_DONE_MASK
+				cec_IntEnable(CEC_MASK_DONE_MASK
 						| CEC_MASK_NACK_MASK
 						| CEC_MASK_ARB_LOST_MASK
 						| CEC_MASK_ERROR_INITIATOR_MASK);
-				cec_SetSend(dev);
+				cec_SetSend();
 				msleep(1);
 
-				timeout = 10;
-				while (cec_GetSend(dev) != 0 && timeout) {
+				timeout = 100;
+				while (cec_GetSend() != 0 && timeout) {
 					msleep(10);
 					timeout--;
 				}
 
 				if (timeout == 0) {
-					pr_err("cec config err, can NOT send cec\n");
-					return 0;
+					pr_err("[%d cec send time] timeout!!!\n",
+						i);
+					continue;
 				}
 
 				msleep(1);
-				status = dev_read(dev, IH_CEC_STAT0);
-				dev_write(dev, IH_CEC_STAT0, status);
+				status = cec_read(IH_CEC_STAT0);
+				cec_write(IH_CEC_STAT0, status);
 				if ((status & CEC_MASK_ARB_LOST_MASK)
 					|| (status & CEC_MASK_ERROR_INITIATOR_MASK)
 					|| (status & CEC_MASK_ERROR_FLOW_MASK)) {
-					CEC_INF("CEC Send error: IH Status: 0x%02x\n", status);
+					CEC_INF("CEC Send error[%d time]: "
+					      "IH Status: 0x%02x\n", i, status);
 					continue;
 				} else if (status & CEC_MASK_NACK_MASK) {
 					retval = 1;
@@ -100,25 +166,30 @@ static int cec_msgTx(hdmi_tx_dev_t *dev, char *buf, unsigned size,
 	return retval;
 }
 
-int cec_send_poll(hdmi_tx_dev_t *dev, char src)
+int cec_send_poll(char src)
 {
 	int ret = -1;
 	char buf[1];
 	int timeout = 40;
 
+	if (!cec_active) {
+		pr_err("[CEC]cec_send_poll failed\n");
+		return -1;
+	}
+
 	buf[0] = (src << 4) | src;
-	if (cec_CfgTxBuf(dev, buf, 1) == 1) {
-		cec_CfgSignalFreeTime(dev, 5);
-		cec_IntEnable(dev, CEC_MASK_DONE_MASK
+	if (cec_CfgTxBuf(buf, 1) == 1) {
+		cec_CfgSignalFreeTime(5);
+		cec_IntEnable(CEC_MASK_DONE_MASK
 				| CEC_MASK_NACK_MASK
 				| CEC_MASK_ARB_LOST_MASK
 				| CEC_MASK_ERROR_INITIATOR_MASK);
-		cec_SetSend(dev);
+		cec_SetSend();
 		udelay(100);
 		while (timeout) {
-			if ((!cec_GetSend(dev))
-				&& cec_IntStatus(dev, CEC_MASK_NACK_MASK)) {
-				cec_IntStatusClear(dev, CEC_MASK_NACK_MASK);
+			if ((!cec_GetSend())
+				&& cec_IntStatus(CEC_MASK_NACK_MASK)) {
+				cec_IntStatusClear(CEC_MASK_NACK_MASK);
 				ret = 0;
 				break;
 			}
@@ -130,35 +201,25 @@ int cec_send_poll(hdmi_tx_dev_t *dev, char src)
 	return ret;
 }
 
-int cec_get_nack_state(hdmi_tx_dev_t *dev)
-{
-	if (cec_IntStatus(dev,
-		CEC_MASK_NACK_MASK) != 0) {
-		cec_IntStatusClear(dev, CEC_MASK_NACK_MASK);
-		return 1;
-	}
-
-	return 0;
-}
-
 /**
  * Open a CEC controller
  * @warning Execute before start using a CEC controller
- * @param dev:  address and device information
  * @return error code
  */
-int cec_Init(hdmi_tx_dev_t *dev)
+int cec_Init(void)
 {
+	mc_cec_clock_enable(0);
+	udelay(200);
 	/*
 	 * This function is also called after wake up,
 	 * so it must NOT reset logical address allocation
 	 */
-	cec_CfgStandbyMode(dev, 0);
-	irq_unmute_source(dev, CEC);
-	cec_IntDisable(dev, CEC_MASK_WAKEUP_MASK);
-	cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
-	cec_wakeupctrl_clear(dev);
-	cec_IntEnable(dev, CEC_MASK_DONE_MASK | CEC_MASK_EOM_MASK
+	cec_CfgStandbyMode(0);
+	cec_write(IH_MUTE_CEC_STAT0, 0x00);
+	cec_IntDisable(CEC_MASK_WAKEUP_MASK);
+	cec_IntClear(CEC_MASK_WAKEUP_MASK);
+	cec_wakeupctrl_clear();
+	cec_IntEnable(CEC_MASK_DONE_MASK | CEC_MASK_EOM_MASK
 					| CEC_MASK_NACK_MASK
 					| CEC_MASK_ARB_LOST_MASK
 					| CEC_MASK_ERROR_FLOW_MASK
@@ -170,48 +231,58 @@ int cec_Init(hdmi_tx_dev_t *dev)
 /**
  * Close a CEC controller
  * @warning Execute before stop using a CEC controller
- * @param dev:    address and device information
  * @param wakeup: enable wake up mode (don't enable it in TX side)
  * @return error code
  */
-int cec_Disable(hdmi_tx_dev_t *dev, int wakeup)
+int cec_Disable(int wakeup)
 {
-	cec_IntDisable(dev, CEC_MASK_DONE_MASK | CEC_MASK_EOM_MASK |
+	if (!cec_active) {
+		pr_err("[CEC]cec_Disable failed\n");
+		return -1;
+	}
+
+	cec_IntDisable(CEC_MASK_DONE_MASK | CEC_MASK_EOM_MASK |
 		CEC_MASK_NACK_MASK | CEC_MASK_ARB_LOST_MASK
 		| CEC_MASK_ERROR_FLOW_MASK
 		| CEC_MASK_ERROR_INITIATOR_MASK);
 	if (wakeup) {
-		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
-		cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
-		cec_CfgStandbyMode(dev, 1);
+		cec_IntClear(CEC_MASK_WAKEUP_MASK);
+		cec_IntEnable(CEC_MASK_WAKEUP_MASK);
+		cec_CfgStandbyMode(1);
 	} else
-		cec_CfgLogicAddr(dev, BCST_ADDR, 1);
+		cec_CfgLogicAddr(BCST_ADDR, 1);
+
+	mc_cec_clock_enable(1);
 	return 0;
 }
 
 /**
  * Configure logical address
- * @param dev:    address and device information
  * @param addr:   logical address
  * @param enable: alloc/free address
  * @return error code
  */
-int cec_CfgLogicAddr(hdmi_tx_dev_t *dev, unsigned addr, int enable)
+int cec_CfgLogicAddr(unsigned addr, int enable)
 {
 	unsigned int regs;
+
+	if (!cec_active) {
+		pr_err("[CEC]cec_CfgLogicAddr failed\n");
+		return -1;
+	}
 
 	if (addr > BCST_ADDR) {
 		pr_err("Error:invalid parameter\n");
 		return -1;
 	}
 
-	dev_write(dev, CEC_ADDR_L, 0x00);
-	dev_write(dev, CEC_ADDR_H, 0x00);
+	cec_write(CEC_ADDR_L, 0x00);
+	cec_write(CEC_ADDR_H, 0x00);
 
 	if (addr == BCST_ADDR) {
 		if (enable) {
-			dev_write(dev, CEC_ADDR_H, 0x80);
-			dev_write(dev, CEC_ADDR_L, 0x00);
+			cec_write(CEC_ADDR_H, 0x80);
+			cec_write(CEC_ADDR_L, 0x00);
 			return 0;
 		} else {
 			pr_err("Error:cannot de-allocate broadcast logical address\n");
@@ -221,19 +292,23 @@ int cec_CfgLogicAddr(hdmi_tx_dev_t *dev, unsigned addr, int enable)
 	regs = (addr > 7) ? CEC_ADDR_H : CEC_ADDR_L;
 	addr = (addr > 7) ? (addr - 8) : addr;
 	if (enable) {
-		dev_write(dev, CEC_ADDR_H, 0x00);
-		dev_write(dev, regs, dev_read(dev, regs) |  (1 << addr));
+		cec_write(CEC_ADDR_H, 0x00);
+		cec_write(regs, cec_read(regs) |  (1 << addr));
 	} else
-		dev_write(dev, regs, dev_read(dev, regs) & ~(1 << addr));
+		cec_write(regs, cec_read(regs) & ~(1 << addr));
 	return 0;
 }
 
-unsigned int cec_get_log_addr(hdmi_tx_dev_t *dev)
+unsigned int cec_get_log_addr(void)
 {
 	unsigned int reg, addr = 16, i;
 
-	reg = dev_read(dev, CEC_ADDR_H);
-	reg = (reg << 8) | dev_read(dev, CEC_ADDR_L);
+	if (!cec_active) {
+		pr_err("[CEC]cec_get_log_addr failed\n");
+		return -1;
+	}
+	reg = cec_read(CEC_ADDR_H);
+	reg = (reg << 8) | cec_read(CEC_ADDR_L);
 
 	for (i = 0; i < 16; i++) {
 		if ((reg >> i) & 0x01)
@@ -246,17 +321,20 @@ unsigned int cec_get_log_addr(hdmi_tx_dev_t *dev)
 
 /**
  * Configure standby mode
- * @param dev:    address and device information
  * @param enable: if true enable standby mode
  * @return error code
  */
-int cec_CfgStandbyMode(hdmi_tx_dev_t *dev, int enable)
+static int cec_CfgStandbyMode(int enable)
 {
+	if (!cec_active) {
+		pr_err("[CEC]cec_CfgStandbyMode failed\n");
+		return -1;
+	}
 	if (enable)
-		dev_write(dev, CEC_CTRL, dev_read(dev, CEC_CTRL)
+		cec_write(CEC_CTRL, cec_read(CEC_CTRL)
 						| CEC_CTRL_STANDBY_MASK);
 	else
-		dev_write(dev, CEC_CTRL, dev_read(dev, CEC_CTRL)
+		cec_write(CEC_CTRL, cec_read(CEC_CTRL)
 					& ~CEC_CTRL_STANDBY_MASK);
 	return 0;
 }
@@ -265,15 +343,14 @@ int cec_CfgStandbyMode(hdmi_tx_dev_t *dev, int enable)
 
 /**
  * Configure signal free time
- * @param dev:  address and device information
  * @param time: time between attempts [nr of frames]
  * @return error code
  */
-int cec_CfgSignalFreeTime(hdmi_tx_dev_t *dev, int time)
+static int cec_CfgSignalFreeTime(int time)
 {
 	unsigned char data;
 
-	data = dev_read(dev, CEC_CTRL) & ~(CEC_CTRL_FRAME_TYP_MASK);
+	data = cec_read(CEC_CTRL) & ~(CEC_CTRL_FRAME_TYP_MASK);
 	if (time == 3)
 		;                                  /* 0 */
 	else if (time == 5)
@@ -282,126 +359,118 @@ int cec_CfgSignalFreeTime(hdmi_tx_dev_t *dev, int time)
 		data |= FRAME_TYP1 | FRAME_TYP0;   /* 2 */
 	else
 		return -1;
-	dev_write(dev, CEC_CTRL, data);
+	cec_write(CEC_CTRL, data);
 	return 0;
 }
 
 /**
  * Read send status
- * @param dev:  address and device information
  * @return SEND status
  */
-int cec_GetSend(hdmi_tx_dev_t *dev)
+static int cec_GetSend(void)
 {
-	return (dev_read(dev, CEC_CTRL) & CEC_CTRL_SEND_MASK) != 0;
+	return (cec_read(CEC_CTRL) & CEC_CTRL_SEND_MASK) != 0;
 }
 
 /**
  * Set send status
- * @param dev: address and device information
  * @return error code
  */
-int cec_SetSend(hdmi_tx_dev_t *dev)
+static int cec_SetSend(void)
 {
-	dev_write(dev, CEC_CTRL, dev_read(dev, CEC_CTRL) | CEC_CTRL_SEND_MASK);
+	cec_write(CEC_CTRL, cec_read(CEC_CTRL) | CEC_CTRL_SEND_MASK);
 	return 0;
 }
 
 /**
  * Clear interrupts
- * @param dev:  address and device information
  * @param mask: interrupt mask to clear
  * @return error code
  */
-int cec_IntClear(hdmi_tx_dev_t *dev, unsigned char mask)
+static int cec_IntClear(unsigned char mask)
 {
-	dev_write(dev, CEC_MASK, mask);
+	cec_write(CEC_MASK, mask);
 	return 0;
 }
 
-void cec_wakeupctrl_clear(hdmi_tx_dev_t *dev)
+static void cec_wakeupctrl_clear(void)
 {
-	dev_write(dev, CEC_WAKEUPCTRL, 0);
+	cec_write(CEC_WAKEUPCTRL, 0);
 }
 
 /**
  * Disable interrupts
- * @param dev:  address and device information
  * @param mask: interrupt mask to disable
  * @return error code
  */
-int cec_IntDisable(hdmi_tx_dev_t *dev, unsigned char mask)
+static int cec_IntDisable(unsigned char mask)
 {
-	dev_write(dev, CEC_MASK, dev_read(dev, CEC_MASK) | mask);
+	cec_write(CEC_MASK, cec_read(CEC_MASK) | mask);
 	return 0;
 }
 
 /**
  * Enable interrupts
- * @param dev:  address and device information
  * @param mask: interrupt mask to enable
  * @return error code
  */
-int cec_IntEnable(hdmi_tx_dev_t *dev, unsigned char mask)
+static int cec_IntEnable(unsigned char mask)
 {
-	dev_write(dev, CEC_MASK, dev_read(dev, CEC_MASK) & ~mask);
+	cec_write(CEC_MASK, cec_read(CEC_MASK) & ~mask);
 	return 0;
 }
 
 /**
  * Read interrupts
- * @param dev:  address and device information
  * @param mask: interrupt mask to read
  * @return INT content
  */
-int cec_IntStatus(hdmi_tx_dev_t *dev, unsigned char mask)
+static int cec_IntStatus(unsigned char mask)
 {
-	return dev_read(dev, IH_CEC_STAT0) & mask;
+	return cec_read(IH_CEC_STAT0) & mask;
 }
 
-int cec_IntStatusClear(hdmi_tx_dev_t *dev, unsigned char mask)
+static int cec_IntStatusClear(unsigned char mask)
 {
 	/* write 1 to clear */
-	dev_write(dev, IH_CEC_STAT0, mask);
+	cec_write(IH_CEC_STAT0, mask);
 	return 0;
 }
 
 /**
  * Write transmission buffer
- * @param dev:  address and device information
  * @param buf:  data to transmit
  * @param size: data length [byte]
  * @return error code or bytes configured
  */
-int cec_CfgTxBuf(hdmi_tx_dev_t *dev, char *buf, unsigned size)
+static int cec_CfgTxBuf(char *buf, unsigned size)
 {
 	unsigned i;
 	if (size > CEC_TX_DATA_SIZE) {
 		pr_info("invalid parameter\n");
 		return -1;
 	}
-	dev_write(dev, CEC_TX_CNT, size);   /* mask 7-5? */
+	cec_write(CEC_TX_CNT, size);   /* mask 7-5? */
 	for (i = 0; i < size; i++)
-		dev_write(dev, CEC_TX_DATA + (i * 4), *buf++);
+		cec_write(CEC_TX_DATA + (i * 4), *buf++);
 	return size;
 }
 
 /**
  * Read reception buffer
- * @param dev:  address and device information
  * @param buf:  buffer to hold receive data
  * @param size: maximum data length [byte]
  * @return error code or received bytes
  */
-int cec_CfgRxBuf(hdmi_tx_dev_t *dev, char *buf, unsigned size)
+static int cec_CfgRxBuf(char *buf, unsigned size)
 {
 	unsigned i;
 	unsigned char cnt;
 
-	cnt = dev_read(dev, CEC_RX_CNT);   /* mask 7-5? */
+	cnt = cec_read(CEC_RX_CNT);   /* mask 7-5? */
 	cnt = (cnt > size) ? size : cnt;
 	for (i = 0; i < size; i++)
-		*buf++ = dev_read(dev, CEC_RX_DATA + (i * 4));
+		*buf++ = cec_read(CEC_RX_DATA + (i * 4));
 
 	if (cnt > CEC_RX_DATA_SIZE) {
 		pr_err("Error: wrong byte count\n");
@@ -412,64 +481,49 @@ int cec_CfgRxBuf(hdmi_tx_dev_t *dev, char *buf, unsigned size)
 
 /**
  * Read locked status
- * @param dev: address and device information
  * @return LOCKED status
  */
-int cec_GetLocked(hdmi_tx_dev_t *dev)
+static int cec_GetLocked(void)
 {
-	return (dev_read(dev, CEC_LOCK) & CEC_LOCK_LOCKED_BUFFER_MASK) != 0;
+	return (cec_read(CEC_LOCK) & CEC_LOCK_LOCKED_BUFFER_MASK) != 0;
 }
 
 /**
  * Set locked status
- * @param dev: address and device information
  * @return error code
  */
-int cec_SetLocked(hdmi_tx_dev_t *dev)
+static int cec_SetLocked(void)
 {
-	dev_write(dev, CEC_LOCK, dev_read(dev, CEC_LOCK)
+	cec_write(CEC_LOCK, cec_read(CEC_LOCK)
 					& ~CEC_LOCK_LOCKED_BUFFER_MASK);
-	return true;
-}
-
-/**
- * Configure broadcast rejection
- * @param dev:   address and device information
- * @param enable: if true enable broadcast rejection
- * @return error code
- */
-int cec_CfgBroadcastNAK(hdmi_tx_dev_t *dev, int enable)
-{
-	if (enable)
-		dev_write(dev, CEC_CTRL, dev_read(dev, CEC_CTRL)
-						| CEC_CTRL_BC_NACK_MASK);
-	else
-		dev_write(dev, CEC_CTRL,
-			dev_read(dev, CEC_CTRL) & ~CEC_CTRL_BC_NACK_MASK);
 	return true;
 }
 
 /**
  * Attempt to receive data (quit after 1s)
  * @warning Caller context must allow sleeping
- * @param dev:  address and device information
  * @param buf:  container for incoming data (first byte will be header block)
  * @param size: maximum data size [byte]
  * @return error code or received message size [byte]
  */
-int cec_ctrlReceiveFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size)
+int cec_ctrlReceiveFrame(char *buf, unsigned size)
 {
 	if (buf == NULL) {
 		pr_err("Error:invalid parameter\n");
 		return -1;
 	}
-	return cec_msgRx(dev, buf, size, 100);
+
+	if (!cec_active) {
+		pr_err("[CEC]cec_ctrlReceiveFrame failed\n");
+		return -1;
+	}
+
+	return cec_msgRx(buf, size, 100);
 }
 
 /**
  * Attempt to send data (retry 5 times)
  * @warning Doesn't check if source address is allocated
- * @param dev:  address and device information
  * @param buf:  container of the outgoing data (without header block)
  * @param size: request size [byte] (must be less than 15)
  * @param src:  initiator logical address
@@ -477,7 +531,7 @@ int cec_ctrlReceiveFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size)
  * @return error code:
  *    -1:ERROR     0: send OK     1: NACK
  */
-int cec_ctrlSendFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size,
+int cec_ctrlSendFrame(char *buf, unsigned size,
 		  unsigned src, unsigned dst)
 {
 	char tmp[100];
@@ -489,9 +543,14 @@ int cec_ctrlSendFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size,
 		return -1;
 	}
 
+	if (!cec_active) {
+		pr_err("[CEC]cec_ctrlSendFrame failed\n");
+		return -1;
+	}
+
 	tmp[0] = src << 4 | dst;
 	for (i = 0; i < (int)size; i++)
 		tmp[i + 1] = buf[i];
 
-	return cec_msgTx(dev, tmp, size + 1, 5);
+	return cec_msgTx(tmp, size + 1, 5);
 }

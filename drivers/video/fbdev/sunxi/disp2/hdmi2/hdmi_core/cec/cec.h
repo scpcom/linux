@@ -13,9 +13,7 @@
 
 #include <linux/delay.h>
 
-#include "hdmitx_dev.h"
-#include "log.h"
-#include "access.h"
+#include "../api/log.h"
 
 /** Broadcast logical address */
 #define BCST_ADDR   (0x0FUL)
@@ -101,31 +99,16 @@
 #define CEC_WAKEUPCTRL_OPCODE0X82EN_MASK  0x00000040 /* OPCODE 0x82 wake up enable */
 #define CEC_WAKEUPCTRL_OPCODE0X86EN_MASK  0x00000080 /* OPCODE 0x86 wake up enable */
 
-int cec_send_poll(hdmi_tx_dev_t *dev, char src);
-int cec_get_nack_state(hdmi_tx_dev_t *dev);
-int cec_Init(hdmi_tx_dev_t *dev);
-int cec_Disable(hdmi_tx_dev_t *dev, int wakeup);
-int cec_CfgLogicAddr(hdmi_tx_dev_t *dev, unsigned addr, int enable);
-unsigned int cec_get_log_addr(hdmi_tx_dev_t *dev);
-int cec_CfgStandbyMode(hdmi_tx_dev_t *dev, int enable);
-int cec_CfgSignalFreeTime(hdmi_tx_dev_t *dev, int time);
-int cec_GetSend(hdmi_tx_dev_t *dev);
-int cec_SetSend(hdmi_tx_dev_t *dev);
-int cec_IntClear(hdmi_tx_dev_t *dev, unsigned char mask);
-void cec_wakeupctrl_clear(hdmi_tx_dev_t *dev);
-int cec_IntDisable(hdmi_tx_dev_t *dev, unsigned char mask);
-int cec_IntEnable(hdmi_tx_dev_t *dev, unsigned char mask);
-int cec_IntStatus(hdmi_tx_dev_t *dev, unsigned char mask);
-int cec_IntStatusClear(hdmi_tx_dev_t *dev, unsigned char mask);
-int cec_CfgTxBuf(hdmi_tx_dev_t *dev, char *buf, unsigned size);
-int cec_CfgRxBuf(hdmi_tx_dev_t *dev, char *buf, unsigned size);
-int cec_GetLocked(hdmi_tx_dev_t *dev);
-int cec_SetLocked(hdmi_tx_dev_t *dev);
-int cec_CfgBroadcastNAK(hdmi_tx_dev_t *dev, int enable);
-int cec_ctrlReceiveFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size);
-int cec_ctrlSendFrame(hdmi_tx_dev_t *dev, char *buf, unsigned size, unsigned src, unsigned dst);
-/******************************************************************************
- *
- *****************************************************************************/
+void cec_set_base_addr(uintptr_t reg_base);
+void cec_set_active(u8 active);
+
+int cec_send_poll(char src);
+int cec_Init(void);
+int cec_Disable(int wakeup);
+int cec_CfgLogicAddr(unsigned addr, int enable);
+unsigned int cec_get_log_addr(void);
+int cec_ctrlReceiveFrame(char *buf, unsigned size);
+int cec_ctrlSendFrame(char *buf, unsigned size,
+		 unsigned src, unsigned dst);
 
 #endif /* CEC_H */

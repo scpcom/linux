@@ -26,6 +26,10 @@
 extern int edid_read(hdmi_tx_dev_t *dev, struct edid *edid);
 extern int edid_extension_read(hdmi_tx_dev_t *dev, int block, u8 *edid_ext);
 
+void edid_set_test_data(const unsigned char *data, unsigned int size);
+void edid_test_mode_enable(bool en);
+unsigned char edid_get_test_mode(void);
+
 void edid_read_cap(void);
 void hdmi_edid_release(void);
 

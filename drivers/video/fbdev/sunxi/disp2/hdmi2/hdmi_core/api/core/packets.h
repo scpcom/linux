@@ -240,5 +240,5 @@ u8 fc_VideoCode_get(hdmi_tx_dev_t *dev);
 void fc_VideoCode_set(hdmi_tx_dev_t *dev, u8 data);
 void fc_vsif_get(hdmi_tx_dev_t *dev, u8 *data);
 void fc_vsif_set(hdmi_tx_dev_t *dev, u8 *data);
-
+void fc_get_vsd_vendor_payload(hdmi_tx_dev_t *dev, u8 *video_format, u32 *code);
 #endif	/* PACKETS_H_ */

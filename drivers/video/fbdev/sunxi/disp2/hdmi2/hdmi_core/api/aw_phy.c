@@ -68,13 +68,13 @@ static void phy_encoding_adapt(encoding_t EncodingOut)
 	}
 }
 
-void phy_write(u8 offset, u32 value)
+void aw_phy_write(u8 offset, u32 value)
 {
 	*((unsigned int *)((void *)phy_base + offset)) = value;
 	return;
 }
 
-void phy_read(u8 offset, u32 *value)
+void aw_phy_read(u8 offset, u32 *value)
 {
 	*value = *((unsigned int *)((void *)phy_base + offset));
 	return;

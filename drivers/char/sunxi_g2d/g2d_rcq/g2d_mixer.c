@@ -91,8 +91,6 @@ OUT:
 
 	/* set the input layer */
 	g2d_vlayer_set(p_frame->ovl_v, 0, dst);
-	/* set the fill color value */
-	g2d_ovl_v_fc_set(p_frame->ovl_v, color_value);
 
 	if (dst->format >= G2D_FORMAT_IYUV422_V0Y1U0Y0) {
 		g2d_vsu_para_set(p_frame->scal, dst->format, dst->clip_rect.w,
@@ -128,7 +126,9 @@ OUT:
 	rect0.y = 0;
 	rect0.w = dst->clip_rect.w;
 	rect0.h = dst->clip_rect.h;
-	bld_in_set(p_frame->bld, 0, rect0, dst->bpremul);
+
+	bld_fc_set(p_frame->bld, 1, rect0, dst->bpremul, dst->color);
+	bld_porter_duff(p_frame->bld, G2D_BLD_SRCOVER);
 	bld_cs_set(p_frame->bld, dst->format);
 
 	/* ROP sel ch0 pass */

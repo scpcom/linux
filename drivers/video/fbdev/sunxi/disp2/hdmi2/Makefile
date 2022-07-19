@@ -23,7 +23,7 @@ hdmi20-y += hdmi_core/api/api.o
 hdmi20-y += hdmi_core/api/access.o
 
 ifeq ($(CONFIG_HDMI2_CEC_SUNXI),y)
-hdmi20-y += hdmi_core/api/cec.o
+hdmi20-y += hdmi_core/cec/cec.o
 endif
 
 hdmi20-y += hdmi_core/api/core/audio.o

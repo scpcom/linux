@@ -17,6 +17,7 @@
 #include "log.h"
 #include "access.h"
 
+#define PHY_I2C_SLAVE_ADDR 0x69
 #define AW_PHY_TIMEOUT	1000
 #define LOCK_TIMEOUT	100
 #define PHY_REG_OFFSET	0x10000
@@ -648,8 +649,8 @@ int phy_enable_hpd_sense(hdmi_tx_dev_t *dev);
  */
 int phy_disable_hpd_sense(hdmi_tx_dev_t *dev);
 
-void phy_read(u8 offset, u32 *value);
-void phy_write(u8 offset, u32 value);
+void aw_phy_read(u8 offset, u32 *value);
+void aw_phy_write(u8 offset, u32 value);
 
 u8 phy_hot_plug_state(hdmi_tx_dev_t *dev);
 

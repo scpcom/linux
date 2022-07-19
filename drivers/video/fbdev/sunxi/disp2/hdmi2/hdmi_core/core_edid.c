@@ -12,6 +12,35 @@
 #include "core_edid.h"
 #include "hdmi_core.h"
 
+static unsigned char test_edid[1024];
+static bool use_test_edid;
+
+/*
+ * @data: virtual addr of edid data
+ * @size: edid bytes size
+ */
+void edid_set_test_data(const unsigned char *data, unsigned int size)
+{
+	if (size > 1024) {
+		pr_err("[hdmi]invalid edid size input\n");
+		return;
+	}
+
+	memset(test_edid, 0, 1024);
+	memcpy(test_edid, data, size);
+	use_test_edid = true;
+}
+
+void edid_test_mode_enable(bool en)
+{
+	use_test_edid = en;
+}
+
+unsigned char edid_get_test_mode(void)
+{
+	return (unsigned char)use_test_edid;
+}
+
 static void edid_init_sink_cap(sink_edid_t *sink)
 {
 	memset(sink, 0, sizeof(sink_edid_t));
@@ -33,8 +62,7 @@ void edid_read_cap(void)
 		return;
 	}
 
-	if (core->mode.edid == NULL)
-		core->mode.edid = kzalloc(sizeof(struct edid), GFP_KERNEL);
+	core->mode.edid = kzalloc(sizeof(struct edid), GFP_KERNEL);
 	edid = core->mode.edid;
 	if (!edid)
 		pr_err("kzalloc for edid failed\n");
@@ -47,15 +75,18 @@ void edid_read_cap(void)
 	core->dev_func.edid_parser_cea_ext_reset(sink);
 
 	do {
-		edid_ok = core->dev_func.edid_read(edid);
-
-		if (edid_ok) /* error case */
-			continue;
+		if (use_test_edid) {
+			memcpy(edid, test_edid, 128);
+		} else {
+			edid_ok = core->dev_func.edid_read(edid);
+			if (edid_ok == READ_ERROR) /* error case */
+				continue;
+		}
 
 		core->mode.edid = edid;
 
 		if (core->dev_func.edid_parser((u8 *) edid, sink, 128) == false) {
-			pr_err("Error:Could not parse EDID\n");
+			pr_err("Error:parse EDID failed, error edid block0\n");
 			core->mode.edid_done = 0;
 			mutex_unlock(&core->hdmi_tx.i2c_lock);
 			return;
@@ -78,8 +109,7 @@ void edid_read_cap(void)
 	if (edid->extensions == 0) {
 		core->mode.edid_done = 1;
 	} else {
-		if (core->mode.edid_ext == NULL)
-			core->mode.edid_ext = kzalloc(128 * edid->extensions, GFP_KERNEL);
+		core->mode.edid_ext = kzalloc(128 * edid->extensions, GFP_KERNEL);
 		edid_ext = core->mode.edid_ext;
 		if (!edid_ext) {
 			mutex_unlock(&core->hdmi_tx.i2c_lock);
@@ -92,16 +122,23 @@ void edid_read_cap(void)
 			EDID_INF("EDID Extension %d\n", edid_ext_cnt);
 			edid_tries = 3;
 			do {
-				edid_ok = core->dev_func.edid_extension_read(edid_ext_cnt,
+				if (use_test_edid) {
+					memcpy(edid_ext + (edid_ext_cnt - 1) * 128,
+						test_edid + edid_ext_cnt * 128,
+						128);
+				} else {
+					edid_ok = core->dev_func.edid_extension_read(edid_ext_cnt,
 								edid_ext + (edid_ext_cnt - 1) * 128);
-				if (edid_ok)
-					continue;
+					if (edid_ok == READ_ERROR)
+						continue;
+				}
 
 				core->mode.edid_ext = edid_ext;
 		/* TODO: add support for EDID parsing w/ Ext blocks > 1 */
 				if (edid_ext_cnt < 2) {
 					if (core->dev_func.edid_parser(edid_ext, sink, 128) == false) {
-						pr_info("Could not parse EDID EXTENSIONS\n");
+
+						pr_info("Parse Edid EXTENSIONS failed, error Edid EXTENSIONS\n");
 						core->mode.edid_done = 0;
 					}
 					core->mode.edid_done = 1;
@@ -186,8 +223,9 @@ int edid_sink_supports_vic_code(u32 vic_code)
 			&& (dtd.mHActive == ((((dt[i].data.pixel_data.hactive_hblank_hi >> 4) & 0x0f) << 8)
 			| dt[i].data.pixel_data.hactive_lo))
 			&& ((dtd.mVActive / (dtd.mInterlaced + 1)) == ((((dt[i].data.pixel_data.vactive_vblank_hi >> 4) & 0x0f) << 8)
-			| dt[i].data.pixel_data.vactive_lo))) {
-			pr_info("detailed timing bloack support\n");
+			| dt[i].data.pixel_data.vactive_lo))
+			&& (dtd.mPixelClock == ((unsigned int)dt[i].pixel_clock * 10))) {
+			pr_info("detailed timing block:%d of edid block0 support\n", i);
 			return true;
 		}
 	}
@@ -198,8 +236,9 @@ int edid_sink_supports_vic_code(u32 vic_code)
 			&& (dtd.mHActive == ((((dt_ext[i].data.pixel_data.hactive_hblank_hi >> 4) & 0x0f) << 8)
 			| dt_ext[i].data.pixel_data.hactive_lo))
 			&& ((dtd.mVActive / (dtd.mInterlaced + 1)) == ((((dt_ext[i].data.pixel_data.vactive_vblank_hi >> 4) & 0x0f) << 8)
-			| dt_ext[i].data.pixel_data.vactive_lo))) {
-			pr_info("detailed timing bloack support\n");
+			| dt_ext[i].data.pixel_data.vactive_lo))
+			&& (dtd.mPixelClock == ((unsigned int)dt[i].pixel_clock * 10))) {
+			pr_info("detailed timing block:%d of edid block0 support\n", 2 + i);
 			return true;
 		}
 	}
@@ -385,11 +424,11 @@ static void edid_set_video_prefered(sink_edid_t *sink_cap, videoParams_t *pVideo
 	} else if (cea_vic_support) {
 		pVideo->mCea_code = pVideo->mDtd.mCode;
 		pVideo->mHdmi_code = 0;
+
 		if (((pVideo->mCea_code == 96)
 			|| (pVideo->mCea_code == 97)
 			|| (pVideo->mCea_code == 101)
-			|| (pVideo->mCea_code == 102))
-			&& pVideo->mHdmi20) {
+			|| (pVideo->mCea_code == 102)) && (pVideo->mHdmi20 || pVideo->mEncodingOut != YCC420)) {
 			core->mode.pProduct.mOUI = 0xc45dd8;
 			core->mode.pProduct.mVendorPayload[0] = 0x1;
 			core->mode.pProduct.mVendorPayload[1] = 0;
@@ -397,6 +436,14 @@ static void edid_set_video_prefered(sink_edid_t *sink_cap, videoParams_t *pVideo
 			core->mode.pProduct.mVendorPayload[3] = 0;
 			core->mode.pProduct.mVendorPayloadLength = 4;
 		} else {
+			if ((pVideo->mCea_code == 96)
+				|| (pVideo->mCea_code == 97)
+				|| (pVideo->mCea_code == 101)
+				|| (pVideo->mCea_code == 102)) {
+				pr_info("[HDMI20 WARN] Source will set 4k50/60 but sink edid do NOT support hdmi20\n");
+				pr_info("[HDMI20 WARN] cea_code:%d hdmi20:%d\n", pVideo->mCea_code, pVideo->mHdmi20);
+			}
+
 			core->mode.pProduct.mOUI = 0x000c03;
 			core->mode.pProduct.mVendorPayload[0] = 0x0;
 			core->mode.pProduct.mVendorPayload[1] = 0;

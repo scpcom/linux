@@ -21,10 +21,9 @@
 
 /* MBUS PMU ids */
 enum nsi_pmu {
+#if IS_ENABLED(CONFIG_ARCH_SUN50IW10)
 	MBUS_PMU_CPU    = 0,
 	MBUS_PMU_GPU     = 1,
-
-#if IS_ENABLED(CONFIG_ARCH_SUN50IW10)
 	MBUS_PMU_SD1     = 2,
 	MBUS_PMU_MSTG    = 3,
 	MBUS_PMU_GMAC0   = 4,
@@ -46,6 +45,8 @@ enum nsi_pmu {
 	MBUS_PMU_IAG_MAX,
 	MBUS_PMU_TAG = 23,
 #elif IS_ENABLED(CONFIG_ARCH_SUN50IW12)
+	MBUS_PMU_CPU    = 0,
+	MBUS_PMU_GPU     = 1,
 	MBUS_PMU_VE_R			= 2,
 	MBUS_PMU_VE				= 3,
 	MBUS_PMU_TVDISP_MBUS	= 4,
@@ -69,6 +70,38 @@ enum nsi_pmu {
 	MBUS_PMU_IAG_MAX,
 	/* use RA1 to get total bandwidth, because no TA pmu for sun50iw12 */
 	MBUS_PMU_TAG = 24,
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+	MBUS_PMU_GPU			= 0,
+	MBUS_PMU_GIC			= 1,
+	MBUS_PMU_USB3			= 2,
+	MBUS_PMU_PCIE			= 3,
+	MBUS_PMU_CE			= 4,
+	MBUS_PMU_NPU			= 5,
+	MBUS_PMU_ISP			= 6,
+	MBUS_PMU_DSP			= 7,
+	MBUS_PMU_DMAC			= 8,
+	MBUS_PMU_DMA			= 9,
+	MBUS_PMU_IOMMU			= 10,
+	MBUS_PMU_VE_R			= 11,
+	MBUS_PMU_VE_RW			= 12,
+	MBUS_PMU_DE			= 13,
+	MBUS_PMU_CSI			= 14,
+	MBUS_PMU_NAND			= 15,
+	MBUS_PMU_MATRIX			= 16,
+	MBUS_PMU_SPI			= 17,
+	MBUS_PMU_GMAC0			= 18,
+	MBUS_PMU_GMAC1			= 19,
+	MBUS_PMU_SMHC0			= 20,
+	MBUS_PMU_SMHC1			= 21,
+	MBUS_PMU_SMHC2			= 22,
+	MBUS_PMU_USB0			= 23,
+	MBUS_PMU_USB1			= 24,
+	MBUS_PMU_USB2			= 25,
+	MBUS_PMU_NPD			= 26,
+	MBUS_PMU_G2D			= 27,
+	MBUS_PMU_DI			= 28,
+	MBUS_PMU_IAG_MAX,
+	MBUS_PMU_TAG			= 31,
 #endif
 	MBUS_PMU_MAX,
 };
@@ -85,6 +118,12 @@ static const char *const pmu_name[] = {
 	"iommu", "tvcap", "gmac0", "mstg", "mips", "usb0", "usb1", "usb2", "mstg1", "mstg2",
 	"npd", "total",
 };
+#elif IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+static const char *const pmu_name[] = {
+	"cpu", "gpu", "gic", "usb3", "pcie", "ce", "npu", "isp", "dsp", "dmac", "dma", "iommu",
+	"ve_r", "ve_rw", "de", "csi", "nand", "matrix", "spi", "gmac0", "gmac1", "smhc0",
+	"smhc1", "smhc2", "usb0", "usb1", "usb2", "npd", "g2d", "di", "total",
+};
 #endif
 
 #define get_name(n)      pmu_name[n]
@@ -93,6 +132,10 @@ static const char *const pmu_name[] = {
 extern int nsi_port_setpri(enum nsi_pmu port, unsigned int pri);
 extern int nsi_port_setqos(enum nsi_pmu port, unsigned int qos);
 extern bool nsi_probed(void);
+#endif
+
+#if IS_ENABLED(CONFIG_ARCH_SUN55IW3)
+#define SUNXI_NSI_CPU_CHANNEL	1
 #endif
 
 #define nsi_disable_port_by_index(dev) \

@@ -146,8 +146,22 @@ typedef enum {
 	SMPTE_ST_2084,
 	HLG
 } eotf_t;
+
+enum video_format_type {
+	VIDEO_CEA_FORMAT = 0,
+	VIDEO_HDMI14_4K_FORMAT = 1,
+	VIDEO_3D_FORMAT = 2,
+};
 /***********************VIDEO************************/
 
+/******************EDID*************************/
+enum EDID_ERROR {
+	CHECKSUM_ERROR = -3,
+	HEADER_ERROR = -2,
+	READ_ERROR = -1,
+	NONE_ERROR = 0,
+};
+/******************EDID*************************/
 
 /***********HDCP************/
 enum hdmi_hdcp_type {
@@ -460,11 +474,11 @@ typedef struct {
 typedef struct {
 	int	mNative;
 
-	unsigned int mCode;
+	unsigned mCode;
 
-	unsigned int mLimitedToYcc420;
+	unsigned mLimitedToYcc420;
 
-	unsigned int mYcc420;
+	unsigned mYcc420;
 
 } shortVideoDesc_t;
 
@@ -886,12 +900,12 @@ struct hdmi_dev_func {
 	u32 (*get_audio_sample_size)(void);
 	u32 (*get_audio_n)(void);
 	void (*get_vsif)(u8 *data);
-	void (*set_vsif)(u8 *data);
+	void (*set_vsif) (u8 *data);
+	void (*get_vsd_payload)(u8 *video_format, u32 *code);
 	void (*avmute_enable)(u8 enable);
 	void (*phy_power_enable)(u8 enable);
 	void (*dvimode_enable)(u8 enable);
-	void (*set_phy_base_addr)(uintptr_t reg_base);
-#if IS_ENABLED(CONFIG_AW_PHY)
+#ifdef CONFIG_AW_PHY
 	void (*phy_reset)(void);
 	int (*phy_config_resume)(void);
 #endif

@@ -568,6 +568,22 @@ u8 fc_vsd_vendor_payload(hdmi_tx_dev_t *dev, const u8 *data,
 	return 0;
 }
 
+void fc_get_vsd_vendor_payload(hdmi_tx_dev_t *dev, u8 *video_format, u32 *code)
+{
+	u32 format = dev_read(dev, FC_VSDPAYLOAD0);
+	if (format == 0x20) {
+		*video_format = VIDEO_HDMI14_4K_FORMAT;
+		*code = dev_read(dev, FC_VSDPAYLOAD0 + 4);
+	} else if (format == 0x40) {
+		*video_format = VIDEO_3D_FORMAT;
+		*code = 0;
+	} else {
+		*video_format = VIDEO_CEA_FORMAT;
+		*code = 0;
+	}
+}
+
+
 void fc_vsif_enable(hdmi_tx_dev_t *dev, u8 enable)
 {
 	dev_write_mask(dev, FC_PACKET_TX_EN, FC_PACKET_TX_EN_AUT_TX_EN_MASK, enable);
