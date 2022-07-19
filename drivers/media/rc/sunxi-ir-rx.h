@@ -153,6 +153,7 @@ struct sunxi_ir_rx {
 	char protocol;
 	bool boot_code;
 	struct ir_raw_event rawir;
+	bool wakeup;
 };
 
 int init_sunxi_irrx_map(void);

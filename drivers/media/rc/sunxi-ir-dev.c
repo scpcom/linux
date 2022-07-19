@@ -74,46 +74,48 @@ static void sunxi_irrx_recv(u32 reg_data, struct sunxi_ir_rx *chip)
 		/* the signal sunperposition */
 		chip->rawir.duration += ir_duration;
 		dev_dbg(dev, "raw: polar=%d; dur=%d\n", pulse_now, ir_duration);
-	} else {
-		if (chip->is_receiving) {
-			chip->rawir.duration *= IR_SIMPLE_UNIT;
-			dev_dbg(dev, "pusle :polar=%d, dur: %u ns\n",
-						chip->rawir.pulse, chip->rawir.duration);
-			if (chip->boot_code == 0) {
-				chip->boot_code = 1;
-				if (eq_margin(chip->rawir.duration, NEC_BOOT_CODE,
-							NEC_UNIT*2)) {
-					chip->protocol = NEC;
-					ir_raw_event_store(chip->rcdev, &chip->rawir);
-				} else {
-					chip->protocol = RC5;
-					ir_raw_event_store(chip->rcdev, &chip->rawir);
-				}
-			} else {
-				if (((chip->rawir.duration > chip->threshold_low) &&
-					(chip->rawir.duration < chip->threshold_high)) &&
-						(chip->protocol == RC5)) {
-					chip->rawir.duration = chip->rawir.duration / 2;
-					ir_raw_event_store(chip->rcdev, &chip->rawir);
-					//ir_raw_event_store(chip->rcdev, &chip->rawir);
-				} else
-					ir_raw_event_store(chip->rcdev, &chip->rawir);
-			}
-			chip->rawir.pulse = pulse_now;
-			chip->rawir.duration = ir_duration;
-			dev_dbg(dev, "raw: polar=%d; dur=%d\n",
-						pulse_now, ir_duration);
-		} else {
-				/* get the first pulse signal */
-				chip->rawir.pulse = pulse_now;
-				chip->rawir.duration = ir_duration;
-				chip->is_receiving = 1;
-				dev_dbg(dev, "get frist pulse,add head !!\n");
-				dev_dbg(dev, "raw: polar=%d; dur=%d\n", pulse_now,
-						ir_duration);
-		}
-		chip->pulse_pre = pulse_now;
+		return;
 	}
+
+	if (!chip->is_receiving) {
+		/* get the first pulse signal */
+		chip->rawir.pulse = pulse_now;
+		chip->rawir.duration = ir_duration;
+		chip->is_receiving = 1;
+		dev_dbg(dev, "get frist pulse, add head!\n");
+		dev_dbg(dev, "raw: polar=%d; dur=%d\n", pulse_now, ir_duration);
+		chip->pulse_pre = pulse_now;
+		return;
+	}
+
+	chip->rawir.duration *= IR_SIMPLE_UNIT;
+	dev_dbg(dev, "pulse: polar=%d, dur: %u ns\n",
+		chip->rawir.pulse, chip->rawir.duration);
+	if (chip->boot_code == 0) {
+		chip->boot_code = 1;
+		if (eq_margin(chip->rawir.duration, NEC_BOOT_CODE, NEC_UNIT * 2)) {
+			chip->protocol = NEC;
+			ir_raw_event_store(chip->rcdev, &chip->rawir);
+		} else {
+			chip->protocol = RC5;
+			ir_raw_event_store(chip->rcdev, &chip->rawir);
+		}
+	} else {
+		if (((chip->rawir.duration > chip->threshold_low) &&
+		     (chip->rawir.duration < chip->threshold_high)) &&
+		     (chip->protocol == RC5)) {
+			chip->rawir.duration = chip->rawir.duration / 2;
+			ir_raw_event_store(chip->rcdev, &chip->rawir);
+			//ir_raw_event_store(chip->rcdev, &chip->rawir);
+		} else {
+			ir_raw_event_store(chip->rcdev, &chip->rawir);
+		}
+	}
+
+	chip->rawir.pulse = pulse_now;
+	chip->rawir.duration = ir_duration;
+	dev_dbg(dev, "raw: polar=%d; dur=%d\n", pulse_now, ir_duration);
+	chip->pulse_pre = pulse_now;
 }
 
 static irqreturn_t sunxi_irrx_irq(int irq, void *dev_id)
@@ -151,8 +153,8 @@ static irqreturn_t sunxi_irrx_irq(int irq, void *dev_id)
 		 */
 		if (chip->rawir.duration) {
 			chip->rawir.duration *= IR_SIMPLE_UNIT;
-			dev_dbg(dev, "pusle :polar=%d, dur: %u ns\n",
-						chip->rawir.pulse, chip->rawir.duration);
+			dev_dbg(dev, "pulse: polar=%d, dur: %u ns\n",
+			       chip->rawir.pulse, chip->rawir.duration);
 			ir_raw_event_store(chip->rcdev, &chip->rawir);
 		}
 		dev_dbg(dev, "handle raw data.\n");
@@ -161,6 +163,9 @@ static irqreturn_t sunxi_irrx_irq(int irq, void *dev_id)
 		chip->is_receiving = 0;
 		chip->boot_code = 0;
 		chip->pulse_pre = false;
+
+		if (chip->wakeup)
+			pm_wakeup_event(chip->rcdev->input_dev->dev.parent, 0);
 	}
 
 	if (intsta & IR_RXINTS_RXOF) {
@@ -476,7 +481,7 @@ static bool sunxi_get_ir_protocol(struct sunxi_ir_rx *chip)
 static int sunxi_irrx_resource_get(struct platform_device *pdev,
 				struct sunxi_ir_rx *chip)
 {
-	struct device_node *np = NULL;
+	struct device_node *np = pdev->dev.of_node;
 	__maybe_unused char ir_supply[16] = {0};
 	__maybe_unused const char *name = NULL;
 #ifdef CONFIG_ANDROID
@@ -595,12 +600,15 @@ static int sunxi_irrx_resource_get(struct platform_device *pdev,
 	if (of_property_read_string(np, "supply", &name)) {
 		dev_dbg(dev, "%s: cir have no power supply\n", __func__);
 		chip->supply = NULL;
-	} else {
+	} else if (strlen(name)) {
 		chip->supply = devm_regulator_get(NULL, name);
 		if (IS_ERR(chip->supply)) {
 			dev_err(dev, "%s: cir get supply err\n", __func__);
 			chip->supply = NULL;
 		}
+	} else {
+		dev_err(dev, "%s: cir get supply err\n", __func__);
+		chip->supply = NULL;
 	}
 #endif
 
@@ -609,6 +617,10 @@ static int sunxi_irrx_resource_get(struct platform_device *pdev,
 	if (sunxi_get_ir_protocol(chip))
 		dev_err(dev, "%s: get_ir_protocol failed.\n", __func__);
 #endif
+
+	chip->wakeup = of_property_read_bool(np, "wakeup-source");
+	if (chip->wakeup)
+		device_init_wakeup(&pdev->dev, chip->wakeup);
 
 	return 0;
 }
@@ -744,11 +756,18 @@ static int sunxi_irrx_suspend(struct device *dev)
 
 	dev_dbg(dev, "enter: sunxi_ir_rx_suspend.\n");
 
-	disable_irq_nosync(chip->irq_num);
+	if (device_may_wakeup(dev)) {
+		if (chip->wakeup)
+			enable_irq_wake(chip->irq_num);
+		dev_dbg(dev, "enter: sunxi_ir_rx_suspend enable irq wakeup.\n");
+	} else {
 
-	sunxi_irrx_save_regs(chip);
+		disable_irq_nosync(chip->irq_num);
 
-	sunxi_irrx_hw_exit(chip);
+		sunxi_irrx_save_regs(chip);
+
+		sunxi_irrx_hw_exit(chip);
+	}
 
 	return 0;
 }
@@ -760,11 +779,18 @@ static int sunxi_irrx_resume(struct device *dev)
 
 	dev_dbg(dev, "enter: sunxi_ir_rx_resume.\n");
 
-	sunxi_irrx_hw_init(chip);
+	if (device_may_wakeup(dev)) {
+		if (chip->wakeup)
+			disable_irq_wake(chip->irq_num);
+		dev_dbg(dev, "enter: sunxi_ir_rx_suspend disable irq wakeup.\n");
+	} else {
 
-	sunxi_irrx_restore_regs(chip);
+		sunxi_irrx_hw_init(chip);
 
-	enable_irq(chip->irq_num);
+		sunxi_irrx_restore_regs(chip);
+
+		enable_irq(chip->irq_num);
+	}
 
 	return 0;
 }
