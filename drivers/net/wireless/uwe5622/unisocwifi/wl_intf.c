@@ -1235,7 +1235,8 @@ int sprdwl_tx_free_pcie_data(struct sprdwl_intf *dev, unsigned char *data,
 	int i;
 	struct sprdwl_tx_msg *tx_msg;
 	unsigned char *data_addr_ptr;
-	unsigned long pcie_addr, timeout;
+	uint64_t pcie_addr;
+	unsigned long timeout;
 	unsigned short  data_num;
 	struct list_head *free_list;
 	struct txc_addr_buff *txc_addr;
