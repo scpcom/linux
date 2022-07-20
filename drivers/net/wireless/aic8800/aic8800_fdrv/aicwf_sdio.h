@@ -39,6 +39,8 @@
 #define SDIO_SLEEP_ST                    0
 #define SDIO_ACTIVE_ST                   1
 
+#define DATA_FLOW_CTRL_THRESH            2
+
 typedef enum {
 	SDIO_TYPE_DATA         = 0X00,
 	SDIO_TYPE_CFG          = 0X10,
@@ -86,7 +88,7 @@ int aicwf_sdio_txpkt(struct aic_sdio_dev *sdiodev, struct sk_buff *pkt);
 int sdio_bustx_thread(void *data);
 int sdio_busrx_thread(void *data);
 int aicwf_sdio_aggr(struct aicwf_tx_priv *tx_priv, struct sk_buff *pkt);
-int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv);
+int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv, u8 txnow);
 void aicwf_sdio_aggr_send(struct aicwf_tx_priv *tx_priv);
 void aicwf_sdio_aggrbuf_reset(struct aicwf_tx_priv *tx_priv);
 extern void aicwf_hostif_ready(void);

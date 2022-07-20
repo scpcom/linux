@@ -313,7 +313,7 @@ static struct ieee80211_channel rwnx_5ghz_channels[] = {
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)) || defined(CONFIG_HE_FOR_OLD_KERNEL)
 struct ieee80211_sband_iftype_data rwnx_he_capa = {
-	.types_mask = BIT(NL80211_IFTYPE_STATION),
+	.types_mask = BIT(NL80211_IFTYPE_STATION) | BIT(NL80211_IFTYPE_AP),
 	.he_cap = RWNX_HE_CAPABILITIES,
 };
 #endif
@@ -2236,11 +2236,6 @@ static int rwnx_cfg80211_del_iface(struct wiphy *wiphy, struct wireless_dev *wde
 	printk("del_iface: %p, %x\n", wdev, wdev->address[5]);
 
 	if (!dev || !rwnx_vif->ndev) {
-		if (rwnx_vif == rwnx_hw->p2p_dev_vif) {
-			if (timer_pending(&rwnx_hw->p2p_alive_timer)) {
-				del_timer_sync(&rwnx_hw->p2p_alive_timer);
-			}
-		}
 		cfg80211_unregister_wdev(wdev);
 		spin_lock_bh(&rwnx_hw->cb_lock);
 		list_del(&rwnx_vif->list);
@@ -2430,6 +2425,25 @@ static void rwnx_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev
 		if (ret)
 			printk("scanu_cancel fail\n");
 	}
+
+	if (rwnx_vif == rwnx_hw->p2p_dev_vif) {
+		rwnx_hw->is_p2p_alive = 0;
+		if (timer_pending(&rwnx_hw->p2p_alive_timer)) {
+			del_timer_sync(&rwnx_hw->p2p_alive_timer);
+		}
+
+		if (rwnx_vif->up) {
+			rwnx_send_remove_if(rwnx_hw, rwnx_vif->vif_index, true);
+			/* Ensure that we won't process disconnect ind */
+			spin_lock_bh(&rwnx_hw->cb_lock);
+			rwnx_vif->up = false;
+			rwnx_hw->vif_table[rwnx_vif->vif_index] = NULL;
+			rwnx_hw->vif_started--;
+			spin_unlock_bh(&rwnx_hw->cb_lock);
+		}
+
+	}
+
 	printk("Exit. P2P interface stopped\n");
 
 	return;
@@ -2645,17 +2659,37 @@ static int rwnx_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	struct rwnx_vif *rwnx_vif = netdev_priv(dev);
 	struct sm_connect_cfm sm_connect_cfm;
 	int error = 0;
+	int is_wep = ((sme->crypto.cipher_group == WLAN_CIPHER_SUITE_WEP40) ||
+			(sme->crypto.cipher_group == WLAN_CIPHER_SUITE_WEP104) ||
+			(sme->crypto.ciphers_pairwise[0] == WLAN_CIPHER_SUITE_WEP40) ||
+			(sme->crypto.ciphers_pairwise[0] == WLAN_CIPHER_SUITE_WEP104));
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
-	if (rwnx_vif->wep_enabled && rwnx_vif->wep_auth_err && (sme->auth_type == rwnx_vif->last_auth_type)) {
-		if (sme->auth_type == NL80211_AUTHTYPE_SHARED_KEY || sme->auth_type == NL80211_AUTHTYPE_AUTOMATIC) {
-			sme->auth_type = NL80211_AUTHTYPE_OPEN_SYSTEM;
-			printk("start connect, auth_type changed, shared --> open\n");
-		}
-		if (sme->auth_type == NL80211_AUTHTYPE_OPEN_SYSTEM || sme->auth_type == NL80211_AUTHTYPE_AUTOMATIC) {
-			sme->auth_type = NL80211_AUTHTYPE_SHARED_KEY;
-			printk("start connect, auth_type changed, open --> shared\n");
+	if (is_wep) {
+		if (sme->auth_type == NL80211_AUTHTYPE_AUTOMATIC) {
+			if (rwnx_vif->wep_enabled && rwnx_vif->wep_auth_err) {
+				if (rwnx_vif->last_auth_type == NL80211_AUTHTYPE_SHARED_KEY)
+					sme->auth_type = NL80211_AUTHTYPE_OPEN_SYSTEM;
+				else
+					sme->auth_type = NL80211_AUTHTYPE_SHARED_KEY;
+			} else {
+				if ((rwnx_vif->wep_enabled && !rwnx_vif->wep_auth_err))
+					sme->auth_type = rwnx_vif->last_auth_type;
+				else
+				sme->auth_type = NL80211_AUTHTYPE_SHARED_KEY;
+			}
+			printk("auto: use sme->auth_type = %d\r\n", sme->auth_type);
+		} else {
+			if (rwnx_vif->wep_enabled && rwnx_vif->wep_auth_err && (sme->auth_type == rwnx_vif->last_auth_type)) {
+				if (sme->auth_type == NL80211_AUTHTYPE_SHARED_KEY) {
+					sme->auth_type = NL80211_AUTHTYPE_OPEN_SYSTEM;
+					printk("start connect, auth_type changed, shared --> open\n");
+				} else if (sme->auth_type == NL80211_AUTHTYPE_OPEN_SYSTEM) {
+					sme->auth_type = NL80211_AUTHTYPE_SHARED_KEY;
+					printk("start connect, auth_type changed, open --> shared\n");
+				}
+			}
 		}
 	}
 
@@ -2931,7 +2965,6 @@ static int rwnx_cfg80211_del_station_compat(struct wiphy *wiphy,
 				macaddr = cur->mac_addr;
 				printk("deinit:macaddr:%x,%x,%x,%x,%x,%x\r\n", macaddr[0], macaddr[1], macaddr[2], \
 									   macaddr[3], macaddr[4], macaddr[5]);
-				spin_lock_bh(&rx_priv->stas_reord_lock);
 				list_for_each_entry_safe(reord_info, reord_tmp,
 					&rx_priv->stas_reord_list, list) {
 					printk("reord_mac:%x,%x,%x,%x,%x,%x\r\n", reord_info->mac_addr[0], reord_info->mac_addr[1], reord_info->mac_addr[2], \
@@ -2941,7 +2974,6 @@ static int rwnx_cfg80211_del_station_compat(struct wiphy *wiphy,
 						break;
 					}
 				}
-				spin_unlock_bh(&rx_priv->stas_reord_lock);
 			}
 #endif
 
@@ -2972,6 +3004,112 @@ static int rwnx_cfg80211_del_station_compat(struct wiphy *wiphy,
 
 	return 0;
 }
+
+void apm_staloss_work_process(struct work_struct *work)
+{
+	struct rwnx_hw *rwnx_hw = container_of(work, struct rwnx_hw, apmStalossWork);
+	struct rwnx_sta *cur, *tmp;
+	int error = 0;
+
+#ifdef AICWF_RX_REORDER
+	struct reord_ctrl_info *reord_info, *reord_tmp;
+	u8 *macaddr;
+	struct aicwf_rx_priv *rx_priv;
+#endif
+	struct rwnx_vif *rwnx_vif;
+	bool_l found = false;
+	const u8 *mac = rwnx_hw->sta_mac_addr;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	// Look for VIF entry
+	list_for_each_entry(rwnx_vif, &rwnx_hw->vifs, list) {
+		if (rwnx_vif->vif_index == rwnx_hw->apm_vif_idx) {
+			found = true;
+			break;
+		}
+	}
+
+	printk("apm vif idx=%d, found=%d, mac addr=%pM\n", rwnx_hw->apm_vif_idx, found, mac);
+	if (!found || !rwnx_vif || (RWNX_VIF_TYPE(rwnx_vif) != NL80211_IFTYPE_AP && RWNX_VIF_TYPE(rwnx_vif) != NL80211_IFTYPE_P2P_GO)) {
+		return;
+	}
+
+	list_for_each_entry_safe(cur, tmp, &rwnx_vif->ap.sta_list, list) {
+		if ((!mac) || (!memcmp(cur->mac_addr, mac, ETH_ALEN))) {
+			netdev_info(rwnx_vif->ndev, "Del sta %d (%pM)", cur->sta_idx, cur->mac_addr);
+			/* Ensure that we won't process PS change ind */
+			spin_lock_bh(&rwnx_hw->cb_lock);
+			cur->ps.active = false;
+			cur->valid = false;
+			spin_unlock_bh(&rwnx_hw->cb_lock);
+
+			if (cur->vif_idx != cur->vlan_idx) {
+				struct rwnx_vif *vlan_vif;
+				vlan_vif = rwnx_hw->vif_table[cur->vlan_idx];
+				if (vlan_vif->up) {
+					if ((RWNX_VIF_TYPE(vlan_vif) == NL80211_IFTYPE_AP_VLAN) &&
+						(vlan_vif->use_4addr)) {
+						vlan_vif->ap_vlan.sta_4a = NULL;
+					} else {
+						WARN(1, "Deleting sta belonging to VLAN other than AP_VLAN 4A");
+					}
+				}
+			}
+		    if (rwnx_vif->wdev.iftype == NL80211_IFTYPE_AP || rwnx_vif->wdev.iftype == NL80211_IFTYPE_P2P_GO) {
+				cfg80211_del_sta(rwnx_vif->ndev, cur->mac_addr, GFP_KERNEL);
+			}
+
+#ifdef AICWF_RX_REORDER
+#ifdef AICWF_SDIO_SUPPORT
+			rx_priv = rwnx_hw->sdiodev->rx_priv;
+#else
+			rx_priv = rwnx_hw->usbdev->rx_priv;
+#endif
+			if ((rwnx_vif->wdev.iftype == NL80211_IFTYPE_STATION) || (rwnx_vif->wdev.iftype == NL80211_IFTYPE_P2P_CLIENT)) {
+				BUG();//should be other function
+			} else if ((rwnx_vif->wdev.iftype == NL80211_IFTYPE_AP) || (rwnx_vif->wdev.iftype == NL80211_IFTYPE_P2P_GO)) {
+				macaddr = cur->mac_addr;
+				printk("deinit:macaddr:%x,%x,%x,%x,%x,%x\r\n", macaddr[0], macaddr[1], macaddr[2], \
+									   macaddr[3], macaddr[4], macaddr[5]);
+				list_for_each_entry_safe(reord_info, reord_tmp,
+					&rx_priv->stas_reord_list, list) {
+					printk("reord_mac:%x,%x,%x,%x,%x,%x\r\n", reord_info->mac_addr[0], reord_info->mac_addr[1], reord_info->mac_addr[2], \
+										   reord_info->mac_addr[3], reord_info->mac_addr[4], reord_info->mac_addr[5]);
+					if (!memcmp(reord_info->mac_addr, macaddr, 6)) {
+						reord_deinit_sta(rx_priv, reord_info);
+						break;
+					}
+				}
+			}
+#endif
+
+			rwnx_txq_sta_deinit(rwnx_hw, cur);
+			error = rwnx_send_me_sta_del(rwnx_hw, cur->sta_idx, false);
+			if ((error != 0) && (error != -EPIPE))
+				return;
+
+#ifdef CONFIG_RWNX_BFMER
+			// Disable Beamformer if supported
+			rwnx_bfmer_report_del(rwnx_hw, cur);
+			rwnx_mu_group_sta_del(rwnx_hw, cur);
+#endif /* CONFIG_RWNX_BFMER */
+
+			list_del(&cur->list);
+#ifdef CONFIG_DEBUG_FS
+			rwnx_dbgfs_unregister_rc_stat(rwnx_hw, cur);
+#endif
+			found++;
+			break;
+		}
+	}
+
+	if (!found)
+		return;
+
+	rwnx_update_mesh_power_mode(rwnx_vif);
+}
+
 
 /**
  * @change_station: Modify a given station. Note that flags changes are not much
@@ -4995,6 +5133,7 @@ int rwnx_cfg80211_init(struct rwnx_plat *rwnx_plat, void **platform_data)
 	u8 dflt_mac[ETH_ALEN] = { 0x88, 0x00, 0x33, 0x77, 0x10, 0x99};
 	u8 addr_str[20];
 	struct mm_set_rf_calib_cfm cfm;
+	struct mm_get_fw_version_cfm fw_version;
 	u8_l mac_addr_efuse[ETH_ALEN];
 	struct aicbsp_feature_t feature;
 	struct mm_set_stack_start_cfm set_start_cfm;
@@ -5083,6 +5222,13 @@ int rwnx_cfg80211_init(struct rwnx_plat *rwnx_plat, void **platform_data)
 	spin_lock_init(&rwnx_hw->tx_lock);
 	spin_lock_init(&rwnx_hw->cb_lock);
 
+	INIT_WORK(&rwnx_hw->apmStalossWork, apm_staloss_work_process);
+	rwnx_hw->apmStaloss_wq = create_singlethread_workqueue("apmStaloss_wq");
+	if (!rwnx_hw->apmStaloss_wq) {
+		txrx_err("insufficient memory to create apmStaloss workqueue.\n");
+		goto err_cache;
+	}
+
 	wiphy->mgmt_stypes = rwnx_default_mgmt_stypes;
 
 	rwnx_hw->fwlog_en = feature.fwlog_en;
@@ -5093,6 +5239,10 @@ int rwnx_cfg80211_init(struct rwnx_plat *rwnx_plat, void **platform_data)
 	printk("is 5g support = %d, vendor_info = 0x%02X\n", set_start_cfm.is_5g_support, set_start_cfm.vendor_info);
 	rwnx_hw->band_5g_support = set_start_cfm.is_5g_support;
 	rwnx_hw->vendor_info = (feature.hwinfo < 0) ? set_start_cfm.vendor_info : feature.hwinfo;
+
+	ret = rwnx_send_get_fw_version_req(rwnx_hw, &fw_version);
+	memcpy(wiphy->fw_version, fw_version.fw_version, fw_version.fw_version_len > 32 ? 32 : fw_version.fw_version_len);
+	printk("Firmware Version: %s", fw_version.fw_version);
 
 	wiphy->bands[NL80211_BAND_2GHZ] = &rwnx_band_2GHz;
 	if (rwnx_hw->band_5g_support)
@@ -5338,6 +5488,9 @@ void rwnx_cfg80211_deinit(struct rwnx_hw *rwnx_hw)
 #ifdef CONFIG_DEBUG_FS
 	rwnx_dbgfs_unregister(rwnx_hw);
 #endif
+	flush_workqueue(rwnx_hw->apmStaloss_wq);
+	destroy_workqueue(rwnx_hw->apmStaloss_wq);
+
 	rwnx_wdev_unregister(rwnx_hw);
 	wiphy_unregister(rwnx_hw->wiphy);
 	rwnx_radar_detection_deinit(&rwnx_hw->radar);

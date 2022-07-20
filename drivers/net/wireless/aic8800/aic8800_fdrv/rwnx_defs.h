@@ -511,6 +511,11 @@ struct rwnx_hw {
 
 	struct list_head defrag_list;
 	spinlock_t defrag_lock;
+
+	struct work_struct apmStalossWork;
+	struct workqueue_struct *apmStaloss_wq;
+	u8 apm_vif_idx;
+	u8 sta_mac_addr[6];
 };
 
 u8 *rwnx_build_bcn(struct rwnx_bcn *bcn, struct cfg80211_beacon_data *new);

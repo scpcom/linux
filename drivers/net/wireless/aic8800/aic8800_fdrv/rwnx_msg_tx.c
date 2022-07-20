@@ -995,6 +995,49 @@ int rwnx_send_set_stack_start_req(struct rwnx_hw *rwnx_hw, u8_l on, u8_l efuse_v
 	return error;
 }
 
+int rwnx_send_txop_req(struct rwnx_hw *rwnx_hw, uint16_t *txop, u8_l long_nav_en, u8_l cfe_en)
+{
+	struct mm_set_txop_req *req;
+	int error;
+
+	/* Build the MM_SET_TXOP_REQ message */
+	req = rwnx_msg_zalloc(MM_SET_TXOP_REQ, TASK_MM, DRV_TASK_ID, sizeof(struct mm_set_txop_req));
+
+	if (!req) {
+		return -ENOMEM;
+	}
+
+	req->txop_bk = txop[0];
+	req->txop_be = txop[1];
+	req->txop_vi = txop[2];
+	req->txop_vo = txop[3];
+	req->long_nav_en = long_nav_en;
+	req->cfe_en = cfe_en;
+	/* Send the MM_SET_TXOP_REQ  message to UMAC FW */
+	error = rwnx_send_msg(rwnx_hw, req, 1, MM_SET_TXOP_CFM, NULL);
+
+	return error;
+}
+
+int rwnx_send_get_fw_version_req(struct rwnx_hw *rwnx_hw, struct mm_get_fw_version_cfm *cfm)
+{
+	void *req;
+	int error;
+
+	/* Build the MM_GET_FW_VERSION_REQ message */
+	req = rwnx_msg_zalloc(MM_GET_FW_VERSION_REQ, TASK_MM, DRV_TASK_ID, sizeof(u8));
+
+	if (!req) {
+		return -ENOMEM;
+	}
+
+	/* Send the MM_GET_FW_VERSION_REQ  message to UMAC FW */
+	error = rwnx_send_msg(rwnx_hw, req, 1, MM_GET_FW_VERSION_CFM, cfm);
+
+	return error;
+}
+
+
 int rwnx_send_txpwr_idx_req(struct rwnx_hw *rwnx_hw)
 {
 	struct mm_set_txpwr_idx_req *txpwr_idx_req;
@@ -1143,7 +1186,6 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 	if (wiphy->bands[NL80211_BAND_2GHZ]->iftype_data != NULL) {
 		he_cap = &wiphy->bands[NL80211_BAND_2GHZ]->iftype_data->he_cap;
-	}
 	#endif
 	#if defined(CONFIG_HE_FOR_OLD_KERNEL)
 	if (1) {
@@ -1169,6 +1211,7 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 		}
 		req->he_ul_on = rwnx_hw->mod_params->he_ul_on;
 	}
+}
 #else
 	req->he_supp = false;
 	req->he_ul_on = false;

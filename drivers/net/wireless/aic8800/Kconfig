@@ -4,6 +4,10 @@ config AIC_WLAN_SUPPORT
 	help
 	  This is support for aic wireless chip.
 
+config AIC_WLAN_RF_TEST
+	bool "AIC wireless rf test support"
+	depends on AIC_WLAN_SUPPORT
+
 choice
 	prompt "Enable Chip Interface"
 	depends on AIC_WLAN_SUPPORT

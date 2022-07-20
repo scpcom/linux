@@ -148,6 +148,7 @@ struct reord_ctrl_info {
 struct recv_msdu {
 	 struct sk_buff  *pkt;
 	 u8  tid;
+	 u8 forward;
 	 u16 seq_num;
 	 uint len;
 	 u8 *rx_data;

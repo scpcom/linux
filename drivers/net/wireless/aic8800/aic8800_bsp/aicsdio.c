@@ -159,6 +159,14 @@ err0:
 }
 EXPORT_SYMBOL_GPL(aicbsp_set_subsys);
 
+void *aicbsp_get_drvdata(void *args)
+{
+	(void)args;
+	if (sdiodev)
+		return sdiodev->bus_if;
+	return NULL;
+}
+
 static int aicbsp_sdio_probe(struct sdio_func *func,
 	const struct sdio_device_id *id)
 {
@@ -225,23 +233,20 @@ static void aicbsp_sdio_remove(struct sdio_func *func)
 	struct priv_dev *aicdev = NULL;
 
 	bsp_dbg("%s\n", __func__);
-	if (sdiodev == NULL) {
-		bsp_dbg("%s: allready unregister\n", __func__);
-		return;
-	}
-
-	func = sdiodev->func;
-	host = func->card->host;
-	host->caps &= ~MMC_CAP_NONREMOVABLE;
-	bus_if = dev_get_drvdata(&func->dev);
+	bus_if = aicbsp_get_drvdata(&func->dev);
 	if (!bus_if) {
-		return;
+		bsp_dbg("%s: allready unregister\n", __func__);
+		goto done;
 	}
 
 	aicdev = bus_if->bus_priv.dev;
 	if (!aicdev) {
-		return;
+		goto done;
 	}
+
+	func = aicdev->func;
+	host = func->card->host;
+	host->caps &= ~MMC_CAP_NONREMOVABLE;
 
 	aicwf_sdio_release(aicdev);
 	aicwf_sdio_func_deinit(aicdev);
@@ -249,6 +254,8 @@ static void aicbsp_sdio_remove(struct sdio_func *func)
 	dev_set_drvdata(&aicdev->func->dev, NULL);
 	kfree(aicdev);
 	kfree(bus_if);
+
+done:
 	sdiodev = NULL;
 	bsp_dbg("%s done\n", __func__);
 }
@@ -597,9 +604,9 @@ static int aicwf_sdio_intr_get_len_bytemode(struct priv_dev *aicdev, u8 *byte_le
 
 static void aicwf_sdio_bus_stop(struct device *dev)
 {
-	struct aicwf_bus *bus_if = dev_get_drvdata(dev);
+	struct aicwf_bus *bus_if = aicbsp_get_drvdata(dev);
 	struct priv_dev *aicdev = bus_if->bus_priv.dev;
-	int ret;
+	int ret = 0;
 
 	aicwf_sdio_pwrctl_timer(aicdev, 0);
 	bsp_dbg("%s\n", __func__);
@@ -1118,7 +1125,7 @@ static void aicwf_sdio_release(struct priv_dev *aicdev)
 
 	bsp_dbg("%s\n", __func__);
 
-	bus_if = dev_get_drvdata(aicdev->dev);
+	bus_if = aicdev->bus_if;
 	bus_if->state = BUS_DOWN_ST;
 
 	sdio_claim_host(aicdev->func);

@@ -359,25 +359,46 @@ static int parse_key_val(const char *str, const char *key, char *val)
 	return 0;
 }
 
-void rwnx_plat_userconfig_parsing(struct rwnx_hw *rwnx_hw, char *buffer)
+void rwnx_plat_userconfig_parsing(struct rwnx_hw *rwnx_hw, char *buffer, int size)
 {
 	char conf[100], keyname[64];
 	char *line;
-	int  i = 0, err;
+	char *data;
+	int  i = 0, err, len = 0;
 	long val;
+
+	if (size <= 0) {
+		pr_err("Config buffer size %d error\n", size);
+		return;
+	}
 
 	if (rwnx_hw->vendor_info > (sizeof(parse_key_prefix) / sizeof(parse_key_prefix[0]) - 1)) {
 		pr_err("Unsuppor vendor info config\n");
 		return;
 	}
 
+	data = vmalloc(size + 1);
+	if (!data) {
+		pr_err("vmalloc fail\n");
+		return;
+	}
+
+	memcpy(data, buffer, size);
+	buffer = data;
+
 	while (1) {
 		line = buffer;
-		while (*buffer != '\r' && *buffer != '\n' && *buffer != 0)
+		if (*line == 0)
+			break;
+
+		while (*buffer != '\r' && *buffer != '\n' && *buffer != 0 && len++ < size)
 			buffer++;
 
-		while (*buffer == '\r' || *buffer == '\n')
+		while ((*buffer == '\r' || *buffer == '\n') && len++ < size)
 			*buffer++ = 0;
+
+		if (len >= size)
+			*buffer = 0;
 
 		// store value to data struct
 		for (i = 0; i < sizeof(parse_match_tab) / sizeof(parse_match_tab[0]); i++) {
@@ -386,12 +407,11 @@ void rwnx_plat_userconfig_parsing(struct rwnx_hw *rwnx_hw, char *buffer)
 				err = kstrtol(conf, 0, &val);
 				*(unsigned long *)((unsigned long)&nvram_info + parse_match_tab[i].offset) = val;
 				printk("%s, %s = %ld\n",  __func__, parse_match_tab[i].keyname, val);
+				break;
 			}
 		}
-
-		if (*buffer == 0)
-			break;
 	}
+	vfree(data);
 }
 
 #define FW_USERCONFIG_NAME       "aic_userconfig.txt"
@@ -420,7 +440,7 @@ int rwnx_plat_userconfig_upload_android(struct rwnx_hw *rwnx_hw, char *filename)
 		return -1;
 	}
 
-	rwnx_plat_userconfig_parsing(rwnx_hw, (char *)dst);
+	rwnx_plat_userconfig_parsing(rwnx_hw, (char *)dst, size);
 
 	release_firmware(fw);
 

@@ -23,6 +23,7 @@
 #include "rwnx_events.h"
 #include "rwnx_compat.h"
 #include "aicwf_txrxif.h"
+#include "rwnx_msg_rx.h"
 
 static int rwnx_freq_to_idx(struct rwnx_hw *rwnx_hw, int freq)
 {
@@ -111,16 +112,19 @@ static inline int rwnx_rx_chan_switch_ind(struct rwnx_hw *rwnx_hw,
 		/* For debug purpose (use ftrace kernel option) */
 		//trace_switch_roc(rwnx_vif->vif_index);
 
-		/* If mgmt_roc is true, remain on channel has been started by ourself */
-		if (!roc_elem->mgmt_roc) {
-			/* Inform the host that we have switch on the indicated off-channel */
-			cfg80211_ready_on_channel(roc_elem->wdev, (u64)(rwnx_hw->roc_cookie_cnt),
+		if (roc_elem) {
+			/* If mgmt_roc is true, remain on channel has been started by ourself */
+			if (!roc_elem->mgmt_roc) {
+				/* Inform the host that we have switch on the indicated off-channel */
+				cfg80211_ready_on_channel(roc_elem->wdev, (u64)(rwnx_hw->roc_cookie_cnt),
 									  roc_elem->chan, roc_elem->duration, GFP_ATOMIC);
+			}
+
+			/* Keep in mind that we have switched on the channel */
+			roc_elem->on_chan = true;
+		} else {
+			printk("roc_elem == null\n");
 		}
-
-		/* Keep in mind that we have switched on the channel */
-		roc_elem->on_chan = true;
-
 		// Enable traffic on OFF channel queue
 		rwnx_txq_offchan_start(rwnx_hw);
 	}
@@ -250,7 +254,7 @@ static inline int rwnx_rx_p2p_vif_ps_change_ind(struct rwnx_hw *rwnx_hw,
 	int ps_state = ((struct mm_p2p_vif_ps_change_ind *)msg->param)->ps_state;
 	struct rwnx_vif *vif_entry;
 
-	RWNX_DBG(RWNX_FN_ENTRY_STR);
+	//RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 #ifdef CONFIG_RWNX_FULLMAC
 	vif_entry = rwnx_hw->vif_table[vif_idx];
@@ -268,6 +272,7 @@ found_vif:
 	if (ps_state == MM_PS_MODE_OFF) {
 		// Start TX queues for provided VIF
 		rwnx_txq_vif_start(vif_entry, RWNX_TXQ_STOP_VIF_PS, rwnx_hw);
+		tasklet_schedule(&rwnx_hw->task);
 	} else {
 		// Stop TX queues for provided VIF
 		rwnx_txq_vif_stop(vif_entry, RWNX_TXQ_STOP_VIF_PS, rwnx_hw);
@@ -356,6 +361,22 @@ static inline int rwnx_rx_pktloss_notify_ind(struct rwnx_hw *rwnx_hw,
 									ind->num_packets, GFP_ATOMIC);
 	}
 #endif /* CONFIG_RWNX_FULLMAC */
+
+	return 0;
+}
+
+static inline int rwnx_apm_staloss_ind(struct rwnx_hw *rwnx_hw,
+										struct rwnx_cmd *cmd,
+										struct ipc_e2a_msg *msg)
+{
+	struct mm_apm_staloss_ind *ind = (struct mm_apm_staloss_ind *)msg->param;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	memcpy(rwnx_hw->sta_mac_addr, ind->mac_addr, 6);
+	rwnx_hw->apm_vif_idx = ind->vif_idx;
+
+	queue_work(rwnx_hw->apmStaloss_wq, &rwnx_hw->apmStalossWork);
 
 	return 0;
 }
@@ -730,6 +751,9 @@ static inline int rwnx_rx_sm_connect_ind(struct rwnx_hw *rwnx_hw,
 			rwnx_vif->tdls_chsw_prohibited = extcap->ext_capab[4] & WLAN_EXT_CAPA5_TDLS_CH_SW_PROHIBITED;
 		}
 
+		if (rwnx_vif->wep_enabled)
+			rwnx_vif->wep_auth_err = false;
+
 #ifdef CONFIG_RWNX_BFMER
 		/* If Beamformer feature is activated, check if features can be used
 		 * with the new peer device
@@ -856,7 +880,6 @@ static inline int rwnx_rx_sm_disconnect_ind(struct rwnx_hw *rwnx_hw,
 		printk("deinit:macaddr:%x,%x,%x,%x,%x,%x\r\n", macaddr[0], macaddr[1], macaddr[2], \
 							   macaddr[3], macaddr[4], macaddr[5]);
 
-		spin_lock_bh(&rx_priv->stas_reord_lock);
 		list_for_each_entry_safe(reord_info, tmp, &rx_priv->stas_reord_list, list) {
 			macaddr = rwnx_vif->ndev->dev_addr;
 			printk("reord_mac:%x,%x,%x,%x,%x,%x\r\n", reord_info->mac_addr[0], reord_info->mac_addr[1], reord_info->mac_addr[2], \
@@ -866,7 +889,6 @@ static inline int rwnx_rx_sm_disconnect_ind(struct rwnx_hw *rwnx_hw,
 				break;
 			}
 		}
-		spin_unlock_bh(&rx_priv->stas_reord_lock);
 	} else if ((rwnx_vif->wdev.iftype == NL80211_IFTYPE_AP) || (rwnx_vif->wdev.iftype == NL80211_IFTYPE_P2P_GO)) {
 		BUG();//should be not here: del_sta function
 	}
@@ -1187,6 +1209,7 @@ static msg_cb_fct mm_hdlrs[MSG_I(MM_MAX)] = {
 	[MSG_I(MM_P2P_NOA_UPD_IND)]        = rwnx_rx_p2p_noa_upd_ind,
 	[MSG_I(MM_RSSI_STATUS_IND)]        = rwnx_rx_rssi_status_ind,
 	[MSG_I(MM_PKTLOSS_IND)]            = rwnx_rx_pktloss_notify_ind,
+	[MSG_I(MM_APM_STALOSS_IND)]        = rwnx_apm_staloss_ind,
 };
 
 static msg_cb_fct scan_hdlrs[MSG_I(SCANU_MAX)] = {

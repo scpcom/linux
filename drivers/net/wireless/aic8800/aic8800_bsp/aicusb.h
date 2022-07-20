@@ -88,6 +88,7 @@ struct priv_dev {
 	bool app_cmp;
 };
 
+void *aicbsp_get_drvdata(void *args);
 int aicwf_bustx_thread(void *data);
 int aicwf_busrx_thread(void *data);
 int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv);

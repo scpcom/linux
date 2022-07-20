@@ -64,7 +64,7 @@ struct rwnx_mod_params rwnx_mod_params = {
 	COMMON_PARAM(amsdu_maxnb, NX_TX_PAYLOAD_MAX, NX_TX_PAYLOAD_MAX)
 	// By default, only enable UAPSD for Voice queue (see IEEE80211_DEFAULT_UAPSD_QUEUE comment)
 	COMMON_PARAM(uapsd_queues, IEEE80211_WMM_IE_STA_QOSINFO_AC_VO, IEEE80211_WMM_IE_STA_QOSINFO_AC_VO)
-	COMMON_PARAM(tdls, true, true)
+	COMMON_PARAM(tdls, false, false)
 	COMMON_PARAM(uf, false, false)
 	COMMON_PARAM(ftl, "", "")
 	COMMON_PARAM(dpsm, false, false)

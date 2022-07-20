@@ -110,7 +110,7 @@ static int cmd_mgr_queue(struct rwnx_cmd_mgr *cmd_mgr, struct rwnx_cmd *cmd)
 
 	if (!(cmd->flags & RWNX_CMD_FLAG_NONBLOCK)) {
 		unsigned long tout = msecs_to_jiffies(RWNX_CMD_TIMEOUT_MS * cmd_mgr->queue_sz);
-		if (!wait_for_completion_killable_timeout(&cmd->complete, tout)) {
+		if (!wait_for_completion_timeout(&cmd->complete, tout)) {
 			printk(KERN_CRIT"cmd timed-out\n");
 			cmd_dump(cmd);
 			spin_lock_bh(&cmd_mgr->lock);
@@ -815,6 +815,11 @@ static int aicwifi_patch_config(struct priv_dev *aicdev)
 	u16 cnt = 0;
 	u32 patch_addr_reg = 0x1e4d80;
 	u32 patch_num_reg = 0x1e4d84;
+
+	if (aicbsp_info.cpmode == AICBSP_CPMODE_TEST) {
+		patch_addr_reg = 0x1e4d74;
+		patch_num_reg = 0x1e4d78;
+	}
 
 	ret = rwnx_send_dbg_mem_read_req(aicdev, rd_patch_addr, &rd_patch_addr_cfm);
 	if (ret) {

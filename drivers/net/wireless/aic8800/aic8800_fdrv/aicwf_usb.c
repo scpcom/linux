@@ -21,6 +21,8 @@ void aicwf_usb_tx_flowctrl(struct rwnx_hw *rwnx_hw, bool state)
 	list_for_each_entry(rwnx_vif, &rwnx_hw->vifs, list) {
 		if (!rwnx_vif->up)
 			continue;
+		if (!rwnx_vif->ndev)
+			continue;
 		if (state)
 			netif_stop_queue(rwnx_vif->ndev);
 		else

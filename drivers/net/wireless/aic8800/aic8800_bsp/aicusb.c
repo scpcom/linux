@@ -55,6 +55,11 @@ int aicbsp_set_subsys(int subsys, int state)
 }
 EXPORT_SYMBOL_GPL(aicbsp_set_subsys);
 
+void *aicbsp_get_drvdata(void *args)
+{
+	return dev_get_drvdata(args);
+}
+
 static int aicbsp_platform_power_on(void)
 {
 #ifdef CONFIG_PLATFORM_ALLWINNER

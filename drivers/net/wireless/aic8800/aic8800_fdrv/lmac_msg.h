@@ -373,6 +373,14 @@ enum mm_msg_tag {
 	MM_SET_STACK_START_REQ,
 	MM_SET_STACK_START_CFM,
 
+	MM_APM_STALOSS_IND,
+
+	MM_SET_TXOP_REQ,
+	MM_SET_TXOP_CFM,
+
+	MM_GET_FW_VERSION_REQ,
+	MM_GET_FW_VERSION_CFM,
+
 	/// MAX number of messages
 	MM_MAX,
 };
@@ -1348,7 +1356,7 @@ enum scan_msg_tag {
 };
 
 /// Maximum number of SSIDs in a scan request
-#define SCAN_SSID_MAX   2
+#define SCAN_SSID_MAX   3
 
 /// Maximum number of channels in a scan request
 #define SCAN_CHANNEL_MAX (MAC_DOMAINCHANNEL_24G_MAX + MAC_DOMAINCHANNEL_5G_MAX)
@@ -1692,6 +1700,26 @@ struct me_traffic_ind_req {
 	u8_l tx_avail;
 	/// Indicate if traffic is on uapsd-enabled queues
 	bool_l uapsd;
+};
+
+struct mm_apm_staloss_ind {
+	u8_l sta_idx;
+	u8_l vif_idx;
+	u8_l mac_addr[6];
+};
+
+struct mm_set_txop_req {
+	u16_l txop_bk;
+	u16_l txop_be;
+	u16_l txop_vi;
+	u16_l txop_vo;
+	u8_l  long_nav_en;
+	u8_l  cfe_en;
+};
+
+struct mm_get_fw_version_cfm {
+	u8_l fw_version_len;
+	u8_l fw_version[63];
 };
 
 /// Structure containing the parameters of the @ref ME_RC_STATS_REQ message.

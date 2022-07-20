@@ -66,6 +66,7 @@ struct priv_dev {
 	struct semaphore pwrctl_wakeup_sema;
 };
 
+void *aicbsp_get_drvdata(void *args);
 int aicwf_sdio_writeb(struct priv_dev *aicdev, uint regaddr, u8 val);
 int aicwf_sdio_pwr_stctl(struct  priv_dev *aicdev, uint target);
 int aicwf_bustx_thread(void *data);

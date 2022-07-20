@@ -427,12 +427,10 @@ void aicwf_rx_deinit(struct aicwf_rx_priv *rx_priv)
 
 	txrx_dbg("%s\n", __func__);
 
-	spin_lock_bh(&rx_priv->stas_reord_lock);
 	list_for_each_entry_safe(reord_info, tmp,
 		&rx_priv->stas_reord_list, list) {
 		reord_deinit_sta(rx_priv, reord_info);
 	}
-	spin_unlock_bh(&rx_priv->stas_reord_lock);
 #endif
 
 #ifdef AICWF_SDIO_SUPPORT

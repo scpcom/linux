@@ -586,7 +586,7 @@ static void aicwf_sdio_bus_stop(struct device *dev)
 {
 	struct aicwf_bus *bus_if = dev_get_drvdata(dev);
 	struct aic_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
-	int ret;
+	int ret = 0;
 
 	aicwf_sdio_pwrctl_timer(sdiodev, 0);
 	sdio_dbg("%s\n", __func__);
@@ -738,9 +738,18 @@ static void aicwf_sdio_tx_process(struct aic_sdio_dev *sdiodev)
 
 	sdiodev->tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
 	while (!aicwf_is_framequeue_empty(&sdiodev->tx_priv->txq)) {
-		aicwf_sdio_send(sdiodev->tx_priv);
-		if (sdiodev->tx_priv->cmd_txstate)
-			break;
+		if (sdiodev->tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH) {
+			if (sdiodev->tx_priv->cmd_txstate)
+				break;
+			sdiodev->tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
+		} else {
+			if (sdiodev->tx_priv->cmd_txstate) {
+				aicwf_sdio_send(sdiodev->tx_priv, 1);
+				break;
+			} else {
+				aicwf_sdio_send(sdiodev->tx_priv, 0);
+			}
+		}
 	}
 
 	up(&sdiodev->tx_priv->txctl_sema);
@@ -811,15 +820,11 @@ static int aicwf_sdio_bus_txmsg(struct device *dev, u8 *msg, uint msglen)
 	return 0;
 }
 
-#define DATA_FLOW_CTRL_THRESH 1
-
-int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv)
+int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv, u8 txnow)
 {
 	struct sk_buff *pkt;
 	struct aic_sdio_dev *sdiodev = tx_priv->sdiodev;
 	u32 aggr_len = 0;
-	int retry_times = 0;
-	int max_retry_times = 5;
 
 	aggr_len = (tx_priv->tail - tx_priv->head);
 	if (((atomic_read(&tx_priv->aggr_count) == 0) && (aggr_len != 0))
@@ -827,19 +832,6 @@ int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv)
 		if (aggr_len > 0)
 			aicwf_sdio_aggrbuf_reset(tx_priv);
 		goto done;
-	}
-
-	if (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH) { //flow control failed
-		tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
-		while (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH && retry_times < max_retry_times) {
-			retry_times++;
-			tx_priv->fw_avail_bufcnt = aicwf_sdio_flow_ctrl(sdiodev);
-			if (tx_priv->fw_avail_bufcnt == DATA_FLOW_CTRL_THRESH)
-				udelay(200);
-		}
-		if (tx_priv->fw_avail_bufcnt <= DATA_FLOW_CTRL_THRESH) {
-			goto done;
-		}
 	}
 
 	if (atomic_read(&tx_priv->aggr_count) == (tx_priv->fw_avail_bufcnt - DATA_FLOW_CTRL_THRESH)) {
@@ -867,7 +859,7 @@ int aicwf_sdio_send(struct aicwf_tx_priv *tx_priv)
 		}
 
 		//when aggr finish or there is cmd to send, just send this aggr pkt to fw
-		if ((int)atomic_read(&sdiodev->tx_priv->tx_pktcnt) == 0 || sdiodev->tx_priv->cmd_txstate) { //no more pkt send it!
+		if ((int)atomic_read(&sdiodev->tx_priv->tx_pktcnt) == 0 || txnow || (atomic_read(&tx_priv->aggr_count) == (tx_priv->fw_avail_bufcnt - DATA_FLOW_CTRL_THRESH))) {
 			tx_priv->fw_avail_bufcnt -= atomic_read(&tx_priv->aggr_count);
 			aicwf_sdio_aggr_send(tx_priv);
 		} else
@@ -1125,7 +1117,8 @@ void aicwf_sdio_hal_irqhandler(struct sdio_func *func)
 	if (pkt)
 		aicwf_sdio_enq_rxpkt(sdiodev, pkt);
 
-	complete(&bus_if->busrx_trgg);
+	if (atomic_read(&sdiodev->rx_priv->rx_cnt) == 1)
+		complete(&bus_if->busrx_trgg);
 }
 
 void aicwf_sdio_pwrctl_timer(struct aic_sdio_dev *sdiodev, uint duration)

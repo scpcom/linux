@@ -819,7 +819,7 @@ static ssize_t rwnx_dbgfs_fw_log_read(struct file *file,
 	priv->debugfs.fw_log.buf.size -= nb_cpy;
 	//spin_unlock_bh(&priv->debugfs.fw_log.lock);
 
-	printk("nb_cpy=%lu, not_cpy=%lu, start=%p, end=%p\n", nb_cpy, not_cpy, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.end);
+	printk("nb_cpy=%zu, not_cpy=%zu, start=%p, end=%p\n", nb_cpy, not_cpy, priv->debugfs.fw_log.buf.start, priv->debugfs.fw_log.buf.end);
 	return nb_cpy;
 }
 
