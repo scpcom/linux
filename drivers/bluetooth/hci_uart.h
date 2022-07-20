@@ -12,6 +12,8 @@
 #define N_HCI	15
 #endif
 
+#define BTCOEX
+
 /* Ioctls */
 #define HCIUARTSETPROTO		_IOW('U', 200, int)
 #define HCIUARTGETPROTO		_IOR('U', 201, int)
@@ -185,6 +187,11 @@ int ath_deinit(void);
 #ifdef CONFIG_BT_HCIUART_3WIRE
 int h5_init(void);
 int h5_deinit(void);
+#endif
+
+#ifdef CONFIG_BT_HCIUART_RTL3WIRE
+int h5_rtk_init(void);
+int h5_rtk_deinit(void);
 #endif
 
 #ifdef CONFIG_BT_HCIUART_INTEL

@@ -56,6 +56,15 @@ config BT_HCIBTUSB_POLL_SYNC
 	  Say Y here to enable USB poll_sync for Bluetooth USB devices by
 	  default.
 
+config BT_HCIUART_RTL3WIRE
+	bool "Realtek Three-wire UART (H5) protocol support"
+	depends on BT_HCIUART
+	help
+	  Realtek Three-wire UART (H5) transport layer makes it possible
+	  to use Realtek Bluetooth controller with Three-wire UART.
+
+	  Say Y here to compile support for Realtek Three-wire UART.
+
 config BT_HCIBTUSB_BCM
 	bool "Broadcom protocol support"
 	depends on BT_HCIBTUSB

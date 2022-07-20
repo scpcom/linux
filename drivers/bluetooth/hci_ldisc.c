@@ -35,6 +35,10 @@
 #include "btbcm.h"
 #include "hci_uart.h"
 
+#ifdef BTCOEX
+#include "rtk_coex.h"
+#endif
+
 #define VERSION "2.3"
 
 static const struct hci_uart_proto *hup[HCI_UART_MAX_PROTO];
@@ -265,6 +269,10 @@ static int hci_uart_open(struct hci_dev *hdev)
 	/* Undo clearing this from hci_uart_close() */
 	hdev->flush = hci_uart_flush;
 
+#ifdef BTCOEX
+	rtk_btcoex_open(hdev);
+#endif
+
 	return 0;
 }
 
@@ -279,6 +287,10 @@ static int hci_uart_close(struct hci_dev *hdev)
 
 	hci_uart_flush(hdev);
 	hdev->flush = NULL;
+
+#ifdef BTCOEX
+	rtk_btcoex_close();
+#endif
 	return 0;
 }
 
@@ -290,6 +302,12 @@ static int hci_uart_send_frame(struct hci_dev *hdev, struct sk_buff *skb)
 	BT_DBG("%s: type %d len %d", hdev->name, hci_skb_pkt_type(skb),
 	       skb->len);
 
+#ifdef BTCOEX
+	if (hci_skb_pkt_type(skb) == HCI_COMMAND_PKT)
+		rtk_btcoex_parse_cmd(skb->data, skb->len);
+	if (hci_skb_pkt_type(skb) == HCI_ACLDATA_PKT)
+		rtk_btcoex_parse_l2cap_data_tx(skb->data, skb->len);
+#endif
 	percpu_down_read(&hu->proto_lock);
 
 	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags) &&
@@ -735,6 +753,10 @@ static int hci_uart_register_dev(struct hci_uart *hu)
 
 	set_bit(HCI_UART_REGISTERED, &hu->flags);
 
+#ifdef BTCOEX
+	rtk_btcoex_probe(hdev);
+#endif
+
 	return 0;
 }
 
@@ -902,6 +924,9 @@ static int __init hci_uart_init(void)
 #ifdef CONFIG_BT_HCIUART_3WIRE
 	h5_init();
 #endif
+#ifdef CONFIG_BT_HCIUART_RTL3WIRE
+	h5_rtk_init();
+#endif
 #ifdef CONFIG_BT_HCIUART_INTEL
 	intel_init();
 #endif
@@ -919,6 +944,9 @@ static int __init hci_uart_init(void)
 #endif
 #ifdef CONFIG_BT_HCIUART_AML
 	aml_init();
+#endif
+#ifdef BTCOEX
+	rtk_btcoex_init();
 #endif
 	return 0;
 }
@@ -940,6 +968,9 @@ static void __exit hci_uart_exit(void)
 #ifdef CONFIG_BT_HCIUART_3WIRE
 	h5_deinit();
 #endif
+#ifdef CONFIG_BT_HCIUART_RTL3WIRE
+	h5_rtk_deinit();
+#endif
 #ifdef CONFIG_BT_HCIUART_INTEL
 	intel_deinit();
 #endif
@@ -959,6 +990,9 @@ static void __exit hci_uart_exit(void)
 	aml_deinit();
 #endif
 	tty_unregister_ldisc(&hci_uart_ldisc);
+#ifdef BTCOEX
+	rtk_btcoex_exit();
+#endif
 }
 
 module_init(hci_uart_init);
