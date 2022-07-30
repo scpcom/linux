@@ -348,6 +348,7 @@
 
 &thermal_zones {
     /delete-node/ cpu;
+    /delete-node/ cpu-thermal;
 
     soc_thermal: soc-thermal {
 	polling-delay-passive = <20>; /* milliseconds */
@@ -512,6 +513,7 @@
 	cpu-supply = <&vdd_cpu_b>;
 };
 
+/*
 &display_subsystem {
 	status = "okay";
 
@@ -547,6 +549,7 @@
 		};
 	};
 };
+*/
 
 &dp_in_vopl {
        status = "disabled";
