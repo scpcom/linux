@@ -28,10 +28,11 @@ struct rk3399_restart {
 };
 struct rk3399_restart *rk3399_restart;
 
-static void rk3399_reboot(enum reboot_mode reboot_mode, const char *cmd)
+static int rk3399_reboot(struct notifier_block *nb, unsigned long action,
+			  void *data)
 {
 	if (IS_ERR(rk3399_restart->reset_gpio)) {
-		return;
+		return NOTIFY_DONE;
 	}
 	/* drive it active, also inactive->active edge */
 	gpiod_direction_output(rk3399_restart->reset_gpio, 1);
@@ -49,8 +50,13 @@ static void rk3399_reboot(enum reboot_mode reboot_mode, const char *cmd)
 
 	WARN_ON(1);
 
-	return;
+	return NOTIFY_DONE;
 }
+
+static struct notifier_block rk3399_reboot_nb = {
+	.notifier_call = rk3399_reboot,
+	.priority = 129,
+};
 
 static int rk3399_restart_probe(struct platform_device *pdev)
 {
@@ -83,7 +89,7 @@ static int rk3399_restart_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, rk3399_restart);
 
-	arm_pm_restart = rk3399_reboot;
+	register_restart_handler(&rk3399_reboot_nb);
 
 	system_rev = 0x0301;
 
