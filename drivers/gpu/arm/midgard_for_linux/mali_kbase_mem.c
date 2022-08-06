@@ -1925,11 +1925,11 @@ out_unlocked:
 void kbase_jit_free(struct kbase_context *kctx, struct kbase_va_region *reg)
 {
 	/* The physical backing of memory in the pool is always reclaimable */
-	down_read(&kctx->process_mm->mmap_sem);
+	down_read(kbase_mem_get_process_mmap_lock());
 	kbase_gpu_vm_lock(kctx);
 	kbase_mem_evictable_make(reg->gpu_alloc);
 	kbase_gpu_vm_unlock(kctx);
-	up_read(&kctx->process_mm->mmap_sem);
+	up_read(kbase_mem_get_process_mmap_lock());
 
 	mutex_lock(&kctx->jit_lock);
 	list_del_init(&reg->jit_node);
@@ -2055,11 +2055,17 @@ static int kbase_jd_user_buf_map(struct kbase_context *kctx,
 			alloc->imported.user_buf.nr_pages,
 			(reg->flags & KBASE_REG_GPU_WR) ? FOLL_WRITE : 0,
 			pages, NULL);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)
 	pinned_pages = get_user_pages_remote(NULL, mm,
 			address,
 			alloc->imported.user_buf.nr_pages,
 			(reg->flags & KBASE_REG_GPU_WR) ? FOLL_WRITE : 0,
+			pages, NULL, NULL);
+#else
+	pinned_pages = get_user_pages_remote(mm,
+			address,
+			alloc->imported.user_buf.nr_pages,
+			reg->flags & KBASE_REG_GPU_WR ? FOLL_WRITE : 0,
 			pages, NULL, NULL);
 #endif
 

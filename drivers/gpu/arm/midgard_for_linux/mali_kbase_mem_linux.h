@@ -213,4 +213,18 @@ void *kbase_va_alloc(struct kbase_context *kctx, u32 size, struct kbase_hwc_dma_
  */
 void kbase_va_free(struct kbase_context *kctx, struct kbase_hwc_dma_mapping *handle);
 
+/**
+ * kbase_mem_get_process_mmap_lock - Return the mmap lock for the current process
+ *
+ * Return: the mmap lock for the current process
+ */
+static inline struct rw_semaphore *kbase_mem_get_process_mmap_lock(void)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+	return &current->mm->mmap_sem;
+#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) */
+	return &current->mm->mmap_lock;
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) */
+}
+
 #endif				/* _KBASE_MEM_LINUX_H_ */

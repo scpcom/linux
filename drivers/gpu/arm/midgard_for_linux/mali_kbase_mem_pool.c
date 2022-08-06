@@ -82,7 +82,11 @@ static void kbase_mem_pool_add_locked(struct kbase_mem_pool *pool,
 	list_add(&p->lru, &pool->page_list);
 	pool->cur_size++;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+	zone_page_state_add(1 << PAGE_SHIFT, page_zone(p), NR_SLAB_RECLAIMABLE_B);
+#else
 	zone_page_state_add(1, page_zone(p), NR_SLAB_RECLAIMABLE);
+#endif
 
 	pool_dbg(pool, "added page\n");
 }
@@ -102,7 +106,11 @@ static void kbase_mem_pool_add_list_locked(struct kbase_mem_pool *pool,
 	lockdep_assert_held(&pool->pool_lock);
 
 	list_for_each_entry(p, page_list, lru) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+		zone_page_state_add(1 << PAGE_SHIFT, page_zone(p), NR_SLAB_RECLAIMABLE_B);
+#else
 		zone_page_state_add(1, page_zone(p), NR_SLAB_RECLAIMABLE);
+#endif
 	}
 
 	list_splice(page_list, &pool->page_list);
@@ -132,7 +140,11 @@ static struct page *kbase_mem_pool_remove_locked(struct kbase_mem_pool *pool)
 	list_del_init(&p->lru);
 	pool->cur_size--;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+	zone_page_state_add(-(1 << PAGE_SHIFT), page_zone(p), NR_SLAB_RECLAIMABLE_B);
+#else
 	zone_page_state_add(-1, page_zone(p), NR_SLAB_RECLAIMABLE);
+#endif
 
 	pool_dbg(pool, "removed page\n");
 
@@ -583,8 +595,13 @@ void kbase_mem_pool_free_pages(struct kbase_mem_pool *pool, size_t nr_pages,
 
 		p = phys_to_page(pages[i]);
 		if (reclaimed)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+			zone_page_state_add(-(1 << PAGE_SHIFT), page_zone(p),
+					NR_SLAB_RECLAIMABLE_B);
+#else
 			zone_page_state_add(-1, page_zone(p),
 					NR_SLAB_RECLAIMABLE);
+#endif
 
 		kbase_mem_pool_free_page(pool, p);
 		pages[i] = 0;

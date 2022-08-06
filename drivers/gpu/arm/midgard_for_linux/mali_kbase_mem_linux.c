@@ -643,8 +643,13 @@ static void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc)
 	if (err == 0) {
 		/* Bulk update all the zones */
 		list_for_each_entry(zone_cache, &alloc->zone_cache, zone_node) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+			zone_page_state_add(zone_cache->count << PAGE_SHIFT,
+					zone_cache->zone, NR_SLAB_RECLAIMABLE_B);
+#else
 			zone_page_state_add(zone_cache->count,
 					zone_cache->zone, NR_SLAB_RECLAIMABLE);
+#endif
 		}
 	} else {
 		/* Fall-back to page by page updates */
@@ -654,7 +659,11 @@ static void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc)
 			struct page *p = phys_to_page(alloc->pages[i]);
 			struct zone *zone = page_zone(p);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+			zone_page_state_add(1 << PAGE_SHIFT, zone, NR_SLAB_RECLAIMABLE_B);
+#else
 			zone_page_state_add(1, zone, NR_SLAB_RECLAIMABLE);
+#endif
 		}
 	}
 
@@ -694,8 +703,13 @@ void kbase_mem_evictable_unmark_reclaim(struct kbase_mem_phy_alloc *alloc)
 	if (err == 0) {
 		/* Bulk update all the zones */
 		list_for_each_entry(zone_cache, &alloc->zone_cache, zone_node) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+			zone_page_state_add(-(zone_cache->count << PAGE_SHIFT),
+					zone_cache->zone, NR_SLAB_RECLAIMABLE_B);
+#else
 			zone_page_state_add(-zone_cache->count,
 					zone_cache->zone, NR_SLAB_RECLAIMABLE);
+#endif
 		}
 	} else {
 		/* Fall-back to page by page updates */
@@ -705,7 +719,11 @@ void kbase_mem_evictable_unmark_reclaim(struct kbase_mem_phy_alloc *alloc)
 			struct page *p = phys_to_page(alloc->pages[i]);
 			struct zone *zone = page_zone(p);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+			zone_page_state_add(-(1 << PAGE_SHIFT), zone, NR_SLAB_RECLAIMABLE_B);
+#else
 			zone_page_state_add(-1, zone, NR_SLAB_RECLAIMABLE);
+#endif
 		}
 	}
 
@@ -825,7 +843,7 @@ int kbase_mem_flags_change(struct kbase_context *kctx, u64 gpu_addr, unsigned in
 		real_flags |= KBASE_REG_SHARE_IN;
 
 	/* now we can lock down the context, and find the region */
-	down_write(&current->mm->mmap_sem);
+	down_write(kbase_mem_get_process_mmap_lock());
 	kbase_gpu_vm_lock(kctx);
 
 	/* Validate the region */
@@ -897,7 +915,7 @@ int kbase_mem_flags_change(struct kbase_context *kctx, u64 gpu_addr, unsigned in
 
 out_unlock:
 	kbase_gpu_vm_unlock(kctx);
-	up_write(&current->mm->mmap_sem);
+	up_write(kbase_mem_get_process_mmap_lock());
 out:
 	return ret;
 }
@@ -1192,7 +1210,7 @@ static struct kbase_va_region *kbase_mem_from_user_buffer(
 	if (*flags & BASE_MEM_PROT_GPU_RD)
 		reg->flags |= KBASE_REG_GPU_RD;
 
-	down_read(&current->mm->mmap_sem);
+	down_read(kbase_mem_get_process_mmap_lock());
 
 	/* A sanity check that get_user_pages will work on the memory */
 	/* (so the initial import fails on weird memory regions rather than */
@@ -1212,7 +1230,7 @@ static struct kbase_va_region *kbase_mem_from_user_buffer(
 			(reg->flags & KBASE_REG_GPU_WR) ? FOLL_WRITE : 0,
 			NULL, NULL);
 #endif
-	up_read(&current->mm->mmap_sem);
+	up_read(kbase_mem_get_process_mmap_lock());
 
 	if (faulted_pages != *va_pages)
 		goto fault_mismatch;
@@ -1673,7 +1691,11 @@ static int kbase_mem_shrink_cpu_mapping(struct kbase_context *kctx,
 	struct kbase_cpu_mapping *mapping;
 	int err;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 	lockdep_assert_held(&kctx->process_mm->mmap_sem);
+#else
+	lockdep_assert_held(&kctx->process_mm->mmap_lock);
+#endif
 
 	list_for_each_entry(mapping, &cpu_alloc->mappings, mappings_list) {
 		unsigned long mapping_size;
@@ -1738,7 +1760,7 @@ int kbase_mem_commit(struct kbase_context *kctx, u64 gpu_addr, u64 new_pages, en
 	KBASE_DEBUG_ASSERT(failure_reason);
 	KBASE_DEBUG_ASSERT(gpu_addr != 0);
 
-	down_write(&current->mm->mmap_sem);
+	down_write(kbase_mem_get_process_mmap_lock());
 	kbase_gpu_vm_lock(kctx);
 
 	/* Validate the region */
@@ -1792,7 +1814,7 @@ int kbase_mem_commit(struct kbase_context *kctx, u64 gpu_addr, u64 new_pages, en
 		 * No update to the mm so downgrade the writer lock to a read
 		 * lock so other readers aren't blocked after this point.
 		 */
-		downgrade_write(&current->mm->mmap_sem);
+		downgrade_write(kbase_mem_get_process_mmap_lock());
 		read_locked = true;
 
 		/* Allocate some more pages */
@@ -1852,9 +1874,9 @@ int kbase_mem_commit(struct kbase_context *kctx, u64 gpu_addr, u64 new_pages, en
 out_unlock:
 	kbase_gpu_vm_unlock(kctx);
 	if (read_locked)
-		up_read(&current->mm->mmap_sem);
+		up_read(kbase_mem_get_process_mmap_lock());
 	else
-		up_write(&current->mm->mmap_sem);
+		up_write(kbase_mem_get_process_mmap_lock());
 
 	return res;
 }
@@ -2216,16 +2238,14 @@ out:
 
 void kbase_os_mem_map_lock(struct kbase_context *kctx)
 {
-	struct mm_struct *mm = current->mm;
 	(void)kctx;
-	down_read(&mm->mmap_sem);
+	down_read(kbase_mem_get_process_mmap_lock());
 }
 
 void kbase_os_mem_map_unlock(struct kbase_context *kctx)
 {
-	struct mm_struct *mm = current->mm;
 	(void)kctx;
-	up_read(&mm->mmap_sem);
+	up_read(kbase_mem_get_process_mmap_lock());
 }
 
 int kbase_mmap(struct file *file, struct vm_area_struct *vma)
