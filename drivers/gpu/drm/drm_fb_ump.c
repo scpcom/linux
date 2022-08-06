@@ -18,11 +18,14 @@
  */
 
 #include <linux/module.h>
+#include <linux/version.h>
 
 #include <ump/ump_kernel_interface_ref_drv.h>
 #include <ump/ump_kernel_interface.h>
 #include <asm/uaccess.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0)
 #include <drm/drmP.h>
+#endif
 #include <drm/drm_fb_helper.h>
 
 int (*drm_get_ump_secure_id) (struct fb_info *info, 
