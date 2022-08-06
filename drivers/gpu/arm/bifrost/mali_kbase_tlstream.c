@@ -608,12 +608,16 @@ atomic_t kbase_tlstream_enabled = {0};
  */
 static u64 kbasep_tlstream_get_timestamp(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+       return ktime_get_raw_ns();
+#else
 	struct timespec ts;
 	u64             timestamp;
 
 	getrawmonotonic(&ts);
 	timestamp = (u64)ts.tv_sec * NSECS_IN_SEC + ts.tv_nsec;
 	return timestamp;
+#endif
 }
 
 /**
