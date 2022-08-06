@@ -13,7 +13,10 @@
  * Implementation of the OS abstraction layer which is specific for the Mali kernel device driver
  */
 #include <linux/kernel.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
 #include <asm/uaccess.h>
+#endif
 #include <linux/platform_device.h>
 #include <linux/mali/mali_utgard.h>
 #include <linux/of.h>

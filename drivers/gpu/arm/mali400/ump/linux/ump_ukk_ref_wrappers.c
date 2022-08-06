@@ -14,7 +14,10 @@
  */
 
 
+#include <linux/version.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
 #include <asm/uaccess.h>             /* user space access */
+#endif
 
 #include "ump_osk.h"
 #include "ump_uk_types.h"

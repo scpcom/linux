@@ -178,4 +178,22 @@ extern int mali_debug_level;
 #define __user
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+#ifndef ioremap_nocache
+#define ioremap_nocache ioremap
+#endif
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#ifndef PTR_RET
+#define PTR_RET(p) PTR_ERR_OR_ZERO(p)
+#endif
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+#ifndef HAVE_UNLOCKED_IOCTL
+#define HAVE_UNLOCKED_IOCTL 1
+#endif
+#endif
+
 #endif /* __MALI_KERNEL_COMMON_H__ */

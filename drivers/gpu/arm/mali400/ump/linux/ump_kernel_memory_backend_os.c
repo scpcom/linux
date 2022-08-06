@@ -18,6 +18,9 @@
 #endif
 
 #include <linux/dma-mapping.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+#include <linux/dma-map-ops.h>
+#endif
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <asm/atomic.h>
