@@ -23,6 +23,10 @@
 	hpvcc-supply = <&reg_hpldo>;
 };
 
+&hdmi {
+	hvcc-supply = <&reg_ldoa>;
+};
+
 &lradc {
 	vref-supply = <&reg_aldo>;
 };
