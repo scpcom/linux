@@ -377,7 +377,7 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 #endif /* CONFIG_MALI_DMA_FENCE */
 
 	/* Take the processes mmap lock */
-	down_read(&current->mm->mmap_sem);
+	down_read(kbase_mem_get_process_mmap_lock());
 
 	/* need to keep the GPU VM locked while we set up UMM buffers */
 	kbase_gpu_vm_lock(katom->kctx);
@@ -446,7 +446,7 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 	kbase_gpu_vm_unlock(katom->kctx);
 
 	/* Release the processes mmap lock */
-	up_read(&current->mm->mmap_sem);
+	up_read(kbase_mem_get_process_mmap_lock());
 
 #ifdef CONFIG_KDS
 	if (kds_res_count) {
@@ -513,7 +513,7 @@ failed_kds_setup:
 #endif
 #if defined(CONFIG_KDS) || defined(CONFIG_MALI_DMA_FENCE)
 	/* Lock the processes mmap lock */
-	down_read(&current->mm->mmap_sem);
+	down_read(kbase_mem_get_process_mmap_lock());
 
 	/* lock before we unmap */
 	kbase_gpu_vm_lock(katom->kctx);
@@ -529,7 +529,7 @@ failed_kds_setup:
 	kbase_gpu_vm_unlock(katom->kctx);
 
 	/* Release the processes mmap lock */
-	up_read(&current->mm->mmap_sem);
+	up_read(kbase_mem_get_process_mmap_lock());
 
  early_err_out:
 	kfree(katom->extres);
