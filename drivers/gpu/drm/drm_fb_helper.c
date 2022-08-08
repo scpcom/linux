@@ -1038,6 +1038,12 @@ unlock:
 }
 EXPORT_SYMBOL(drm_fb_helper_setcmap);
 
+#if IS_ENABLED(CONFIG_UMP)
+int (*drm_get_ump_secure_id) (struct fb_info *info,
+        struct drm_fb_helper *g_fbi,    unsigned long arg, int buf) = NULL;
+EXPORT_SYMBOL(drm_get_ump_secure_id);
+#endif
+
 /**
  * drm_fb_helper_ioctl - legacy ioctl implementation
  * @info: fbdev registered by the helper
@@ -1094,12 +1100,18 @@ int drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 
 		ret = 0;
 		break;
-#if defined(CONFIG_UMP)
+#if IS_ENABLED(CONFIG_UMP)
 	case GET_UMP_SECURE_ID_BUF1:
-		ret = drm_get_ump_secure_id(info, fb_helper, arg, 0);
+		if (drm_get_ump_secure_id)
+			ret = drm_get_ump_secure_id(info, fb_helper, arg, 0);
+		else
+			ret = -EAGAIN;
 		break;
 	case GET_UMP_SECURE_ID_BUF2:
-		ret = drm_get_ump_secure_id(info, fb_helper, arg, 1);
+		if (drm_get_ump_secure_id)
+			ret = drm_get_ump_secure_id(info, fb_helper, arg, 1);
+		else
+			ret = -EAGAIN;
 		break;
 #endif
 	default:

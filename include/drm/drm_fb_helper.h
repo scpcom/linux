@@ -37,7 +37,7 @@ struct drm_fb_helper;
 
 #include <drm/drm_client.h>
 
-#if defined(CONFIG_UMP)
+#if IS_ENABLED(CONFIG_UMP)
 #include <ump/ump_kernel_interface.h>
 #endif
 
@@ -212,7 +212,7 @@ struct drm_fb_helper {
 	 */
 	struct fb_deferred_io fbdefio;
 #endif
-#if defined(CONFIG_UMP)
+#if IS_ENABLED(CONFIG_UMP)
 	ump_dd_handle ump_wrapped_buffer[DRM_FB_UMP_COUNT][2];
 #endif
 };
@@ -410,7 +410,7 @@ static inline void drm_fb_helper_lastclose(struct drm_device *dev)
 }
 #endif
 
-#if defined(CONFIG_UMP)
+#if IS_ENABLED(CONFIG_UMP)
 extern int (*drm_get_ump_secure_id) (struct fb_info *info,
         struct drm_fb_helper *g_fbi,     unsigned long arg, int buf);
 #define GET_UMP_SECURE_ID_BUF1 _IOWR('m', 311, unsigned int)

@@ -28,10 +28,6 @@
 #endif
 #include <drm/drm_fb_helper.h>
 
-int (*drm_get_ump_secure_id) (struct fb_info *info, 
-	struct drm_fb_helper *g_fbi,	unsigned long arg, int buf);
-EXPORT_SYMBOL(drm_get_ump_secure_id);
-
 static int _drm_get_ump_secure_id(struct fb_info *info, 
 	struct drm_fb_helper *g_fbi, unsigned long arg, int buf)
 {
