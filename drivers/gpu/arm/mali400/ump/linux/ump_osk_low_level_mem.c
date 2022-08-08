@@ -46,6 +46,7 @@ static int ump_cpu_page_fault_handler(struct vm_area_struct *vma, struct vm_faul
 #else
 static unsigned long ump_cpu_page_fault_handler(struct vm_area_struct *vma, unsigned long address);
 #endif
+extern void _ump_osk_flush_dcache_area(void *virt, u32 size);
 
 static struct vm_operations_struct ump_vm_ops = {
 	.open = ump_vma_open,
@@ -248,15 +249,7 @@ void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_ms
 	if ((mem) && (virt != NULL) && (access_ok(VERIFY_WRITE, virt, size))) {
 #endif
 
-#ifdef CONFIG_ARM64
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,14,0)
-		dcache_clean_inval_poc((unsigned long)virt, (unsigned long)virt + size);
-#else
-		__flush_dcache_area(virt, size);
-#endif
-#else
-		__cpuc_flush_dcache_area(virt, size);
-#endif
+		_ump_osk_flush_dcache_area(virt, size);
 		DBG_MSG(3, ("UMP[%02u] Flushing CPU L1 Cache. CPU address: %x, size: %x\n", mem->secure_id, virt, size));
 	} else {
 		if (session_data) {

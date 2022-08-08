@@ -614,10 +614,6 @@ module_init(umplock_initialize_module);
 module_exit(umplock_cleanup_module);
 
 
-/* todo: find reason why KBUILD_MODFILE is not set */
-#ifndef KBUILD_MODFILE
-#define KBUILD_MODFILE "drivers/gpu/arm/mali400/umplock/umplock"
-#endif
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("ARM Ltd.");
 MODULE_DESCRIPTION("ARM UMP locker");

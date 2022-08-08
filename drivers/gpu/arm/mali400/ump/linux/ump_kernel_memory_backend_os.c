@@ -45,6 +45,7 @@ static void os_free(void *ctx, ump_dd_mem *descriptor);
 static int os_allocate(void *ctx, ump_dd_mem *descriptor);
 static void os_memory_backend_destroy(ump_memory_backend *backend);
 static u32 os_stat(struct ump_memory_backend *backend);
+extern void _ump_osk_set_dma_ops(struct device *dev);
 
 
 
@@ -134,9 +135,7 @@ static int os_allocate(void *ctx, ump_dd_mem *descriptor)
 		return 0; /* failure */
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-	set_dma_ops(ump_global_mdev, &dma_dummy_ops);
-#endif
+	_ump_osk_set_dma_ops(ump_global_mdev);
 
 	while (left > 0 && ((info->num_pages_allocated + pages_allocated) < info->num_pages_max)) {
 		struct page *new_page;
