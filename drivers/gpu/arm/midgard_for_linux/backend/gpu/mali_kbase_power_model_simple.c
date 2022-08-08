@@ -34,6 +34,7 @@ static u32 static_coefficient;
 static s32 ts[4];
 static struct thermal_zone_device *gpu_tz;
 
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 static unsigned long model_static_power(struct devfreq *devfreq,
 					unsigned long voltage)
 {
@@ -75,7 +76,9 @@ static unsigned long model_static_power(struct devfreq *devfreq,
 			* temp_scaling_factor)
 				/ 1000000;
 }
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 static unsigned long model_dynamic_power(struct devfreq *devfreq,
 		unsigned long freq,
 		unsigned long voltage)
@@ -91,14 +94,17 @@ static unsigned long model_dynamic_power(struct devfreq *devfreq,
 
 	return (dynamic_coefficient * v2 * f_mhz) / 1000000; /* mW */
 }
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 struct devfreq_cooling_ops power_model_simple_ops = {
 #else
 struct devfreq_cooling_power power_model_simple_ops = {
 #endif
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	.get_static_power = model_static_power,
 	.get_dynamic_power = model_dynamic_power,
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 };
 
 int kbase_power_model_simple_init(struct kbase_device *kbdev)

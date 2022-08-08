@@ -43,7 +43,11 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 #include <linux/dma-resv.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+#define reservation_object_get_fences_rcu dma_resv_get_fences
+#else
 #define reservation_object_get_fences_rcu dma_resv_get_fences_rcu
+#endif
 #define reservation_object_reserve_shared(o) dma_resv_reserve_shared(o, 1)
 #define reservation_object_add_excl_fence dma_resv_add_excl_fence
 #define reservation_object_add_shared_fence dma_resv_add_shared_fence
