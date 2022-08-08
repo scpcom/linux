@@ -258,6 +258,7 @@ static void rk_context_deinit(struct platform_device *pdev)
 /* for devfreq cooling. */
 
 #if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 
 #define FALLBACK_STATIC_TEMPERATURE 55000
 
@@ -397,6 +398,7 @@ struct devfreq_cooling_power rk_cooling_ops = {
 	.get_static_power = rk_model_static_power,
 	.get_dynamic_power = rk_model_dynamic_power,
 };
+#endif
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -635,7 +637,9 @@ static const struct mali_gpu_device_data rk_mali_gpu_data = {
 	.shared_mem_size = 1024 * 1024 * 1024, /* 1GB */
 	.max_job_runtime = 60000, /* 60 seconds */
 #if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 	.gpu_cooling_ops = &rk_cooling_ops,
+#endif
 #endif
 };
 
@@ -673,6 +677,7 @@ int mali_platform_device_init(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 	if (of_machine_is_compatible("rockchip,rk3036"))
 		err = 0;
 	else
@@ -682,14 +687,17 @@ int mali_platform_device_init(struct platform_device *pdev)
 		goto init_power_model_failed;
 	}
 #endif
+#endif
 
 	dev_info(&pdev->dev, "Rockchip Mali glue initialized\n");
 
 	return 0;
 
 #if defined(CONFIG_MALI_DEVFREQ) && defined(CONFIG_DEVFREQ_THERMAL)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 init_power_model_failed:
 	rk_context_deinit(pdev);
+#endif
 #endif
 init_rk_context_failed:
 add_data_failed:

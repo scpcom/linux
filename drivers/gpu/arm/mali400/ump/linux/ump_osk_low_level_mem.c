@@ -249,7 +249,11 @@ void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_ms
 #endif
 
 #ifdef CONFIG_ARM64
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,14,0)
+		dcache_clean_inval_poc((unsigned long)virt, (unsigned long)virt + size);
+#else
 		__flush_dcache_area(virt, size);
+#endif
 #else
 		__cpuc_flush_dcache_area(virt, size);
 #endif
