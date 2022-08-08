@@ -39,6 +39,9 @@
 #include "mali_kbase_fence_defs.h"
 #include <linux/sync_file.h>
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#include <linux/fdtable.h>
+#endif
 
 #include "mali_kbase.h"
 
@@ -161,7 +164,9 @@ void kbase_sync_fence_out_remove(struct kbase_jd_atom *katom);
  */
 static inline void kbase_sync_fence_close_fd(int fd)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	close_fd(fd);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 	ksys_close(fd);
 #else
 	sys_close(fd);

@@ -416,6 +416,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	 kbdev->opp_info = NULL;
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	err = kbase_ipa_init(kbdev);
 	if (err) {
 		dev_err(kbdev->dev, "IPA initialization failed\n");
@@ -433,13 +434,16 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 			err);
 		goto cooling_failed;
 	}
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	return 0;
 
 #ifdef CONFIG_DEVFREQ_THERMAL
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 cooling_failed:
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif /* CONFIG_DEVFREQ_THERMAL */
 opp_notifier_failed:
 	if (devfreq_remove_device(kbdev->devfreq))
@@ -460,10 +464,12 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	rockchip_unregister_thermal_notifier(kbdev->opp_info);
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	if (kbdev->devfreq_cooling)
 		devfreq_cooling_unregister(kbdev->devfreq_cooling);
 
 	kbase_ipa_term(kbdev);
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
