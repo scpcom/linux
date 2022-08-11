@@ -59,6 +59,12 @@
 	};
 
 	/omit-if-no-ref/
+	spi1_pd_pins: spi1-pd-pins {
+		pins = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15";
+		function = "spi1";
+	};
+
+	/omit-if-no-ref/
 	uart0_pb8_pins: uart0-pb8-pins {
 		pins = "PB8", "PB9";
 		function = "uart0";
