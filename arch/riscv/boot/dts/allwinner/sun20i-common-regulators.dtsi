@@ -18,6 +18,11 @@
 	};
 };
 
+&codec {
+	avcc-supply = <&reg_aldo>;
+	hpvcc-supply = <&reg_hpldo>;
+};
+
 &lradc {
 	vref-supply = <&reg_aldo>;
 };

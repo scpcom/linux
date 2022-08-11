@@ -21,6 +21,24 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	audio_amplifier: audio-amplifier {
+		compatible = "simple-audio-amplifier";
+		enable-gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; /* PE1/GPIO11 */
+		sound-name-prefix = "Amplifier";
+		VCC-supply = <&reg_vcc>;
+	};
+
+	/*
+	 * FIXME: This is not really an amplifier, but the amplifier binding
+	 * has the needed properties and behavior.
+	 */
+	audio_switch: audio-switch {
+		compatible = "simple-audio-amplifier";
+		enable-gpios = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2/AUD_SWITCH */
+		sound-name-prefix = "Switch";
+		VCC-supply = <&reg_aldo1>;
+	};
+
 	bt_sco_codec: bt-sco-codec {
 		#sound-dai-cells = <0>;
 		compatible = "linux,bt-sco";
@@ -60,6 +78,25 @@
 		compatible = "mmc-pwrseq-simple";
 		reset-gpios = <&pio 6 11 GPIO_ACTIVE_LOW>; /* PG11/GPIO3 */
 	};
+};
+
+&codec {
+	aux-devs = <&audio_amplifier>, <&audio_switch>;
+	hp-det-gpio = <&pio 1 12 GPIO_ACTIVE_HIGH>; /* PB12/GPIO10 */
+	pin-switches = "Internal Speakers";
+	routing = "Internal Speakers", "Amplifier OUTL",
+		  "Internal Speakers", "Amplifier OUTR",
+		  "Amplifier INL", "Switch OUTL",
+		  "Amplifier INR", "Switch OUTR",
+		  "Headphone Jack", "Switch OUTL",
+		  "Headphone Jack", "Switch OUTR",
+		  "Switch INL", "HPOUTL",
+		  "Switch INR", "HPOUTR",
+		  "MICIN3", "Headset Microphone",
+		  "Headset Microphone", "HBIAS";
+	widgets = "Microphone", "Headset Microphone",
+		  "Headphone", "Headphone Jack",
+		  "Speaker", "Internal Speakers";
 };
 
 &cpu0 {
