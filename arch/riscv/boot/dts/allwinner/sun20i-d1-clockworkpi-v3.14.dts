@@ -39,6 +39,12 @@
 		VCC-supply = <&reg_aldo1>;
 	};
 
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&reg_vcc>;
+		pwms = <&pwm 4 50000 0>; /* PD20/GPIO9 */
+	};
+
 	bt_sco_codec: bt-sco-codec {
 		#sound-dai-cells = <0>;
 		compatible = "linux,bt-sco";
@@ -298,7 +304,7 @@
 };
 
 &pwm {
-	pinctrl-0 = <&pwm0_pd16_pin>;
+	pinctrl-0 = <&pwm0_pd16_pin>, <&pwm4_pd20_pin>;
 	pinctrl-names = "default";
 	status = "okay";
 };
