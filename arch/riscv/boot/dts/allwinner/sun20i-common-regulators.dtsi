@@ -26,3 +26,7 @@
 	vcc-pf-supply = <&reg_vcc_3v3>;
 	vcc-pg-supply = <&reg_vcc_3v3>;
 };
+
+&ths {
+	vref-supply = <&reg_aldo>;
+};
