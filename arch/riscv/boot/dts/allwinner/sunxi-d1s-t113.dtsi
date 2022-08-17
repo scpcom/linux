@@ -276,6 +276,22 @@
 			#sound-dai-cells = <0>;
 		};
 
+		// TODO: add receive functionality
+		spdif: spdif@2036000 {
+			compatible = "allwinner,sun20i-d1-spdif";
+			reg = <0x2036000 0x400>;
+			interrupts = <SOC_PERIPHERAL_IRQ(23) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_SPDIF>,
+				 <&ccu CLK_SPDIF_RX>,
+				 <&ccu CLK_SPDIF_TX>;
+			clock-names = "apb", "rx", "tx";
+			resets = <&ccu RST_BUS_SPDIF>;
+			dmas = <&dma 2>, <&dma 2>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+			#sound-dai-cells = <0>;
+		};
+
 		timer: timer@2050000 {
 			compatible = "allwinner,sun20i-d1-timer",
 				     "allwinner,sun8i-a23-timer";
