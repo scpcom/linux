@@ -388,7 +388,7 @@ config IR_RX_SUNXI
 	tristate "SUNXI IR RX remote control"
 	depends on RC_CORE
 	depends on ARCH_SUNXI || COMPILE_TEST
-	---help---
+	help
 	   Say Y if you want to use sunxi internal IR RX Controller
 
 	   To compile this driver as a module, choose M here: the module will
@@ -398,7 +398,7 @@ config IR_TX_SUNXI
 	tristate "SUNXI IR TX remote control"
 	depends on RC_CORE
 	depends on ARCH_SUNXI || COMPILE_TEST
-	---help---
+	help
 	   Say Y if you want to use sunxi internal IR TX Controller
 
 	   To compile this driver as a module, choose M here: the module will

@@ -3,7 +3,7 @@ config VIDEO_ENCODER_DECODER_SUNXI
 	depends on ARCH_SUNXI
 	depends on DMA_SHARED_BUFFER
 	default y
-	---help---
+	help
 	  This is the driver for sunxi video decoder, including h264/
 	  mpeg4/mpeg2/vc1/rmvb.
 	  To compile this driver as a module, choose M here: the
