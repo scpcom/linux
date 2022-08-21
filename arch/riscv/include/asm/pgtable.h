@@ -629,6 +629,11 @@ static inline pgprot_t pgprot_nx(pgprot_t _prot)
 	return __pgprot(pgprot_val(_prot) & ~_PAGE_EXEC);
 }
 
+#define __HAVE_PHYS_MEM_ACCESS_PROT
+struct file;
+extern pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
+				     unsigned long size, pgprot_t vma_prot);
+
 static inline unsigned long _pgprot_noncached(pgprot_t _prot)
 {
 	unsigned long prot = pgprot_val(_prot);
