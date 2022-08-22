@@ -406,7 +406,7 @@ int xradio_queue_put(struct xradio_queue *queue, struct sk_buff *skb,
 {
 	int ret = 0;
 #ifdef CONFIG_XRADIO_TESTMODE
-	struct timeval tmval;
+	struct timespec64 tmval;
 #endif /*CONFIG_XRADIO_TESTMODE*/
 	LIST_HEAD(gc_list);
 	struct xradio_queue_stats *stats = queue->stats;
@@ -493,7 +493,7 @@ int xradio_queue_get(struct xradio_queue *queue,
 	struct xradio_queue_stats *stats = queue->stats;
 	bool wakeup_stats = false;
 #ifdef CONFIG_XRADIO_TESTMODE
-	struct timeval tmval;
+	struct timespec64 tmval;
 #endif /*CONFIG_XRADIO_TESTMODE*/
 
 	spin_lock_bh(&queue->lock);
@@ -707,7 +707,7 @@ int xradio_queue_remove(struct xradio_queue *queue, u32 packetID)
 		spin_lock_bh(&hw_priv->tsm_lock);
 		if (hw_priv->start_stop_tsm.start) {
 			if (queue_id == hw_priv->tsm_info.ac) {
-				struct timeval tmval;
+				struct timespec64 tmval;
 				unsigned long queue_delay;
 				unsigned long media_delay;
 				xr_do_gettimeofday(&tmval);

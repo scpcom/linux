@@ -1601,7 +1601,7 @@ void xradio_tx_confirm_cb(struct xradio_common *hw_priv,
 		(arg->packetID == TES_P2P_0002_packet_id)) {
 		if (arg->status == 0x00) {
 
-			struct timeval TES_P2P_0002_tmval;
+			struct timespec64 TES_P2P_0002_tmval;
 			s32 TES_P2P_0002_roc_time;
 			s32 TES_P2P_0002_now_sec;
 			s32 TES_P2P_0002_now_usec;
@@ -1610,7 +1610,7 @@ void xradio_tx_confirm_cb(struct xradio_common *hw_priv,
 			xr_do_gettimeofday(&TES_P2P_0002_tmval);
 			TES_P2P_0002_roc_rst_need	= false;
 			TES_P2P_0002_now_sec = (s32)(TES_P2P_0002_tmval.tv_sec);
-			TES_P2P_0002_now_usec = (s32)(TES_P2P_0002_tmval.tv_usec);
+			TES_P2P_0002_now_usec = (s32)(TES_P2P_0002_tmval.tv_nsec / 1000);
 			TES_P2P_0002_roc_time = TES_P2P_0002_roc_dur -
 			    (((TES_P2P_0002_now_sec - TES_P2P_0002_roc_sec) * 1000) +
 			    ((TES_P2P_0002_now_usec - TES_P2P_0002_roc_usec) / 1000));
@@ -1663,13 +1663,13 @@ void xradio_tx_confirm_cb(struct xradio_common *hw_priv,
 	} else if ((hw_priv->start_stop_tsm.start) &&
 		(arg->status == WSM_STATUS_SUCCESS)) {
 		if (queue_id == hw_priv->tsm_info.ac) {
-			struct timeval tmval;
+			struct timespec64 tmval;
 			xr_do_gettimeofday(&tmval);
 			u16 pkt_delay =
 				hw_priv->start_stop_tsm.packetization_delay;
 			if (hw_priv->tsm_info.sta_roamed &&
 			    !hw_priv->tsm_info.use_rx_roaming) {
-				hw_priv->tsm_info.roam_delay = tmval.tv_usec -
+				hw_priv->tsm_info.roam_delay = (tmval.tv_nsec / 1000) -
 				hw_priv->tsm_info.txconf_timestamp_vo;
 				if (hw_priv->tsm_info.roam_delay > pkt_delay)
 					hw_priv->tsm_info.roam_delay -= pkt_delay;
@@ -1678,7 +1678,7 @@ void xradio_tx_confirm_cb(struct xradio_common *hw_priv,
 				hw_priv->tsm_info.roam_delay);
 				hw_priv->tsm_info.sta_roamed = 0;
 			}
-			hw_priv->tsm_info.txconf_timestamp_vo = tmval.tv_usec;
+			hw_priv->tsm_info.txconf_timestamp_vo = (tmval.tv_nsec / 1000);
 		}
 	}
 	spin_unlock_bh(&hw_priv->tsm_lock);
@@ -2193,17 +2193,17 @@ void xradio_rx_cb(struct xradio_vif *priv,
 	if (hw_priv->start_stop_tsm.start) {
 		unsigned queue_id = skb_get_queue_mapping(skb);
 		if (queue_id == 0) {
-			struct timeval tmval;
+			struct timespec64 tmval;
 			xr_do_gettimeofday(&tmval);
 			if (hw_priv->tsm_info.sta_roamed &&
 			    hw_priv->tsm_info.use_rx_roaming) {
-				hw_priv->tsm_info.roam_delay = tmval.tv_usec -
+				hw_priv->tsm_info.roam_delay = (tmval.tv_nsec / 1000) -
 					hw_priv->tsm_info.rx_timestamp_vo;
 				txrx_printk(XRADIO_DBG_NIY, "[RX] RxInd Roaming:"
 				"roam_delay = %u\n", hw_priv->tsm_info.roam_delay);
 				hw_priv->tsm_info.sta_roamed = 0;
 			}
-			hw_priv->tsm_info.rx_timestamp_vo = tmval.tv_usec;
+			hw_priv->tsm_info.rx_timestamp_vo = (tmval.tv_nsec / 1000);
 		}
 	}
 	spin_unlock_bh(&hw_priv->tsm_lock);
@@ -2494,7 +2494,7 @@ void xradio_rx_cb(struct xradio_vif *priv,
 	if ((ieee80211_is_beacon(mgmt->frame_control) ||
 		ieee80211_is_probe_resp(mgmt->frame_control))
 		&& !arg->status) {
-		struct timespec ts;
+		struct timespec64 ts;
 		uint64_t tmp;
 		xr_get_monotonic_boottime(&ts);
 		tmp = ts.tv_nsec;

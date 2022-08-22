@@ -2359,8 +2359,8 @@ extern u8  hwt_testing;
 extern u16 hwt_tx_len;
 extern u16 hwt_tx_num;
 extern int sent_num;
-extern struct timeval hwt_start_time;
-extern struct timeval hwt_end_time;
+extern struct timespec64 hwt_start_time;
+extern struct timespec64 hwt_end_time;
 int wsm_hwt_tx_confirm(struct xradio_common *hw_priv, struct wsm_buf *buf)
 {
 	u8 num = *(buf->data + 6);

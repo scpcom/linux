@@ -1399,7 +1399,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 	struct xradio_vif *priv = xrwl_get_vif_from_ieee80211(vif);
 	int if_id = priv->if_id;
 #ifdef	TES_P2P_0002_ROC_RESTART
-	struct timeval TES_P2P_0002_tmval;
+	struct timespec64 TES_P2P_0002_tmval;
 #endif
 	sta_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 	if (if_id == 0)
@@ -1409,7 +1409,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 	xr_do_gettimeofday(&TES_P2P_0002_tmval);
 	TES_P2P_0002_roc_dur = (s32) duration;
 	TES_P2P_0002_roc_sec = (s32) TES_P2P_0002_tmval.tv_sec;
-	TES_P2P_0002_roc_usec = (s32) TES_P2P_0002_tmval.tv_usec;
+	TES_P2P_0002_roc_usec = (s32) (TES_P2P_0002_tmval.tv_nsec / 1000);
 #endif
 
 	down(&hw_priv->scan.lock);

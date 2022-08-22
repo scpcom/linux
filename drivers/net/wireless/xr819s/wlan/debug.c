@@ -2124,8 +2124,8 @@ u8 hwt_tx_en;
 u8 hwt_tx_cfm;	/*confirm interval*/
 u16 hwt_tx_len;
 u16 hwt_tx_num;
-struct timeval hwt_start_time = { 0 };
-struct timeval hwt_end_time = { 0 };
+struct timespec64 hwt_start_time = { 0 };
+struct timespec64 hwt_end_time = { 0 };
 
 int wsm_hwt_cmd(struct xradio_common *hw_priv, void *arg,
 		size_t arg_size);
@@ -3399,7 +3399,7 @@ int xradio_logfile(char *buffer, int buf_len, u8 b_time)
 			fp_log->f_pos = 0;
 		}
 		if (b_time) {
-			struct timeval time_now = { 0 };
+			struct timespec64 time_now = { 0 };
 			struct rtc_time tm;
 			int hour = 0;
 			char time_label[T_LABEL_LEN] = { 0 };

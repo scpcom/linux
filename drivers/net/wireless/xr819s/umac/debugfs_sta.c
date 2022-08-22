@@ -108,7 +108,7 @@ static ssize_t sta_connected_time_read(struct file *file, char __user *userbuf,
 					size_t count, loff_t *ppos)
 {
 	struct sta_info *sta = file->private_data;
-	struct timespec uptime;
+	struct timespec64 uptime;
 	struct tm result;
 	long connected_time_secs;
 	char buf[100];

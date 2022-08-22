@@ -72,7 +72,7 @@ struct xradio_itp {
 	struct delayed_work	tx_work;
 	struct delayed_work	tx_finish;
 	spinlock_t		tx_lock;
-	struct timespec		last_sent;
+	struct timespec64		last_sent;
 	atomic_t		test_mode;
 	int			rx_cnt;
 	long			rx_rssi;

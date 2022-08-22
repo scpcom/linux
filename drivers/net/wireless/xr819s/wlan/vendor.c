@@ -613,18 +613,14 @@ void xradio_vendor_init(struct wiphy *wiphy)
 	return;
 }
 
-void xr_do_gettimeofday(struct timeval *tv)
+void xr_do_gettimeofday(struct timespec64 *tv)
 {
-	struct timespec now;
-
-	getnstimeofday(&now);
-	tv->tv_sec = now.tv_sec;
-	tv->tv_usec = now.tv_nsec/1000;
+	ktime_get_real_ts64(tv);
 }
 
-void xr_get_monotonic_boottime(struct timespec *ts)
+void xr_get_monotonic_boottime(struct timespec64 *ts)
 {
-	*ts = ktime_to_timespec(ktime_get_boottime());
+	*ts = ktime_to_timespec64(ktime_get_boottime());
 }
 
 
