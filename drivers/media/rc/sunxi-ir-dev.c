@@ -459,9 +459,9 @@ static ssize_t sunxi_ir_protocol_read(struct file *file,
 	return size;
 }
 
-static const struct file_operations sunxi_ir_proc_fops = {
-	.open		= sunxi_ir_protocol_open,
-	.read		= sunxi_ir_protocol_read,
+static const struct proc_ops sunxi_ir_proc_fops = {
+	.proc_open		= sunxi_ir_protocol_open,
+	.proc_read		= sunxi_ir_protocol_read,
 };
 
 static	struct proc_dir_entry *ir_protocol_dir;
