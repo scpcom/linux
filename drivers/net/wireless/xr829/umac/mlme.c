@@ -312,7 +312,7 @@ static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 	mgmt->u.deauth.reason_code = cpu_to_le16(reason);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-		cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len);
+		cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len, false);
 #else
 	if (stype == IEEE80211_STYPE_DEAUTH)
 		if (cookie)
@@ -2251,14 +2251,14 @@ void mac80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 			break;
 		case RX_MGMT_CFG80211_DEAUTH:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-			cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len);
+			cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len, false);
 #else
 			cfg80211_send_deauth(sdata->dev, (u8 *)mgmt, skb->len);
 #endif
 			break;
 		case RX_MGMT_CFG80211_DISASSOC:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-			cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len);
+			cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len, false);
 #else
 			cfg80211_send_disassoc(sdata->dev, (u8 *)mgmt, skb->len);
 #endif
@@ -2312,7 +2312,7 @@ void mac80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 		mutex_unlock(&local->mtx);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-		cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len);
+		cfg80211_tx_mlme_mgmt(sdata->dev, (u8 *)mgmt, skb->len, false);
 #else
 		cfg80211_send_deauth(sdata->dev, (u8 *)mgmt, skb->len);
 #endif
