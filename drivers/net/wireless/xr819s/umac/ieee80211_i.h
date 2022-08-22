@@ -944,6 +944,12 @@ struct ieee80211_local {
 
 	int open_count;
 	int monitors, cooked_mntrs;
+	/* number of interfaces with corresponding FIF_ flags */
+	int fif_fcsfail, fif_plcpfail, fif_control, fif_other_bss, fif_pspoll,
+	    fif_probe_req;
+	bool probe_req_reg;
+	bool rx_mcast_action_reg;
+	unsigned int filter_flags; /* FIF_* */
 
 	bool wiphy_ciphers_allocated;
 
@@ -1679,5 +1685,18 @@ int ieee80211_cs_headroom(struct ieee80211_local *local,
 #else
 #define debug_noinline
 #endif
+
+static inline void drv_config_iface_filter(struct ieee80211_local *local,
+					   struct ieee80211_sub_if_data *sdata,
+					   unsigned int filter_flags,
+					   unsigned int changed_flags)
+{
+	might_sleep();
+
+	if (local->ops->config_iface_filter)
+		local->ops->config_iface_filter(&local->hw, &sdata->vif,
+						filter_flags,
+						changed_flags);
+}
 
 #endif /* IEEE80211_I_H */
