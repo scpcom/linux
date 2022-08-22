@@ -1507,12 +1507,11 @@ int hwinfo_proc_open(struct inode *p_inode, struct file *p_file)
 	return single_open(p_file, hwinfo_proc_show, NULL);
 }
 
-static struct file_operations hwinfo_proc_op = {
-	.owner		= THIS_MODULE,
-	.open		= hwinfo_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static struct proc_ops hwinfo_proc_op = {
+	.proc_open		= hwinfo_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
 };
 
 /* Init Module function -> Called by insmod */
