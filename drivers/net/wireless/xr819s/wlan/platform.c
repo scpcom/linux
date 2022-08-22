@@ -33,6 +33,7 @@ MODULE_AUTHOR("XRadioTech");
 MODULE_DESCRIPTION("XRadioTech WLAN driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("xradio_wlan");
+MODULE_IMPORT_NS(CRYPTO_INTERNAL);
 
 extern void sunxi_wlan_set_power(bool on);
 extern int sunxi_wlan_get_bus_index(void);
