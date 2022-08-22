@@ -545,9 +545,10 @@ err_probe_playback:
 	return ret;
 }
 
-static int sunxi_hifi_cpudai_suspend(struct snd_soc_dai *dai)
+static int sunxi_hifi_cpudai_suspend(struct snd_soc_component *component)
 {
-	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_component_get_drvdata(component);
+	struct snd_soc_dai *dai = sunxi_cpudai->cpu_dai;
 	struct msg_substream_package *msg_capture = &sunxi_cpudai->msg_capture;
 	struct msg_substream_package *msg_playback = &sunxi_cpudai->msg_playback;
 	struct snd_soc_dsp_substream *soc_substream;
@@ -599,9 +600,10 @@ static int sunxi_hifi_cpudai_suspend(struct snd_soc_dai *dai)
 
 }
 
-static int sunxi_hifi_cpudai_resume(struct snd_soc_dai *dai)
+static int sunxi_hifi_cpudai_resume(struct snd_soc_component *component)
 {
-	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_cpudai_info *sunxi_cpudai = snd_soc_component_get_drvdata(component);
+	struct snd_soc_dai *dai = sunxi_cpudai->cpu_dai;
 	struct msg_substream_package *msg_capture = &sunxi_cpudai->msg_capture;
 	struct msg_substream_package *msg_playback = &sunxi_cpudai->msg_playback;
 	struct snd_soc_dsp_substream *soc_substream;
@@ -691,8 +693,6 @@ int sunxi_hifi_cpudai_remove(struct snd_soc_dai *dai)
 static struct snd_soc_dai_driver sunxi_hifi_cpudai_dai = {
 	.probe = sunxi_hifi_cpudai_probe,
 	.remove = sunxi_hifi_cpudai_remove,
-	.suspend = sunxi_hifi_cpudai_suspend,
-	.resume = sunxi_hifi_cpudai_resume,
 	.playback = {
 		.channels_min = 1,
 		.channels_max = 2,
@@ -716,6 +716,8 @@ static struct snd_soc_dai_driver sunxi_hifi_cpudai_dai = {
 
 static const struct snd_soc_component_driver sunxi_hifi_cpudai_component = {
 	.name = DRV_NAME,
+	.suspend = sunxi_hifi_cpudai_suspend,
+	.resume = sunxi_hifi_cpudai_resume,
 };
 
 static const struct of_device_id sunxi_hifi_cpudai_of_match[] = {

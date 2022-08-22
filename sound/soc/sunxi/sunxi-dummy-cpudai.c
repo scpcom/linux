@@ -57,12 +57,12 @@ static int sunxi_cpudai_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int sunxi_cpudai_suspend(struct snd_soc_dai *dai)
+static int sunxi_cpudai_suspend(struct snd_soc_component *component)
 {
 	return 0;
 }
 
-static int sunxi_cpudai_resume(struct snd_soc_dai *dai)
+static int sunxi_cpudai_resume(struct snd_soc_component *component)
 {
 	return 0;
 }
@@ -90,8 +90,6 @@ static int sunxi_cpudai_probe(struct snd_soc_dai *dai)
 
 static struct snd_soc_dai_driver sunxi_cpudai_dai = {
 	.probe = sunxi_cpudai_probe,
-	.suspend = sunxi_cpudai_suspend,
-	.resume = sunxi_cpudai_resume,
 	.playback = {
 		.channels_min = 1,
 		.channels_max = 2,
@@ -116,6 +114,8 @@ static struct snd_soc_dai_driver sunxi_cpudai_dai = {
 
 static const struct snd_soc_component_driver sunxi_asoc_cpudai_component = {
 	.name = DRV_NAME,
+	.suspend = sunxi_cpudai_suspend,
+	.resume = sunxi_cpudai_resume,
 };
 static const struct of_device_id sunxi_asoc_cpudai_of_match[] = {
 	{ .compatible = "allwinner,sunxi-dummy-cpudai", },

@@ -202,7 +202,8 @@ int hdmi_transfer_format_61937_to_60958(int *out, short *temp,
 	return 0;
 }
 
-static int sunxi_pcm_hw_params(struct snd_pcm_substream *substream,
+static int sunxi_pcm_hw_params(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct sunxi_dma_params *dmap;
@@ -244,7 +245,8 @@ static int sunxi_pcm_hw_params(struct snd_pcm_substream *substream,
 }
 
 
-static int sunxi_pcm_hdmi_hw_params(struct snd_pcm_substream *substream,
+static int sunxi_pcm_hdmi_hw_params(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct sunxi_dma_params *dmap;
@@ -314,7 +316,8 @@ static int sunxi_pcm_hdmi_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int sunxi_pcm_hdmi_hw_free(struct snd_pcm_substream *substream)
+static int sunxi_pcm_hdmi_hw_free(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct device *dev = rtd->dev;
@@ -331,14 +334,16 @@ static int sunxi_pcm_hdmi_hw_free(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int sunxi_pcm_hw_free(struct snd_pcm_substream *substream)
+static int sunxi_pcm_hw_free(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
 
 	return 0;
 }
 
-static int sunxi_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+static int sunxi_pcm_trigger(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream, int cmd)
 {
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		switch (cmd) {
@@ -374,17 +379,24 @@ static int sunxi_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	return 0;
 }
 
+static snd_pcm_uframes_t sunxi_pcm_pointer(struct snd_soc_component *component,
+					   struct snd_pcm_substream *substream)
+{
+	return snd_dmaengine_pcm_pointer(substream);
+}
+
 static const char * const dmaengine_pcm_dma_channel_names[] = {
 	[SNDRV_PCM_STREAM_PLAYBACK] = "tx",
 	[SNDRV_PCM_STREAM_CAPTURE] = "rx",
 };
 
-static int sunxi_pcm_open(struct snd_pcm_substream *substream)
+static int sunxi_pcm_open(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream)
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_component *component =
-		snd_soc_rtdcom_lookup(rtd, SUNXI_DMAENGINE_PCM_DRV_NAME);
+	/*struct snd_soc_component *component =
+		snd_soc_rtdcom_lookup(rtd, SUNXI_DMAENGINE_PCM_DRV_NAME);*/
 	struct device *dev = component->dev;
 	struct sunxi_dma_params *dma_params = NULL;
 	struct dma_chan *chan;
@@ -417,7 +429,14 @@ static int sunxi_pcm_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int sunxi_pcm_mmap(struct snd_pcm_substream *substream,
+static int sunxi_pcm_close(struct snd_soc_component *component,
+			 struct snd_pcm_substream *substream)
+{
+	return snd_dmaengine_pcm_close_release_chan(substream);
+}
+
+static int sunxi_pcm_mmap(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream,
 		struct vm_area_struct *vma)
 {
 	struct snd_pcm_runtime *runtime = NULL;
@@ -435,7 +454,8 @@ static int sunxi_pcm_mmap(struct snd_pcm_substream *substream,
 
 }
 
-static int sunxi_pcm_copy(struct snd_pcm_substream *substream, int channel,
+static int sunxi_pcm_copy(struct snd_soc_component *component,
+			  struct snd_pcm_substream *substream, int channel,
 			  unsigned long hwoff, void __user *buf,
 			  unsigned long bytes)
 {
@@ -464,36 +484,14 @@ static int sunxi_pcm_copy(struct snd_pcm_substream *substream, int channel,
 }
 
 /* For passthrough mode: using no_residue */
-snd_pcm_uframes_t sunxi_dmaengine_pcm_pointer(struct snd_pcm_substream *substream)
+snd_pcm_uframes_t sunxi_dmaengine_pcm_pointer(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream)
 {
 	if (raw_flag > 1)
 		return snd_dmaengine_pcm_pointer_no_residue(substream);
 	else
 		return snd_dmaengine_pcm_pointer(substream);
 }
-
-static struct snd_pcm_ops sunxi_pcm_ops = {
-	.open		= sunxi_pcm_open,
-	.close		= snd_dmaengine_pcm_close_release_chan,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= sunxi_pcm_hw_params,
-	.hw_free	= sunxi_pcm_hw_free,
-	.trigger	= sunxi_pcm_trigger,
-	.pointer	= snd_dmaengine_pcm_pointer,
-	.mmap		= sunxi_pcm_mmap,
-};
-
-static struct snd_pcm_ops sunxi_pcm_ops_no_residue = {
-	.open		= sunxi_pcm_open,
-	.close		= snd_dmaengine_pcm_close_release_chan,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= sunxi_pcm_hdmi_hw_params,
-	.hw_free	= sunxi_pcm_hdmi_hw_free,
-	.trigger	= sunxi_pcm_trigger,
-	.pointer	= sunxi_dmaengine_pcm_pointer,
-	.mmap		= sunxi_pcm_mmap,
-	.copy_user	= sunxi_pcm_copy,
-};
 
 static int sunxi_pcm_preallocate_stream_dma_buffer(struct snd_pcm *pcm,
 		int stream, size_t buffer_bytes_max)
@@ -553,7 +551,8 @@ static void sunxi_pcm_free_stream_dma_buffer(struct snd_pcm *pcm, int stream)
 	buf->area = NULL;
 }
 
-static void sunxi_pcm_free_dma_buffers(struct snd_pcm *pcm)
+static void sunxi_pcm_free_dma_buffers(struct snd_soc_component *component,
+		struct snd_pcm *pcm)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *buf;
@@ -574,7 +573,8 @@ static void sunxi_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	}
 }
 
-static int sunxi_pcm_new(struct snd_soc_pcm_runtime *rtd)
+static int sunxi_pcm_new(struct snd_soc_component *component,
+		struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
@@ -635,17 +635,32 @@ err_pcm_prealloc_playback_buffer:
 }
 
 static struct snd_soc_component_driver sunxi_soc_platform = {
+	.open		= sunxi_pcm_open,
+	.close		= sunxi_pcm_close,
+	.hw_params	= sunxi_pcm_hw_params,
+	.hw_free	= sunxi_pcm_hw_free,
+	.trigger	= sunxi_pcm_trigger,
+	.pointer	= sunxi_pcm_pointer,
+	.mmap		= sunxi_pcm_mmap,
+
 	.name		= SUNXI_DMAENGINE_PCM_DRV_NAME,
-	.ops		= &sunxi_pcm_ops,
-	.pcm_new	= sunxi_pcm_new,
-	.pcm_free	= sunxi_pcm_free_dma_buffers,
+	.pcm_construct	= sunxi_pcm_new,
+	.pcm_destruct	= sunxi_pcm_free_dma_buffers,
 };
 
 static const struct snd_soc_component_driver sunxi_soc_platform_no_residue = {
+	.open		= sunxi_pcm_open,
+	.close		= sunxi_pcm_close,
+	.hw_params	= sunxi_pcm_hdmi_hw_params,
+	.hw_free	= sunxi_pcm_hdmi_hw_free,
+	.trigger	= sunxi_pcm_trigger,
+	.pointer	= sunxi_dmaengine_pcm_pointer,
+	.mmap		= sunxi_pcm_mmap,
+	.copy_user	= sunxi_pcm_copy,
+
 	.name		= SUNXI_DMAENGINE_PCM_DRV_NAME,
-	.ops		= &sunxi_pcm_ops_no_residue,
-	.pcm_new	= sunxi_pcm_new,
-	.pcm_free	= sunxi_pcm_free_dma_buffers,
+	.pcm_construct	= sunxi_pcm_new,
+	.pcm_destruct	= sunxi_pcm_free_dma_buffers,
 };
 
 int asoc_dma_platform_register(struct device *dev, unsigned int flags)

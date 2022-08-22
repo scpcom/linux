@@ -520,9 +520,9 @@ static int sunxi_dmic_probe(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_dmic_suspend(struct snd_soc_dai *cpu_dai)
+static int sunxi_dmic_suspend(struct snd_soc_component *component)
 {
-	struct sunxi_dmic_info *sunxi_dmic = snd_soc_dai_get_drvdata(cpu_dai);
+	struct sunxi_dmic_info *sunxi_dmic = snd_soc_component_get_drvdata(component);
 	struct sunxi_dmic_dts_info *dts_info = NULL;
 	struct sunxi_dmic_clk_info *clk_info = NULL;
 	struct sunxi_dmic_pinctl_info *pin_info = NULL;
@@ -531,7 +531,7 @@ static int sunxi_dmic_suspend(struct snd_soc_dai *cpu_dai)
 	pr_alert("[DMIC]Enter %s\n", __func__);
 
 	if (IS_ERR_OR_NULL(sunxi_dmic)) {
-		dev_err(cpu_dai->dev, "sunxi_dmic is NULL!\n");
+		dev_err(component->dev, "sunxi_dmic is NULL!\n");
 		return -ENOMEM;
 	}
 
@@ -541,7 +541,7 @@ static int sunxi_dmic_suspend(struct snd_soc_dai *cpu_dai)
 
 	ret = pinctrl_select_state(pin_info->pinctrl, pin_info->pinstate_sleep);
 	if (ret != 0) {
-		dev_err(cpu_dai->dev, "[dmic] select pin sleep state failed\n");
+		dev_err(component->dev, "[dmic] select pin sleep state failed\n");
 		goto err_suspend_pinctl_select;
 	}
 
@@ -558,9 +558,9 @@ err_suspend_pinctl_select:
 	return ret;
 }
 
-static int sunxi_dmic_resume(struct snd_soc_dai *cpu_dai)
+static int sunxi_dmic_resume(struct snd_soc_component *component)
 {
-	struct sunxi_dmic_info *sunxi_dmic = snd_soc_dai_get_drvdata(cpu_dai);
+	struct sunxi_dmic_info *sunxi_dmic = snd_soc_component_get_drvdata(component);
 	struct sunxi_dmic_mem_info *mem_info = NULL;
 	struct sunxi_dmic_clk_info *clk_info = NULL;
 	struct sunxi_dmic_pinctl_info *pin_info = NULL;
@@ -569,7 +569,7 @@ static int sunxi_dmic_resume(struct snd_soc_dai *cpu_dai)
 	pr_alert("[DMIC]Enter %s\n", __func__);
 
 	if (IS_ERR_OR_NULL(sunxi_dmic)) {
-		dev_err(cpu_dai->dev, "sunxi_dmic is NULL!\n");
+		dev_err(component->dev, "sunxi_dmic is NULL!\n");
 		return -ENOMEM;
 	}
 
@@ -591,14 +591,14 @@ static int sunxi_dmic_resume(struct snd_soc_dai *cpu_dai)
 		goto err_resume_clk_enable_pll;
 	}
 	if (clk_prepare_enable(clk_info->clk_module)) {
-		dev_err(cpu_dai->dev, "enable clk_info->clk_module failed!\n");
+		dev_err(component->dev, "enable clk_info->clk_module failed!\n");
 		ret = -EBUSY;
 		goto err_resume_clk_enable_module;
 	}
 
 	ret = pinctrl_select_state(pin_info->pinctrl, pin_info->pinstate);
 	if (ret != 0) {
-		dev_err(cpu_dai->dev, "select pinstate failed!\n");
+		dev_err(component->dev, "select pinstate failed!\n");
 		goto err_resume_pinctl_select;
 	}
 
@@ -649,8 +649,6 @@ static struct snd_soc_dai_ops sunxi_dmic_dai_ops = {
 
 static struct snd_soc_dai_driver sunxi_dmic_dai = {
 	.probe = sunxi_dmic_probe,
-	.suspend = sunxi_dmic_suspend,
-	.resume = sunxi_dmic_resume,
 	.capture = {
 		.channels_min = 1,
 		.channels_max = 8,
@@ -662,6 +660,8 @@ static struct snd_soc_dai_driver sunxi_dmic_dai = {
 
 static const struct snd_soc_component_driver sunxi_dmic_component = {
 	.name = DRV_NAME,
+	.suspend = sunxi_dmic_suspend,
+	.resume = sunxi_dmic_resume,
 };
 
 /*****************************************************************************/

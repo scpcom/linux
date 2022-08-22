@@ -1328,9 +1328,9 @@ static int sunxi_daudio_remove(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_daudio_suspend(struct snd_soc_dai *dai)
+static int sunxi_daudio_suspend(struct snd_soc_component *component)
 {
-	struct sunxi_daudio_info *sunxi_daudio = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_daudio_info *sunxi_daudio = snd_soc_component_get_drvdata(component);
 	struct sunxi_daudio_mem_info *mem_info = &sunxi_daudio->mem_info;
 	struct sunxi_daudio_clk_info *clk_info = &sunxi_daudio->clk_info;
 	struct sunxi_daudio_pinctl_info *pin_info = &sunxi_daudio->pin_info;
@@ -1386,9 +1386,9 @@ static int sunxi_daudio_suspend(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_daudio_resume(struct snd_soc_dai *dai)
+static int sunxi_daudio_resume(struct snd_soc_component *component)
 {
-	struct sunxi_daudio_info *sunxi_daudio = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_daudio_info *sunxi_daudio = snd_soc_component_get_drvdata(component);
 	struct sunxi_daudio_mem_info *mem_info = &sunxi_daudio->mem_info;
 	struct sunxi_daudio_clk_info *clk_info = &sunxi_daudio->clk_info;
 	struct sunxi_daudio_pinctl_info *pin_info = &sunxi_daudio->pin_info;
@@ -1515,8 +1515,6 @@ static struct snd_soc_dai_ops sunxi_daudio_dai_ops = {
 
 static struct snd_soc_dai_driver sunxi_daudio_dai = {
 	.probe = sunxi_daudio_probe,
-	.suspend = sunxi_daudio_suspend,
-	.resume = sunxi_daudio_resume,
 	.remove = sunxi_daudio_remove,
 	.playback = {
 		.channels_min = 1,
@@ -1543,6 +1541,8 @@ static const struct snd_soc_component_driver sunxi_daudio_component = {
 	.name		= DRV_NAME,
 	.controls	= sunxi_daudio_controls,
 	.num_controls	= ARRAY_SIZE(sunxi_daudio_controls),
+	.suspend = sunxi_daudio_suspend,
+	.resume = sunxi_daudio_resume,
 };
 
 static const struct of_device_id sunxi_daudio_of_match[] = {

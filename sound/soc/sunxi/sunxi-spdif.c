@@ -860,9 +860,9 @@ static int sunxi_spdif_remove(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_spdif_suspend(struct snd_soc_dai *dai)
+static int sunxi_spdif_suspend(struct snd_soc_component *component)
 {
-	struct sunxi_spdif_info *sunxi_spdif = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_spdif_info *sunxi_spdif = snd_soc_component_get_drvdata(component);
 	struct sunxi_spdif_mem_info *mem_info = &sunxi_spdif->mem_info;
 	struct sunxi_spdif_clk_info *clk_info = &sunxi_spdif->clk_info;
 	struct sunxi_spdif_pinctl_info *pin_info = &sunxi_spdif->pin_info;
@@ -886,9 +886,9 @@ static int sunxi_spdif_suspend(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_spdif_resume(struct snd_soc_dai *dai)
+static int sunxi_spdif_resume(struct snd_soc_component *component)
 {
-	struct sunxi_spdif_info *sunxi_spdif = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_spdif_info *sunxi_spdif = snd_soc_component_get_drvdata(component);
 	struct sunxi_spdif_mem_info *mem_info = &sunxi_spdif->mem_info;
 	struct sunxi_spdif_clk_info *clk_info = &sunxi_spdif->clk_info;
 	struct sunxi_spdif_pinctl_info *pin_info = &sunxi_spdif->pin_info;
@@ -926,8 +926,6 @@ static struct snd_soc_dai_ops sunxi_spdif_dai_ops = {
 
 static struct snd_soc_dai_driver sunxi_spdif_dai = {
 	.probe		= sunxi_spdif_probe,
-	.suspend	= sunxi_spdif_suspend,
-	.resume		= sunxi_spdif_resume,
 	.remove		= sunxi_spdif_remove,
 	.playback = {
 		.channels_min = 1,
@@ -1167,6 +1165,8 @@ static const struct snd_soc_component_driver sunxi_spdif_component = {
 	.probe		= sunxi_spdif_component_probe,
 	.controls	= sunxi_spdif_controls,
 	.num_controls	= ARRAY_SIZE(sunxi_spdif_controls),
+	.suspend	= sunxi_spdif_suspend,
+	.resume		= sunxi_spdif_resume,
 };
 
 /*****************************************************************************/

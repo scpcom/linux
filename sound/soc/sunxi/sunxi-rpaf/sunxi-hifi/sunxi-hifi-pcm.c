@@ -97,7 +97,8 @@ int sunxi_dma_params_free_dma_area(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(sunxi_dma_params_free_dma_area);
 
-static int sunxi_hifi_pcm_hw_params(struct snd_pcm_substream *substream,
+static int sunxi_hifi_pcm_hw_params(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -108,7 +109,8 @@ static int sunxi_hifi_pcm_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int sunxi_hifi_pcm_hw_free(struct snd_pcm_substream *substream)
+static int sunxi_hifi_pcm_hw_free(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct device *dev = rtd->dev;
@@ -118,7 +120,8 @@ static int sunxi_hifi_pcm_hw_free(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int sunxi_hifi_pcm_prepare_and_submit(struct snd_pcm_substream *substream)
+static int sunxi_hifi_pcm_prepare_and_submit(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream)
 {
 	struct dmaengine_pcm_runtime_data *prtd = substream->runtime->private_data;
 
@@ -127,13 +130,14 @@ static int sunxi_hifi_pcm_prepare_and_submit(struct snd_pcm_substream *substream
 	return 0;
 }
 
-static int sunxi_hifi_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+static int sunxi_hifi_pcm_trigger(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream, int cmd)
 {
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		sunxi_hifi_pcm_prepare_and_submit(substream);
+		sunxi_hifi_pcm_prepare_and_submit(component, substream);
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -148,7 +152,8 @@ static const char * const dmaengine_pcm_dma_channel_names[] = {
 		[SNDRV_PCM_STREAM_CAPTURE] = "rx",
 };
 
-static int sunxi_hifi_pcm_open(struct snd_pcm_substream *substream)
+static int sunxi_hifi_pcm_open(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream)
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -186,7 +191,8 @@ static int sunxi_hifi_pcm_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int sunxi_hifi_pcm_mmap(struct snd_pcm_substream *substream,
+static int sunxi_hifi_pcm_mmap(struct snd_soc_component *component,
+		struct snd_pcm_substream *substream,
 		struct vm_area_struct *vma)
 {
 	struct snd_pcm_runtime *runtime = NULL;
@@ -205,7 +211,8 @@ static int sunxi_hifi_pcm_mmap(struct snd_pcm_substream *substream,
 
 }
 
-static int sunxi_hifi_pcm_copy(struct snd_pcm_substream *substream, int a,
+static int sunxi_hifi_pcm_copy(struct snd_soc_component *component,
+	 struct snd_pcm_substream *substream, int a,
 	 snd_pcm_uframes_t hwoff, void __user *buf, snd_pcm_uframes_t frames)
 {
 	char *hwbuf;
@@ -230,7 +237,8 @@ static int sunxi_hifi_pcm_copy(struct snd_pcm_substream *substream, int a,
 	return 0;
 }
 
-static int sunxi_hifi_pcm_daudio_copy(struct snd_pcm_substream *substream, int a,
+static int sunxi_hifi_pcm_daudio_copy(struct snd_soc_component *component,
+	 struct snd_pcm_substream *substream, int a,
 	 snd_pcm_uframes_t hwoff, void __user *buf, snd_pcm_uframes_t frames)
 {
 	char *hwbuf;
@@ -263,17 +271,20 @@ static int sunxi_hifi_pcm_daudio_copy(struct snd_pcm_substream *substream, int a
 }
 
 /* 实际位置由dsp的更新 */
-static snd_pcm_uframes_t sunxi_hifi_pcm_pointer(struct snd_pcm_substream *substream)
+static snd_pcm_uframes_t sunxi_hifi_pcm_pointer(struct snd_soc_component *component,
+	 struct snd_pcm_substream *substream)
 {
 	return snd_dmaengine_pcm_pointer_no_residue(substream);
 }
 
-static int sunxi_hifi_pcm_prepare(struct snd_pcm_substream *substream)
+static int sunxi_hifi_pcm_prepare(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream)
 {
 	return 0;
 }
 
-static int sunxi_hifi_pcm_close(struct snd_pcm_substream *substream)
+static int sunxi_hifi_pcm_close(struct snd_soc_component *component,
+	struct snd_pcm_substream *substream)
 {
 	struct dmaengine_pcm_runtime_data *prtd = substream->runtime->private_data;
 
@@ -281,32 +292,6 @@ static int sunxi_hifi_pcm_close(struct snd_pcm_substream *substream)
 
 	return 0;
 }
-
-static struct snd_pcm_ops sunxi_hifi_pcm_ops = {
-	.open		= sunxi_hifi_pcm_open,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= sunxi_hifi_pcm_hw_params,
-	.prepare    = sunxi_hifi_pcm_prepare,
-	.trigger	= sunxi_hifi_pcm_trigger,
-	.pointer	= sunxi_hifi_pcm_pointer,
-	.mmap		= sunxi_hifi_pcm_mmap,
-	.copy_user	= sunxi_hifi_pcm_copy,
-	.hw_free	= sunxi_hifi_pcm_hw_free,
-	.close		= sunxi_hifi_pcm_close,
-};
-
-static struct snd_pcm_ops sunxi_hifi_pcm_ops_daudio = {
-	.open		= sunxi_hifi_pcm_open,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= sunxi_hifi_pcm_hw_params,
-	.prepare    = sunxi_hifi_pcm_prepare,
-	.trigger	= sunxi_hifi_pcm_trigger,
-	.pointer	= sunxi_hifi_pcm_pointer,
-	.mmap		= sunxi_hifi_pcm_mmap,
-	.copy_user	= sunxi_hifi_pcm_daudio_copy,
-	.hw_free	= sunxi_hifi_pcm_hw_free,
-	.close		= sunxi_hifi_pcm_close,
-};
 
 static int sunxi_hifi_pcm_preallocate_stream_dma_buffer(struct snd_pcm *pcm,
 			int stream, size_t buffer_bytes_max)
@@ -345,7 +330,8 @@ static int sunxi_hifi_pcm_preallocate_stream_dma_buffer(struct snd_pcm *pcm,
 	return 0;
 }
 
-static void sunxi_hifi_pcm_free_dma_buffers(struct snd_pcm *pcm)
+static void sunxi_hifi_pcm_free_dma_buffers(struct snd_soc_component *component,
+			struct snd_pcm *pcm)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *dma_buf;
@@ -366,7 +352,8 @@ static void sunxi_hifi_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	}
 }
 
-static int sunxi_hifi_pcm_new(struct snd_soc_pcm_runtime *rtd)
+static int sunxi_hifi_pcm_new(struct snd_soc_component *component,
+		struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
@@ -419,21 +406,58 @@ static int sunxi_hifi_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+static int sunxi_hifi_pcm_ioctl(struct snd_soc_component *component,
+		 struct snd_pcm_substream *substream,
+		 unsigned int cmd, void *arg)
+{
+	return snd_pcm_lib_ioctl(substream, cmd, arg);
+}
+
 static struct snd_soc_component_driver sunxi_hifi_soc_platform[SUNXI_HIFI_PCM_OPS_MAX] = {
 	[SUNXI_HIFI_PCM_OPS_CODEC] = {
-		.ops		= &sunxi_hifi_pcm_ops,
-		.pcm_new	= sunxi_hifi_pcm_new,
-		.pcm_free	= sunxi_hifi_pcm_free_dma_buffers,
+		.open		= sunxi_hifi_pcm_open,
+		.ioctl		= sunxi_hifi_pcm_ioctl,
+		.hw_params	= sunxi_hifi_pcm_hw_params,
+		.prepare    = sunxi_hifi_pcm_prepare,
+		.trigger	= sunxi_hifi_pcm_trigger,
+		.pointer	= sunxi_hifi_pcm_pointer,
+		.mmap		= sunxi_hifi_pcm_mmap,
+		.copy_user	= sunxi_hifi_pcm_copy,
+		.hw_free	= sunxi_hifi_pcm_hw_free,
+		.close		= sunxi_hifi_pcm_close,
+
+		.pcm_construct	= sunxi_hifi_pcm_new,
+		.pcm_destruct	= sunxi_hifi_pcm_free_dma_buffers,
 	},
 	[SUNXI_HIFI_PCM_OPS_DAUDIO] = {
-		.ops		= &sunxi_hifi_pcm_ops_daudio,
-		.pcm_new	= sunxi_hifi_pcm_new,
-		.pcm_free	= sunxi_hifi_pcm_free_dma_buffers,
+		.open		= sunxi_hifi_pcm_open,
+		.ioctl		= sunxi_hifi_pcm_ioctl,
+		.hw_params	= sunxi_hifi_pcm_hw_params,
+		.prepare    = sunxi_hifi_pcm_prepare,
+		.trigger	= sunxi_hifi_pcm_trigger,
+		.pointer	= sunxi_hifi_pcm_pointer,
+		.mmap		= sunxi_hifi_pcm_mmap,
+		.copy_user	= sunxi_hifi_pcm_daudio_copy,
+		.hw_free	= sunxi_hifi_pcm_hw_free,
+		.close		= sunxi_hifi_pcm_close,
+
+		.pcm_construct	= sunxi_hifi_pcm_new,
+		.pcm_destruct	= sunxi_hifi_pcm_free_dma_buffers,
 	},
 	[SUNXI_HIFI_PCM_OPS_DMIC] = {
-		.ops		= &sunxi_hifi_pcm_ops,
-		.pcm_new	= sunxi_hifi_pcm_new,
-		.pcm_free	= sunxi_hifi_pcm_free_dma_buffers,
+		.open		= sunxi_hifi_pcm_open,
+		.ioctl		= sunxi_hifi_pcm_ioctl,
+		.hw_params	= sunxi_hifi_pcm_hw_params,
+		.prepare    = sunxi_hifi_pcm_prepare,
+		.trigger	= sunxi_hifi_pcm_trigger,
+		.pointer	= sunxi_hifi_pcm_pointer,
+		.mmap		= sunxi_hifi_pcm_mmap,
+		.copy_user	= sunxi_hifi_pcm_copy,
+		.hw_free	= sunxi_hifi_pcm_hw_free,
+		.close		= sunxi_hifi_pcm_close,
+
+		.pcm_construct	= sunxi_hifi_pcm_new,
+		.pcm_destruct	= sunxi_hifi_pcm_free_dma_buffers,
 	},
 };
 
