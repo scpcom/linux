@@ -313,7 +313,7 @@ static void keep_alive_send(struct ieee80211_local *local, struct net_device *de
 
 static int
 keep_alive_cmp(void *priv,
-	struct list_head *a, struct list_head *b)
+	const struct list_head *a, const struct list_head *b)
 {
 	struct keepalivenode *ap = container_of(a, struct keepalivenode, list);
 	struct keepalivenode *bp = container_of(b, struct keepalivenode, list);
