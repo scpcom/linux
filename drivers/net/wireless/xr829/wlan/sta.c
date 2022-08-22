@@ -1551,7 +1551,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 	int if_id = priv->if_id;
 	int suspend_lock_state;
 #ifdef	TES_P2P_0002_ROC_RESTART
-	struct timeval TES_P2P_0002_tmval;
+	struct timespec64 TES_P2P_0002_tmval;
 #endif
 	sta_printk(XRADIO_DBG_TRC, "%s\n", __func__);
 
@@ -1559,7 +1559,7 @@ int xradio_remain_on_channel(struct ieee80211_hw *hw,
 	xr_do_gettimeofday(&TES_P2P_0002_tmval);
 	TES_P2P_0002_roc_dur = (s32) duration;
 	TES_P2P_0002_roc_sec = (s32) TES_P2P_0002_tmval.tv_sec;
-	TES_P2P_0002_roc_usec = (s32) TES_P2P_0002_tmval.tv_usec;
+	TES_P2P_0002_roc_usec = (s32) (TES_P2P_0002_tmval.tv_nsec / 1000);
 #endif
 
 	suspend_lock_state = atomic_cmpxchg(&hw_priv->suspend_lock_state,

@@ -503,8 +503,8 @@ int HIF_R_W_TEST(struct xradio_common *hw_priv)
 {
 	int time;
 	int i;
-	struct timeval start;   //linux5.4 commit 33e26418193f58d1895f2f968e1953b1caf8deb7
-	struct timeval end;
+	struct timespec64 start;   //linux5.4 commit 33e26418193f58d1895f2f968e1953b1caf8deb7
+	struct timespec64 end;
 	unsigned int addr;
 	char *write_buf;
 	char *read_buf;
@@ -553,7 +553,7 @@ int HIF_R_W_TEST(struct xradio_common *hw_priv)
 
 	printk(KERN_ERR"[HIF test] --- <read> --- end~~\n");
 	xr_do_gettimeofday(&end);
-	time = 1000 * (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000;
+	time = 1000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000;
 	kfree(write_buf);
 	kfree(read_buf);
 	return 0;

@@ -56,13 +56,13 @@ enum xradio_bh_pm_state {
 typedef int (*xradio_wsm_handler) (struct xradio_common *hw_priv, u8 *data,
 				   size_t size);
 
-static inline u32 bh_time_interval(struct timeval *oldtime)
+static inline u32 bh_time_interval(struct timespec64 *oldtime)
 {
 	u32 time_int;
-	struct timeval newtime;
+	struct timespec64 newtime;
 	xr_do_gettimeofday(&newtime);
 	time_int = (newtime.tv_sec - oldtime->tv_sec) * 1000000 + \
-			   (long)(newtime.tv_usec - oldtime->tv_usec);
+			   (long)((newtime.tv_nsec - oldtime->tv_nsec) / 1000);
 	return time_int;
 }
 
@@ -266,7 +266,7 @@ void xradio_proc_wakeup(struct xradio_common *hw_priv)
 }
 
 #if PERF_INFO_TEST
-struct timeval proc_start_time;
+struct timespec64 proc_start_time;
 #endif
 
 #if BH_PROC_DPA
@@ -662,7 +662,7 @@ static inline int xradio_bh_get(struct xradio_common *hw_priv, u8 **data,
 #endif
 
 #if PERF_INFO_TEST
-struct timeval bh_put_time;
+struct timespec64 bh_put_time;
 #endif
 
 static inline int xradio_bh_put(struct xradio_common *hw_priv,
@@ -1151,7 +1151,7 @@ static inline int xradio_device_sleep(struct xradio_common *hw_priv)
 	return ret;
 }
 
-struct timeval wakeup_time;
+struct timespec64 wakeup_time;
 static int xradio_device_wakeup(struct xradio_common *hw_priv, u16 *ctrl_reg_ptr)
 {
 	int ret = 0;
@@ -1232,13 +1232,13 @@ void xradio_enable_powersave(struct xradio_vif *priv, bool enable)
 }
 
 #if PERF_INFO_TEST
-struct timeval tx_start_time1;
-struct timeval tx_start_time2;
-struct timeval rx_start_time1;
-struct timeval rx_start_time2;
-struct timeval bh_start_time;
-struct timeval sdio_reg_time;
-extern struct timeval last_showtime;
+struct timespec64 tx_start_time1;
+struct timespec64 tx_start_time2;
+struct timespec64 rx_start_time1;
+struct timespec64 rx_start_time2;
+struct timespec64 bh_start_time;
+struct timespec64 sdio_reg_time;
+extern struct timespec64 last_showtime;
 #endif
 
 u32  sdio_reg_cnt1;
