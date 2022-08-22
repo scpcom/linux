@@ -2758,73 +2758,57 @@ int xradio_host_dbg_init(void)
 	if (!debugfs_host)
 		ERR_LINE;
 
-	if (!debugfs_create_x8("dbg_common", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_common))
-		ERR_LINE;
+	debugfs_create_x8("dbg_common", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_common);
 
-	if (!debugfs_create_x8("dbg_sbus", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_sbus))
-		ERR_LINE;
+	debugfs_create_x8("dbg_sbus", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_sbus);
 
-	if (!debugfs_create_x8("dbg_ap", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_ap))
-		ERR_LINE;
+	debugfs_create_x8("dbg_ap", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_ap);
 
-	if (!debugfs_create_x8("dbg_sta", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_sta))
-		ERR_LINE;
+	debugfs_create_x8("dbg_sta", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_sta);
 
-	if (!debugfs_create_x8("dbg_scan", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_scan))
-		ERR_LINE;
+	debugfs_create_x8("dbg_scan", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_scan);
 
-	if (!debugfs_create_x8("dbg_bh", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_bh))
-		ERR_LINE;
+	debugfs_create_x8("dbg_bh", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_bh);
 
-	if (!debugfs_create_x8("dbg_txrx", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_txrx))
-		ERR_LINE;
+	debugfs_create_x8("dbg_txrx", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_txrx);
 
-	if (!debugfs_create_x8("dbg_wsm", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_wsm))
-		ERR_LINE;
+	debugfs_create_x8("dbg_wsm", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_wsm);
 
-	if (!debugfs_create_x8("dbg_pm", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_pm))
-		ERR_LINE;
+	debugfs_create_x8("dbg_pm", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_pm);
 
 #ifdef CONFIG_XRADIO_ITP
-	if (!debugfs_create_x8("dbg_itp", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_itp))
-		ERR_LINE;
+	debugfs_create_x8("dbg_itp", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_itp);
 #endif
 
 #ifdef CONFIG_XRADIO_ETF
-	if (!debugfs_create_x8("dbg_etf", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_etf))
-		ERR_LINE;
+	debugfs_create_x8("dbg_etf", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_etf);
 #endif
 
-	if (!debugfs_create_x8("dbg_logfile", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_logfile))
-		ERR_LINE;
+	debugfs_create_x8("dbg_logfile", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_logfile);
 
-	if (!debugfs_create_x8("dbg_tpa_node", S_IRUSR | S_IWUSR,
-				   debugfs_host, &tpa_node_dbg))
-		ERR_LINE;
+	debugfs_create_x8("dbg_tpa_node", S_IRUSR | S_IWUSR,
+				   debugfs_host, &tpa_node_dbg);
 
-	if (!debugfs_create_u32("set_sdio_clk", S_IRUSR | S_IWUSR,
-				   debugfs_host, &dbg_sdio_clk))
-		ERR_LINE;
+	debugfs_create_u32("set_sdio_clk", S_IRUSR | S_IWUSR,
+				   debugfs_host, &dbg_sdio_clk);
 
-	if (!debugfs_create_u32("tx_burst_limit", S_IRUSR | S_IWUSR,
-				   debugfs_host, &tx_burst_limit))
-		ERR_LINE;
+	debugfs_create_u32("tx_burst_limit", S_IRUSR | S_IWUSR,
+				   debugfs_host, &tx_burst_limit);
 
-	if (!debugfs_create_x8("rate_sgi", S_IRUSR | S_IWUSR,
-				   debugfs_host, &rate_sgi))
-		ERR_LINE;
+	debugfs_create_x8("rate_sgi", S_IRUSR | S_IWUSR,
+				   debugfs_host, &rate_sgi);
 
 
 	return 0;
