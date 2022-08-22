@@ -2917,22 +2917,42 @@ static int ieee80211_mgmt_tx_cancel_wait(struct wiphy *wiphy,
 	return ieee80211_cancel_roc(local, cookie, true);
 }
 
-static void ieee80211_mgmt_frame_register(struct wiphy *wiphy,
+static void ieee80211_mgmt_frame_registrations(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
-					  u16 frame_type, bool reg)
+					  struct mgmt_frame_regs *upd)
 {
 	struct ieee80211_local *local = wiphy_priv(wiphy);
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
+	u32 preq_mask = BIT(IEEE80211_STYPE_PROBE_REQ >> 4);
+	u32 action_mask = BIT(IEEE80211_STYPE_ACTION >> 4);
+	bool global_change, intf_change;
 
-	if (frame_type != (IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_REQ))
+	global_change =
+		(local->probe_req_reg != !!(upd->global_stypes & preq_mask)) ||
+		(local->rx_mcast_action_reg !=
+		 !!(upd->global_mcast_stypes & action_mask));
+	local->probe_req_reg = upd->global_stypes & preq_mask;
+	local->rx_mcast_action_reg = upd->global_mcast_stypes & action_mask;
+
+	intf_change = (sdata->vif.probe_req_reg !=
+		       !!(upd->interface_stypes & preq_mask)) ||
+		(sdata->vif.rx_mcast_action_reg !=
+		 !!(upd->interface_mcast_stypes & action_mask));
+	sdata->vif.probe_req_reg = upd->interface_stypes & preq_mask;
+	sdata->vif.rx_mcast_action_reg =
+		upd->interface_mcast_stypes & action_mask;
+
+	if (!local->open_count)
 		return;
 
-	if (reg)
-		sdata->req_filt_flags |= FIF_PROBE_REQ;
-	else
-		sdata->req_filt_flags &= ~FIF_PROBE_REQ;
+	if (intf_change && ieee80211_sdata_running(sdata))
+		drv_config_iface_filter(local, sdata,
+					sdata->vif.probe_req_reg ?
+						FIF_PROBE_REQ : 0,
+					FIF_PROBE_REQ);
 
-	xr_mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
+	if (global_change)
+		xr_mac80211_queue_work(&local->hw, &sdata->reconfig_filter);
 }
 
 static int ieee80211_set_antenna(struct wiphy *wiphy, u32 tx_ant, u32 rx_ant)
@@ -3415,7 +3435,7 @@ struct cfg80211_ops xrmac_config_ops = {
 	.set_cqm_beacon_miss_config = ieee80211_set_cqm_beacon_miss_config,
 	.set_cqm_tx_fail_config = ieee80211_set_cqm_tx_fail_config,
 	*/
-	.mgmt_frame_register = ieee80211_mgmt_frame_register,
+	.update_mgmt_frame_registrations = ieee80211_mgmt_frame_registrations,
 	.set_antenna = ieee80211_set_antenna,
 	.get_antenna = ieee80211_get_antenna,
 	.set_rekey_data = ieee80211_set_rekey_data,
