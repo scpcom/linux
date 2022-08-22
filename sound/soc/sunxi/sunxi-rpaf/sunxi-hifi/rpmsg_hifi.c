@@ -692,7 +692,7 @@ int sunxi_hifi_cpudai_substream_block_send(unsigned int hifi_id,
 
 	if (IS_ERR_OR_NULL(dai)) {
 		rtd = substream->private_data;
-		cpu_dai = rtd->cpu_dai;
+		cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 		sunxi_cpudai = snd_soc_dai_get_drvdata(cpu_dai);
 	} else {
 		cpu_dai = dai;
@@ -868,7 +868,7 @@ int sunxi_hifi_daudio_substream_block_send(unsigned int hifi_id,
 
 	if (IS_ERR_OR_NULL(dai)) {
 		rtd = substream->private_data;
-		cpu_dai = rtd->cpu_dai;
+		cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 		sunxi_daudio = snd_soc_dai_get_drvdata(cpu_dai);
 	} else {
 		cpu_dai = dai;
@@ -1057,7 +1057,7 @@ int sunxi_hifi_dmic_substream_block_send(unsigned int hifi_id,
 
 	if (IS_ERR_OR_NULL(dai)) {
 		rtd = substream->private_data;
-		cpu_dai = rtd->cpu_dai;
+		cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 		sunxi_dmic = snd_soc_dai_get_drvdata(cpu_dai);
 	} else {
 		cpu_dai = dai;

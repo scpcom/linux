@@ -161,7 +161,7 @@ static int sunxi_hifi_pcm_open(struct snd_soc_component *component,
 	struct device *dev = rtd->dev;
 	struct sunxi_dma_params *dma_params = NULL;
 
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 	if (IS_ERR_OR_NULL(dma_params)) {
 		dev_err(dev, "dma_params is null.\n");
 		return -EFAULT;
@@ -359,7 +359,7 @@ static int sunxi_hifi_pcm_new(struct snd_soc_component *component,
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 	struct snd_pcm *pcm = rtd->pcm;
 	struct device *dev = rtd->dev;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	struct sunxi_dma_params *playback_dma_data = cpu_dai->playback_dma_data;
 	struct sunxi_dma_params *capture_dma_data = cpu_dai->capture_dma_data;
 	size_t capture_cma_bytes = SUNXI_AUDIO_CMA_BLOCK_BYTES;

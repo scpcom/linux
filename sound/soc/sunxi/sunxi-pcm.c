@@ -213,7 +213,7 @@ static int sunxi_pcm_hw_params(struct snd_soc_component *component,
 	struct dma_slave_config slave_config;
 	int ret;
 
-	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dmap = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params,
 			&slave_config);
@@ -260,7 +260,7 @@ static int sunxi_pcm_hdmi_hw_params(struct snd_soc_component *component,
 	//TODO:adapt hdmi mode
 	raw_flag = sndhdmi_priv->hdmi_format;
 	pr_info("raw_flag value is %u\n", raw_flag);
-	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dmap = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params,
 			&slave_config);
@@ -401,7 +401,7 @@ static int sunxi_pcm_open(struct snd_soc_component *component,
 	struct sunxi_dma_params *dma_params = NULL;
 	struct dma_chan *chan;
 
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 	/* Set HW params now that initialization is complete */
 	sunxi_pcm_hardware.buffer_bytes_max = dma_params->cma_kbytes *
 		SUNXI_AUDIO_CMA_BLOCK_BYTES;
@@ -580,7 +580,7 @@ static int sunxi_pcm_new(struct snd_soc_component *component,
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 	struct snd_pcm *pcm = rtd->pcm;
 	struct device *dev = rtd->dev;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	struct sunxi_dma_params *playback_dma_data = cpu_dai->playback_dma_data;
 	struct sunxi_dma_params *capture_dma_data = cpu_dai->capture_dma_data;
 	size_t capture_cma_bytes = SUNXI_AUDIO_CMA_BLOCK_BYTES;
