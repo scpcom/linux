@@ -4860,7 +4860,7 @@ CONFIG_RPMSG_VIRTIO=y
 # Qualcomm SoC drivers
 # end of Qualcomm SoC drivers
 #
-# CONFIG_SUNXI_SRAM is not set
+CONFIG_SUNXI_SRAM=y
 CONFIG_SUNXI_SID=y
 CONFIG_SUNXI_RISCV_SUSPEND=y
 # CONFIG_SOC_TI is not set
