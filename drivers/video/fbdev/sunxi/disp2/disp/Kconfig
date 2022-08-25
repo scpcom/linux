@@ -1,76 +1,76 @@
 config DISP2_SUNXI_SUPPORT_LCD
 	bool "Support LCD"
 	default y
-	---help---
+	help
 		If you want to support LCD, select it.
 
 config DISP2_SUNXI_SUPPORT_DSI
 	bool "Support DSI"
 	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
-	---help---
+	help
 		If you want to support DSI, select it.
 
 config DISP2_SUNXI_SUPPORT_LVDS
 	bool "Support LVDS"
 	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
-	---help---
+	help
 		If you want to support LVDS, select it.
 
 config DISP2_SUNXI_SUPPORT_HDMI
 	bool "Support HDMI"
 	default y
-	---help---
+	help
 		If you want to support HDMI, select it.
 
 config DISP2_SUNXI_SUPPORT_TV
 	bool "Support TV"
 	default y
-	---help---
+	help
 		If you want to support TV, select it.
 
 config DISP2_SUNXI_SUPPORT_VDEVICE
 	bool "Support VDEVICE"
 	depends on DISP2_SUNXI_SUPPORT_LCD
 	default y
-	---help---
+	help
 		If you want to support VDEVICE, select it.
 
 config DISP2_SUNXI_SUPPORT_VGA
 	bool "Support VGA"
 	default y
-	---help---
+	help
 		If you want to support VGA, select it.
 
 config DISP2_SUNXI_SUPPORT_EDP
 	bool "Support EDP"
 	default y
-	---help---
+	help
 		If you want to support EDP, select it.
 
 config DISP2_SUNXI_SUPPORT_RTWB
 	bool "Support RTWB"
 	default y
-	---help---
+	help
 		If you want to support RTWB, select it.
 
 config DISP2_SUNXI_SUPPORT_SMBL
 	bool "Support smart backlight"
 	default y
-	---help---
+	help
 		If you want to support smart backlight, select it.
 
 config DISP2_SUNXI_SUPPORT_ENAHNCE
 	bool "Support Video Enhance Process"
 	default y
-	---help---
+	help
 		If you want to support video enhance process, select it.
 
 config DISP2_SUNXI_SUPPORT_CAPTURE
 	bool "Support capture"
 	default y
-	---help---
+	help
 		If you want to support capture, select it.
 
 config DISP2_SUNXI_DEVICE_OFF_ON_RELEASE

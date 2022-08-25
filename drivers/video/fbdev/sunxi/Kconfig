@@ -11,7 +11,7 @@ config FB_CONSOLE_SUNXI
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	default n
-	---help---
+	help
 	  Frame buffer driver for sunxi based boards.
 
 config DISP2_SUNXI
@@ -19,7 +19,7 @@ config DISP2_SUNXI
 	depends on (ARCH_SUNXI)
 	default n
 	select DMA_SHARED_BUFFER
-	---help---
+	help
 	  Display driver for sunxi based boards.
 
 config DISP2_SUNXI_ION
@@ -27,7 +27,7 @@ config DISP2_SUNXI_ION
 	depends on (DISP2_SUNXI)
 	depends on ION
 	default n
-	---help---
+	help
 	  Enable DISP driver ION support.
 
 choice
@@ -37,19 +37,19 @@ choice
 config SUNXI_DISP2_FB_DISABLE_ROTATE
 	bool "Disable rotation"
 	depends on (DISP2_SUNXI)
-	---help---
+	help
 	  Do not use framebuffer rotation
 
 config SUNXI_DISP2_FB_ROTATION_SUPPORT
 	bool "Software rotation support"
 	depends on (DISP2_SUNXI)
-	---help---
+	help
 	  Framebuffer software rotation on the top of disp2.
 
 config SUNXI_DISP2_FB_HW_ROTATION_SUPPORT
 	bool "Hardware(G2D) rotation support"
 	depends on (DISP2_SUNXI && SUNXI_G2D)
-	---help---
+	help
 	  Framebuffer hardware(G2D) rotation on the top of disp2.
 
 endchoice
@@ -59,7 +59,7 @@ config SUNXI_DISP2_FB_DECOMPRESS_LZMA
 	depends on (DISP2_SUNXI)
 	default n
 	select DECOMPRESS_LZMA
-	---help---
+	help
 	  Show bootlogo from lzma file.
 
 config HDMI_DISP2_SUNXI
@@ -67,7 +67,7 @@ config HDMI_DISP2_SUNXI
 	depends on (DISP2_SUNXI)
 	depends on DISP2_SUNXI_SUPPORT_HDMI
 	default n
-	---help---
+	help
 	  Hdmi driver for sunxi based boards.
 
 menuconfig HDMI2_DISP2_SUNXI
@@ -75,7 +75,7 @@ menuconfig HDMI2_DISP2_SUNXI
   depends on (DISP2_SUNXI)
   depends on DISP2_SUNXI_SUPPORT_HDMI
   default n
-  ---help---
+  help
   Say Y here if you want to have support for HDMI2.0 controller
   on the sunxi based boards. The HDMI2.0 controller include edid,
   hdcp1.4,hdcp2.2,cec feature and is compatible with hdmi1.4,support
@@ -100,14 +100,14 @@ config HDMI_EP952_DISP2_SUNXI
 	depends on (DISP2_SUNXI)
 	depends on DISP2_SUNXI_SUPPORT_HDMI
 	default n
-	---help---
+	help
 	  Hdmi ep952 driver for sunxi based boards.
 
 menuconfig HDMI2_HDCP_SUNXI
   bool "HDMI2.0 HDCP"
   depends on (HDMI2_DISP2_SUNXI)
   default n
-  ---help---
+  help
   Say Y here if you want to handle the cec message by User Space.
   Say N here if you want to handle the cec message by Kernel.
   If unsure, say N.
@@ -116,7 +116,7 @@ config HDMI2_HDCP22_SUNXI
   bool "HDMI2.0 HDCP2.2"
   depends on (HDMI2_HDCP_SUNXI && HDMI2_DISP2_SUNXI)
   default n
-  ---help---
+  help
   Say Y here if you want to handle the cec message by User Space.
   Say N here if you want to handle the cec message by Kernel.
   If unsure, say N.
@@ -125,7 +125,7 @@ menuconfig HDMI2_CEC_SUNXI
   bool "HDMI2.0 CEC"
   depends on (HDMI2_DISP2_SUNXI)
   default n
-  ---help---
+  help
   Say Y here if you want to handle the cec message by User Space.
   Say N here if you want to handle the cec message by Kernel.
   If unsure, say N.
@@ -134,7 +134,7 @@ config HDMI2_CEC_USER
   bool "HDMI2.0 CEC handled by user space"
   depends on (HDMI2_CEC_SUNXI && HDMI2_DISP2_SUNXI)
   default n
-  ---help---
+  help
   Say Y here if you want to handle the cec message by User Space.
   Say N here if you want to handle the cec message by Kernel.
   If unsure, say N.
@@ -143,7 +143,7 @@ config HDMI2_FREQ_SPREAD_SPECTRUM
   bool "new frequency spread spectrum(hershey) of sunxi"
   depends on HDMI2_DISP2_SUNXI
   default n
-  ---help---
+  help
   Say Y here if you want to use new frequency spread spectrum(hershey) of sunxi.
   Say N here if you do NOT want to new frequency spread spectrum of sunxi.
   If unsure, say N
@@ -160,19 +160,19 @@ config TV_DISP2_SUNXI
 	 depends on (DISP2_SUNXI)
 	 depends on DISP2_SUNXI_SUPPORT_TV
 	 default n
-	 ---help---
+	 help
 	  TV driver for sunxi based boards.
 config VDPO_DISP2_SUNXI
 	 tristate "VDPO Driver Support(sunxi-disp2)"
 	 depends on (DISP2_SUNXI)
 	 default n
-	 ---help---
+	 help
 	  VDPO driver for sunxi based boards.
 config DISP2_TV_GM7121
 	tristate "GM7121 TV module Support(sunxi-disp2)"
  	depends on (DISP2_SUNXI && TV_DISP2_SUNXI)
 	default n
-	---help---
+	help
 	  TV GM7121 support for Allwinner platforms.
 
 config EDP_DISP2_SUNXI
@@ -180,7 +180,7 @@ config EDP_DISP2_SUNXI
 	depends on (DISP2_SUNXI)
 	depends on DISP2_SUNXI_SUPPORT_EDP
 	default n
-	---help---
+	help
       EDP 1.2 driver for sunxi. Embedded Display Port is
       a high speed display interface for embedded device.
       DisplayPort can be used to transmit audio and video
@@ -192,28 +192,28 @@ config DISP2_TV_AC200
 	depends on (DISP2_SUNXI && MFD_ACX00)
 	depends on DISP2_SUNXI_SUPPORT_TV
 	default n
-	---help---
+	help
 	  TV AC200 support for Allwinner platforms.
 
 config EINK_PANEL_USED
 	bool "Eink panel used"
 	depends on (DISP2_SUNXI && (ARCH_SUN8IW10 || ARCH_SUN8IW15))
 	default n
-	---help---
+	help
 	  EINK panel support for Allwinner platforms.
 
 config EINK200_SUNXI
 	tristate "Eink Driver Version 2.0 Support"
 	depends on (DISP2_SUNXI && ARCH_SUN50IW10)
 	default n
-	---help---
+	help
 	  EINK200 support for Allwinner platforms.
 
 config DISP2_SUNXI_BOOT_COLORBAR
 	bool "boot colorbar Support for disp driver(sunxi-disp2)"
 	depends on DISP2_SUNXI
 	default n
-	---help---
+	help
 	  If true, the framebuffer will be filled by specified data
 	  to display vertical colorbar.
 
@@ -221,7 +221,7 @@ config DISP2_SUNXI_DEBUG
 	bool "debugfs support for disp driver(sunxi-disp2)"
 	depends on DISP2_SUNXI
 	default n
-	---help---
+	help
 	  This enable debugfs support for display driver. You can
 	  get debug info or debug the driver via debugfs interface.
 
@@ -230,14 +230,14 @@ config DISP2_SUNXI_COMPOSER
 	depends on DISP2_SUNXI
 	select SYNC_FILE
 	default n
-	---help---
+	help
 	  This enable composer support for display driver. The composer
 	  will serve hwc only.
 config DISP2_LCD_ESD_DETECT
 	bool "ESD detect support for LCD panel"
 	depends on DISP2_SUNXI
 	default n
-	---help---
+	help
 	  This enable lcd  esd detect and panel reset for display driver. User must
 	  define panel_reset and esd_check function.
 
@@ -249,14 +249,14 @@ config LCD_FB
 	select FB_CFB_IMAGEBLIT
 	select BACKLIGHT_CLASS_DEVICE
 	default n
-	---help---
+	help
 	  Framebuffer implementaion for LCD panel without DE and tcon
 
 config LCD_FB_ENABLE_DEFERRED_IO
 	bool "Enable LCD_FB FB_DEFERRED_IO"
 	select FB_DEFERRED_IO
 	default n
-	---help---
+	help
 	  Enable linux framebuffer FB_DEFERRED_IO for LCD_FB
 
 menu "LCD panels select"
