@@ -16,6 +16,10 @@
 #include <asm/mmiowb.h>
 #include <asm/early_ioremap.h>
 
+#define ioremap_wc(addr, size)		ioremap_prot((addr), (size), _pgprot_writecombine(PAGE_KERNEL))
+#define ioremap_cache(addr, size)	ioremap_prot((addr), (size), pgprot_val(PAGE_KERNEL))
+#define ioremap_nocache(addr, size)	ioremap((addr), (size))
+
 /*
  * MMIO access functions are separated out to break dependency cycles
  * when using {read,write}* fns in low-level headers

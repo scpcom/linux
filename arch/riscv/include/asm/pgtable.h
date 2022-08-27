@@ -194,7 +194,7 @@ extern struct pt_alloc_ops pt_ops __meminitdata;
 
 #define PAGE_TABLE		__pgprot(_PAGE_TABLE)
 
-#define _PAGE_IOREMAP	((_PAGE_KERNEL & ~_PAGE_MTMASK) | _PAGE_IO)
+#define _PAGE_IOREMAP	_pgprot_noncached(PAGE_KERNEL)
 #define PAGE_KERNEL_IO		__pgprot(_PAGE_IOREMAP)
 
 extern pgd_t swapper_pg_dir[];
@@ -629,27 +629,27 @@ static inline pgprot_t pgprot_nx(pgprot_t _prot)
 	return __pgprot(pgprot_val(_prot) & ~_PAGE_EXEC);
 }
 
-#define pgprot_noncached pgprot_noncached
-static inline pgprot_t pgprot_noncached(pgprot_t _prot)
+static inline unsigned long _pgprot_noncached(pgprot_t _prot)
 {
 	unsigned long prot = pgprot_val(_prot);
 
 	prot &= ~_PAGE_MTMASK;
 	prot |= _PAGE_IO;
 
-	return __pgprot(prot);
+	return prot;
 }
+#define pgprot_noncached(prot) __pgprot(_pgprot_noncached(prot))
 
-#define pgprot_writecombine pgprot_writecombine
-static inline pgprot_t pgprot_writecombine(pgprot_t _prot)
+static inline unsigned long _pgprot_writecombine(pgprot_t _prot)
 {
 	unsigned long prot = pgprot_val(_prot);
 
 	prot &= ~_PAGE_MTMASK;
 	prot |= _PAGE_NOCACHE;
 
-	return __pgprot(prot);
+	return prot;
 }
+#define pgprot_writecombine(prot) __pgprot(_pgprot_writecombine(prot))
 
 /*
  * THP functions
