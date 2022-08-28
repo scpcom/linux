@@ -1054,8 +1054,12 @@ static s32 disp_mgr_clk_enable(struct disp_manager *mgr)
 	}
 
 	if (mgr->get_clk_rate && mgrp->clk) {
-		DE_INF("set DE rate to %u\n", mgr->get_clk_rate(mgr));
 		de_freq = mgr->get_clk_rate(mgr);
+		if (!de_freq) {
+			disp_mgr_clk_init(mgr);
+			de_freq = mgr->get_clk_rate(mgr);
+		}
+		DE_INF("set DE rate to %lu\n", de_freq);
 		clk_set_rate(mgrp->clk, de_freq);
 		if (de_freq != clk_get_rate(mgrp->clk)) {
 			if (mgrp->clk_parent)
