@@ -78,3 +78,9 @@ config DISP2_SUNXI_DEVICE_OFF_ON_RELEASE
 	default y
 	help
 		Select it to enable this feature.
+
+config DISP2_SUNXI_DMA_BUF
+	bool "Enable metadata dma buffer"
+	default n
+	help
+		Select it to enable this feature

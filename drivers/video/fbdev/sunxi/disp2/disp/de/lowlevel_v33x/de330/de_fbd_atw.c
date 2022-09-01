@@ -76,6 +76,7 @@ static void fbd_atw_set_rcq_head_dirty(
 	}
 }
 
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 static s32 de_fbd_get_info(struct afbc_header *hd,
 	struct de_fbd_info *info)
 {
@@ -209,10 +210,12 @@ static s32 de_fbd_get_info(struct afbc_header *hd,
 	}
 	return 0;
 }
+#endif
 
 static s32 de_fbd_v_apply_lay(u32 disp, u32 chn,
 	struct disp_layer_config_data **const pdata, u32 layer_num)
 {
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	struct de_rtmx_context *ctx = de_rtmx_get_context(disp);
 	struct de_chn_info *chn_info = ctx->chn_info + chn;
 	struct de_fbd_atw_private *priv = &(fbd_atw_priv[disp][chn]);
@@ -292,6 +295,10 @@ static s32 de_fbd_v_apply_lay(u32 disp, u32 chn,
 	priv->set_blk_dirty(priv, FBD_ATW_V_REG_BLK_FBD, 1);
 
 	return 0;
+#else
+	DE_WRN("[%s]:afbc_header is disabled!\n", __func__);
+	return -1;
+#endif
 }
 
 static s32 de_atw_v_apply_lay(u32 disp, u32 chn,

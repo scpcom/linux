@@ -308,9 +308,11 @@ struct disp_fb_info_inner {
 	unsigned int             metadata_size;
 	unsigned int             metadata_flag;
 	struct disp_lbc_info     lbc_info;
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	struct dma_buf           *metadata_dmabuf;
 	struct sunxi_metadata    *p_metadata;
 	struct afbc_header       *p_afbc_header;
+#endif
 };
 
 /**

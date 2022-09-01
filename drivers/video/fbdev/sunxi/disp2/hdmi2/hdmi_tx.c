@@ -1516,8 +1516,10 @@ static int hdmi_tx_init(struct platform_device *pdev)
 	disp_func.resume = hdmi_resume;
 	disp_func.set_static_config = set_static_config;
 	disp_func.get_static_config = get_static_config;
+#ifdef CONFIG_HDMI2_DISP2_SUNXI_DMA_BUF
 	disp_func.set_dynamic_config = set_dynamic_config;
 	disp_func.get_dynamic_config = get_dynamic_config;
+#endif
 
 #ifdef CONFIG_HDMI2_CEC_SUNXI
 #ifndef CONFIG_HDMI2_CEC_USER

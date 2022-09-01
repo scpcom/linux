@@ -267,7 +267,11 @@ s32 __disp_config2_transfer2inner(struct disp_layer_config_inner *config_inner,
 	config_inner->info.fb.depth = config2->info.fb.depth;
 	/* hdr related */
 	config_inner->info.fb.eotf = config2->info.fb.eotf;
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	config_inner->info.fb.fbd_en = config2->info.fb.fbd_en;
+#else
+	config_inner->info.fb.fbd_en = 0;
+#endif
 	config_inner->info.fb.lbc_en = config2->info.fb.lbc_en;
 	memcpy(&config_inner->info.fb.lbc_info,
 	       &config2->info.fb.lbc_info,
@@ -388,7 +392,11 @@ s32 __disp_inner_transfer2config2(struct disp_layer_config2 *config2,
 	config2->info.fb.depth = config_inner->info.fb.depth;
 	/* hdr related */
 	config2->info.fb.eotf = config_inner->info.fb.eotf;
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	config2->info.fb.fbd_en = config_inner->info.fb.fbd_en;
+#else
+	config2->info.fb.fbd_en = 0;
+#endif
 
 	config2->info.fb.lbc_en = config_inner->info.fb.lbc_en;
 	memcpy(&config2->info.fb.lbc_info,
@@ -1841,6 +1849,7 @@ static s32 disp_mgr_is_address_using(u32 layer_num, struct dmabuf_item *item,
 	return 0;
 }
 
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 static s32 disp_unmap_afbc_header(struct disp_fb_info_inner *fb)
 {
 	if ((fb->p_afbc_header == NULL)
@@ -1865,6 +1874,7 @@ static s32 disp_unmap_afbc_header(struct disp_fb_info_inner *fb)
 
 	return 0;
 }
+#endif
 
 static void disp_unmap_dmabuf(struct disp_manager *mgr, struct disp_manager_private_data *mgrp, unsigned int num_layers)
 {
@@ -1911,6 +1921,7 @@ static void disp_unmap_dmabuf(struct disp_manager *mgr, struct disp_manager_priv
 	kfree(lyr_addr);
 }
 
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 static s32 disp_map_afbc_header(struct disp_fb_info_inner *fb)
 {
 	int ret;
@@ -1948,6 +1959,7 @@ static s32 disp_map_afbc_header(struct disp_fb_info_inner *fb)
 
 	return 0;
 }
+#endif
 
 s32 disp_mgr_set_layer_config2(struct disp_manager *mgr,
 			  struct disp_layer_config2 *config,
@@ -2083,8 +2095,10 @@ s32 disp_mgr_set_layer_config2(struct disp_manager *mgr,
 				(unsigned int)fb.trd_right_addr[2];
 		disp_mgr_dmabuf_list_add(item, mgrp, ref);
 
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 		if (lyr_cfg->config.info.fb.fbd_en)
 			disp_map_afbc_header(&(lyr_cfg->config.info.fb));
+#endif
 
 		/* get dma_buf for right image buffer */
 		if (lyr_cfg->config.info.fb.flags == DISP_BF_STEREO_FP) {
@@ -2178,10 +2192,12 @@ s32 disp_mgr_set_layer_config2(struct disp_manager *mgr,
 			mgr->apply(mgr);
 
 		lyr_cfg = disp_mgr_get_layer_cfg_head(mgr);
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 		for (i = 0; i < num_layers; i++, lyr_cfg++)
 			if (lyr_cfg->config.info.fb.fbd_en)
 				disp_unmap_afbc_header(
 					&(lyr_cfg->config.info.fb));
+#endif
 
 		list_for_each_entry(lyr, &mgr->lyr_list, list) {
 			lyr->dirty_clear(lyr);
@@ -3263,8 +3279,10 @@ disp_mgr_set_rtwb_layer(struct disp_manager *mgr,
 				(unsigned int)fb.trd_right_addr[2];
 		disp_mgr_dmabuf_list_add(item, mgrp, ref);
 
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 		if (lyr_cfg->config.info.fb.fbd_en)
 			disp_map_afbc_header(&(lyr_cfg->config.info.fb));
+#endif
 
 		/* get dma_buf for right image buffer */
 		if (lyr_cfg->config.info.fb.flags == DISP_BF_STEREO_FP) {
@@ -3357,10 +3375,12 @@ disp_mgr_set_rtwb_layer(struct disp_manager *mgr,
 		mgr->apply(mgr);
 
 	lyr_cfg = disp_mgr_get_layer_cfg_head(mgr);
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	for (i = 0; i < num_layers; i++, lyr_cfg++)
 		if (lyr_cfg->config.info.fb.fbd_en)
 			disp_unmap_afbc_header(
 					       &(lyr_cfg->config.info.fb));
+#endif
 
 	list_for_each_entry(lyr, &mgr->lyr_list, list) {
 		lyr->dirty_clear(lyr);

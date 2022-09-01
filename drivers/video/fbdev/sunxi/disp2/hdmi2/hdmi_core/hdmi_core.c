@@ -694,6 +694,7 @@ s32 get_static_config(struct disp_device_config *config)
 	return 0;
 }
 
+#ifdef CONFIG_HDMI2_DISP2_SUNXI_DMA_BUF
 s32 set_dynamic_config(struct disp_device_dynamic_config *config)
 {
 	void *hdr_buff_addr;
@@ -801,6 +802,7 @@ s32 get_dynamic_config(struct disp_device_dynamic_config *config)
 	LOG_TRACE();
 	return 0;
 }
+#endif
 
 s32 hdmi_set_display_mode(u32 mode)
 {

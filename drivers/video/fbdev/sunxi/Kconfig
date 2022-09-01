@@ -148,6 +148,13 @@ config HDMI2_FREQ_SPREAD_SPECTRUM
   Say N here if you do NOT want to new frequency spread spectrum of sunxi.
   If unsure, say N
 
+config HDMI2_DISP2_SUNXI_DMA_BUF
+	bool "Enable HDMI2.0 metadata dma buffer"
+	depends on DISP2_SUNXI_DMA_BUF
+	default DISP2_SUNXI_DMA_BUF
+	help
+		Select it to enable this feature.
+
 config TV_DISP2_SUNXI
 	 tristate "TV Driver Support(sunxi-disp2)"
 	 depends on (DISP2_SUNXI)

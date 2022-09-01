@@ -368,10 +368,13 @@ int de_get_layer_config(struct disp_layer_config_data *data,
 {
 	unsigned char i, j, k;
 	int ret;
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 	struct sunxi_metadata *smtdt = NULL;
 	struct afbc_header *metadata = NULL;
+#endif
 
 	for (j = 0, k = 0; j < chn; j++) {
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 		/* add afbc1.0*/
 		if ((data[k].config.info.fb.fbd_en) &&
 		    (data[k].config.info.fb.metadata_flag & (0x1 << 4))) {
@@ -392,8 +395,13 @@ int de_get_layer_config(struct disp_layer_config_data *data,
 			cfg[k].left_crop = metadata->left_crop;
 			cfg[k].yuv_trans = metadata->yuv_transform;
 		}
+#endif
 		for (i = 0; i < layno;) {
+#ifdef CONFIG_DISP2_SUNXI_DMA_BUF
 			cfg[k].fbd_en = data[k].config.info.fb.fbd_en;
+#else
+			cfg[k].fbd_en = 0;
+#endif
 			cfg[k].en = data[k].config.enable;
 			if (cfg[k].fbd_en &&
 			    (data[k].config.info.fb.metadata_flag & 0x10)) {
