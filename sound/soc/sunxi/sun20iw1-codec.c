@@ -621,7 +621,7 @@ static int sunxi_codec_get_hub_mode(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	unsigned int reg_val;
 
-	reg_val = snd_soc_component_read32(component, SUNXI_DAC_DPC);
+	reg_val = snd_soc_component_read(component, SUNXI_DAC_DPC);
 
 	ucontrol->value.integer.value[0] =
 				((reg_val & (0x1 << DAC_HUB_EN)) ? 1 : 0);
@@ -666,7 +666,7 @@ static int sunxi_codec_get_adcswap1_mode(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	unsigned int reg_val;
 
-	reg_val = snd_soc_component_read32(component, SUNXI_ADC_DG);
+	reg_val = snd_soc_component_read(component, SUNXI_ADC_DG);
 
 	ucontrol->value.integer.value[0] =
 				((reg_val & (0x1 << AD_SWP1)) ? 1 : 0);
@@ -701,7 +701,7 @@ static int sunxi_codec_get_adcswap2_mode(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	unsigned int reg_val;
 
-	reg_val = snd_soc_component_read32(component, SUNXI_ADC_DG);
+	reg_val = snd_soc_component_read(component, SUNXI_ADC_DG);
 
 	ucontrol->value.integer.value[0] =
 				((reg_val & (0x1 << AD_SWP2)) ? 1 : 0);
@@ -838,7 +838,7 @@ static int sunxi_codec_headphone_event(struct snd_soc_dapm_widget *w,
 	 */
 	if (sunxi_get_soc_ver() & 0x7) {
 		/* if lineout playing, enable RMC_EN */
-		reg_val = snd_soc_component_read32(component, SUNXI_DAC_REG);
+		reg_val = snd_soc_component_read(component, SUNXI_DAC_REG);
 		if ((reg_val & (0x1 << LINEOUTLEN)) || (reg_val & (0x1 << LINEOUTREN)))
 			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
 					(0x1 << RMC_EN), (0x1 << RMC_EN));
@@ -896,7 +896,7 @@ static int sunxi_codec_lineout_event(struct snd_soc_dapm_widget *w,
 	 * the B chip SOC needs to enable RMC_EN when RD_EN disable (HPOUT no useing).
 	 */
 	if (sunxi_get_soc_ver() & 0x7) {
-		reg_val = snd_soc_component_read32(component, SUNXI_RAMP_REG);
+		reg_val = snd_soc_component_read(component, SUNXI_RAMP_REG);
 		if (!(reg_val & (0x1 << RD_EN)))
 			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
 					(0x1 << RMC_EN), (0x1 << RMC_EN));
@@ -927,7 +927,7 @@ static int sunxi_codec_lineout_event(struct snd_soc_dapm_widget *w,
 	 * the B chip SOC needs to disable RMC_EN when RD_EN disable and disable lineout.
 	 */
 	if (sunxi_get_soc_ver() & 0x7) {
-		reg_val = snd_soc_component_read32(component, SUNXI_RAMP_REG);
+		reg_val = snd_soc_component_read(component, SUNXI_RAMP_REG);
 		if (!(reg_val & (0x1 << RD_EN)))
 			snd_soc_component_update_bits(component, SUNXI_RAMP_REG,
 					(0x1 << RMC_EN), (0x0 << RMC_EN));
@@ -1172,11 +1172,11 @@ static int sunxi_codec_adc_mixer_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		if (hw_cfg->adcdrc_cfg & DAP_HP_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC1_REG);
+			adcctrl_val = snd_soc_component_read(component, SUNXI_ADC1_REG);
 			if ((adcctrl_val >> MIC1_PGA_EN) & 0x1)
 				adcdrc_enable(component, 1);
 		} else if (hw_cfg->adcdrc_cfg & DAP_SPK_EN) {
-			adcctrl_val = snd_soc_component_read32(component, SUNXI_ADC2_REG);
+			adcctrl_val = snd_soc_component_read(component, SUNXI_ADC2_REG);
 			if ((adcctrl_val >> MIC2_PGA_EN) & 0x1)
 				adcdrc_enable(component, 1);
 		}

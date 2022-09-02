@@ -99,7 +99,7 @@ static int sunxi_check_jack_type(struct snd_soc_jack *jack)
 						    struct sunxi_card_priv,
 						    jack);
 
-	reg_val = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+	reg_val = snd_soc_component_read(priv->component, SUNXI_HMIC_STS);
 	tempdata = (reg_val >> HMIC_DATA) & 0x1f;
 	priv->headset_basedata = tempdata;
 
@@ -194,7 +194,7 @@ static void sunxi_check_hs_detect_status(struct work_struct *work)
 
 		/* if SND_JACK_HEADSET,enable mic detect irq */
 		if (jack_type == SND_JACK_HEADSET) {
-			reg_val = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+			reg_val = snd_soc_component_read(priv->component, SUNXI_HMIC_STS);
 			priv->headset_basedata = (reg_val >> HMIC_DATA) & 0x1f;
 			if (priv->headset_basedata > 3)
 				priv->headset_basedata -= 3;
@@ -302,22 +302,22 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 		priv->jack_irq_times = OTHER_IRQ;
 	}
 
-	jack_state = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+	jack_state = snd_soc_component_read(priv->component, SUNXI_HMIC_STS);
 
 	/*
 	if (priv->detect_state != PLUG_IN) {
 		//when headphone half-insertion, MIC_DET IRQ will be trigger.
 		if (jack_state & (1 << MIC_DET_ST)) {
-			regval = snd_soc_component_read32(priv->component, SUNXI_HMIC_CTRL);
+			regval = snd_soc_component_read(priv->component, SUNXI_HMIC_CTRL);
 			regval &= ~(0x1 << MIC_DET_IRQ_EN);
 			snd_soc_component_write(priv->component, SUNXI_HMIC_CTRL, regval);
 
-			regval = snd_soc_component_read32(priv->component, SUNXI_MICBIAS_REG);
+			regval = snd_soc_component_read(priv->component, SUNXI_MICBIAS_REG);
 			regval &= ~(0x1 << MICADCEN);
 			snd_soc_component_write(priv->component, SUNXI_MICBIAS_REG, regval);
 
 			//clear mic detect status
-			regval = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+			regval = snd_soc_component_read(priv->component, SUNXI_HMIC_STS);
 			regval &= ~(0x1 << JACK_DET_IIN_ST);
 			regval &= ~(0x1 << JACK_DET_OUT_ST);
 			regval |= 0x1 << MIC_DET_ST;
@@ -365,7 +365,7 @@ static irqreturn_t jack_interrupt(int irq, void *dev_id)
 		if (abs(tv.tv_sec - priv->tv_headset_plugin.tv_sec) < 1)
 			return IRQ_HANDLED;
 
-		tempdata = snd_soc_component_read32(priv->component, SUNXI_HMIC_STS);
+		tempdata = snd_soc_component_read(priv->component, SUNXI_HMIC_STS);
 		tempdata = (tempdata & 0x1f00) >> 8;
 		LOG_ERR("KEY tempdata: %d", tempdata);
 
