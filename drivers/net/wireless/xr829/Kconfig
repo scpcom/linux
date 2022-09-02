@@ -5,5 +5,5 @@ config XR829_WLAN
 	select AVERAGE
 	select CRYPTO
 	select CRYPTO_ARC4
-	---help---
+	help
 	  To compile this code as a module, choose M here.

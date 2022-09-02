@@ -1,11 +1,11 @@
 config WLAN_UWE5621
 	tristate "UWE5621 Wi-Fi Driver"
-	---help---
+	help
 	  Sprd UWE5621 Wi-Fi Driver.
 
 config WLAN_UWE5622
 	tristate "UWE5622 Wi-Fi Driver"
-	---help---
+	help
 	  Sprd UWE5622 Wi-Fi Driver.
 
 config SPRDWL_NG
@@ -19,6 +19,6 @@ config SPRDWL_NG
 config UNISOC_WIFI_PS
 	bool "Unisoc Wi-Fi Power Save Support"
 	depends on WLAN_UWE5622
-        ---help---
+        help
           Sprd UWE5622 Wi-Fi Driver Power Save.
 

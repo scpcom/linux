@@ -11,7 +11,7 @@ config AIC_WLAN_RF_TEST
 choice
 	prompt "Enable Chip Interface"
 	depends on AIC_WLAN_SUPPORT
-	---help---
+	help
 		Enable Chip Interface.
 config AIC_INTF_SDIO
 		bool "SDIO interface support"
