@@ -104,6 +104,9 @@ struct rtw_wdev_priv {
 	ATOMIC_T switch_ch_to;
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+	u16 mgmt_frames_bitmask;
+#endif
 };
 
 #define wiphy_to_adapter(x) (*((_adapter**)wiphy_priv(x)))
