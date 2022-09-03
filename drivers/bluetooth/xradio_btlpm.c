@@ -548,39 +548,35 @@ static ssize_t bluedroid_write_proc_btwake(struct file *file, const char __user 
 }
 
 #ifdef XRADIO_ETF_RFKILL
-static const struct file_operations pwr_fops = {
-	.owner		= THIS_MODULE,
-	.open		= bluetooth_pwr_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= bluetooth_write_proc_pwr,
+static const struct proc_ops pwr_fops = {
+	.proc_open		= bluetooth_pwr_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+	.proc_write		= bluetooth_write_proc_pwr,
 };
 #endif
 
-static const struct file_operations lpm_fops = {
-	.owner		= THIS_MODULE,
-	.open		= bluedroid_lpm_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= bluedroid_write_proc_lpm,
+static const struct proc_ops lpm_fops = {
+	.proc_open		= bluedroid_lpm_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+	.proc_write		= bluedroid_write_proc_lpm,
 };
-static const struct file_operations btwrite_fops = {
-	.owner		= THIS_MODULE,
-	.open		= bluedroid_btwrite_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= bluedroid_write_proc_btwrite,
+static const struct proc_ops btwrite_fops = {
+	.proc_open		= bluedroid_btwrite_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+	.proc_write		= bluedroid_write_proc_btwrite,
 };
-static const struct file_operations btwake_fops = {
-	.owner		= THIS_MODULE,
-	.open		= bluedroid_btwake_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= bluedroid_write_proc_btwake,
+static const struct proc_ops btwake_fops = {
+	.proc_open		= bluedroid_btwake_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+	.proc_write		= bluedroid_write_proc_btwake,
 };
 
 static int assert_level = -1;
