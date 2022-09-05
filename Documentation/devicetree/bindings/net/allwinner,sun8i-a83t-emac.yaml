@@ -40,6 +40,9 @@ properties:
   clock-names:
     const: stmmaceth
 
+  resets: true
+  reset-names: true
+
   phy-supply:
     description: PHY regulator
 
@@ -48,6 +51,8 @@ properties:
     description:
       Phandle to the device containing the EMAC or GMAC clock
       register
+
+  mdio: true
 
 required:
   - compatible
