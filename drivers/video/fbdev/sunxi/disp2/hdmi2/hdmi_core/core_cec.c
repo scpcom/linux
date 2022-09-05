@@ -1251,7 +1251,10 @@ void hdmi_cec_exit(void)
 	cdev_del(cec_cdev);
 }
 #else
-void hdmi_cec_init(struct cec_init_para *init) {; }
+void hdmi_cec_init(struct cec_init_para *init)
+{
+	cec_set_base_addr(init->hdmi_base);
+}
 void hdmi_cec_exit(void) {; }
 #endif
 
