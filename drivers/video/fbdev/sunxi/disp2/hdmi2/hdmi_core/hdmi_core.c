@@ -160,6 +160,13 @@ u32 hdmi_core_get_hpd_state(void)
 	return core->dev_func.dev_hpd_status();
 }
 
+void hdmi_core_set_phy_reg_base(void)
+{
+	struct hdmi_tx_core *core = get_platform();
+
+	core->dev_func.set_phy_base_addr(hdmi_reg_base);
+}
+
 /**
  * @short Set PHY number
  * @param[in] core Main structure
@@ -228,6 +235,8 @@ static int _api_init(struct hdmi_tx_core *core)
 			&core->mode.pVideo,
 			&core->mode.pAudio,
 			&core->mode.pHdcp);
+
+	hdmi_core_set_phy_reg_base();
 	return 0;
 }
 

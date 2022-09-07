@@ -554,6 +554,13 @@ static void api_dvimode_enable(u8 enable)
 
 }
 
+static void api_set_phy_base(uintptr_t base)
+{
+#ifdef CONFIG_AW_PHY
+	phy_set_reg_base(base);
+#endif
+}
+
 void hdmitx_api_init(hdmi_tx_dev_t *dev,
 			videoParams_t *video,
 			audioParams_t *audio,
@@ -633,6 +640,7 @@ void hdmitx_api_init(hdmi_tx_dev_t *dev,
 	func.avmute_enable		      = api_avmute_enable;
 	func.phy_power_enable		  = api_phy_power_enable;
 	func.dvimode_enable			  = api_dvimode_enable;
+	func.set_phy_base_addr        = api_set_phy_base;
 
 #ifdef CONFIG_AW_PHY
 	func.phy_reset                = api_phy_reset;
