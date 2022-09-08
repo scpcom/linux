@@ -120,6 +120,14 @@ static int dmic_component_probe(struct snd_soc_component *component)
 	return 0;
 }
 
+static int dmic_set_pll(struct snd_soc_component *component,
+				    int pll_id, int source,
+				    unsigned int freq_in,
+				    unsigned int freq_out)
+{
+	return -ENOTSUPP;
+}
+
 static const struct snd_soc_dapm_widget dmic_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT_E("DMIC AIF", "Capture", 0,
 			       SND_SOC_NOPM, 0, 0, dmic_aif_event,
@@ -133,6 +141,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 static const struct snd_soc_component_driver soc_dmic = {
 	.probe			= dmic_component_probe,
+	.set_pll		= dmic_set_pll,
 	.dapm_widgets		= dmic_dapm_widgets,
 	.num_dapm_widgets	= ARRAY_SIZE(dmic_dapm_widgets),
 	.dapm_routes		= intercon,
