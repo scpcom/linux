@@ -294,12 +294,21 @@ static void sunxi_hdmi_codec_remove(struct snd_soc_component *component)
 	}
 }
 
+static int sunxi_hdmi_codec_set_pll(struct snd_soc_component *component,
+				    int pll_id, int source,
+				    unsigned int freq_in,
+				    unsigned int freq_out)
+{
+	return -ENOTSUPP;
+}
+
 static struct snd_soc_component_driver soc_codec_dev_sunxi_hdmi = {
 	.name		= "sunxi-hdmiaudio",
 	.probe		= sunxi_hdmi_codec_probe,
 	.remove		= sunxi_hdmi_codec_remove,
 	.suspend	= sunxi_hdmi_codec_suspend,
 	.resume		= sunxi_hdmi_codec_resume,
+	.set_pll	= sunxi_hdmi_codec_set_pll,
 };
 
 static int sunxi_hdmi_codec_dev_probe(struct platform_device *pdev)
