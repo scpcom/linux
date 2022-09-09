@@ -393,9 +393,9 @@ static int sunxi_dmic_dai_probe(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_dmic_dai_suspend(struct snd_soc_dai *dai)
+static int sunxi_dmic_dai_suspend(struct snd_soc_component *component)
 {
-	struct sunxi_dmic_info *dmic_info = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_dmic_info *dmic_info = snd_soc_component_get_drvdata(component);
 	struct sunxi_dmic_clk_info *clk_info = &dmic_info->clk_info;
 	struct regmap *regmap = dmic_info->mem_info.regmap;
 
@@ -410,9 +410,9 @@ static int sunxi_dmic_dai_suspend(struct snd_soc_dai *dai)
 	return 0;
 }
 
-static int sunxi_dmic_dai_resume(struct snd_soc_dai *dai)
+static int sunxi_dmic_dai_resume(struct snd_soc_component *component)
 {
-	struct sunxi_dmic_info *dmic_info = snd_soc_dai_get_drvdata(dai);
+	struct sunxi_dmic_info *dmic_info = snd_soc_component_get_drvdata(component);
 	struct sunxi_dmic_clk_info *clk_info = &dmic_info->clk_info;
 	struct regmap *regmap = dmic_info->mem_info.regmap;
 	int ret;
@@ -443,8 +443,6 @@ static int sunxi_dmic_dai_resume(struct snd_soc_dai *dai)
 
 static struct snd_soc_dai_driver sunxi_dmic_dai = {
 	.probe		= sunxi_dmic_dai_probe,
-	.suspend	= sunxi_dmic_dai_suspend,
-	.resume		= sunxi_dmic_dai_resume,
 	.capture = {
 		.stream_name	= "Capture",
 		.channels_min	= 1,
@@ -558,6 +556,8 @@ static struct snd_soc_component_driver sunxi_dmic_dev = {
 	.probe		= sunxi_dmic_probe,
 	.controls	= sunxi_dmic_controls,
 	.num_controls	= ARRAY_SIZE(sunxi_dmic_controls),
+	.suspend	= sunxi_dmic_dai_suspend,
+	.resume		= sunxi_dmic_dai_resume,
 };
 
 /*******************************************************************************
