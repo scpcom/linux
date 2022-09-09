@@ -91,7 +91,7 @@ static int sunxi_pcm_open(struct snd_pcm_substream *substream)
 	SND_LOG_DEBUG(HLOG, "\n");
 
 	/* Set HW params now that initialization is complete */
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 	sunxi_pcm_hardware.buffer_bytes_max = dma_params->cma_kbytes * SUNXI_AUDIO_CMA_BLOCK_BYTES;
 	sunxi_pcm_hardware.period_bytes_max = sunxi_pcm_hardware.buffer_bytes_max / 2;
 	sunxi_pcm_hardware.fifo_size	    = dma_params->fifo_size;
@@ -153,7 +153,7 @@ static int sunxi_pcm_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params, &slave_config);
 	if (ret) {
@@ -211,7 +211,7 @@ pcm_rawdata_mode:
 		return -EINVAL;
 	}
 
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params, &slave_config);
 	if (ret) {
@@ -265,7 +265,7 @@ pcm_normal_mode:
 		return -EINVAL;
 	}
 
-	dma_params = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	dma_params = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
 
 	ret = snd_hwparams_to_dma_slave_config(substream, params, &slave_config);
 	if (ret) {
@@ -621,7 +621,7 @@ static int sunxi_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_card *card = rtd->card->snd_card;
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	struct sunxi_dma_params *capture_dma_data  = cpu_dai->capture_dma_data;
 	struct sunxi_dma_params *playback_dma_data = cpu_dai->playback_dma_data;
 	size_t capture_cma_bytes  = SUNXI_AUDIO_CMA_BLOCK_BYTES;
