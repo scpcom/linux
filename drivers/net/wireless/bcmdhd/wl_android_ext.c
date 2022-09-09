@@ -4007,11 +4007,11 @@ wl_delete_dirty_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl)
 {
 	wl_rssi_cache_t *node, *prev, **rssi_head;
 	int i = -1, tmp = 0;
-	struct timeval now;
-	struct timespec ts;
-	getnstimeofday(&ts);
+	struct timespec64 now;
+	struct timespec64 ts;
+	ktime_get_real_ts64(&ts);
 	now->tv_sec = ts.tv_sec;
-	now->tv_usec = ts.tv_nsec/1000;
+	now->tv_nsec = ts.tv_nsec;
 
 	rssi_head = &rssi_cache_ctrl->m_cache_head;
 	node = *rssi_head;
@@ -4101,8 +4101,8 @@ wl_update_connected_rssi_cache(struct net_device *net,
 	int j, k = 0;
 	int rssi, error = 0;
 	struct ether_addr bssid;
-	struct timeval now, timeout;
-	struct timespec ts;
+	struct timespec64 now, timeout;
+	struct timespec64 ts;
 	scb_val_t scbval;
 
 	if (!g_wifi_on)
@@ -4123,9 +4123,9 @@ wl_update_connected_rssi_cache(struct net_device *net,
 	}
 	rssi = scbval.val;
 
-	getnstimeofday(&ts);
+	ktime_get_real_ts64(&ts);
 	now->tv_sec = ts.tv_sec;
-	now->tv_usec = ts.tv_nsec/1000;
+	now->tv_nsec = ts.tv_nsec;
 	timeout.tv_sec = now.tv_sec + RSSICACHE_TIMEOUT;
 	if (timeout.tv_sec < now.tv_sec) {
 		/*
@@ -4190,15 +4190,15 @@ wl_update_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl,
 	wl_rssi_cache_t *node, *prev, *leaf, **rssi_head;
 	wl_bss_info_t *bi = NULL;
 	int i, j, k;
-	struct timeval now, timeout;
-	struct timespec ts;
+	struct timespec64 now, timeout;
+	struct timespec64 ts;
 
 	if (!ss_list->count)
 		return;
 
-	getnstimeofday(&ts);
+	ktime_get_real_ts64(&ts);
 	now->tv_sec = ts.tv_sec;
-	now->tv_usec = ts.tv_nsec/1000;
+	now->tv_nsec = ts.tv_nsec;
 	timeout.tv_sec = now.tv_sec + RSSICACHE_TIMEOUT;
 	if (timeout.tv_sec < now.tv_sec) {
 		/*
@@ -4340,12 +4340,12 @@ wl_delete_dirty_bss_cache(wl_bss_cache_ctrl_t *bss_cache_ctrl)
 {
 	wl_bss_cache_t *node, *prev, **bss_head;
 	int i = -1, tmp = 0;
-	struct timeval now;
-	struct timespec ts;
+	struct timespec64 now;
+	struct timespec64 ts;
 
-	getnstimeofday(&ts);
+	ktime_get_real_ts64(&ts);
 	now->tv_sec = ts.tv_sec;
-	now->tv_usec = ts.tv_nsec/1000;
+	now->tv_nsec = ts.tv_nsec;
 
 	bss_head = &bss_cache_ctrl->m_cache_head;
 	node = *bss_head;
@@ -4465,15 +4465,15 @@ wl_update_bss_cache(wl_bss_cache_ctrl_t *bss_cache_ctrl,
 #if defined(SORT_BSS_BY_RSSI)
 	int16 rssi, rssi_node;
 #endif
-	struct timeval now, timeout;
-	struct timespec ts;
+	struct timespec64 now, timeout;
+	struct timespec64 ts;
 
 	if (!ss_list->count)
 		return;
 
-	getnstimeofday(&ts);
+	ktime_get_real_ts64(&ts);
 	now->tv_sec = ts.tv_sec;
-	now->tv_usec = ts.tv_nsec/1000;
+	now->tv_nsec = ts.tv_nsec;
 
 	timeout.tv_sec = now.tv_sec + BSSCACHE_TIMEOUT;
 	if (timeout.tv_sec < now.tv_sec) {

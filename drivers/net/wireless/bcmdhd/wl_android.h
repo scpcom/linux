@@ -224,7 +224,7 @@ extern int g_wifi_on;
 typedef struct wl_rssi_cache {
 	struct wl_rssi_cache *next;
 	int dirty;
-	struct timeval tv;
+	struct timespec64 tv;
 	struct ether_addr BSSID;
 	int16 RSSI[RSSIAVG_LEN];
 } wl_rssi_cache_t;
@@ -260,7 +260,7 @@ int wl_update_rssi_offset(struct net_device *net, int rssi);
 typedef struct wl_bss_cache {
 	struct wl_bss_cache *next;
 	int dirty;
-	struct timeval tv;
+	struct timespec64 tv;
 	wl_scan_results_t results;
 } wl_bss_cache_t;
 

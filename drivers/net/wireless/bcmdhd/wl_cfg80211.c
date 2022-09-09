@@ -11516,20 +11516,20 @@ static s32 wl_inform_single_bss(struct bcm_cfg80211 *cfg, struct wl_bss_info *bi
 	signal = notif_bss_info->rssi * 100;
 	if (!mgmt->u.probe_resp.timestamp) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
-		struct timespec ts;
-		ts = ktime_to_timespec(ktime_get_boottime());
+		struct timespec64 ts;
+		ts = ktime_to_timespec64(ktime_get_boottime());
 		mgmt->u.probe_resp.timestamp = ((u64)ts.tv_sec*1000000)
 				+ ts.tv_nsec / 1000;
 #else
-		struct timeval tv;
-		struct timespec ts;
+		struct timespec64 tv;
+		struct timespec64 ts;
 
-		getnstimeofday(&ts);
+		ktime_get_real_ts64(&ts);
 		tv->tv_sec = ts.tv_sec;
-		tv->tv_usec = ts.tv_nsec/1000;
+		tv->tv_nsec = ts.tv_nsec;
 
 		mgmt->u.probe_resp.timestamp = ((u64)tv.tv_sec*1000000)
-				+ tv.tv_usec;
+				+ tv.tv_nsec / 1000;
 #endif
 	}
 

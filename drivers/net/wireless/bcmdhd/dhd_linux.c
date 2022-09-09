@@ -211,7 +211,7 @@ typedef struct dhd_tx_lb_pkttag_fr {
 static uint32 tsidx = 0;
 static uint32 htsf_seqnum = 0;
 uint32 tsfsync;
-struct timeval tsync;
+struct timespec64 tsync;
 static uint32 tsport = 5010;
 
 typedef struct histo_ {
@@ -16247,36 +16247,36 @@ write_dump_to_file(dhd_pub_t *dhd, uint8 *buf, int size, char *fname)
 	int ret = 0;
 	char memdump_path[128];
 	char memdump_type[32];
-	struct timeval curtime;
+	struct timespec64 curtime;
 	uint32 file_mode;
-	struct timespec now;
+	struct timespec64 now;
 
 	/* Init file name */
 	memset(memdump_path, 0, sizeof(memdump_path));
 	memset(memdump_type, 0, sizeof(memdump_type));
-	getnstimeofday(&now);
+	ktime_get_real_ts64(&now);
 	curtime.tv_sec = now.tv_sec;
-	curtime.tv_usec = now.tv_nsec/1000;
+	curtime.tv_nsec = now.tv_nsec;
 	dhd_convert_memdump_type_to_str(dhd->memdump_type, memdump_type);
 #ifdef CUSTOMER_HW4_DEBUG
 	snprintf(memdump_path, sizeof(memdump_path), "%s%s_%s_%ld.%ld",
 		DHD_COMMON_DUMP_PATH, fname, memdump_type,
-		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 	file_mode = O_CREAT | O_WRONLY | O_SYNC;
 #elif defined(CUSTOMER_HW2)
 	snprintf(memdump_path, sizeof(memdump_path), "%s%s_%s_%ld.%ld",
 		"/data/misc/wifi/", fname, memdump_type,
-		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 	file_mode = O_CREAT | O_WRONLY | O_SYNC;
 #elif (defined(BOARD_PANDA) || defined(__ARM_ARCH_7A__))
 	snprintf(memdump_path, sizeof(memdump_path), "%s%s_%s_%ld.%ld",
 		"/data/misc/wifi/", fname, memdump_type,
-		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 	file_mode = O_CREAT | O_WRONLY;
 #else
 	snprintf(memdump_path, sizeof(memdump_path), "%s%s_%s_%ld.%ld",
 		"/installmedia/", fname, memdump_type,
-		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 	/* Extra flags O_DIRECT and O_SYNC are required for Brix Android, as we are
 	 * calling BUG_ON immediately after collecting the socram dump.
 	 * So the file write operation should directly write the contents into the
@@ -16291,7 +16291,7 @@ write_dump_to_file(dhd_pub_t *dhd, uint8 *buf, int size, char *fname)
 			DHD_ERROR(("open file %s, try /data/\n", memdump_path));
 			snprintf(memdump_path, sizeof(memdump_path), "%s%s_%s_%ld.%ld",
 				"/data/", fname, memdump_type,
-				(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+				(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 		} else {
 			filp_close(fp, NULL);
 		}
@@ -17988,7 +17988,7 @@ do_dhd_log_dump(dhd_pub_t *dhdp)
 	loff_t pos = 0;
 	unsigned int wr_size = 0;
 	char dump_path[128];
-	struct timeval curtime;
+	struct timespec64 curtime;
 	uint32 file_mode;
 	unsigned long flags = 0;
 	struct dhd_log_dump_buf *dld_buf = &g_dld_buf[0];
@@ -17999,7 +17999,7 @@ do_dhd_log_dump(dhd_pub_t *dhdp)
 	const char *post_strs =
 		"-------------------- Specific log --------------------------\n";
 
-	struct timespec ts;
+	struct timespec64 ts;
 
 	if (!dhdp) {
 		return -1;
@@ -18014,13 +18014,13 @@ do_dhd_log_dump(dhd_pub_t *dhdp)
 
 	/* Init file name */
 	memset(dump_path, 0, sizeof(dump_path));
-	getnstimeofday(&ts);
+	ktime_get_real_ts64(&ts);
 	curtime->tv_sec = ts.tv_sec;
-	curtime->tv_usec = ts.tv_nsec/1000;
+	curtime->tv_nsec = ts.tv_nsec;
 
 	snprintf(dump_path, sizeof(dump_path), "%s_%ld.%ld",
 		DHD_COMMON_DUMP_PATH "debug_dump",
-		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_usec);
+		(unsigned long)curtime.tv_sec, (unsigned long)curtime.tv_nsec/1000);
 	file_mode = O_CREAT | O_WRONLY | O_SYNC;
 
 	DHD_ERROR(("debug_dump_path = %s\n", dump_path));

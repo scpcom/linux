@@ -1956,15 +1956,12 @@ osl_sleep(uint ms)
 uint64
 osl_sysuptime_us(void)
 {
-	struct timeval tv;
 	uint64 usec;
-	struct timespec ts;
-	getnstimeofday(&ts);
-	tv.tv_sec = ts.tv_sec;
-	tv.tv_usec = ts.tv_nsec/1000;
+	struct timespec64 ts;
+	ktime_get_real_ts64(&ts);
 
 	/* tv_usec content is fraction of a second */
-	usec = (uint64)tv.tv_sec * 1000000ul + tv.tv_usec;
+	usec = (uint64)ts.tv_sec * 1000000ul + ts.tv_nsec/1000;
 	return usec;
 }
 
