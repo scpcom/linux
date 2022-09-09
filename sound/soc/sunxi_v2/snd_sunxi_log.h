@@ -18,7 +18,7 @@
 	pr_err("[sound %4d][" head " %s] " fmt, __LINE__, __func__, ##arg)
 
 #define SND_LOG_WARN(head, fmt, arg...) \
-	pr_warning("[sound %4d][" head " %s] " fmt, __LINE__, __func__, ##arg)
+	pr_warn("[sound %4d][" head " %s] " fmt, __LINE__, __func__, ##arg)
 
 #define SND_LOG_INFO(head, fmt, arg...) \
 	pr_info("[sound %4d][" head " %s] " fmt, __LINE__, __func__, ##arg)
