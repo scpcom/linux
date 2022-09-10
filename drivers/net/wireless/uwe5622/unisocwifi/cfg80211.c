@@ -2749,6 +2749,80 @@ static void sprdwl_cfg80211_mgmt_frame_register(struct wiphy *wiphy,
 	sprdwl_queue_work(vif->priv, misc_work);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+static void
+sprdwl_cfg80211_mgmt_frame_registrations(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     struct mgmt_frame_regs *upd)
+{
+	struct sprdwl_vif *vif = container_of(wdev, struct sprdwl_vif, wdev);
+	/*struct net_device *ndev = wdev_to_ndev(wdev);
+	_adapter *adapter;
+	struct sprdwl_wdev_priv *pwdev_priv;*/
+	u16 new_mask = upd->interface_stypes;
+	u16 old_mask;
+	static const struct {
+		u16 mask, sprdwl_type;
+	} updates[] = {
+		{
+			.mask = BIT(IEEE80211_STYPE_ASSOC_REQ >> 4),
+			.sprdwl_type = IEEE80211_STYPE_ASSOC_REQ,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_REASSOC_REQ >> 4),
+			.sprdwl_type = IEEE80211_STYPE_REASSOC_REQ,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_DISASSOC >> 4),
+			.sprdwl_type = IEEE80211_STYPE_DISASSOC,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_AUTH >> 4),
+			.sprdwl_type = IEEE80211_STYPE_AUTH,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_DEAUTH >> 4),
+			.sprdwl_type = IEEE80211_STYPE_DEAUTH,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_PROBE_REQ >> 4),
+			.sprdwl_type = IEEE80211_STYPE_PROBE_REQ,
+		},
+		{
+			.mask = BIT(IEEE80211_STYPE_ACTION >> 4),
+			.sprdwl_type = IEEE80211_STYPE_ACTION,
+		},
+	};
+	unsigned int i;
+
+	/*if (ndev == NULL)
+		return;
+
+	adapter = (_adapter *)sprdwl_netdev_priv(ndev);
+	pwdev_priv = adapter_wdev_data(adapter);*/
+	old_mask = vif->mgmt_frames_bitmask;
+
+	if (new_mask == old_mask)
+		return;
+
+	for (i = 0; i < ARRAY_SIZE(updates); i++) {
+		u16 mask = updates[i].mask;
+		u16 sprdwl_frame_type = updates[i].sprdwl_type;
+		bool reg;
+
+		/* the ! are here due to the assoc/reassoc merge */
+		if (!(new_mask & mask) == !(old_mask & mask))
+			continue;
+
+		reg = new_mask & mask;
+
+		sprdwl_cfg80211_mgmt_frame_register(wiphy, wdev, sprdwl_frame_type, reg);
+	}
+
+	vif->mgmt_frames_bitmask = new_mask;
+}
+#endif
+
 void sprdwl_report_remain_on_channel_expired(struct sprdwl_vif *vif)
 {
 	wl_ndev_log(L_DBG, vif->ndev, "%s\n", __func__);
@@ -3274,7 +3348,11 @@ static struct cfg80211_ops sprdwl_cfg80211_ops = {
 	.remain_on_channel = sprdwl_cfg80211_remain_on_channel,
 	.cancel_remain_on_channel = sprdwl_cfg80211_cancel_remain_on_channel,
 	.mgmt_tx = sprdwl_cfg80211_mgmt_tx,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+	.update_mgmt_frame_registrations = sprdwl_cfg80211_mgmt_frame_registrations,
+#else
 	.mgmt_frame_register = sprdwl_cfg80211_mgmt_frame_register,
+#endif
 	.set_power_mgmt = sprdwl_cfg80211_set_power_mgmt,
 	.set_cqm_rssi_config = sprdwl_cfg80211_set_cqm_rssi_config,
 	.sched_scan_start = sprdwl_cfg80211_sched_scan_start,

@@ -144,6 +144,9 @@ struct sprdwl_vif {
 #endif
 	bool has_rand_mac;
 	u8 random_mac[ETH_ALEN];
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+	u16 mgmt_frames_bitmask;
+#endif
 };
 
 enum sprdwl_hw_type {
