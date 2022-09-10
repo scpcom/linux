@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
