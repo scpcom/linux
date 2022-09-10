@@ -746,7 +746,7 @@ wl_iw_get_freq(
 	WL_TRACE(("%s: SIOCGIWFREQ\n", dev->name));
 
 	error = dev_wlc_intvar_get(dev, "chanspec", &chanspec);
-	if (error) {
+	if (error)
 		return error;
 	ctl_chan = wf_chspec_ctlchan(chanspec);
 
