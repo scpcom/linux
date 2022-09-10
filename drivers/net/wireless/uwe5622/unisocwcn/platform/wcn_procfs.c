@@ -944,7 +944,7 @@ static ssize_t mdbg_proc_write(struct file *filp,
 #ifndef CONFIG_SC2342_INTEG
 	/* loopcheck add kernel time ms/1000 */
 	if (strncmp(mdbg_proc->write_buf, "at+loopcheck", 12) == 0) {
-		/* struct timespec now; */
+		/* struct timespec64 now; */
 		unsigned long int ns = local_clock();
 		unsigned long int time = marlin_bootup_time_get();
 		unsigned int ap_t = MARLIN_64B_NS_TO_32B_MS(ns);

@@ -240,15 +240,15 @@ static const struct file_operations wcn_usb_channel_fops = {
 int calculate_throughput(int channel_id, struct mbuf_t *head,
 		struct mbuf_t *tail, int num)
 {
-	static struct timespec tm_begin;
-	struct timespec tm_end;
+	static struct timespec64 tm_begin;
+	struct timespec64 tm_end;
 	static int time_count;
 	unsigned long time_total_ns;
 	struct mbuf_t *mbuf;
 	int i;
 
 	if (time_count == 0)
-		getnstimeofday(&tm_begin);
+		ktime_get_real_ts64(&tm_begin);
 
 	if (!num)
 		return 0;
@@ -270,9 +270,9 @@ int calculate_throughput(int channel_id, struct mbuf_t *head,
 
 	time_count += num;
 	if (time_count >= 1000) {
-		getnstimeofday(&tm_end);
-		time_total_ns = timespec_to_ns(&tm_end)
-			- timespec_to_ns(&tm_begin);
+		ktime_get_real_ts64(&tm_end);
+		time_total_ns = timespec64_to_ns(&tm_end)
+			- timespec64_to_ns(&tm_begin);
 		wcn_usb_test_print("%s avg time[%ld] in [%d]\n",
 				__func__, time_total_ns, time_count);
 		time_count = 0;

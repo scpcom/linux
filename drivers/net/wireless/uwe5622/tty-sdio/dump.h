@@ -27,7 +27,7 @@
 
 typedef struct bt_host_time {
 	struct rtc_time rtc_t;
-	struct timeval tv;
+	struct timespec64 tv;
 } bt_host_time;
 
 typedef struct bt_host_data_dump {

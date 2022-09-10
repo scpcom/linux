@@ -99,8 +99,8 @@ char *tp_tx_buf[TP_TX_BUF_CNT];
 
 struct mchn_ops_t at_tx_ops;
 struct mchn_ops_t at_rx_ops;
-struct timeval tp_tx_start_time;
-struct timeval tp_tx_stop_time;
+struct timespec64 tp_tx_start_time;
+struct timespec64 tp_tx_stop_time;
 int tp_tx_cnt;
 int tp_tx_flag;
 int tp_tx_buf_cnt = TP_TX_BUF_CNT;
@@ -225,7 +225,7 @@ static int sdiohal_throughput_tx(void)
 static void sdiohal_throughput_tx_compute_time(void)
 {
 	static signed long long times_count;
-	struct timespec now;
+	struct timespec64 now;
 
 	if (tp_tx_flag != 1)
 		return;
@@ -233,17 +233,17 @@ static void sdiohal_throughput_tx_compute_time(void)
 	/* throughput test */
 	tp_tx_cnt++;
 	if (tp_tx_cnt % 500 == 0) {
-		getnstimeofday(&now);
+		ktime_get_real_ts64(&now);
 		tp_tx_stop_time.tv_sec = now.tv_sec;
-		tp_tx_stop_time.tv_usec = now.tv_nsec/1000;
-		times_count = timeval_to_ns(&tp_tx_stop_time) -
-			timeval_to_ns(&tp_tx_start_time);
+		tp_tx_stop_time.tv_nsec = now.tv_nsec;
+		times_count = timespec64_to_ns(&tp_tx_stop_time) -
+			timespec64_to_ns(&tp_tx_start_time);
 		sdiohal_info("tx->times(500c) is %lldns, tx %d, rx %d\n",
 			     times_count, tp_tx_cnt, rx_pop_cnt);
 		tp_tx_cnt = 0;
-		getnstimeofday(&now);
+		ktime_get_real_ts64(&now);
 		tp_tx_start_time.tv_sec = now.tv_sec;
-		tp_tx_start_time.tv_usec = now.tv_nsec/1000;
+		tp_tx_start_time.tv_nsec = now.tv_nsec;
 	}
 	sdiohal_throughput_tx();
 }
@@ -547,14 +547,14 @@ int at_list_tx_pop(int channel, struct mbuf_t *head,
 }
 
 int tp_rx_cnt;
-struct timeval tp_rx_start_time;
-struct timeval tp_rx_stop_time;
-struct timespec tp_tm_begin;
+struct timespec64 tp_rx_start_time;
+struct timespec64 tp_rx_stop_time;
+struct timespec64 tp_tm_begin;
 int at_list_rx_pop(int channel, struct mbuf_t *head,
 		   struct mbuf_t *tail, int num)
 {
 	static signed long long times_count;
-	struct timespec now;
+	struct timespec64 now;
 
 	sdiohal_debug("%s channel:%d head:%p tail:%p num:%d\n",
 		     __func__, channel, head, tail, num);
@@ -571,19 +571,19 @@ int at_list_rx_pop(int channel, struct mbuf_t *head,
 	/* throughput test */
 	tp_rx_cnt += num;
 	if (tp_rx_cnt / (500*64) == 1) {
-		getnstimeofday(&now);
+		ktime_get_real_ts64(&now);
 		tp_rx_stop_time.tv_sec = now.tv_sec;
-		tp_rx_stop_time.tv_usec = now.tv_nsec/1000;
-		times_count = timeval_to_ns(&tp_rx_stop_time)
-			- timeval_to_ns(&tp_rx_start_time);
+		tp_rx_stop_time.tv_nsec = now.tv_nsec;
+		times_count = timespec64_to_ns(&tp_rx_stop_time)
+			- timespec64_to_ns(&tp_rx_start_time);
 		sdiohal_info("rx->times(%dc) is %lldns, tx %d, rx %d\n",
 			     tp_rx_cnt, times_count, tp_tx_cnt, rx_pop_cnt);
 		tp_rx_cnt = 0;
-		getnstimeofday(&now);
+		ktime_get_real_ts64(&now);
 		tp_rx_start_time.tv_sec = now.tv_sec;
-		tp_rx_start_time.tv_usec = now.tv_nsec/1000;
+		tp_rx_start_time.tv_nsec = now.tv_nsec;
 	}
-	getnstimeofday(&tp_tm_begin);
+	ktime_get_real_ts64(&tp_tm_begin);
 
 	return 0;
 }
@@ -837,7 +837,7 @@ static ssize_t at_cmd_write(struct file *filp,
 	long int long_data;
 	int ret;
 	unsigned char *send_buf = NULL;
-	struct timespec now;
+	struct timespec64 now;
 
 	if (count > SDIOHAL_WRITE_SIZE) {
 		sdiohal_err("%s write size > %d\n",
@@ -1130,9 +1130,9 @@ static ssize_t at_cmd_write(struct file *filp,
 			__func__, tp_tx_buf_cnt, tp_tx_buf_len);
 		tp_tx_flag = 1;
 		tp_tx_cnt = 0;
-		getnstimeofday(&now);
+		ktime_get_real_ts64(&now);
 		tp_tx_start_time.tv_sec = now.tv_sec;
-		tp_tx_start_time.tv_usec = now.tv_nsec/1000;
+		tp_tx_start_time.tv_nsec = now.tv_nsec;
 		if ((tp_tx_buf_cnt <= TP_TX_BUF_CNT) &&
 			(tp_tx_buf_len <= TP_TX_BUF_LEN)) {
 			sprdwcn_bus_chn_deinit(&at_tx_ops);

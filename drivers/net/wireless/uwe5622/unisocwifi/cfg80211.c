@@ -2176,7 +2176,7 @@ void sprdwl_report_scan_result(struct sprdwl_vif *vif, u16 chan, s16 rssi,
 	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)frame;
 	struct ieee80211_channel *channel;
 	struct cfg80211_bss *bss;
-	struct timespec ts;
+	struct timespec64 ts;
 	u16 capability, beacon_interval;
 	u32 freq;
 	s32 signal;
@@ -2224,7 +2224,7 @@ void sprdwl_report_scan_result(struct sprdwl_vif *vif, u16 chan, s16 rssi,
 	ie = mgmt->u.probe_resp.variable;
 	ielen = len - offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
 	/* framework use system bootup time */
-	ts = ktime_to_timespec(ktime_get_boottime());
+	ts = ktime_to_timespec64(ktime_get_boottime());
 	tsf = (u64)ts.tv_sec * 1000000 + div_u64(ts.tv_nsec, 1000);
 	beacon_interval = le16_to_cpu(mgmt->u.probe_resp.beacon_int);
 	capability = le16_to_cpu(mgmt->u.probe_resp.capab_info);
@@ -2273,7 +2273,7 @@ void sprdwl_report_connection(struct sprdwl_vif *vif,
 	struct ieee80211_channel *channel;
 	struct ieee80211_mgmt *mgmt;
 	struct cfg80211_bss *bss = NULL;
-	struct timespec ts;
+	struct timespec64 ts;
 #ifdef WMMAC_WFA_CERTIFICATION
 	struct wmm_params_element *wmm_params;
 	int i;
@@ -2349,7 +2349,7 @@ void sprdwl_report_connection(struct sprdwl_vif *vif,
 		ielen = conn_info->bea_ie_len - offsetof(struct ieee80211_mgmt,
 						 u.probe_resp.variable);
 		/* framework use system bootup time */
-		ts = ktime_to_timespec(ktime_get_boottime());
+		ts = ktime_to_timespec64(ktime_get_boottime());
 		tsf = (u64)ts.tv_sec * 1000000 + div_u64(ts.tv_nsec, 1000);
 		beacon_interval = le16_to_cpu(mgmt->u.probe_resp.beacon_int);
 		capability = le16_to_cpu(mgmt->u.probe_resp.capab_info);
