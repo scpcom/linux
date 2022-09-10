@@ -204,6 +204,7 @@ config SUNXI_MBUS
 config SUNXI_NSI
 	tristate "SUNXI NSI driver support"
 	  depends on ARCH_SUNXI
+	  depends on ARM || ARM64
 	  help
 	  Driver supporting the mbus for sunxi platforms.
 
