@@ -841,22 +841,22 @@ static const struct file_operations vin_debugfs_fops = {
 	.read = vin_debugfs_read,
 	.release = vin_debugfs_release,
 };
-void vin_get_timestamp(struct timeval *tv)
+void vin_get_timestamp(struct timespec64 *tv)
 {
-	struct timespec ts;
+	struct timespec64 ts;
 
-	ktime_get_ts(&ts);
+	ktime_get_ts64(&ts);
 	tv->tv_sec = ts.tv_sec;
-	tv->tv_usec = ts.tv_nsec / NSEC_PER_USEC;
+	tv->tv_nsec = ts.tv_nsec;
 }
 
 static void __vin_get_frame_internal(struct vin_core *vinc)
 {
-	struct timeval ts;
+	struct timespec64 ts;
 
 	vin_get_timestamp(&ts);
 	if (vinc->vin_status.frame_cnt > 2) {
-		vinc->vin_status.frame_internal = (ts.tv_sec * 1000000 + ts.tv_usec - vinc->vid_cap.ts.tv_sec * 1000000 - vinc->vid_cap.ts.tv_usec);
+		vinc->vin_status.frame_internal = (ts.tv_sec * 1000000 + ts.tv_nsec / NSEC_PER_USEC - vinc->vid_cap.ts.tv_sec * 1000000 - vinc->vid_cap.ts.tv_nsec / NSEC_PER_USEC);
 		if (vinc->vin_status.frame_internal > vinc->vin_status.max_internal)
 			vinc->vin_status.max_internal = vinc->vin_status.frame_internal;
 		if ((vinc->vin_status.frame_internal < vinc->vin_status.min_internal) || (vinc->vin_status.min_internal == 0))

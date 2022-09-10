@@ -883,14 +883,14 @@ static int main_test(int sel, int mode)
 	while (count-- > 0) {
 		for (;;) {
 			fd_set fds;
-			struct timeval tv;
+			struct timespec64 tv;
 			int r;
 
 			FD_ZERO(&fds);
 			FD_SET(fd, &fds);
 
 			tv.tv_sec = 2; /* Timeout. */
-			tv.tv_usec = 0;
+			tv.tv_nsec = 0;
 #if video_s_ctrl
 			if (count%3 == 0) {
 				if (j == 0) {
@@ -1010,7 +1010,7 @@ int main(int argc, char *argv[])
 	int width = 640;
 	int height = 480;
 	int mode = 1;
-	struct timeval tv1, tv2;
+	struct timespec64 tv1, tv2;
 	float tv;
 
 	install_sig_handler();
@@ -1124,14 +1124,14 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < test_cnt; i++) {
-		gettimeofday(&tv1, NULL);
+		ktime_get_real_ts64(&tv1, NULL);
 		if (0 == main_test(sel, mode))
 			printf("mode %d test done at the %d time!!\n", mode, i);
 		else
 			printf("mode %d test failed at the %d time!!\n", mode, i);
 		close(fd);
-		gettimeofday(&tv2, NULL);
-		tv = (float)((tv2.tv_sec - tv1.tv_sec) * 1000000 + tv2.tv_usec - tv1.tv_usec) / 1000000;
+		ktime_get_real_ts64(&tv2, NULL);
+		tv = (float)((tv2.tv_sec - tv1.tv_sec) * 1000000 + (tv2.tv_nsec - tv1.tv_nsec) / NSEC_PER_USEC) / 1000000;
 		printf("time cost %f(s)\n", tv);
 	}
 	return 0;

@@ -166,7 +166,7 @@ struct vin_vid_cap {
 	bool dma_parms_alloc;
 	struct mutex lock;
 	unsigned int first_flag; /* indicate the first time triggering irq */
-	struct timeval ts;
+	struct timespec64 ts;
 	spinlock_t slock;
 	struct vin_pipeline pipe;
 	struct vin_core *vinc;
