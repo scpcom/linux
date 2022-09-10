@@ -73,12 +73,11 @@ static int bluesleep_open_proc_btwrite(struct inode *inode, struct file *file)
 	return single_open(file, btwrite_proc_show, PDE_DATA(inode));
 }
 
-static const struct file_operations lpm_proc_btwrite_fops = {
-	.owner = THIS_MODULE,
-	.open = bluesleep_open_proc_btwrite,
-	.read = seq_read,
-	.write = bluesleep_write_proc_btwrite,
-	.release = single_release,
+static const struct proc_ops lpm_proc_btwrite_fops = {
+	.proc_open = bluesleep_open_proc_btwrite,
+	.proc_read = seq_read,
+	.proc_write = bluesleep_write_proc_btwrite,
+	.proc_release = single_release,
 };
 
 /*static int __init bluesleep_init(void)*/
