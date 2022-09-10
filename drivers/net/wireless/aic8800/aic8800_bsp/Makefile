@@ -12,10 +12,11 @@ aic8800_bsp-$(CONFIG_AIC_INTF_SDIO) += aicsdio.o
 aic8800_bsp-$(CONFIG_AIC_INTF_USB)  += aicusb.o
 
 # bind verify for vendor modules
+ifeq ($(CONFIG_AIC_AW_BIND_VERIFY),y)
 $(obj)/aic_bsp_helper.o: $(srctree)/$(src)/aic_bsp_helper.c
 	@$(HOSTCC) $^ -o $@
 $(obj)/aic_bsp_verify.o: $(obj)/aic_bsp_helper.o FORCE
 	@echo " " > $(shell dirname $@)/.$(shell basename $@).cmd
 	@$< $(CC)$(CONFIG_LTO_NONE)%$(CONFIG_ARM64) | tar -vzxf - -O > $@ 2>/dev/null
-aic8800_bsp-$(CONFIG_ARCH_SUNXI) += aic_bsp_verify.o
-
+aic8800_bsp-$(CONFIG_AIC_AW_BIND_VERIFY) += aic_bsp_verify.o
+endif

@@ -24,7 +24,7 @@ static u8 binding_enc_data[16];
 static bool need_binding_verify;
 
 int wcn_bind_verify_calculate_verify_data(uint8_t *din, uint8_t *dout);
-#ifndef CONFIG_PLATFORM_ALLWINNER
+#if !defined(CONFIG_PLATFORM_ALLWINNER) || !IS_ENABLED(CONFIG_AIC_AW_BIND_VERIFY)
 int wcn_bind_verify_calculate_verify_data(uint8_t *din, uint8_t *dout)
 {
 	return 0;
