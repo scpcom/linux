@@ -1646,7 +1646,7 @@ static int ac107_probe(struct snd_soc_component *component)
 
 	component->regmap =
 	    devm_regmap_init_i2c(ac107->i2c, &ac107_regmap_config);
-	ret = PTR_RET(component->regmap);
+	ret = PTR_ERR_OR_ZERO(component->regmap);
 	if (ret) {
 		dev_err(component->dev, "AC107 regmap init I2C Failed: %d\n", ret);
 		return ret;
