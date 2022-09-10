@@ -19,6 +19,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/highmem.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/of_address.h>
