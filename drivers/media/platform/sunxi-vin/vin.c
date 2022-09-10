@@ -930,7 +930,7 @@ static int __vin_pipeline_s_stream(struct vin_pipeline *p, int on_idx)
 	}
 
 	if (on_idx) {
-		v4l2_subdev_call(p->sd[VIN_IND_SENSOR], video, g_mbus_config, &mcfg);
+		v4l2_subdev_call(p->sd[VIN_IND_SENSOR], pad, get_mbus_config, 0, &mcfg);
 #if defined CONFIG_ARCH_SUN8IW16P1
 		ret = sensor_get_clk(p->sd[VIN_IND_SENSOR], &mcfg, &vind->clk[VIN_TOP_CLK].frequency,
 			&vind->isp_clk[VIN_ISP_CLK].frequency);

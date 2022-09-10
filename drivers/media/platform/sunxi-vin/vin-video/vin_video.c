@@ -797,7 +797,7 @@ static int vin_pipeline_set_mbus_config(struct vin_core *vinc)
 	struct csi_dev *csi = NULL;
 	int ret;
 
-	ret = v4l2_subdev_call(sd, video, g_mbus_config, &mcfg);
+	ret = v4l2_subdev_call(sd, pad, get_mbus_config, 0, &mcfg);
 	if (ret < 0) {
 		vin_err("%s g_mbus_config error!\n", sd->name);
 		goto out;
@@ -812,7 +812,7 @@ static int vin_pipeline_set_mbus_config(struct vin_core *vinc)
 		sd = media_entity_to_v4l2_subdev(me);
 		if ((sd == pipe->sd[VIN_IND_MIPI]) ||
 		    (sd == pipe->sd[VIN_IND_CSI])) {
-			ret = v4l2_subdev_call(sd, video, s_mbus_config, &mcfg);
+			ret = v4l2_subdev_call(sd, pad, set_mbus_config, 0, &mcfg);
 			if (ret < 0) {
 				vin_err("%s s_mbus_config error!\n", me->name);
 				goto out;

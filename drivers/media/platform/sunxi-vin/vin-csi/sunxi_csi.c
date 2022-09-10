@@ -473,8 +473,9 @@ static int sunxi_csi_subdev_set_selection(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int sunxi_csi_s_mbus_config(struct v4l2_subdev *sd,
-				   const struct v4l2_mbus_config *cfg)
+static int sunxi_csi_set_mbus_config(struct v4l2_subdev *sd,
+				     unsigned int pad,
+				     struct v4l2_mbus_config *cfg)
 {
 	struct csi_dev *csi = v4l2_get_subdevdata(sd);
 
@@ -573,13 +574,13 @@ static int sunxi_csi_s_mbus_config(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops sunxi_csi_subdev_video_ops = {
 	.s_stream = sunxi_csi_subdev_s_stream,
-	.s_mbus_config = sunxi_csi_s_mbus_config,
 };
 
 static const struct v4l2_subdev_pad_ops sunxi_csi_subdev_pad_ops = {
 	.set_selection = sunxi_csi_subdev_set_selection,
 	.get_fmt = sunxi_csi_subdev_get_fmt,
 	.set_fmt = sunxi_csi_subdev_set_fmt,
+	.set_mbus_config = sunxi_csi_set_mbus_config,
 };
 
 static struct v4l2_subdev_ops sunxi_csi_subdev_ops = {

@@ -1404,7 +1404,8 @@ static struct sensor_win_size sensor_win_sizes[] = {
 
 #define N_WIN_SIZES (ARRAY_SIZE(sensor_win_sizes))
 
-static int sensor_g_mbus_config(struct v4l2_subdev *sd,
+static int sensor_get_mbus_config(struct v4l2_subdev *sd,
+				unsigned int pad,
 				struct v4l2_mbus_config *cfg)
 {
 	struct sensor_info *info = to_state(sd);
@@ -1514,7 +1515,7 @@ static const struct v4l2_subdev_core_ops sensor_core_ops = {
 
 static const struct v4l2_subdev_video_ops sensor_video_ops = {
 	.s_stream = sensor_s_stream,
-	.g_mbus_config = sensor_g_mbus_config,
+	.get_mbus_config = sensor_get_mbus_config,
 };
 
 static const struct v4l2_subdev_pad_ops sensor_pad_ops = {

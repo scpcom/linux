@@ -569,8 +569,9 @@ static int sunxi_mipi_subdev_set_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd,
-				    const struct v4l2_mbus_config *cfg)
+static int sunxi_mipi_set_mbus_config(struct v4l2_subdev *sd,
+				      unsigned int pad,
+				      struct v4l2_mbus_config *cfg)
 {
 	struct mipi_dev *mipi = v4l2_get_subdevdata(sd);
 
@@ -695,12 +696,12 @@ static int sunxi_mipi_s_mbus_config(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops sunxi_mipi_subdev_video_ops = {
 	.s_stream = sunxi_mipi_subdev_s_stream,
-	.s_mbus_config = sunxi_mipi_s_mbus_config,
 };
 
 static const struct v4l2_subdev_pad_ops sunxi_mipi_subdev_pad_ops = {
 	.get_fmt = sunxi_mipi_subdev_get_fmt,
 	.set_fmt = sunxi_mipi_subdev_set_fmt,
+	.set_mbus_config = sunxi_mipi_set_mbus_config,
 };
 
 static struct v4l2_subdev_ops sunxi_mipi_subdev_ops = {
