@@ -18,6 +18,7 @@ config SUNXI_QA_TEST
 config SUNXI_SMC
 	tristate "sunxi smc interfaces"
 	default n
+	depends on ARM || ARM64
 	help
 	  This driver support smc call interfaces depended on
 	  monitor/aft/SecureOs. If you don't know whether need
