@@ -3207,7 +3207,7 @@ static int __tvd_multi_ch_probe_init(struct platform_device *pdev)
 		V4L2_CAP_STREAMING | V4L2_CAP_READWRITE | V4L2_CAP_DEVICE_CAPS;
 
 	/* /dev/video8 for multich. */
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, 8);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, 8);
 	if (ret < 0) {
 		tvd_wrn("Error video_register_device!!\n");
 		goto VIDEO_DEVICE_ALLOC_ERR;
@@ -3397,7 +3397,7 @@ static int __tvd_probe_init(int sel, struct platform_device *pdev)
 	vfd->device_caps = V4L2_CAP_VIDEO_CAPTURE |
 		V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, dev->id + 4);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, dev->id + 4);
 	if (ret < 0) {
 		tvd_wrn("Error video_register_device!!:%d\n", ret);
 		goto video_device_alloc_err;
