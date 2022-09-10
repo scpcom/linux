@@ -15,6 +15,7 @@
  *
  */
 #include "logo.h"
+#include <linux/decompress/unlzma.h>
 #include <linux/memblock.h>
 
 static u32 disp_reserve_size;
@@ -183,6 +184,198 @@ static void Fb_unmap_kernel(void *vaddr)
 {
 	vunmap(vaddr);
 }
+
+#if defined(CONFIG_DECOMPRESS_LZMA)
+int lzma_decode(uintptr_t paddr, struct fb_info *info)
+{
+	void *vaddr = NULL;
+	long pos = 0;
+	unsigned char *out = NULL;
+	int ret = -1, i = 0;
+	struct lzma_header lzma_head;
+	struct bmp_header bmp_header;
+	unsigned int x, y, bmp_bpix, fb_width, fb_height;
+	unsigned int effective_width, effective_height;
+	int zero_num = 0;
+	struct sunxi_bmp_store bmp_info;
+	void *screen_offset = NULL, *image_offset = NULL;
+	char *tmp_buffer = NULL;
+	char *bmp_data = NULL;
+
+	if (!paddr || !info) {
+		lcd_fb_wrn("Null pointer!\n");
+		goto OUT;
+	}
+
+	vaddr = (void *)Fb_map_kernel(paddr, sizeof(struct lzma_header));
+	if (vaddr == NULL) {
+		lcd_fb_wrn("fb_map_kernel failed, paddr=0x%p,size=0x%x\n",
+		      (void *)paddr, (unsigned int)sizeof(struct lzma_header));
+		goto OUT;
+	}
+
+	memcpy(&lzma_head.signature[0], vaddr, sizeof(struct lzma_header));
+
+	if ((lzma_head.signature[0] != 'L') ||
+	    (lzma_head.signature[1] != 'Z') ||
+	    (lzma_head.signature[2] != 'M') ||
+	    (lzma_head.signature[3] != 'A')) {
+		lcd_fb_wrn("this is not a LZMA file.\n");
+		Fb_unmap_kernel(vaddr);
+		goto OUT;
+	}
+
+	Fb_unmap_kernel(vaddr);
+
+	out = kmalloc(lzma_head.original_file_size, GFP_KERNEL | __GFP_ZERO);
+	if (!out) {
+		lcd_fb_wrn("kmalloc outbuffer fail!\n");
+		goto OUT;
+	}
+
+	vaddr = (void *)Fb_map_kernel(paddr, lzma_head.file_size +
+						 sizeof(struct lzma_header));
+	if (vaddr == NULL) {
+		lcd_fb_wrn("fb_map_kernel failed, paddr=0x%p,size=0x%x\n",
+		      (void *)paddr,
+		      (unsigned int)(lzma_head.file_size +
+				     sizeof(struct lzma_header)));
+		goto FREE_OUT;
+	}
+
+	ret = unlzma((unsigned char *)(vaddr + sizeof(struct lzma_header)),
+		     lzma_head.file_size, NULL, NULL, out, &pos, NULL);
+	if (ret) {
+		lcd_fb_wrn("unlzma fail:%d\n", ret);
+		goto UMAPKERNEL;
+	}
+
+	memcpy(&bmp_header, out, sizeof(struct bmp_header));
+
+	if ((bmp_header.signature[0] != 'B') ||
+	    (bmp_header.signature[1] != 'M')) {
+		lcd_fb_wrn("%s:this is not a bmp picture.\n", __func__);
+		goto UMAPKERNEL;
+	}
+
+	bmp_bpix = bmp_header.bit_count / 8;
+
+	if ((bmp_bpix != 3) && (bmp_bpix != 4)) {
+		lcd_fb_wrn("%s:not support bmp format:%d.\n", __func__, bmp_bpix);
+		goto UMAPKERNEL;
+	}
+
+	x = bmp_header.width;
+	y = (bmp_header.height & 0x80000000) ? (-bmp_header.height)
+					     : (bmp_header.height);
+	if (bmp_bpix == 3)
+		zero_num = (4 - ((3 * x) % 4)) & 3;
+	fb_width = info->var.xres;
+	fb_height = info->var.yres;
+	bmp_info.x = x;
+	bmp_info.y = y;
+	bmp_info.bit = bmp_header.bit_count;
+	bmp_info.buffer = (void *__force)(info->screen_base);
+
+	if (bmp_bpix == 3)
+		info->var.bits_per_pixel = 24;
+	else if (bmp_bpix == 4)
+		info->var.bits_per_pixel = 32;
+	else
+		info->var.bits_per_pixel = 32;
+
+	tmp_buffer = (char *)bmp_info.buffer;
+	screen_offset = (void *)bmp_info.buffer;
+	bmp_data =
+	    (char *)(out + bmp_header.data_offset + sizeof(struct lzma_header));
+	image_offset = (void *)bmp_data;
+	effective_width = (fb_width < x) ? fb_width : x;
+	effective_height = (fb_height < y) ? fb_height : y;
+
+	if (bmp_header.height & 0x80000000) {
+#if defined(SUPPORT_ROTATE)
+		if (info->var.bits_per_pixel == 24) {
+			screen_offset =
+			    (void *)((void *__force)info->screen_base +
+				     (fb_width * (abs(fb_height - y) / 2) +
+				      abs(fb_width - x) / 2) *
+					 4);
+			rgb24_to_rgb32(image_offset, &bmp_header, info,
+				       screen_offset, zero_num);
+		} else
+#endif
+		{
+			screen_offset =
+			    (void *)((void *__force)info->screen_base +
+				     (fb_width * (abs(fb_height - y) / 2) +
+				      abs(fb_width - x) / 2) *
+					 (info->var.bits_per_pixel >> 3));
+			for (i = 0; i < effective_height; i++) {
+				memcpy((void *)screen_offset, image_offset,
+				       effective_width *
+					   (info->var.bits_per_pixel >> 3));
+				screen_offset =
+				    (void *)(screen_offset +
+					     fb_width *
+						 (info->var.bits_per_pixel >>
+						  3));
+				image_offset =
+				    (void *)image_offset +
+				    x * (info->var.bits_per_pixel >> 3);
+			}
+		}
+
+	} else {
+
+#if defined(SUPPORT_ROTATE)
+		if (info->var.bits_per_pixel == 24) {
+			screen_offset =
+			    (void *)((void *__force)info->screen_base +
+				     (fb_width * (abs(fb_height - y) / 2) +
+				      abs(fb_width - x) / 2) *
+					 4);
+
+			image_offset =
+			    (void *)bmp_data +
+			    (effective_height - 1) * (x * 3 + zero_num);
+			rgb24_to_rgb32(image_offset, &bmp_header, info,
+				       screen_offset, zero_num);
+		} else
+#endif
+		{
+			screen_offset =
+			    (void *)((void *__force)info->screen_base +
+				     (fb_width * (abs(fb_height - y) / 2) +
+				      abs(fb_width - x) / 2) *
+					 (info->var.bits_per_pixel >> 3));
+
+			image_offset = (void *)bmp_data +
+				       (effective_height - 1) * x *
+					   (info->var.bits_per_pixel >> 3);
+			for (i = effective_height - 1; i >= 0; i--) {
+				memcpy((void *)screen_offset, image_offset,
+				       effective_width *
+					   (info->var.bits_per_pixel >> 3));
+				screen_offset =
+				    (void *)(screen_offset +
+					     fb_width *
+						 (info->var.bits_per_pixel >>
+						  3));
+				image_offset =
+				    (void *)bmp_data +
+				    i * x * (info->var.bits_per_pixel >> 3);
+			}
+		}
+	}
+
+UMAPKERNEL:
+	Fb_unmap_kernel(vaddr);
+FREE_OUT:
+	kfree(out);
+OUT:
+	return ret;
+}
+#endif
 
 static int Fb_map_kernel_logo(struct fb_info *info)
 {

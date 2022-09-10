@@ -66,6 +66,19 @@ struct bmp_header {
 
 int logo_parse(struct fb_info *info);
 
+struct sunxi_bmp_store {
+	int x;
+	int y;
+	int bit;
+	void *buffer;
+};
+
+struct lzma_header {
+	char signature[4];
+	u32 file_size;
+	u32 original_file_size;
+};
+
 #ifdef __cplusplus
 }
 #endif
