@@ -629,7 +629,7 @@ dbus_get_fw_nvram(dhd_bus_t *dhd_bus, char *pfw_path, char *pnv_path)
 	nv_memblock = MALLOC(dhd_bus->pub.osh, MAX_NVRAMBUF_SIZE);
 	if (nv_memblock == NULL) {
 		DBUSERR(("%s: Failed to allocate memory %d bytes\n",
-					FUNCTION__, MAX_NVRAMBUF_SIZE));
+					__FUNCTION__, MAX_NVRAMBUF_SIZE));
 		goto err;
 	}
 	len = dhd_os_get_image_block(nv_memblock, MAX_NVRAMBUF_SIZE, nv_image);
