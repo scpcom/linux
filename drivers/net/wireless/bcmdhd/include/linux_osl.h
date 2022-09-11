@@ -404,6 +404,9 @@ extern uint64 osl_sysuptime_us(void);
 
 /* map/unmap physical to virtual I/O */
 #if !defined(CONFIG_MMC_MSM7X00A)
+#ifndef ioremap_nocache
+#define ioremap_nocache(addr, size)	ioremap((addr), (size))
+#endif
 #define	REG_MAP(pa, size)	ioremap_nocache((unsigned long)(pa), (unsigned long)(size))
 #else
 #define REG_MAP(pa, size)       (void *)(0)
