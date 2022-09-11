@@ -71,6 +71,11 @@
 #define DEVICE_LVDS_NUM 1
 #endif
 
+#ifndef IOMMU_DE0_MASTOR_ID
+#define IOMMU_DE0_MASTOR_ID 0
+#define IOMMU_DE1_MASTOR_ID 0
+#endif
+
 #ifndef CLK_NUM_PER_DSI
 #define CLK_NUM_PER_DSI 1
 #endif
