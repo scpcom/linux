@@ -197,6 +197,7 @@ config SUNXI_RSB
 config SUNXI_MBUS
 	tristate "SUNXI MBUS driver support"
 	depends on ARCH_SUNXI
+	depends on ARCH_SUN8IW20 || ARCH_SUN20IW1 || ARCH_SUN50IW9
 	select HWMON
 	help
 	  Driver supporting the mbus for sunxi platforms.
@@ -205,6 +206,7 @@ config SUNXI_NSI
 	tristate "SUNXI NSI driver support"
 	  depends on ARCH_SUNXI
 	  depends on ARM || ARM64
+	  depends on ARCH_SUN50IW10 || ARCH_SUN50IW12 || ARCH_SUN55IW3
 	  help
 	  Driver supporting the mbus for sunxi platforms.
 
