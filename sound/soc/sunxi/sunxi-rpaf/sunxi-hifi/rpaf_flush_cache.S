@@ -1,5 +1,17 @@
 #include <linux/linkage.h>
 
+#ifndef ENTRY
+/* deprecated, use SYM_FUNC_START */
+#define ENTRY(name) \
+	SYM_FUNC_START(name)
+#endif
+
+#ifndef ENDPROC
+/* deprecated, use SYM_FUNC_END */
+#define ENDPROC(name) \
+	SYM_FUNC_END(name)
+#endif
+
 #define ENDPIPROC(x)			\
 	.globl	__pi_##x;		\
 	.type 	__pi_##x, %function;	\
