@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/printk.h>
 #include <linux/kernel.h>
+#include <linux/compat.h>
 #include <linux/device.h>
 #include <linux/vmalloc.h>
 #include <linux/sunxi-sid.h>
