@@ -601,6 +601,8 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 
 #if !defined(CONFIG_SMP)
 #define SMP_RD_BARRIER_DEPENDS(x)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+#define SMP_RD_BARRIER_DEPENDS(x)		do { } while (0)
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 #define SMP_RD_BARRIER_DEPENDS(x) smp_read_barrier_depends(x)
 #else
