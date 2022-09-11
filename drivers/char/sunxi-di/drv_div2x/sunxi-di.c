@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/compat.h>
 #include <linux/ioport.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
