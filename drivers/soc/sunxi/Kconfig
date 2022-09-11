@@ -73,6 +73,7 @@ config SUNXI_SID
 config SUNXI_RISCV_SUSPEND
 	tristate "Allwinner sunxi riscv suspend support"
 	default n
+	depends on RISCV
 	select HARDIRQS_SW_RESEND
 	select ARCH_SUSPEND_POSSIBLE
 
