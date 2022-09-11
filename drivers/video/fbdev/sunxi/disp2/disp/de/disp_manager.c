@@ -1084,6 +1084,7 @@ static s32 disp_mgr_clk_enable(struct disp_manager *mgr)
 
 	DE_INF("mgr %d clk enable\n", mgr->disp);
 
+#if defined(HAVE_DEVICE_COMMON_MODULE)
 	if (mgrp->rst_extra) {
 		ret = reset_control_deassert(mgrp->rst_extra);
 		if (ret) {
@@ -1091,6 +1092,7 @@ static s32 disp_mgr_clk_enable(struct disp_manager *mgr)
 			return ret;
 		}
 	}
+#endif
 
 	if (mgrp->clk_extra) {
 		ret = clk_prepare_enable(mgrp->clk_extra);
@@ -1146,8 +1148,10 @@ static s32 disp_mgr_clk_disable(struct disp_manager *mgr)
 
 	if (mgrp->clk_extra)
 		clk_disable_unprepare(mgrp->clk_extra);
+#if defined(HAVE_DEVICE_COMMON_MODULE)
 	if (mgrp->rst_extra)
 		reset_control_assert(mgrp->rst_extra);
+#endif
 
 	clk_disable_unprepare(mgrp->clk);
 	clk_disable_unprepare(mgrp->clk_bus);
@@ -3067,8 +3071,10 @@ s32 disp_init_mgr(struct disp_bsp_init_para *para)
 		mgrp->clk_dpss = para->clk_bus_dpss_top[disp];
 		if (para->rst_bus_dpss_top[disp])
 			mgrp->rst_dpss = para->rst_bus_dpss_top[disp];
+#if defined(HAVE_DEVICE_COMMON_MODULE)
 		mgrp->clk_extra = para->clk_bus_extra;
 		mgrp->rst_extra = para->rst_bus_extra;
+#endif
 		mgrp->irq_info.sel = disp;
 		mgrp->irq_info.irq_flag = disp_feat_is_using_rcq(disp) ?
 			DISP_AL_IRQ_FLAG_RCQ_FINISH : 0;
