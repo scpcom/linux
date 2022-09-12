@@ -107,9 +107,15 @@ static void wcn_gmtime(struct timespec64 *tv, struct wcn_tm *tm)
 				 31, 30, 31, 30, 31 };
 	memset(tm, 0, sizeof(*tm));
 	tm->tm_msec =  tv->tv_nsec/1000000;
+#ifdef CONFIG_64BIT
 	tm->tm_sec  = tv->tv_sec % (24 * 60 * 60);
 	tm->tm_mday = tv->tv_sec / (24 * 60 * 60) +
 		(2 * 365 + 1); /* shift base from 1970 to 1968 */
+#else
+	tm->tm_sec  = (unsigned long)tv->tv_sec % (24 * 60 * 60);
+	tm->tm_mday = (unsigned long)tv->tv_sec / (24 * 60 * 60) +
+		(2 * 365 + 1); /* shift base from 1970 to 1968 */
+#endif
 	tm->tm_min =  tm->tm_sec / 60 % 60;
 	tm->tm_hour = tm->tm_sec / 60 / 60;
 	tm->tm_sec =  tm->tm_sec % 60;
