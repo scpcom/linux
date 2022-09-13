@@ -13,6 +13,7 @@
 #include "asm/cacheflush.h"
 #include <linux/pinctrl/consumer.h>
 #include <linux/clk-provider.h>
+#include <linux/regulator/consumer.h>
 
 /* cache flush flags */
 #define  CACHE_FLUSH_I_CACHE_REGION       0

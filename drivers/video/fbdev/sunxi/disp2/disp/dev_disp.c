@@ -10,6 +10,9 @@
 
 #include "dev_disp.h"
 #include "de/disp_lcd.h"
+#if defined(SUPPORT_EDP)
+#include "de/disp_edp.h"
+#endif
 #if defined(CONFIG_DISP2_SUNXI_ION)
 #include <linux/ion.h>
 #include <uapi/linux/ion.h>

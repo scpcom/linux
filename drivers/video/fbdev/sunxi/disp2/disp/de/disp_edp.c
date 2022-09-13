@@ -50,8 +50,10 @@ struct disp_edp_private_data {
 	struct disp_gpio_info edp_bl_en;
 	int edp_bl_gpio_hdl;
 	char edp_bl_en_power[32];
+	struct regulator *edp_bl_regulator;
 	u32 edp_power_used[EDP_POWER_NUM];
 	char edp_power[EDP_POWER_NUM][32];
+	struct regulator *edp_regulator[EDP_POWER_NUM];
 };
 
 /*global static variable*/
@@ -1129,7 +1131,7 @@ s32 disp_init_edp(struct disp_bsp_init_para *para)
 		sprintf(p_edp->name, "edp%d", edp_index);
 		p_edp->type               = DISP_OUTPUT_TYPE_EDP;
 		p_edpp->irq_no = para->irq_no[DISP_MOD_LCD0 + hwdev_index];
-		p_edpp->clk = para->mclk[DISP_MOD_LCD0 + hwdev_index];
+		p_edpp->clk = para->clk_tcon[hwdev_index];
 		p_edpp->edp_index = edp_index;
 		/*function register*/
 		p_edp->set_manager        = disp_device_set_manager;
