@@ -2625,7 +2625,7 @@ static int disp_mem_release(int sel)
 	return 0;
 }
 
-#if defined(SUPPORT_LCD)
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_LCD)
 int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops)
 {
 	memset((void *)src_ops, 0, sizeof(struct sunxi_disp_source_ops));

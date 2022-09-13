@@ -1625,25 +1625,29 @@ s32 bsp_disp_lcd_set_panel_funs(char *name, struct disp_lcd_panel_fun *lcd_cfg)
 	return 0;
 }
 
-#if defined(SUPPORT_LCD)
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_LCD)
 void LCD_OPEN_FUNC(u32 disp, LCD_FUNC func, u32 delay)
 {
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 
 	lcd = disp_get_lcd(disp);
 
 	if (lcd && lcd->set_open_func)
 		lcd->set_open_func(lcd, func, delay);
+#endif
 }
 
 void LCD_CLOSE_FUNC(u32 disp, LCD_FUNC func, u32 delay)
 {
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 
 	lcd = disp_get_lcd(disp);
 
 	if (lcd && lcd->set_close_func)
 		lcd->set_close_func(lcd, func, delay);
+#endif
 }
 #endif
 
@@ -1662,7 +1666,7 @@ s32 bsp_disp_get_tv_registered(void)
 	return gdisp.tv_registered;
 }
 
-#if defined(SUPPORT_LCD)
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_LCD)
 s32 bsp_disp_lcd_backlight_enable(u32 disp)
 {
 	s32 ret = -1;
@@ -1783,6 +1787,7 @@ s32 bsp_disp_lcd_get_bright(u32 disp)
 s32 bsp_disp_lcd_tcon_enable(u32 disp)
 {
 	int ret = -1;
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 	struct disp_device *lcd_slave;
 
@@ -1823,12 +1828,14 @@ FREE_INFO:
 	if (panel_info != NULL)
 		kfree(panel_info);
 OUT:
+#endif
 	return ret;
 }
 
 s32 bsp_disp_lcd_tcon_disable(u32 disp)
 {
 	int ret = -1;
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 	struct disp_device *lcd_slave;
 
@@ -1864,6 +1871,7 @@ FREE_INFO:
 	if (panel_info != NULL)
 		kfree(panel_info);
 OUT:
+#endif
 	return ret;
 }
 
@@ -1906,6 +1914,7 @@ s32 bsp_disp_lcd_gpio_set_direction(u32 disp, unsigned int io_index,
 
 s32 bsp_disp_get_panel_info(u32 disp, struct disp_panel_para *info)
 {
+#if defined(SUPPORT_LCD)
 	struct disp_device *lcd;
 
 	lcd = disp_get_lcd(disp);
@@ -1914,6 +1923,7 @@ s32 bsp_disp_get_panel_info(u32 disp, struct disp_panel_para *info)
 
 	if (lcd && lcd->get_panel_info)
 		return lcd->get_panel_info(lcd, info);
+#endif
 
 	return DIS_FAIL;
 }

@@ -1593,6 +1593,7 @@ static s32 disp_lcd_set_bright_dimming(struct disp_device *lcd, u32 dimming)
 	return DIS_SUCCESS;
 }
 
+#if defined(SUPPORT_LCD)
 static s32 disp_lcd_get_panel_info(struct disp_device *lcd,
 				   struct disp_panel_para *info)
 {
@@ -1607,6 +1608,7 @@ static s32 disp_lcd_get_panel_info(struct disp_device *lcd,
 	       sizeof(struct disp_panel_para));
 	return 0;
 }
+#endif
 
 #if defined(__LINUX_PLAT__)
 static irqreturn_t disp_lcd_event_proc(int irq, void *parg)
@@ -3204,7 +3206,9 @@ s32 disp_init_lcd(struct disp_bsp_init_para *para)
 		lcd->set_bright = disp_lcd_set_bright;
 		lcd->get_bright = disp_lcd_get_bright;
 		lcd->set_bright_dimming = disp_lcd_set_bright_dimming;
+#if defined(SUPPORT_LCD)
 		lcd->get_panel_info = disp_lcd_get_panel_info;
+#endif
 		lcd->set_static_config = disp_lcd_set_static_config;
 		lcd->get_static_config = disp_lcd_get_static_config;
 		lcd->check_config_dirty = disp_lcd_check_config_dirty;

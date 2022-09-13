@@ -755,7 +755,7 @@ struct disp_lcd_esd_info {
 	unsigned int rst_cnt;
 };
 
-#if defined(SUPPORT_LCD)
+#if defined(CONFIG_DISP2_SUNXI_SUPPORT_LCD)
 enum div_flag {
 	 INCREASE        = 1,
 	 DECREASE        = -1,
