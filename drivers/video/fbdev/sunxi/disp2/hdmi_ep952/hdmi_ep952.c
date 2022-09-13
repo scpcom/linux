@@ -32,6 +32,7 @@
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/regulator/consumer.h>
 //#include <linux/switch.h> // switch_dev
 //#include <mach/sys_config.h>
 //#include <mach/platform.h>
@@ -61,13 +62,15 @@ static u32 hdmi_i2c_used;
 static u32 hdmi_screen_id;
 static u32 hdmi_power_used[4] = { 0 };
 static char hdmi_power[4][16] = { 0 };
+struct device *hdmi_power_dev = NULL;
+struct regulator *hdmi_power_regulator[4] = { NULL };
 
 static bool hdmi_io_used[28];
 static int hdmi_io_hdl[28];
-static struct disp_gpio_set_t hdmi_io[28];
+static struct disp_gpio_info hdmi_io[28];
 static bool hdmi_gpio_used[4];
 static int hdmi_gpio_hdl[4];
-static struct disp_gpio_set_t hdmi_gpio[4];
+static struct disp_gpio_info hdmi_gpio[4];
 static struct i2c_adapter *hdmi_i2c_adapter;
 static struct i2c_adapter *ep952_i2c_adapter;
 static struct i2c_client *ep952_i2c_client;
@@ -115,7 +118,7 @@ static struct disp_video_timings video_timing[] = {
 
 static int hdmi_parse_config(void)
 {
-	struct disp_gpio_set_t *gpio_info;
+	struct disp_gpio_info *gpio_info;
 	int i, ret;
 	char io_name[32];
 
@@ -147,24 +150,22 @@ static int hdmi_parse_config(void)
 int hdmi_gpio_config(int gpio_id, int bon)
 {
 	if (gpio_id < sizeof(hdmi_gpio_used) && hdmi_gpio_used[gpio_id]) {
-		struct disp_gpio_set_t gpio_info[1];
+		struct disp_gpio_info gpio_info[1];
 
 		memcpy(gpio_info, &(hdmi_gpio[gpio_id]),
-		       sizeof(struct disp_gpio_set_t));
+		       sizeof(struct disp_gpio_info));
 		if (!bon) {
 			if (hdmi_gpio_hdl[gpio_id]) {
-				disp_sys_gpio_release(hdmi_gpio_hdl[gpio_id],
-						      2);
-				gpio_info->mul_sel = 7;
+				disp_sys_gpio_release(gpio_info); //, hdmi_gpio_hdl[gpio_id], 2);
+				gpio_info->value = 0;
 				hdmi_gpio_hdl[gpio_id] =
-				    disp_sys_gpio_request(gpio_info, 1);
-				disp_sys_gpio_release(hdmi_gpio_hdl[gpio_id],
-						      2);
+				    disp_sys_gpio_request(gpio_info); //, 1);
+				disp_sys_gpio_release(gpio_info); //, hdmi_gpio_hdl[gpio_id], 2);
 				hdmi_gpio_hdl[gpio_id] = 0;
 			}
 		} else {
 			hdmi_gpio_hdl[gpio_id] =
-			    disp_sys_gpio_request(gpio_info, 1);
+			    disp_sys_gpio_request(gpio_info); //, 1);
 		}
 
 	}
@@ -177,24 +178,22 @@ static int hdmi_pin_config(u32 bon)
 
 	for (i = 0; i < 28; i++) {
 		if (hdmi_io_used[i]) {
-			struct disp_gpio_set_t gpio_info[1];
+			struct disp_gpio_info gpio_info[1];
 
 			memcpy(gpio_info, &(hdmi_io[i]),
-			       sizeof(struct disp_gpio_set_t));
+			       sizeof(struct disp_gpio_info));
 			if (!bon) {
 				if (hdmi_io_hdl[i]) {
-					disp_sys_gpio_release(hdmi_io_hdl[i],
-							      2);
-					gpio_info->mul_sel = 7;
+					disp_sys_gpio_release(gpio_info); //, hdmi_io_hdl[i], 2);
+					gpio_info->value = 0;
 					hdmi_io_hdl[i] =
-					    disp_sys_gpio_request(gpio_info, 1);
-					disp_sys_gpio_release(hdmi_io_hdl[i],
-							      2);
+					    disp_sys_gpio_request(gpio_info); //, 1);
+					disp_sys_gpio_release(gpio_info); //, hdmi_io_hdl[i], 2);
 					hdmi_io_hdl[i] = 0;
 				}
 			} else {
 				hdmi_io_hdl[i] =
-				    disp_sys_gpio_request(gpio_info, 1);
+				    disp_sys_gpio_request(gpio_info); //, 1);
 			}
 		}
 	}
@@ -207,10 +206,14 @@ static s32 ep952_hdmi_power_on(u32 on_off)
 
 	for (i = 0; i < 4; i++) {
 		if (hdmi_power_used[i]) {
-			if (on_off)
-				disp_sys_power_enable(hdmi_power[i]);
-			else
-				disp_sys_power_disable(hdmi_power[i]);
+			if (on_off) {
+				hdmi_power_regulator[i] = regulator_get(hdmi_power_dev, hdmi_power[i]);
+				disp_sys_power_enable(hdmi_power_regulator[i]);
+			} else {
+				disp_sys_power_disable(hdmi_power_regulator[i]);
+				regulator_put(hdmi_power_regulator[i]);
+				hdmi_power_regulator[i] = NULL;
+			}
 		}
 	}
 
