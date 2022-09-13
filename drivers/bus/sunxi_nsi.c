@@ -573,21 +573,21 @@ static int nsi_probe(struct platform_device *pdev)
 	reset = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR_OR_NULL(reset)) {
 		pr_err("Unable to get reset, return %x\n",
-		PTR_RET(reset));
+		PTR_ERR_OR_ZERO(reset));
 		return -1;
 	}
 
 	pclk = devm_clk_get(&pdev->dev, "pll");
 	if (IS_ERR_OR_NULL(pclk)) {
 		pr_err("Unable to acquire pll clock, return %x\n",
-		PTR_RET(pclk));
+		PTR_ERR_OR_ZERO(pclk));
 		return -1;
 	}
 
 	mclk = devm_clk_get(&pdev->dev, "bus");
 	if (IS_ERR_OR_NULL(mclk)) {
 		pr_err("Unable to acquire module clock, return %x\n",
-		PTR_RET(mclk));
+		PTR_ERR_OR_ZERO(mclk));
 		return -1;
 	}
 
