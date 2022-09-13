@@ -1098,4 +1098,14 @@ u16 dsi_crc_pro_pd_repeat(u8 pd, u32 pd_bytes)
 	return crc;
 }
 
+#else
+__s32 dsi_dcs_wr(__u32 sel, __u8 cmd, __u8 *para_p, __u32 para_num)
+{
+	return 0;
+}
+
+__s32 dsi_gen_wr(__u32 sel, __u8 cmd, __u8 *para_p, __u32 para_num)
+{
+	return 0;
+}
 #endif

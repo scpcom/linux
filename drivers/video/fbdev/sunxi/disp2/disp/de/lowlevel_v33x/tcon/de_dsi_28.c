@@ -1124,4 +1124,14 @@ EXPORT_SYMBOL(dsi_dcs_wr_3para);
 EXPORT_SYMBOL(dsi_dcs_wr_4para);
 EXPORT_SYMBOL(dsi_dcs_wr_5para);
 
+#else
+__s32 dsi_dcs_wr(__u32 sel, __u8 cmd, __u8 *para_p, __u32 para_num)
+{
+	return 0;
+}
+
+__s32 dsi_gen_wr(__u32 sel, __u8 cmd, __u8 *para_p, __u32 para_num)
+{
+	return 0;
+}
 #endif
