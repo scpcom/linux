@@ -1803,3 +1803,12 @@ s32 tcon_set_fsync_active_time(u32 sel, u32 pixel_num)
 
 	return 0;
 }
+
+void tcon_reset(u32 sel)
+{
+	lcd_dev[sel]->tcon0_ctl.bits.src_sel = 1;
+	lcd_dev[sel]->tcon_gctl.bits.tcon_en = 0;
+	disp_delay_us(20);
+	lcd_dev[sel]->tcon0_ctl.bits.src_sel = 0;
+	lcd_dev[sel]->tcon_gctl.bits.tcon_en = 1;
+}
