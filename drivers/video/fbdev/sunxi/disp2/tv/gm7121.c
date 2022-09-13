@@ -32,6 +32,7 @@
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/regulator/consumer.h>
 #include "../disp/disp_sys_intf.h"
 #include <video/sunxi_display2.h>
 #include <linux/of_irq.h>
@@ -55,9 +56,11 @@ static u32 tv_screen_id;
 static u32 tv_used;
 static u32 tv_power_used;
 static char tv_power[16] = {0};
+struct device *tv_power_dev = NULL;
+struct regulator *tv_power_regulator;
 
 static bool tv_io_used[28];
-static struct disp_gpio_set_t tv_io[28];
+static struct disp_gpio_info tv_io[28];
 static struct i2c_adapter *tv_i2c_adapter;
 static struct i2c_client *tv_i2c_client;
 static struct disp_device *gm7121_device;
@@ -114,7 +117,7 @@ static struct disp_video_timings video_timing[] = {
 
 static int tv_parse_config(void)
 {
-	struct disp_gpio_set_t  *gpio_info;
+	struct disp_gpio_info  *gpio_info;
 	int i, ret;
 	char io_name[32];
 
@@ -122,8 +125,7 @@ static int tv_parse_config(void)
 		gpio_info = &(tv_io[i]);
 		sprintf(io_name, "tv_d%d", i);
 		ret = disp_sys_script_get_item(key_name, io_name,
-						(int *)gpio_info,
-				sizeof(struct disp_gpio_set_t)/sizeof(int));
+						(int *)gpio_info, 3);
 		if (ret == 3)
 			tv_io_used[i] = 1;
 	}
@@ -137,14 +139,14 @@ static int tv_pin_config(u32 bon)
 
 	for (i = 0; i < 28; i++) {
 		if (tv_io_used[i]) {
-			struct disp_gpio_set_t  gpio_info[1];
+			struct disp_gpio_info  gpio_info[1];
 
 			memcpy(gpio_info, &(tv_io[i]),
-					sizeof(struct disp_gpio_set_t));
+					sizeof(struct disp_gpio_info));
 			if (!bon)
-				gpio_info->mul_sel = 7;
-			hdl = disp_sys_gpio_request(gpio_info, 1);
-			disp_sys_gpio_release(hdl, 2);
+				gpio_info->value = 0;
+			hdl = disp_sys_gpio_request(gpio_info); //, 1);
+			disp_sys_gpio_release(gpio_info); // hdl, 2);
 		}
 	}
 	return 0;
@@ -154,10 +156,16 @@ static s32 gm7121_tv_power_on(u32 on_off)
 {
 	if (tv_power_used == 0)
 		return 0;
-	if (on_off)
-		disp_sys_power_enable(tv_power);
-	else
-		disp_sys_power_disable(tv_power);
+	if (on_off) {
+		if (tv_power_used)
+			tv_power_regulator = regulator_get(tv_power_dev, tv_power);
+		disp_sys_power_enable(tv_power_regulator);
+	} else {
+		disp_sys_power_disable(tv_power_regulator);
+		if (tv_power_regulator)
+			regulator_put(tv_power_regulator);
+		tv_power_regulator = NULL;
+	}
 	return 0;
 }
 
@@ -516,7 +524,7 @@ static int __init gm7121_module_init(void)
 			unsigned int output_type1, output_mode1;
 
 			ret = disp_sys_script_get_item(key_name, "tv_power",
-					(int *)tv_power, 32/sizeof(int));
+					(int *)tv_power, 2);
 			if (ret == 2) {
 				tv_power_used = 1;
 				pr_info("[TV] tv_power: %s\n", tv_power);
