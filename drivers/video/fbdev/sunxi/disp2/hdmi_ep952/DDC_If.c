@@ -11,7 +11,9 @@
 //#include <string.h>
 #include <linux/module.h>
 #include <asm/uaccess.h>
+#if IS_ENABLED(CONFIG_ARM) || IS_ENABLED(CONFIG_ARM64)
 #include <asm/memory.h>
+#endif
 #include <asm/unistd.h>
 #include "asm-generic/int-ll64.h"
 #include "linux/kernel.h"
