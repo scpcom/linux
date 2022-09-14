@@ -195,6 +195,7 @@ sunxi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 		kfree(buf);
 		return i;
 	}
+	return 0;
 }
 
 static unsigned int sunxi_i2c_functionality(struct i2c_adapter *adap)
