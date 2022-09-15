@@ -4,7 +4,7 @@
 #
 
 config SUNXI_MBUS
-	bool
+	bool "Allwinner MBUS DMA quirks"
 	default ARCH_SUNXI
 	depends on ARM || ARM64
 	help

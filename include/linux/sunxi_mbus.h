@@ -64,7 +64,7 @@ enum mbus_port {
 
 struct device_node;
 
-#ifdef CONFIG_SUNXI_MBUS
+#ifdef CONFIG_SUN8I_MBUS
 extern int mbus_port_setbwlen(enum mbus_port port, bool en);
 extern int mbus_port_setpri(enum mbus_port port, bool pri);
 extern int mbus_port_setqos(enum mbus_port port, unsigned int qos);

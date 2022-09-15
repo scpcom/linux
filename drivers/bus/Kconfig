@@ -194,10 +194,11 @@ config SUNXI_RSB
 	  with various RSB based devices, such as AXP223, AXP8XX PMICs,
 	  and AC100/AC200 ICs.
 
-config SUNXI_MBUS
+config SUN8I_MBUS
 	tristate "SUNXI MBUS driver support"
 	depends on ARCH_SUNXI
 	depends on ARCH_SUN8IW20 || ARCH_SUN20IW1 || ARCH_SUN50IW9
+	default ARCH_SUNXI
 	select HWMON
 	help
 	  Driver supporting the mbus for sunxi platforms.
