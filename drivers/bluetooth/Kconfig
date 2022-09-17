@@ -15,6 +15,9 @@ config BT_RTL
 	tristate
 	select FW_LOADER
 
+config BT_RTLCOEX
+	bool
+
 config BT_QCA
 	tristate
 	select FW_LOADER
@@ -58,6 +61,7 @@ config BT_HCIBTUSB_POLL_SYNC
 
 config BT_HCIUART_RTL3WIRE
 	bool "Realtek Three-wire UART (H5) protocol support"
+	select BT_RTLCOEX
 	depends on BT_HCIUART
 	help
 	  Realtek Three-wire UART (H5) transport layer makes it possible

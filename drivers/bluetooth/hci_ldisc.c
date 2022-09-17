@@ -35,7 +35,7 @@
 #include "btbcm.h"
 #include "hci_uart.h"
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 #include "rtk_coex.h"
 #endif
 
@@ -269,7 +269,7 @@ static int hci_uart_open(struct hci_dev *hdev)
 	/* Undo clearing this from hci_uart_close() */
 	hdev->flush = hci_uart_flush;
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	rtk_btcoex_open(hdev);
 #endif
 
@@ -288,7 +288,7 @@ static int hci_uart_close(struct hci_dev *hdev)
 	hci_uart_flush(hdev);
 	hdev->flush = NULL;
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	rtk_btcoex_close();
 #endif
 	return 0;
@@ -302,7 +302,7 @@ static int hci_uart_send_frame(struct hci_dev *hdev, struct sk_buff *skb)
 	BT_DBG("%s: type %d len %d", hdev->name, hci_skb_pkt_type(skb),
 	       skb->len);
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	if (hci_skb_pkt_type(skb) == HCI_COMMAND_PKT)
 		rtk_btcoex_parse_cmd(skb->data, skb->len);
 	if (hci_skb_pkt_type(skb) == HCI_ACLDATA_PKT)
@@ -753,7 +753,7 @@ static int hci_uart_register_dev(struct hci_uart *hu)
 
 	set_bit(HCI_UART_REGISTERED, &hu->flags);
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	rtk_btcoex_probe(hdev);
 #endif
 
@@ -945,7 +945,7 @@ static int __init hci_uart_init(void)
 #ifdef CONFIG_BT_HCIUART_AML
 	aml_init();
 #endif
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	rtk_btcoex_init();
 #endif
 	return 0;
@@ -990,7 +990,7 @@ static void __exit hci_uart_exit(void)
 	aml_deinit();
 #endif
 	tty_unregister_ldisc(&hci_uart_ldisc);
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 	rtk_btcoex_exit();
 #endif
 }

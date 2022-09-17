@@ -40,7 +40,7 @@
 
 #include "hci_uart.h"
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 #include "rtk_coex.h"
 #endif
 
@@ -628,7 +628,7 @@ static void h5_complete_rx_pkt(struct hci_uart *hu)
 			/* Pull out H5 hdr */
 		skb_pull(h5->rx_skb, 4);
 
-#ifdef BTCOEX
+#ifdef CONFIG_BT_RTLCOEX
 		if (bt_cb(h5->rx_skb)->pkt_type == HCI_EVENT_PKT)
 			rtk_btcoex_parse_event(h5->rx_skb->data,
 					       h5->rx_skb->len);
