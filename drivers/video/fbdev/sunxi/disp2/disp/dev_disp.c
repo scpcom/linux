@@ -4682,6 +4682,13 @@ handle_cmd:
 }
 
 #ifdef CONFIG_COMPAT
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
+static inline void __user *compat_alloc_user_space(long len)
+{
+        return (void __user *)compat_user_stack_pointer() - len;
+}
+#endif
+
 static long disp_compat_ioctl(struct file *file, unsigned int cmd,
 			      unsigned long arg)
 {
