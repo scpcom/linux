@@ -53,8 +53,24 @@ int rwnx_call_usermodehelper(const char *path, char **argv, char **envp, int wai
 
 #define rwnx_cfg80211_report_obss_beacon          cfg80211_report_obss_beacon
 #define rwnx_cfg80211_ch_switch_notify            cfg80211_ch_switch_notify
-#define rwnx_cfg80211_ch_switch_started_notify    cfg80211_ch_switch_started_notify
-#define rwnx_regulatory_set_wiphy_regd_sync_rtnl  regulatory_set_wiphy_regd_sync_rtnl
+
+static inline void rwnx_cfg80211_ch_switch_started_notify(struct net_device *dev,
+				struct cfg80211_chan_def *chandef,
+				u8 count)
+{
+	cfg80211_ch_switch_started_notify(dev, chandef, count, false);
+}
+
+static inline int rwnx_regulatory_set_wiphy_regd_sync_rtnl(struct wiphy *wiphy,
+				struct ieee80211_regdomain *rd)
+{
+	int ret;
+	wiphy_lock(wiphy);
+	ret = regulatory_set_wiphy_regd_sync(wiphy, rd);
+	wiphy_unlock(wiphy);
+	return ret;
+}
+
 #define rwnx_skb_append                           skb_append
 #define rwnx_ieee80211_chandef_to_operating_class ieee80211_chandef_to_operating_class
 #define rwnx_call_usermodehelper                  call_usermodehelper
