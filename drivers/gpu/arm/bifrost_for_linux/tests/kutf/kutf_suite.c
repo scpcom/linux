@@ -847,21 +847,32 @@ void kutf_add_test_with_filters_data_and_userdata(
 		goto fail_file;
 	}
 
+
 	test_func->filters = filters;
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0))
+	debugfs_create_x32("filters", S_IROTH, test_func->dir,
+			   &test_func->filters);
+#else
 	tmp = debugfs_create_x32("filters", S_IROTH, test_func->dir,
 				 &test_func->filters);
 	if (!tmp) {
 		pr_err("Failed to create debugfs file \"filters\" when adding test %s\n", name);
 		goto fail_file;
 	}
+#endif
 
 	test_func->test_id = id;
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 6, 0))
+	debugfs_create_u32("test_id", S_IROTH, test_func->dir,
+			   &test_func->test_id);
+#else
 	tmp = debugfs_create_u32("test_id", S_IROTH, test_func->dir,
 				 &test_func->test_id);
 	if (!tmp) {
 		pr_err("Failed to create debugfs file \"test_id\" when adding test %s\n", name);
 		goto fail_file;
 	}
+#endif
 
 	for (i = 0; i < suite->fixture_variants; i++) {
 		if (create_fixture_variant(test_func, i)) {
