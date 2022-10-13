@@ -214,4 +214,4 @@ midgard_kbase-$(CONFIG_MALI_PLATFORM_DEVICETREE) += \
 ccflags-$(CONFIG_MALI_PLATFORM_DEVICETREE) += -I$(src)/platform/devicetree
 
 # For kutf and mali_kutf_irq_latency_test
-obj-$(CONFIG_MALI_KUTF) += tests/
+obj-$(CONFIG_MALI_MIDGARD_KUTF) += tests/

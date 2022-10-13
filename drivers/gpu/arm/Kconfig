@@ -30,4 +30,22 @@ config MALI_BIFROST_FOR_LINUX
 endchoice
 
 source "drivers/gpu/arm/bifrost/Kconfig"
+
+if MALI_KUTF
+choice
+	prompt "Mali kutf driver"
+	default MALI_MIDGARD_KUTF if MALI_MIDGARD
+	default MALI_BIFROST_KUTF if !MALI_MIDGARD
+
+config MALI_MIDGARD_KUTF
+        bool "Mali Midgard kutf"
+	depends on MALI_MIDGARD
+
+config MALI_BIFROST_KUTF
+        bool "Mali Bifrost kutf"
+	depends on MALI_BIFROST
+
+endchoice
+endif
+
 endif
