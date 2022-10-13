@@ -3253,9 +3253,11 @@ static int power_control_init(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 	err = kbase_platform_rk_init_opp_table(kbdev);
 	if (err)
 		dev_err(kbdev->dev, "Failed to init_opp_table (%d)\n", err);
+#endif
 
 	return 0;
 

@@ -376,6 +376,7 @@ static ssize_t utilisation_period_store(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 static ssize_t utilisation_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -406,9 +407,12 @@ static ssize_t utilisation_show(struct device *dev,
 
 	return ret;
 }
+#endif
 
 static DEVICE_ATTR_RW(utilisation_period);
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 static DEVICE_ATTR_RO(utilisation);
+#endif
 
 static int kbase_platform_rk_create_sysfs_files(struct device *dev)
 {
@@ -420,16 +424,20 @@ static int kbase_platform_rk_create_sysfs_files(struct device *dev)
 		goto out;
 	}
 
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 	ret = device_create_file(dev, &dev_attr_utilisation);
 	if (ret) {
 		E("fail to create sysfs file 'utilisation'.");
 		goto remove_utilisation_period;
 	}
+#endif
 
 	return 0;
 
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 remove_utilisation_period:
 	device_remove_file(dev, &dev_attr_utilisation_period);
+#endif
 out:
 	return ret;
 }
@@ -437,7 +445,9 @@ out:
 static void kbase_platform_rk_remove_sysfs_files(struct device *dev)
 {
 	device_remove_file(dev, &dev_attr_utilisation_period);
+#ifdef CONFIG_MALI_BIFROST_DEVFREQ
 	device_remove_file(dev, &dev_attr_utilisation);
+#endif
 }
 
 int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev)
