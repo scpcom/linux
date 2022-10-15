@@ -63,16 +63,17 @@ static struct dma_buf *exynos_fb_get_dma_buf(struct fb_info *info)
 {
 	struct dma_buf *buf = NULL;
 	struct drm_fb_helper *helper = info->par;
-	struct drm_device *dev = helper->dev;
 	struct exynos_drm_fbdev *exynos_fbd = to_exynos_fbdev(helper);
 	struct exynos_drm_gem *exynos_gem = exynos_fbd->exynos_gem;
+	struct drm_gem_object *obj = &exynos_gem->base;
 
-	if(dev->driver->gem_prime_export) {
-		buf = dev->driver->gem_prime_export(&exynos_gem->base, O_RDWR);
-		if(buf) {
-			drm_gem_object_get(&exynos_gem->base);
-		}
-	}
+	if (obj->funcs && obj->funcs->export)
+		buf = obj->funcs->export(obj, O_RDWR);
+	else
+		buf = drm_gem_prime_export(obj, O_RDWR);
+
+	if (!IS_ERR_OR_NULL(buf))
+		drm_gem_object_get(obj);
 
 	return buf;
 }
