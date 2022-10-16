@@ -337,8 +337,8 @@ struct rwnx_amsdu_stats {
 struct rwnx_stats {
 	int cfm_balance[NX_TXQ_CNT];
 	unsigned long last_rx, last_tx; /* jiffies */
-	int ampdus_tx[IEEE80211_MAX_AMPDU_BUF];
-	int ampdus_rx[IEEE80211_MAX_AMPDU_BUF];
+	int ampdus_tx[IEEE80211_MAX_AMPDU_BUF_HE];
+	int ampdus_rx[IEEE80211_MAX_AMPDU_BUF_HE];
 	int ampdus_rx_map[4];
 	int ampdus_rx_miss;
 #ifdef CONFIG_RWNX_SPLIT_TX_BUF
