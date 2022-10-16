@@ -238,7 +238,7 @@ void mac80211_process_addba_request(struct ieee80211_local *local,
 	/* XXX: check own ht delayed BA capability?? */
 	if (((ba_policy != 1) &&
 	     (!(sta->sta.ht_cap.cap & IEEE80211_HT_CAP_DELAY_BA))) ||
-	    (buf_size > IEEE80211_MAX_AMPDU_BUF)) {
+	    (buf_size > IEEE80211_MAX_AMPDU_BUF_HE)) {
 		status = WLAN_STATUS_INVALID_QOS_PARAM;
 #ifdef CONFIG_XRMAC_HT_DEBUG
 		if (net_ratelimit())
@@ -251,7 +251,7 @@ void mac80211_process_addba_request(struct ieee80211_local *local,
 	}
 	/* determine default buffer size */
 	if (buf_size == 0)
-		buf_size = IEEE80211_MAX_AMPDU_BUF;
+		buf_size = IEEE80211_MAX_AMPDU_BUF_HE;
 
 	/* make sure the size doesn't exceed the maximum supported by the hw */
 	if (buf_size > local->hw.max_rx_aggregation_subframes)
