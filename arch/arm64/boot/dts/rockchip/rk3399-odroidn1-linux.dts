@@ -512,7 +512,6 @@
 	cpu-supply = <&vdd_cpu_b>;
 };
 
-/*
 &display_subsystem {
 	status = "okay";
 
@@ -548,7 +547,6 @@
 		};
 	};
 };
-*/
 
 &dp_in_vopl {
        status = "disabled";
