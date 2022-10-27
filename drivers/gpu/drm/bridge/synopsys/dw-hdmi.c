@@ -219,9 +219,6 @@ struct dw_hdmi_i2c {
 	u8			slave_reg;
 	bool			is_regaddr;
 	bool			is_segment;
-
-	unsigned int		scl_high_ns;
-	unsigned int		scl_low_ns;
 };
 
 struct dw_hdmi_phy_data {
@@ -246,6 +243,9 @@ struct dw_hdmi {
 	struct platform_device *cec;
 	struct device *dev;
 	struct dw_hdmi_i2c *i2c;
+
+	unsigned int i2c_scl_high_ns;
+	unsigned int i2c_scl_low_ns;
 
 	struct hdmi_data_info hdmi_data;
 	const struct dw_hdmi_plat_data *plat_data;
@@ -456,15 +456,15 @@ static void dw_hdmi_i2c_set_divs(struct dw_hdmi *hdmi)
 	unsigned long div_low, div_high;
 
 	/* Standard-mode */
-	if (hdmi->i2c->scl_high_ns < 4000)
+	if (hdmi->i2c_scl_high_ns < 4000)
 		high_ns = 4708;
 	else
-		high_ns = hdmi->i2c->scl_high_ns;
+		high_ns = hdmi->i2c_scl_high_ns;
 
-	if (hdmi->i2c->scl_low_ns < 4700)
+	if (hdmi->i2c_scl_low_ns < 4700)
 		low_ns = 4916;
 	else
-		low_ns = hdmi->i2c->scl_low_ns;
+		low_ns = hdmi->i2c_scl_low_ns;
 
 	/* Adjust to avoid overflow */
 	clk_rate_khz = DIV_ROUND_UP(clk_get_rate(hdmi->isfr_clk), 1000);
@@ -523,8 +523,6 @@ static void dw_hdmi_i2c_init(struct dw_hdmi *hdmi)
 
 	/* set SDA high level holding time */
 	hdmi_writeb(hdmi, 0x48, HDMI_I2CM_SDA_HOLD);
-
-	dw_hdmi_i2c_set_divs(hdmi);
 }
 
 static bool dw_hdmi_i2c_unwedge(struct dw_hdmi *hdmi)
@@ -4080,8 +4078,7 @@ static void dw_hdmi_init_hw(struct dw_hdmi *hdmi)
 	 * Even if we are using a separate i2c adapter doing this doesn't
 	 * hurt.
 	 */
-	if (hdmi->i2c)
-		dw_hdmi_i2c_init(hdmi);
+	dw_hdmi_i2c_init(hdmi);
 
 	if (hdmi->phy.ops->setup_hpd)
 		hdmi->phy.ops->setup_hpd(hdmi, hdmi->phy.data);
@@ -4625,6 +4622,7 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 	}
 
 	init_hpd_work(hdmi);
+	dw_hdmi_init_hw(hdmi);
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
@@ -4685,14 +4683,14 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 		 * the default timing scl clock rate is about 99.6KHz.
 		 */
 		if (of_property_read_u32(np, "ddc-i2c-scl-high-time-ns",
-					 &hdmi->i2c->scl_high_ns))
-			hdmi->i2c->scl_high_ns = 4708;
+					 &hdmi->i2c_scl_high_ns))
+			hdmi->i2c_scl_high_ns = 4708;
 		if (of_property_read_u32(np, "ddc-i2c-scl-low-time-ns",
-					 &hdmi->i2c->scl_low_ns))
-			hdmi->i2c->scl_low_ns = 4916;
+					 &hdmi->i2c_scl_low_ns))
+			hdmi->i2c_scl_low_ns = 4916;
 	}
 
-	dw_hdmi_init_hw(hdmi);
+	dw_hdmi_i2c_set_divs(hdmi);
 
 	hdmi->bridge.driver_private = hdmi;
 	hdmi->bridge.funcs = &dw_hdmi_bridge_funcs;
@@ -4944,8 +4942,8 @@ void dw_hdmi_resume(struct dw_hdmi *hdmi)
 	pinctrl_pm_select_default_state(hdmi->dev);
 	mutex_lock(&hdmi->mutex);
 	dw_hdmi_reg_initial(hdmi);
-	if (hdmi->i2c)
-		dw_hdmi_i2c_init(hdmi);
+	dw_hdmi_i2c_init(hdmi);
+	dw_hdmi_i2c_set_divs(hdmi);
 	if (hdmi->irq)
 		enable_irq(hdmi->irq);
 	/*
