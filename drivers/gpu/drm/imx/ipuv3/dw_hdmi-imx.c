@@ -136,7 +136,8 @@ static const struct drm_encoder_helper_funcs dw_hdmi_imx_encoder_helper_funcs = 
 };
 
 static enum drm_mode_status
-imx6q_hdmi_mode_valid(struct dw_hdmi *hdmi, void *data,
+imx6q_hdmi_mode_valid(struct drm_connector *connector,
+		      void *data,
 		      const struct drm_display_info *info,
 		      const struct drm_display_mode *mode)
 {
@@ -150,7 +151,8 @@ imx6q_hdmi_mode_valid(struct dw_hdmi *hdmi, void *data,
 }
 
 static enum drm_mode_status
-imx6dl_hdmi_mode_valid(struct dw_hdmi *hdmi, void *data,
+imx6dl_hdmi_mode_valid(struct drm_connector *connector,
+		       void *data,
 		       const struct drm_display_info *info,
 		       const struct drm_display_mode *mode)
 {
