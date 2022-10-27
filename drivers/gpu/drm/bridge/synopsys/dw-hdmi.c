@@ -4409,8 +4409,9 @@ static int get_force_logo_property(struct dw_hdmi *hdmi)
 
 	dss = of_find_node_by_name(NULL, "display-subsystem");
 	if (!dss) {
-		dev_err(hdmi->dev, "can't find display-subsystem\n");
-		return -ENODEV;
+		dev_warn(hdmi->dev, "can't find display-subsystem\n");
+		hdmi->force_logo = false;
+		return 0;
 	}
 
 	route = of_find_node_by_name(dss, "route");
