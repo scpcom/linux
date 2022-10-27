@@ -1428,10 +1428,14 @@ static int dw_mipi_dsi_rockchip_probe(struct platform_device *pdev)
 		if (ret != -EPROBE_DEFER)
 			DRM_DEV_ERROR(dev,
 				      "Failed to probe dw_mipi_dsi: %d\n", ret);
-		return ret;
+		goto err_clkdisable;
 	}
 
 	return 0;
+
+err_clkdisable:
+	clk_disable_unprepare(dsi->pllref_clk);
+	return ret;
 }
 
 static void dw_mipi_dsi_rockchip_remove(struct platform_device *pdev)
