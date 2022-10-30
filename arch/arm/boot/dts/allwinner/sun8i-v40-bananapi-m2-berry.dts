@@ -275,6 +275,16 @@
 	regulator-name = "vdd1v2-sata";
 };
 
+&soc {
+	addr_mgt: addr_mgt@0 {
+		compatible     = "allwinner,sunxi-addr_mgt";
+		type_addr_wifi = <0x0>;
+		type_addr_bt   = <0x0>;
+		type_addr_eth  = <0x0>;
+		status         = "okay";
+	};
+};
+
 &tcon_tv0 {
 	status = "okay";
 };
