@@ -139,7 +139,7 @@ static int get_addr_by_name(int fmt, char *addr, char *name)
 	}
 
 	if (t->addr == NULL) {
-		ADDR_MGT_ERR("t->addr: ", t->addr);
+		ADDR_MGT_ERR("t->addr: NULL");
 		return -1;
 	}
 
