@@ -49,6 +49,7 @@
 #include <osl.h>
 #include <bcmutils.h>
 #include <linux/delay.h>
+#include <linux/dma-direct.h>
 #include <linux/vmalloc.h>
 #include <pcicfg.h>
 
