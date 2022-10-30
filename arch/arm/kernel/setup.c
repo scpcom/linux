@@ -1103,6 +1103,7 @@ void __init setup_arch(char **cmdline_p)
 {
 	const struct machine_desc *mdesc = NULL;
 	void *atags_vaddr = NULL;
+	const char *name = NULL;
 
 	if (__atags_pointer)
 		atags_vaddr = FDT_VIRT_BASE(__atags_pointer);
@@ -1116,6 +1117,8 @@ void __init setup_arch(char **cmdline_p)
 	}
 	if (!mdesc)
 		mdesc = setup_machine_tags(atags_vaddr, __machine_arch_type);
+	else
+		name = of_flat_dt_get_machine_name();
 	if (!mdesc) {
 		early_print("\nError: invalid dtb and unrecognized/unsupported machine ID\n");
 		early_print("  r1=0x%08x, r2=0x%08x\n", __machine_arch_type,
@@ -1127,7 +1130,9 @@ void __init setup_arch(char **cmdline_p)
 
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
-	dump_stack_set_arch_desc("%s", mdesc->name);
+	if (name)
+		machine_name = name;
+	dump_stack_set_arch_desc("%s", machine_name);
 
 	if (mdesc->reboot_mode != REBOOT_HARD)
 		reboot_mode = mdesc->reboot_mode;
