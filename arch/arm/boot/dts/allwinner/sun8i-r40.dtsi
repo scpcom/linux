@@ -248,11 +248,32 @@
 
 		syscon: system-control@1c00000 {
 			compatible = "allwinner,sun8i-r40-system-control",
-				     "allwinner,sun4i-a10-system-control";
+				     "allwinner,sun4i-a10-system-control",
+				     "allwinner,sunxi-system-control";
 			reg = <0x01c00000 0x30>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+
+			soc_ver {
+				offset = <0x88>;
+				mask = <0x1>;
+				shift = <0>;
+				ver_a = <0x17010000>;
+				ver_b = <0x17010001>;
+				ver_d = <0x17010101>;
+				ver_f = <0x17010003>;
+			};
+
+			soc_id {
+				in_ce = <0x1>;
+			};
+
+			soc_bin {
+				offset = <0x4>;
+				mask = <0x7>;
+				shift = <22>;
+			};
 
 			sram_c: sram@1d00000 {
 				compatible = "mmio-sram";
@@ -444,7 +465,8 @@
 		};
 
 		crypto: crypto@1c15000 {
-			compatible = "allwinner,sun8i-r40-crypto";
+			compatible = "allwinner,sun8i-r40-crypto",
+				     "allwinner,sunxi-ce";
 			reg = <0x01c15000 0x1000>;
 			interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_CE>, <&ccu CLK_CE>;
@@ -535,7 +557,8 @@
 		};
 
 		ccu: clock@1c20000 {
-			compatible = "allwinner,sun8i-r40-ccu";
+			compatible = "allwinner,sun8i-r40-ccu",
+				     "allwinner,sunxi-clk-init";
 			reg = <0x01c20000 0x400>;
 			clocks = <&osc24M>, <&rtc CLK_OSC32K>;
 			clock-names = "hosc", "losc";
