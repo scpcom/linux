@@ -55,6 +55,7 @@ struct soc_ver_reg {
 	u32 mask;
 	u32 shift;
 	struct soc_ver_map ver_map;
+	u32 in_ce;
 };
 
 #define SUNXI_SOC_ID_IN_SID
@@ -239,6 +240,7 @@ int get_soc_ver_regs(u8 *name, u8 *compatile, struct soc_ver_reg *reg)
 	of_property_read_u32(child_pnode, "mask", &reg->mask);
 	of_property_read_u32(child_pnode, "ver_a", &reg->ver_map.rev[0]);
 	of_property_read_u32(child_pnode, "ver_b", &reg->ver_map.rev[1]);
+	of_property_read_u32(child_pnode, "in_ce", &reg->in_ce);
 	return 0;
 }
 
@@ -269,6 +271,56 @@ static s32 sid_rd_soc_ver_from_sid(void)
 	return 0;
 }
 
+static bool soc_id_in_ce(void)
+{
+	static struct soc_ver_reg reg = {0};
+	get_soc_ver_regs("soc_id", SRAM_CTRL_BASE, &reg);
+
+	return reg.in_ce;
+}
+
+/* SMP_init maybe call this function, while CCU module wasn't inited.
+   So we have to read/write the CCU register directly. */
+static s32 sid_rd_soc_ver_from_ce(void)
+{
+	s32 ret = 0;
+	u32 id = 0;
+	void __iomem *ccu_base = NULL;
+	struct device_node *ccu_node = NULL;
+	u32 bus_clk_reg, bus_rst_reg, ce_clk_reg;
+
+	ret = sid_get_base(&ccu_node, &ccu_base, "allwinner,sunxi-clk-init", 0);
+	if (ret)
+		return ret;
+
+	/* backup ce clock */
+	bus_clk_reg = readl(ccu_base + 0x060);
+	bus_rst_reg = readl(ccu_base + 0x2c0);
+	ce_clk_reg  = readl(ccu_base + 0x09c);
+
+	if ((bus_clk_reg&(1<<5)) && (bus_rst_reg&(1<<5))
+			&& (ce_clk_reg&(1<<31))) {
+		SID_DBG("The CE module is already enable.\n");
+	} else {
+		/* enable ce clock */
+		writel(bus_clk_reg | (1<<5), ccu_base + 0x060);
+		writel(bus_rst_reg | (1<<5), ccu_base + 0x2c0);
+		writel(ce_clk_reg | (1<<31), ccu_base + 0x09c);
+	}
+
+	id = sid_rd_bits("allwinner,sunxi-ce", 4, 0, 7, 0);
+
+	/* restore ce clock */
+	writel(bus_clk_reg, ccu_base + 0x060);
+	writel(bus_rst_reg, ccu_base + 0x2c0);
+	writel(ce_clk_reg,  ccu_base + 0x09c);
+
+	sid_rd_ver_reg(id);
+
+	sid_put_base(ccu_node, ccu_base, 0);
+	return ret;
+}
+
 static void sid_soc_ver_init(void)
 {
 	static s32 init_flag;
@@ -278,7 +330,10 @@ static void sid_soc_ver_init(void)
 		return;
 	}
 
-	sid_rd_soc_ver_from_sid();
+	if (soc_id_in_ce())
+		sid_rd_soc_ver_from_ce();
+	else
+		sid_rd_soc_ver_from_sid();
 
 	SID_DBG("The SoC version: %#x\n", sunxi_soc_ver);
 	init_flag = 1;
