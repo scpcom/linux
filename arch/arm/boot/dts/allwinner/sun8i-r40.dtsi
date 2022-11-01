@@ -291,7 +291,7 @@
 		};
 
 		sid@01c1b000 {
-			compatible = "allwinner,sun8iw1p11-sid", "allwinner,sunxi-sid";
+			compatible = "allwinner,sun8iw11p1-sid", "allwinner,sunxi-sid";
 			reg = <0x01c1b000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
