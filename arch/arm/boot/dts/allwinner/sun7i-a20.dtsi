@@ -265,7 +265,8 @@
 
 		system-control@1c00000 {
 			compatible = "allwinner,sun7i-a20-system-control",
-				     "allwinner,sun4i-a10-system-control";
+				     "allwinner,sun4i-a10-system-control",
+				     "allwinner,sunxi-system-control";
 			reg = <0x01c00000 0x30>;
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -1290,7 +1291,8 @@
 		};
 
 		sid: eeprom@1c23800 {
-			compatible = "allwinner,sun7i-a20-sid";
+			compatible = "allwinner,sun7i-a20-sid",
+				     "allwinner,sunxi-eeprom-sid";
 			reg = <0x01c23800 0x200>;
 		};
 
