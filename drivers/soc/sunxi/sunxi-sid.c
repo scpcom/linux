@@ -182,7 +182,7 @@ static u32 sid_read_key(s8 *key_name, u32 *key_buf, u32 key_size, u32 sec)
 	struct device_node *dev_node = NULL;
 
 	if (sid_get_base(&dev_node, &baseaddr, EFUSE_SID_BASE, sec))
-		return 0;
+		return -ENXIO;
 
 	get_key_map_info(key_name, EFUSE_SID_BASE, &offset, &max_size);
 	SID_DBG("key_name:%s offset:0x%x max_size:0x%x\n", key_name, offset, max_size);
@@ -244,12 +244,381 @@ int get_soc_ver_regs(u8 *name, u8 *compatile, struct soc_ver_reg *reg)
 	return 0;
 }
 
+
+/* from plat-sunxi/soc-detect.c allwinner 3.4 begin */
+
+#define EEPROM_SID_BASE "allwinner,sunxi-eeprom-sid"
+#define TIMERC_SID_BASE "allwinner,sunxi-timer"
+
+#define SW_VA_SRAM_IO_BASE                sram_base //0xf1c00000   /* 4KB */
+
+#define SW_VA_SSE_IO_BASE                 ce_base //0xf1c15000
+
+#define SW_VA_TIMERC_IO_BASE              timer_base //0xf1c20c00
+
+#define SW_VA_SID_IO_BASE                 sid_base //0xf1c23800
+#define SC_CHIP_ID_REG	(SW_VA_SRAM_IO_BASE + 0x24)
+
+#define SC_CHIP_ID_EN_MASK	0x1
+#define SC_CHIP_ID_EN_OFF	15
+#define SC_CHIP_ID_EN	(SC_CHIP_ID_EN_MASK<<SC_CHIP_ID_EN_OFF)
+
+#define SC_CHIP_ID_MASK	0xffff
+#define SC_CHIP_ID_OFF	16
+#define SC_CHIP_ID		(SC_CHIP_ID_MASK<<SC_CHIP_ID_OFF)
+
+enum sunxi_chip_id {
+	SUNXI_UNKNOWN_MACH = 0xffffffff,
+
+	SUNXI_MACH_SUN4I = 1623,
+	SUNXI_MACH_SUN5I = 1625,
+	SUNXI_MACH_SUN6I = 1633,
+	SUNXI_MACH_SUN7I = 1651,
+};
+
+enum {
+	SUNXI_BIT_SUN4I = BIT(30),
+	SUNXI_BIT_SUN5I = BIT(29),
+	SUNXI_BIT_SUN6I = BIT(28),
+	SUNXI_BIT_SUN7I = BIT(27),
+
+	/* SUNXI_BIT_UNKNOWN can't OR anything known */
+	SUNXI_BIT_UNKNOWN = BIT(20),
+
+	/* sun4i */
+	SUNXI_SOC_A10  = SUNXI_BIT_SUN4I | BIT(4),
+
+	/* sun5i */
+	SUNXI_SOC_A13  = SUNXI_BIT_SUN5I | BIT(4),
+	SUNXI_SOC_A12  = SUNXI_BIT_SUN5I | BIT(5),
+	SUNXI_SOC_A10S = SUNXI_BIT_SUN5I | BIT(6),
+
+	/* sun6i */
+	SUNXI_SOC_A31  = SUNXI_BIT_SUN6I | BIT(4),
+
+	/* sun7i */
+	SUNXI_SOC_A20  = SUNXI_BIT_SUN7I | BIT(4),
+
+	SUNXI_REV_UNKNOWN = 0,
+	SUNXI_REV_A,
+	SUNXI_REV_B,
+	SUNXI_REV_C,
+};
+
+enum sw_ic_ver {
+	SUNXI_VER_UNKNOWN = SUNXI_BIT_UNKNOWN,
+
+	/* sun4i */
+	SUNXI_VER_A10A = SUNXI_SOC_A10 + SUNXI_REV_A,
+	SUNXI_VER_A10B,
+	SUNXI_VER_A10C,
+
+	/* sun5i */
+	SUNXI_VER_A13 = SUNXI_SOC_A13,
+	SUNXI_VER_A13A,
+	SUNXI_VER_A13B,
+	SUNXI_VER_A12 = SUNXI_SOC_A12,
+	SUNXI_VER_A12A,
+	SUNXI_VER_A12B,
+	SUNXI_VER_A10S = SUNXI_SOC_A10S,
+	SUNXI_VER_A10SA,
+	SUNXI_VER_A10SB,
+
+	/* sun6i */
+	SUNXI_VER_A31 = SUNXI_SOC_A31,
+
+	/* sun7i */
+	SUNXI_VER_A20 = SUNXI_SOC_A20,
+};
+
+enum sw_ic_ver sw_get_ic_ver(void);
+
+#define _sunxi_is(M)		((sw_get_ic_ver()&M) == M)
+
+/* sunxi_is_sunNi() could also be implemented ORing the ic_ver */
+#define sunxi_is_sun4i()	(sunxi_chip_id() == SUNXI_MACH_SUN4I)
+#define sunxi_is_sun5i()	(sunxi_chip_id() == SUNXI_MACH_SUN5I)
+#define sunxi_is_sun6i()	(sunxi_chip_id() == SUNXI_MACH_SUN6I)
+#define sunxi_is_sun7i()	(sunxi_chip_id() == SUNXI_MACH_SUN7I)
+#define sunxi_is_a10()		_sunxi_is(SUNXI_SOC_A10)
+#define sunxi_is_a13()		_sunxi_is(SUNXI_SOC_A13)
+#define sunxi_is_a12()		_sunxi_is(SUNXI_SOC_A12)
+#define sunxi_is_a10s()		_sunxi_is(SUNXI_SOC_A10S)
+#define sunxi_is_a31()		_sunxi_is(SUNXI_SOC_A31)
+#define sunxi_is_a20()		_sunxi_is(SUNXI_SOC_A20)
+
+#define sunxi_soc_rev()		(sw_get_ic_ver() & 0xf)
+
+struct sw_chip_id
+{
+	unsigned int sid_rkey0;
+	unsigned int sid_rkey1;
+	unsigned int sid_rkey2;
+	unsigned int sid_rkey3;
+};
+
+u32 sunxi_sc_chip_id(u32 *mach_id)
+{
+	u32 chip_id, reg_val;
+	void __iomem *sram_base = NULL;
+	struct device_node *dev_node = NULL;
+
+	if (sid_get_base(&dev_node, &sram_base, SRAM_CTRL_BASE, 0)) {
+		pr_err("SC: failed to get chip-id base");
+		return SUNXI_UNKNOWN_MACH;
+	}
+
+	/* enable chip_id reading */
+	reg_val = readl(SC_CHIP_ID_REG);
+	writel(reg_val | SC_CHIP_ID_EN, SC_CHIP_ID_REG);
+
+	reg_val = readl(SC_CHIP_ID_REG);
+	chip_id = ((reg_val&SC_CHIP_ID)>>SC_CHIP_ID_OFF) & SC_CHIP_ID_MASK;
+
+        sid_put_base(dev_node, sram_base, 0);
+
+	if (*mach_id)
+		*mach_id = chip_id;
+
+	switch (chip_id) {
+	case 0x1623:
+		return SUNXI_MACH_SUN4I;
+	case 0x1625:
+		return SUNXI_MACH_SUN5I;
+	case 0x1633:
+		return SUNXI_MACH_SUN6I;
+	case 0x1651:
+		return SUNXI_MACH_SUN7I;
+	default:
+		/*pr_err("SC: failed to identify chip-id 0x%04x (*0x%08x == 0x%08x)\n",
+		       chip_id, (u32)SC_CHIP_ID_REG, reg_val);*/
+		return SUNXI_UNKNOWN_MACH;
+	}
+}
+EXPORT_SYMBOL(sunxi_sc_chip_id);
+
+/*
+ */
+u32 sunxi_chip_mach_id(u32 id)
+{
+	static u32 chip_ids[2];
+
+	if (unlikely(chip_ids[0] == 0)) {
+		chip_ids[1] = SUNXI_UNKNOWN_MACH;
+		chip_ids[0] = sunxi_sc_chip_id(&chip_ids[1]);
+	}
+
+	return chip_ids[id];
+}
+
+u32 sunxi_chip_id(void)
+{
+	return sunxi_chip_mach_id(0);
+}
+
+EXPORT_SYMBOL(sunxi_chip_id);
+
+static u32 sunxi_mach_id(void)
+{
+	return sunxi_chip_mach_id(1);
+}
+
+int sunxi_pr_chip_id(void)
+{
+	u32 chip_id = sunxi_chip_id();
+	const char *soc_family, *name;
+	int rev;
+
+	if (sunxi_is_sun4i())
+		soc_family = "sun4i";
+	else if (sunxi_is_sun5i())
+		soc_family = "sun5i";
+	else if (sunxi_is_sun6i())
+		soc_family = "sun6i";
+	else if (sunxi_is_sun7i())
+		soc_family = "sun7i";
+	else
+		soc_family = "sunNi?";
+
+	if (sunxi_is_a10())
+		name = "A10";
+	else if (sunxi_is_a13())
+		name = "A13";
+	else if (sunxi_is_a12())
+		name = "A12";
+	else if (sunxi_is_a10s())
+		name = "A10s";
+	else if (sunxi_is_a31())
+		name = "A31";
+	else if (sunxi_is_a20())
+		name = "A20";
+	else
+		name = NULL;
+
+	rev = sunxi_soc_rev();
+	if (rev)
+		pr_info("Allwinner %s revision %c (AW%u/%s) detected.\n",
+			name?name:"A??", 'A' + rev - 1, chip_id, soc_family);
+	else
+		pr_info("Allwinner %s (AW%u/%s) detected.\n",
+			name?name:"A??", chip_id, soc_family);
+
+	return name?1:0;
+}
+
+static inline void reg_dump(const char *name, void *reg, unsigned len)
+{
+	unsigned i, j;
+
+	for (i=0; i<len; ) {
+		pr_info("soc-detect: %s (0x%08x):", name, (u32)reg);
+
+		for (j=0; i<len && j<4; i++, j++, reg += 0x04) {
+			u32 val = readl(reg);
+			printk(" %08x", val);
+		}
+
+		printk("\n");
+	}
+}
+
+enum sw_ic_ver sw_get_ic_ver(void)
+{
+	static enum sw_ic_ver ver;
+	void __iomem *sid_base = NULL;
+	struct device_node *sid_node = NULL;
+
+	if (likely(ver))
+		return ver;
+
+	if (sunxi_is_sun4i()) {
+		u32 val = 0;
+		void __iomem *timer_base = NULL;
+		struct device_node *timer_node = NULL;
+
+		if (sid_get_base(&timer_node, &timer_base, TIMERC_SID_BASE, 0))
+			goto unknown_chip;
+
+		val = readl(SW_VA_TIMERC_IO_BASE + 0x13c);
+		val = (val >> 6) & 0x3;
+
+		sid_put_base(timer_node, timer_base, 0);
+
+		if (val == 0)
+			ver = SUNXI_VER_A10A;
+		else if (val == 3)
+			ver = SUNXI_VER_A10B;
+		else
+			ver = SUNXI_VER_A10C;
+	} else if (sunxi_is_sun5i()) {
+		u32 val;
+
+		if (sid_get_base(&sid_node, &sid_base, EEPROM_SID_BASE, 0))
+			goto unknown_chip;
+
+		val = readl(SW_VA_SID_IO_BASE + 0x08);
+		val = (val >> 12) & 0xf;
+		switch (val) {
+		case 0:	ver = SUNXI_VER_A12; break;
+		case 3: ver = SUNXI_VER_A13; break;
+		case 7: ver = SUNXI_VER_A10S; break;
+		default:
+			sid_put_base(sid_node, sid_base, 0);
+			goto unknown_chip;
+		}
+
+		val = readl(SW_VA_SID_IO_BASE+0x00);
+		val = (val >> 8) & 0xffffff;
+
+		if (val == 0 || val == 0x162541)
+			ver += SUNXI_REV_A;
+		else if (val == 0x162542)
+			ver += SUNXI_REV_B;
+		else {
+			const char *name;
+			if (ver == SUNXI_VER_A13)
+				name = "A13";
+			else if (ver == SUNXI_VER_A12)
+				name = "A12";
+			else
+				name = "A10S";
+
+			pr_err("unrecongnized %s revision (%x)\n",
+			       name, val);
+
+			reg_dump("SID", SW_VA_SID_IO_BASE, 4);
+		}
+
+		sid_put_base(sid_node, sid_base, 0);
+	} else if (sunxi_is_sun6i())
+		ver = SUNXI_VER_A31;
+	else if (sunxi_is_sun7i())
+		ver = SUNXI_VER_A20;
+
+	goto done;
+
+unknown_chip:
+	pr_err("unrecognized IC (chip-id=%u)\n", sunxi_chip_id());
+	ver = SUNXI_VER_UNKNOWN;
+
+	if (sunxi_is_sun5i()) {
+		void __iomem *ce_base = NULL;
+		struct device_node *ce_node = NULL;
+
+		if (sid_get_base(&ce_node, &ce_base, "allwinner,sunxi-ce", 0))
+			goto unknown_sse;
+
+		reg_dump("SSE", SW_VA_SSE_IO_BASE, 1);
+
+		sid_put_base(ce_node, ce_base, 0);
+	}
+unknown_sse:
+	if (sid_get_base(&sid_node, &sid_base, EEPROM_SID_BASE, 0))
+		goto done;
+
+	reg_dump("SID", SW_VA_SID_IO_BASE, 4);
+
+	sid_put_base(sid_node, sid_base, 0);
+done:
+	return ver;
+}
+EXPORT_SYMBOL(sw_get_ic_ver);
+
+int sw_get_chip_id(struct sw_chip_id *chip_id)
+{
+	void __iomem *sid_base = NULL;
+	struct device_node *sid_node = NULL;
+
+	if (sid_get_base(&sid_node, &sid_base, EEPROM_SID_BASE, 0))
+		return 0;
+
+	chip_id->sid_rkey0 = readl(SW_VA_SID_IO_BASE);
+	chip_id->sid_rkey1 = readl(SW_VA_SID_IO_BASE+0x04);
+	chip_id->sid_rkey2 = readl(SW_VA_SID_IO_BASE+0x08);
+	chip_id->sid_rkey3 = readl(SW_VA_SID_IO_BASE+0x0C);
+
+	sid_put_base(sid_node, sid_base, 0);
+	return 0;
+}
+EXPORT_SYMBOL(sw_get_chip_id);
+
+/* from plat-sunxi/soc-detect.c allwinner 3.4 end */
+
+
+bool sid_is_legacy(void)
+{
+	return (sunxi_chip_id() != SUNXI_UNKNOWN_MACH);
+}
+
 void sid_rd_ver_reg(u32 id)
 {
 	s32 i = 0;
 	u32 ver = 0;
 	static struct soc_ver_reg reg = {0};
-	get_soc_ver_regs("soc_ver", SRAM_CTRL_BASE, &reg);
+	if (get_soc_ver_regs("soc_ver", SRAM_CTRL_BASE, &reg)) {
+		if (sid_is_legacy())
+			reg.ver_map.rev[0] = sunxi_mach_id() << 16;
+	}
 	ver = sid_rd_bits(SRAM_CTRL_BASE, reg.offset,
 		reg.shift, reg.mask, 0);
 	if (ver >= SUNXI_VER_MAX_NUM/2)
@@ -350,7 +719,12 @@ static void sid_chipid_init(void)
 		SID_DBG("It's already inited.\n");
 		return;
 	}
-	sid_read_key("chipid", sunxi_soc_chipid, 16, sunxi_soc_is_secure());
+	if (sid_read_key("chipid", sunxi_soc_chipid, 16, sunxi_soc_is_secure())) {
+		if (sid_is_legacy()) {
+			sw_get_chip_id((struct sw_chip_id *)&sunxi_soc_chipid);
+			sunxi_pr_chip_id();
+		}
+	}
 
 	sunxi_serial[0] = sunxi_soc_chipid[3];
 	sunxi_serial[1] = sunxi_soc_chipid[2];
