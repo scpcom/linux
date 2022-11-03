@@ -712,6 +712,7 @@ static void sid_soc_ver_init(void)
 static void sid_chipid_init(void)
 {
 	u32 type = 0, offset = 0, max_size;
+	bool is_legacy =  false;
 	static s32 init_flag;
 	static struct soc_ver_reg reg = {0};
 
@@ -720,7 +721,8 @@ static void sid_chipid_init(void)
 		return;
 	}
 	if (sid_read_key("chipid", sunxi_soc_chipid, 16, sunxi_soc_is_secure())) {
-		if (sid_is_legacy()) {
+		is_legacy = sid_is_legacy();
+		if (is_legacy) {
 			sw_get_chip_id((struct sw_chip_id *)&sunxi_soc_chipid);
 			sunxi_pr_chip_id();
 		}
@@ -729,6 +731,16 @@ static void sid_chipid_init(void)
 	sunxi_serial[0] = sunxi_soc_chipid[3];
 	sunxi_serial[1] = sunxi_soc_chipid[2];
 	sunxi_serial[2] = (sunxi_soc_chipid[1] >> 16) & 0x0FFFF;
+
+	if (is_legacy) {
+		sunxi_serial[0] = 0;
+		sunxi_serial[1] = 0;
+		sunxi_serial[2] = sunxi_soc_chipid[0];
+		sunxi_serial[3] = sunxi_soc_chipid[3];
+
+		if ((sunxi_serial[3] & 0xffffff) == 0)
+			sunxi_serial[3] |= 0x800000;
+	}
 
 	get_key_map_info("chipid", EFUSE_SID_BASE, &offset, &max_size);
 	get_soc_ver_regs("soc_bin", SRAM_CTRL_BASE, &reg);
