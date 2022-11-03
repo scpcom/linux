@@ -162,9 +162,15 @@ static ssize_t sys_info_show(struct class *class,
 
 	/* serial */
 	sunxi_get_serial((u8 *)databuf);
-	for (i = 0; i < 4; i++)
-		sprintf(tmpbuf + i*8, "%08x", databuf[i]);
-	tmpbuf[128] = 0;
+	if (!databuf[0] && !databuf[1]) {
+		for (i = 2; i < 4; i++)
+			sprintf(tmpbuf + (i-2)*8, "%08x", databuf[i]);
+		tmpbuf[16] = 0;
+	} else {
+		for (i = 0; i < 4; i++)
+			sprintf(tmpbuf + i*8, "%08x", databuf[i]);
+		tmpbuf[128] = 0;
+	}
 	size += sprintf(buf + size, "sunxi_serial      : %s\n", tmpbuf);
 
 	/* chiptype */
@@ -251,9 +257,15 @@ static int __init sunxi_sys_info_init(void)
 
 	/* serial */
 	sunxi_get_serial((u8 *)databuf);
-	for (i = 0; i < 4; i++)
-		sprintf(tmpbuf + i*8, "%08x", databuf[i]);
-	tmpbuf[128] = 0;
+	if (!databuf[0] && !databuf[1]) {
+		for (i = 2; i < 4; i++)
+			sprintf(tmpbuf + (i-2)*8, "%08x", databuf[i]);
+		tmpbuf[16] = 0;
+	} else {
+		for (i = 0; i < 4; i++)
+			sprintf(tmpbuf + i*8, "%08x", databuf[i]);
+		tmpbuf[128] = 0;
+	}
 
 	system_serial = kasprintf(GFP_KERNEL, "%s", tmpbuf);
 
