@@ -64,6 +64,21 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		ve: video-codec@1c0e000 {
+			compatible = "allwinner,sun20i-d1-video-engine";
+			reg = <0x1c0e000 0x2000>;
+			interrupts = <SOC_PERIPHERAL_IRQ(66) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_VE>,
+				 <&ccu CLK_VE>,
+				 <&ccu CLK_MBUS_VE>;
+			clock-names = "ahb", "mod", "ram";
+			resets = <&ccu RST_BUS_VE>;
+			allwinner,sram = <&ve_sram 1>;
+			interconnects = <&mbus 4>;
+			interconnect-names = "dma-mem";
+			iommus = <&iommu 0>;
+		};
+
 		pio: pinctrl@2000000 {
 			compatible = "allwinner,sun20i-d1-pinctrl";
 			reg = <0x2000000 0x800>;
@@ -550,6 +565,21 @@
 			ranges;
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			// FIXME: Address is not verified. It is copied from A64/H6.
+			sram@1d00000 {
+				compatible = "mmio-sram";
+				reg = <0x1d00000 0x40000>;
+				ranges = <0 0x1d00000 0x40000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				ve_sram: sram-section@0 {
+					compatible = "allwinner,sun20i-d1-sram-c1",
+						     "allwinner,sun4i-a10-sram-c1";
+					reg = <0 0x40000>;
+				};
+			};
 
 			regulators@3000150 {
 				compatible = "allwinner,sun20i-d1-system-ldos";
