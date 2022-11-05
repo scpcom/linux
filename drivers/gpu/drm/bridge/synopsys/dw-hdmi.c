@@ -3516,7 +3516,7 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 			dev_warn(dev, "Failed to create DDC I2C adapter: %d\n", ret);
 			hdmi->ddc = NULL;
 		}
-		else if (!drm_probe_ddc(hdmi->ddc)) {
+		else if (!drm_probe_ddc(hdmi->ddc) && dw_hdmi_wait_for_ddc) {
 			ret = -EPROBE_DEFER;
 			dev_warn(dev, "Failed to probe DDC on I2C adapter: %d\n", ret);
 		}
@@ -3611,7 +3611,10 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 	return hdmi;
 
 err_res:
-	i2c_put_adapter(hdmi->ddc);
+	if (hdmi->i2c)
+		i2c_del_adapter(&hdmi->i2c->adap);
+	else
+		i2c_put_adapter(hdmi->ddc);
 
 	return ERR_PTR(ret);
 }
