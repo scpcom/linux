@@ -147,6 +147,9 @@ int sun8i_phy_clk_create(struct sun8i_hdmi_phy *phy, struct device *dev,
 	struct sun8i_phy_clk *priv;
 	const char *parents[2];
 
+	if (phy->clk_phy)
+		return 0;
+
 	parents[0] = __clk_get_name(phy->clk_pll0);
 	if (!parents[0])
 		return -ENODEV;
