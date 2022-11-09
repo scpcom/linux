@@ -962,7 +962,7 @@
 
 &tsadc {
 	pinctrl-names = "gpio", "otpout";
-	pinctrl-0 = <&tsadc_otp_gpio>;
+	pinctrl-0 = <&tsadc_otp_pin>;
 	pinctrl-1 = <&tsadc_otp_out>;
 	status = "okay";
 };
@@ -1008,7 +1008,27 @@
 	status = "okay";
 };
 
-&vpu_combo {
+&mpp_srv {
+	status = "okay";
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vepu {
+	status = "okay";
+};
+
+&vpu_mmu {
+	status = "okay";
+};
+
+&hevc {
+	status = "okay";
+};
+
+&hevc_mmu {
 	status = "okay";
 };
 
