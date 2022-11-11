@@ -574,13 +574,11 @@ odm_is_work_item_scheduled(
 }
 #endif
 
-
-/*
+/*@
  * ODM Timer relative API.
- *   */
+ */
 
-void
-ODM_delay_ms(u32	ms)
+void ODM_delay_ms(u32 ms)
 {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 	delay_ms(ms);
@@ -593,8 +591,7 @@ ODM_delay_ms(u32	ms)
 #endif
 }
 
-void
-ODM_delay_us(u32	us)
+void ODM_delay_us(u32 us)
 {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 	delay_us(us);
@@ -607,8 +604,7 @@ ODM_delay_us(u32	us)
 #endif
 }
 
-void
-ODM_sleep_ms(u32	ms)
+void ODM_sleep_ms(u32 ms)
 {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 	delay_ms(ms);
@@ -621,8 +617,7 @@ ODM_sleep_ms(u32	ms)
 #endif
 }
 
-void
-ODM_sleep_us(u32	us)
+void ODM_sleep_us(u32 us)
 {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 	delay_us(us);
@@ -635,81 +630,57 @@ ODM_sleep_us(u32	us)
 #endif
 }
 
-void
-odm_set_timer(
-	struct PHY_DM_STRUCT		*p_dm,
-	struct timer_list		*p_timer,
-	u32			ms_delay
-)
+void odm_set_timer(struct PHY_DM_STRUCT *dm, struct phydm_timer_list *timer,
+		   u32 ms_delay)
 {
 #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-	mod_timer(p_timer, jiffies + RTL_MILISECONDS_TO_JIFFIES(ms_delay));
+	mod_timer(timer, jiffies + RTL_MILISECONDS_TO_JIFFIES(ms_delay));
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211)
-	mod_timer(p_timer, jiffies + msecs_to_jiffies(ms_delay));
+	mod_timer(timer, jiffies + msecs_to_jiffies(ms_delay));
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
-	_set_timer(p_timer, ms_delay); /* ms */
+	_set_timer(timer, ms_delay); /* @ms */
 #elif (DM_ODM_SUPPORT_TYPE & ODM_WIN)
-	struct _ADAPTER		*adapter = p_dm->adapter;
-	PlatformSetTimer(adapter, p_timer, ms_delay);
-#endif
-
-}
-
-void
-odm_initialize_timer(
-	struct PHY_DM_STRUCT			*p_dm,
-	struct timer_list			*p_timer,
-	void	*call_back_func,
-	void				*p_context,
-	const char			*sz_id
-)
-{
-#if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-	init_timer(p_timer);
-	p_timer->function = call_back_func;
-	p_timer->data = (unsigned long)p_dm;
-	/*mod_timer(p_timer, jiffies+RTL_MILISECONDS_TO_JIFFIES(10));	*/
-#elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211)
-	init_timer(p_timer);
-	p_timer->function = call_back_func;
-	p_timer->data = (unsigned long)p_dm;
-	/*mod_timer(p_timer, jiffies+RTL_MILISECONDS_TO_JIFFIES(10));	*/
-#elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
-	struct _ADAPTER *adapter = p_dm->adapter;
-
-	_init_timer(p_timer, adapter->pnetdev, call_back_func, p_dm);
-#elif (DM_ODM_SUPPORT_TYPE & ODM_WIN)
-	struct _ADAPTER *adapter = p_dm->adapter;
-
-	PlatformInitializeTimer(adapter, p_timer, (RT_TIMER_CALL_BACK)call_back_func, p_context, sz_id);
+	void *adapter = dm->adapter;
+	PlatformSetTimer(adapter, timer, ms_delay);
 #endif
 }
 
-
-void
-odm_cancel_timer(
-	struct PHY_DM_STRUCT		*p_dm,
-	struct timer_list		*p_timer
-)
+void odm_initialize_timer(struct PHY_DM_STRUCT *dm, struct phydm_timer_list *timer,
+			  void *call_back_func, void *context,
+			  const char *sz_id)
 {
 #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-	del_timer(p_timer);
+	init_timer(timer);
+	timer->function = call_back_func;
+	timer->data = (unsigned long)dm;
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211)
-	del_timer(p_timer);
+	timer_setup(timer, call_back_func, 0);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
-	_cancel_timer_ex(p_timer);
+	struct _ADAPTER *adapter = dm->adapter;
+
+	_init_timer(timer, adapter->pnetdev, call_back_func, dm);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_WIN)
-	struct _ADAPTER *adapter = p_dm->adapter;
-	PlatformCancelTimer(adapter, p_timer);
+	void *adapter = dm->adapter;
+
+	PlatformInitializeTimer(adapter, timer, (RT_TIMER_CALL_BACK)call_back_func, context, sz_id);
 #endif
 }
 
+void odm_cancel_timer(struct PHY_DM_STRUCT *dm, struct phydm_timer_list *timer)
+{
+#if (DM_ODM_SUPPORT_TYPE & ODM_AP)
+	del_timer(timer);
+#elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211)
+	del_timer(timer);
+#elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
+	_cancel_timer_ex(timer);
+#elif (DM_ODM_SUPPORT_TYPE & ODM_WIN)
+	void *adapter = dm->adapter;
+	PlatformCancelTimer(adapter, timer);
+#endif
+}
 
-void
-odm_release_timer(
-	struct PHY_DM_STRUCT		*p_dm,
-	struct timer_list		*p_timer
-)
+void odm_release_timer(struct PHY_DM_STRUCT *p_dm, struct phydm_timer_list *p_timer)
 {
 #if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 
