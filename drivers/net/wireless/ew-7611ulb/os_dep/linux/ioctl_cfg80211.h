@@ -170,6 +170,9 @@ struct rtw_wdev_priv {
 	ATOMIC_T switch_ch_to;
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0))
+	u16 mgmt_frames_bitmask;
+#endif
 };
 
 #if RTW_CFG80211_ALWAYS_INFORM_STA_DISCONNECT_EVENT
@@ -224,6 +227,7 @@ struct rtw_wiphy_data {
 #define FUNC_WIPHY_ARG(wiphy) __func__, WIPHY_ARG(wiphy)
 
 #define SET_CFG80211_REPORT_MGMT(w, t, v) (w->report_mgmt |= (v ? BIT(t >> 4) : 0))
+#define CLR_CFG80211_REPORT_MGMT(w, t) (w->report_mgmt &= (~BIT(t >> 4)))
 #define GET_CFG80211_REPORT_MGMT(w, t) ((w->report_mgmt & BIT(t >> 4)) > 0)
 
 struct wiphy *rtw_wiphy_alloc(_adapter *padapter, struct device *dev);
