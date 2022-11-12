@@ -23,7 +23,7 @@ static void kannotate_write(const char *ptr, unsigned int size)
     while (pos < size) {
         retval = annotate_write(NULL, &ptr[pos], size - pos, &offset);
         if (retval < 0) {
-            pr_warning("gator: kannotate_write failed with return value %d\n", retval);
+            pr_warn("gator: kannotate_write failed with return value %d\n", retval);
             return;
         }
         pos += retval;

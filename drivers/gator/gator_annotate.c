@@ -51,7 +51,7 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
      * data.
      */
     if (interrupt_context) {
-        pr_warning("gator: Annotations are not supported in interrupt context. Edit gator_annotate.c in the gator driver to enable annotations in interrupt context.\n");
+        pr_warn("gator: Annotations are not supported in interrupt context. Edit gator_annotate.c in the gator driver to enable annotations in interrupt context.\n");
         return -EINVAL;
     }
 

@@ -223,7 +223,7 @@ static int __check_ebs(struct gator_attr *const attr)
         if (!event_based_sampling) {
             event_based_sampling = true;
         } else {
-            pr_warning("gator: Only one ebs counter is allowed\n");
+            pr_warn("gator: Only one ebs counter is allowed\n");
             return -1;
         }
     }
