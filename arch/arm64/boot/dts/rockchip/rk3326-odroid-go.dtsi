@@ -270,26 +270,15 @@
 	};
 
 	rk817-sound {
-		compatible = "simple-audio-card";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,name = "rockchip,rk817-codec";
-		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,widgets =
-			"Microphone", "Mic Jack",
-			"Headphone", "Headphone Jack";
-		simple-audio-card,routing =
-			"MIC_IN", "Mic Jack",
-			/*"IN1P", "Mic Jack",*/
-			"Headphone Jack", "HPOL",
-			"Headphone Jack", "HPOR";
-		simple-audio-card,hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_LOW>;
-		simple-audio-card,codec-hp-det = <1>;
-		simple-audio-card,cpu {
-			sound-dai = <&i2s1_2ch>;
-		};
-		simple-audio-card,codec {
-			sound-dai = <&rk817_codec>;
-		};
+		compatible = "rockchip,multicodecs-card";
+		rockchip,card-name = "rockchip-rk817";
+		hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_LOW>;
+		rockchip,format = "i2s";
+		rockchip,mclk-fs = <256>;
+		rockchip,cpu = <&i2s1_2ch>;
+		rockchip,codec = <&rk817_codec>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hp_det>;
 	};
 
 /*
@@ -1056,14 +1045,12 @@
 		};
 	};
 
-/*
 	headphone {
 		//High : HeadPhone remove, Low : HeadPhone insert
 		hp_det: hp-det {
 			rockchip,pins = <2 RK_PC6 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
 	};
-*/
 
 	pmic {
 		dc_det: dc-det {
