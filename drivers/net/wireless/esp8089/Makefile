@@ -58,6 +58,9 @@ PACKAGE_NAME := $(patsubst "%",%,$(PACKAGE_NAME))
 PACKAGE_VERSION := $(patsubst "%",%,$(PACKAGE_VERSION))
 DKMS_PATH := /usr/src/$(PACKAGE_NAME)-$(PACKAGE_VERSION)/
 
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
+EXTRA_CFLAGS += -Wno-declaration-after-statement
+
 EXTRA_CFLAGS += -DDEBUG -DSIP_DEBUG -DFAST_TX_STATUS \
     -DKERNEL_IV_WAR -DRX_SENDUP_SYNC -DDEBUG_FS \
     -DSIF_DSR_WAR -DHAS_INIT_DATA -DHAS_FW 
