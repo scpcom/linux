@@ -82,7 +82,6 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct fb_fix_screeninfo fix;
 	struct fb_cmap cmap_from;
 	struct fb_cmap_user cmap;
-	struct fb_event event;
 	struct fb_dmabuf_export dmaexp;
 	void __user *argp = (void __user *)arg;
 	long ret = 0;
