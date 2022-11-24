@@ -12,6 +12,8 @@
 #
 #
 
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
+
 # Driver version string which is returned to userspace via an ioctl
 MALI_RELEASE_NAME ?= "r8p0-01rel0"
 
