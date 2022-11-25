@@ -1371,6 +1371,7 @@
 			     <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "GPU", "MMU", "JOB";
 		clocks = <&cru SCLK_GPU>;
+		clock-names = "clk_mali";
 		#cooling-cells = <2>;
 		power-domains = <&power PX30_PD_GPU>;
 		operating-points-v2 = <&gpu_opp_table>;
