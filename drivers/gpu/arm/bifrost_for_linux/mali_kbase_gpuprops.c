@@ -73,8 +73,8 @@ int kbase_gpuprops_uk_get_props(struct kbase_context *kctx, struct kbase_uk_gpup
 		}
 #endif				/* CONFIG_MALI_BIFROST_DEBUG */
 	}
-	if (kctx->kbdev->clock) {
-		gpu_speed_mhz = clk_get_rate(kctx->kbdev->clock) / 1000000;
+	if (kctx->kbdev->clocks[0]) {
+		gpu_speed_mhz = clk_get_rate(kctx->kbdev->clocks[0]) / 1000000;
 		rc = 0;
 	}
 	if (rc != 0)

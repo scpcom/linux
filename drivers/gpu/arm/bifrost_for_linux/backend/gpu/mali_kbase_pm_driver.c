@@ -40,6 +40,12 @@
 
 #include <linux/of.h>
 
+#ifdef CONFIG_MALI_CORESTACK
+bool corestack_driver_control = true;
+#else
+bool corestack_driver_control; /* Default value of 0/false */
+#endif
+
 #if MALI_MOCK_TEST
 #define MOCKABLE(function) function##_original
 #else

@@ -138,6 +138,8 @@ int kbase_hwaccess_pm_init(struct kbase_device *kbdev)
 	if (kbase_pm_policy_init(kbdev) != 0)
 		goto pm_policy_fail;
 
+	kbdev->pm.backend.gpu_clock_slow_down_wa = false;
+
 	return 0;
 
 pm_policy_fail:

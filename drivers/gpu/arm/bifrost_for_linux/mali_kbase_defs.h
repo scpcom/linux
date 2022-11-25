@@ -68,6 +68,14 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#include <linux/devfreq_cooling.h>
+#endif
+
+#ifdef CONFIG_ROCKCHIP_OPP
+#include <soc/rockchip/rockchip_opp_select.h>
+#endif
+
 #if defined(CONFIG_PM_RUNTIME) || \
 	(defined(CONFIG_PM) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 #define KBASE_PM_RUNTIME 1
@@ -221,6 +229,8 @@
 #define KBASE_SERIALIZE_INTER_SLOT (1 << 1)
 /* Reset the GPU after each atom completion */
 #define KBASE_SERIALIZE_RESET (1 << 2)
+
+#define BASE_MAX_NR_CLOCKS_REGULATORS (4)
 
 /* Forward declarations */
 struct kbase_context;
@@ -951,8 +961,9 @@ struct kbase_mem_pool {
  */
 struct kbase_devfreq_opp {
 	u64 opp_freq;
-	u64 real_freq;
 	u64 core_mask;
+	u64 real_freqs[BASE_MAX_NR_CLOCKS_REGULATORS];
+	u32 opp_volts[BASE_MAX_NR_CLOCKS_REGULATORS];
 };
 
 struct kbase_mmu_mode {
@@ -975,6 +986,36 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
 
 #define DEVNAME_SIZE	16
 
+/**
+ * enum kbase_devfreq_work_type - The type of work to perform in the devfreq
+ *                                suspend/resume worker.
+ * @DEVFREQ_WORK_NONE:    Initilisation state.
+ * @DEVFREQ_WORK_SUSPEND: Call devfreq_suspend_device().
+ * @DEVFREQ_WORK_RESUME:  Call devfreq_resume_device().
+ */
+enum kbase_devfreq_work_type {
+	DEVFREQ_WORK_NONE,
+	DEVFREQ_WORK_SUSPEND,
+	DEVFREQ_WORK_RESUME
+};
+
+/**
+ * struct kbase_devfreq_queue_info - Object representing an instance for managing
+ *                                   the queued devfreq suspend/resume works.
+ * @workq:                 Workqueue for devfreq suspend/resume requests
+ * @work:                  Work item for devfreq suspend & resume
+ * @req_type:              Requested work type to be performed by the devfreq
+ *                         suspend/resume worker
+ * @acted_type:            Work type has been acted on by the worker, i.e. the
+ *                         internal recorded state of the suspend/resume
+*/
+struct kbase_devfreq_queue_info {
+	struct workqueue_struct *workq;
+	struct work_struct work;
+	enum kbase_devfreq_work_type req_type;
+	enum kbase_devfreq_work_type acted_type;
+};
+
 struct kbase_device {
 	s8 slot_submit_count_irq[BASE_JM_MAX_NR_SLOTS];
 
@@ -995,10 +1036,12 @@ struct kbase_device {
 		int flags;
 	} irqs[3];
 
-	struct clk *clock;
+	struct clk *clocks[BASE_MAX_NR_CLOCKS_REGULATORS];
+	unsigned int nr_clocks;
 #ifdef CONFIG_REGULATOR
-	struct regulator *regulator;
-#endif
+	struct regulator *regulators[BASE_MAX_NR_CLOCKS_REGULATORS];
+	unsigned int nr_regulators;
+#endif /* CONFIG_REGULATOR */
 	char devname[DEVNAME_SIZE];
 
 #ifdef CONFIG_MALI_BIFROST_NO_MALI
@@ -1124,17 +1167,24 @@ struct kbase_device {
 #ifdef CONFIG_MALI_BIFROST_DEVFREQ
 	struct devfreq_dev_profile devfreq_profile;
 	struct devfreq *devfreq;
-	unsigned long current_freq;
+	unsigned long current_freqs[BASE_MAX_NR_CLOCKS_REGULATORS];
 	unsigned long current_nominal_freq;
-	unsigned long current_voltage;
+	unsigned long current_voltages[BASE_MAX_NR_CLOCKS_REGULATORS];
 	u64 current_core_mask;
-	struct kbase_devfreq_opp *opp_table;
+	struct kbase_devfreq_opp *devfreq_table;
 	int num_opps;
-	struct thermal_opp_info *opp_info;
+#ifdef CONFIG_ROCKCHIP_OPP
+	struct rockchip_opp_info opp_info;
+	struct kbasep_pm_metrics last_devfreq_metrics;
+	struct monitor_dev_info *mdev_info;
+	struct ipa_power_model_data *model_data;
+	struct kbase_devfreq_queue_info devfreq_queue;
+#endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct devfreq_cooling_device *devfreq_cooling;
 #else
+	struct devfreq_cooling_power dfc_power;
 	struct thermal_cooling_device *devfreq_cooling;
 #endif
 	/* Current IPA model - true for configured model, false for fallback */

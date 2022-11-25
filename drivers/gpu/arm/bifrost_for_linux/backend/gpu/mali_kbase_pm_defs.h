@@ -66,6 +66,36 @@ enum kbase_pm_core_type {
 };
 
 /**
+ * struct kbasep_pm_metrics - Metrics data collected for use by the power
+ *                            management framework.
+ *
+ *  @time_busy: the amount of time the GPU was busy executing jobs since the
+ *          @time_period_start timestamp, in units of 256ns. This also includes
+ *          time_in_protm, the time spent in protected mode, since it's assumed
+ *          the GPU was busy 100% during this period.
+ *  @time_idle: the amount of time the GPU was not executing jobs since the
+ *              time_period_start timestamp, measured in units of 256ns.
+ *  @time_in_protm: The amount of time the GPU has spent in protected mode since
+ *                  the time_period_start timestamp, measured in units of 256ns.
+ *  @busy_cl: the amount of time the GPU was busy executing CL jobs. Note that
+ *           if two CL jobs were active for 256ns, this value would be updated
+ *           with 2 (2x256ns).
+ *  @busy_gl: the amount of time the GPU was busy executing GL jobs. Note that
+ *           if two GL jobs were active for 256ns, this value would be updated
+ *           with 2 (2x256ns).
+ */
+struct kbasep_pm_metrics {
+	u32 time_busy;
+	u32 time_idle;
+#if MALI_USE_CSF
+	u32 time_in_protm;
+#else
+	u32 busy_cl[2];
+	u32 busy_gl;
+#endif
+};
+
+/**
  * struct kbasep_pm_metrics_data - Metrics data collected for use by the power
  *                                 management framework.
  *
@@ -100,20 +130,20 @@ enum kbase_pm_core_type {
  */
 struct kbasep_pm_metrics_data {
 	ktime_t time_period_start;
-	u32 time_busy;
-	u32 time_idle;
 	u32 prev_busy;
 	u32 prev_idle;
 	bool gpu_active;
-	u32 busy_cl[2];
-	u32 busy_gl;
 	u32 active_cl_ctx[2];
 	u32 active_gl_ctx[2]; /* GL jobs can only run on 2 of the 3 job slots */
 	spinlock_t lock;
 
+	struct kbasep_pm_metrics values;
+
 #ifdef CONFIG_MALI_BIFROST_DVFS
 	struct hrtimer timer;
 	bool timer_active;
+	struct kbasep_pm_metrics dvfs_last;
+	struct kbasep_pm_metrics dvfs_diff;
 #endif
 
 	void *platform_data;
@@ -317,6 +347,9 @@ struct kbase_pm_backend_data {
 	int (*callback_power_runtime_on)(struct kbase_device *kbdev);
 	void (*callback_power_runtime_off)(struct kbase_device *kbdev);
 	int (*callback_power_runtime_idle)(struct kbase_device *kbdev);
+
+	u64 gpu_clock_suspend_freq;
+	bool gpu_clock_slow_down_wa;
 };
 
 

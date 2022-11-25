@@ -3926,10 +3926,11 @@ static int power_control_init(struct platform_device *pdev)
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)) && defined(CONFIG_OF) \
 			&& defined(CONFIG_REGULATOR)
-	kbdev->regulator = regulator_get_optional(kbdev->dev, "mali");
-	if (IS_ERR_OR_NULL(kbdev->regulator)) {
-		err = PTR_ERR(kbdev->regulator);
-		kbdev->regulator = NULL;
+	kbdev->nr_regulators = 1;
+	kbdev->regulators[0] = regulator_get_optional(kbdev->dev, "mali");
+	if (IS_ERR_OR_NULL(kbdev->regulators[0])) {
+		err = PTR_ERR(kbdev->regulators[0]);
+		kbdev->regulators[0] = NULL;
 		if (err == -EPROBE_DEFER) {
 			dev_err(&pdev->dev, "Failed to get regulator\n");
 			return err;
@@ -3940,10 +3941,11 @@ static int power_control_init(struct platform_device *pdev)
 	}
 #endif /* LINUX_VERSION_CODE >= 3, 12, 0 */
 
-	kbdev->clock = clk_get(kbdev->dev, "clk_mali");
-	if (IS_ERR_OR_NULL(kbdev->clock)) {
-		err = PTR_ERR(kbdev->clock);
-		kbdev->clock = NULL;
+	kbdev->nr_clocks = 1;
+	kbdev->clocks[0] = clk_get(kbdev->dev, "clk_mali");
+	if (IS_ERR_OR_NULL(kbdev->clocks[0])) {
+		err = PTR_ERR(kbdev->clocks[0]);
+		kbdev->clocks[0] = NULL;
 		if (err == -EPROBE_DEFER) {
 			dev_err(&pdev->dev, "Failed to get clock\n");
 			goto fail;
@@ -3951,7 +3953,7 @@ static int power_control_init(struct platform_device *pdev)
 		dev_info(kbdev->dev, "Continuing without Mali clock control\n");
 		/* Allow probe to continue without clock. */
 	} else {
-		err = clk_prepare(kbdev->clock);
+		err = clk_prepare(kbdev->clocks[0]);
 		if (err) {
 			dev_err(kbdev->dev,
 				"Failed to prepare and enable clock (%d)\n",
@@ -3970,15 +3972,15 @@ static int power_control_init(struct platform_device *pdev)
 
 fail:
 
-if (kbdev->clock != NULL) {
-	clk_put(kbdev->clock);
-	kbdev->clock = NULL;
+if (kbdev->clocks[0] != NULL) {
+	clk_put(kbdev->clocks[0]);
+	kbdev->clocks[0] = NULL;
 }
 
 #ifdef CONFIG_REGULATOR
-	if (NULL != kbdev->regulator) {
-		regulator_put(kbdev->regulator);
-		kbdev->regulator = NULL;
+	if (NULL != kbdev->regulators[0]) {
+		regulator_put(kbdev->regulators[0]);
+		kbdev->regulators[0] = NULL;
 	}
 #endif
 
@@ -3994,17 +3996,17 @@ static void power_control_term(struct kbase_device *kbdev)
 	of_free_opp_table(kbdev->dev);
 #endif
 
-	if (kbdev->clock) {
-		clk_unprepare(kbdev->clock);
-		clk_put(kbdev->clock);
-		kbdev->clock = NULL;
+	if (kbdev->clocks[0]) {
+		clk_unprepare(kbdev->clocks[0]);
+		clk_put(kbdev->clocks[0]);
+		kbdev->clocks[0] = NULL;
 	}
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)) && defined(CONFIG_OF) \
 			&& defined(CONFIG_REGULATOR)
-	if (kbdev->regulator) {
-		regulator_put(kbdev->regulator);
-		kbdev->regulator = NULL;
+	if (kbdev->regulators[0]) {
+		regulator_put(kbdev->regulators[0]);
+		kbdev->regulators[0] = NULL;
 	}
 #endif /* LINUX_VERSION_CODE >= 3, 12, 0 */
 }

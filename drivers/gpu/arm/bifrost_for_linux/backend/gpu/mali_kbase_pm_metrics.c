@@ -73,8 +73,8 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 	kbdev->pm.backend.metrics.kbdev = kbdev;
 
 	kbdev->pm.backend.metrics.time_period_start = ktime_get();
-	kbdev->pm.backend.metrics.time_busy = 0;
-	kbdev->pm.backend.metrics.time_idle = 0;
+	kbdev->pm.backend.metrics.values.time_busy = 0;
+	kbdev->pm.backend.metrics.values.time_idle = 0;
 	kbdev->pm.backend.metrics.prev_busy = 0;
 	kbdev->pm.backend.metrics.prev_idle = 0;
 	kbdev->pm.backend.metrics.gpu_active = false;
@@ -82,9 +82,9 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 	kbdev->pm.backend.metrics.active_cl_ctx[1] = 0;
 	kbdev->pm.backend.metrics.active_gl_ctx[0] = 0;
 	kbdev->pm.backend.metrics.active_gl_ctx[1] = 0;
-	kbdev->pm.backend.metrics.busy_cl[0] = 0;
-	kbdev->pm.backend.metrics.busy_cl[1] = 0;
-	kbdev->pm.backend.metrics.busy_gl = 0;
+	kbdev->pm.backend.metrics.values.busy_cl[0] = 0;
+	kbdev->pm.backend.metrics.values.busy_cl[1] = 0;
+	kbdev->pm.backend.metrics.values.busy_gl = 0;
 
 	spin_lock_init(&kbdev->pm.backend.metrics.lock);
 
@@ -138,17 +138,17 @@ static void kbase_pm_get_dvfs_utilisation_calc(struct kbase_device *kbdev,
 	if (kbdev->pm.backend.metrics.gpu_active) {
 		u32 ns_time = (u32) (ktime_to_ns(diff) >> KBASE_PM_TIME_SHIFT);
 
-		kbdev->pm.backend.metrics.time_busy += ns_time;
+		kbdev->pm.backend.metrics.values.time_busy += ns_time;
 		if (kbdev->pm.backend.metrics.active_cl_ctx[0])
-			kbdev->pm.backend.metrics.busy_cl[0] += ns_time;
+			kbdev->pm.backend.metrics.values.busy_cl[0] += ns_time;
 		if (kbdev->pm.backend.metrics.active_cl_ctx[1])
-			kbdev->pm.backend.metrics.busy_cl[1] += ns_time;
+			kbdev->pm.backend.metrics.values.busy_cl[1] += ns_time;
 		if (kbdev->pm.backend.metrics.active_gl_ctx[0])
-			kbdev->pm.backend.metrics.busy_gl += ns_time;
+			kbdev->pm.backend.metrics.values.busy_gl += ns_time;
 		if (kbdev->pm.backend.metrics.active_gl_ctx[1])
-			kbdev->pm.backend.metrics.busy_gl += ns_time;
+			kbdev->pm.backend.metrics.values.busy_gl += ns_time;
 	} else {
-		kbdev->pm.backend.metrics.time_idle += (u32) (ktime_to_ns(diff)
+		kbdev->pm.backend.metrics.values.time_idle += (u32) (ktime_to_ns(diff)
 							>> KBASE_PM_TIME_SHIFT);
 	}
 
@@ -164,17 +164,17 @@ static void kbase_pm_reset_dvfs_utilisation_unlocked(struct kbase_device *kbdev,
 {
 	/* Store previous value */
 	kbdev->pm.backend.metrics.prev_idle =
-					kbdev->pm.backend.metrics.time_idle;
+					kbdev->pm.backend.metrics.values.time_idle;
 	kbdev->pm.backend.metrics.prev_busy =
-					kbdev->pm.backend.metrics.time_busy;
+					kbdev->pm.backend.metrics.values.time_busy;
 
 	/* Reset current values */
 	kbdev->pm.backend.metrics.time_period_start = now;
-	kbdev->pm.backend.metrics.time_idle = 0;
-	kbdev->pm.backend.metrics.time_busy = 0;
-	kbdev->pm.backend.metrics.busy_cl[0] = 0;
-	kbdev->pm.backend.metrics.busy_cl[1] = 0;
-	kbdev->pm.backend.metrics.busy_gl = 0;
+	kbdev->pm.backend.metrics.values.time_idle = 0;
+	kbdev->pm.backend.metrics.values.time_busy = 0;
+	kbdev->pm.backend.metrics.values.busy_cl[0] = 0;
+	kbdev->pm.backend.metrics.values.busy_cl[1] = 0;
+	kbdev->pm.backend.metrics.values.busy_gl = 0;
 }
 
 void kbase_pm_reset_dvfs_utilisation(struct kbase_device *kbdev)
@@ -195,8 +195,8 @@ void kbase_pm_get_dvfs_utilisation(struct kbase_device *kbdev,
 	spin_lock_irqsave(&kbdev->pm.backend.metrics.lock, flags);
 	kbase_pm_get_dvfs_utilisation_calc(kbdev, now);
 
-	busy = kbdev->pm.backend.metrics.time_busy;
-	total = busy + kbdev->pm.backend.metrics.time_idle;
+	busy = kbdev->pm.backend.metrics.values.time_busy;
+	total = busy + kbdev->pm.backend.metrics.values.time_idle;
 
 	/* Reset stats if older than MALI_UTILIZATION_MAX_PERIOD (default
 	 * 100ms) */
@@ -210,6 +210,37 @@ void kbase_pm_get_dvfs_utilisation(struct kbase_device *kbdev,
 
 	*total_out = total;
 	*busy_out = busy;
+	spin_unlock_irqrestore(&kbdev->pm.backend.metrics.lock, flags);
+}
+
+void kbase_pm_get_dvfs_metrics(struct kbase_device *kbdev,
+			       struct kbasep_pm_metrics *last,
+			       struct kbasep_pm_metrics *diff)
+{
+	struct kbasep_pm_metrics *cur = &kbdev->pm.backend.metrics.values;
+	unsigned long flags;
+
+	spin_lock_irqsave(&kbdev->pm.backend.metrics.lock, flags);
+#if MALI_USE_CSF
+	kbase_pm_get_dvfs_utilisation_calc(kbdev);
+#else
+	kbase_pm_get_dvfs_utilisation_calc(kbdev, ktime_get_raw());
+#endif
+
+	memset(diff, 0, sizeof(*diff));
+	diff->time_busy = cur->time_busy - last->time_busy;
+	diff->time_idle = cur->time_idle - last->time_idle;
+
+#if MALI_USE_CSF
+	diff->time_in_protm = cur->time_in_protm - last->time_in_protm;
+#else
+	diff->busy_cl[0] = cur->busy_cl[0] - last->busy_cl[0];
+	diff->busy_cl[1] = cur->busy_cl[1] - last->busy_cl[1];
+	diff->busy_gl = cur->busy_gl - last->busy_gl;
+#endif
+
+	*last = *cur;
+
 	spin_unlock_irqrestore(&kbdev->pm.backend.metrics.lock, flags);
 }
 #endif
@@ -229,8 +260,8 @@ int kbase_pm_get_dvfs_utilisation_old(struct kbase_device *kbdev,
 
 	kbase_pm_get_dvfs_utilisation_calc(kbdev, now);
 
-	if (kbdev->pm.backend.metrics.time_idle +
-				kbdev->pm.backend.metrics.time_busy == 0) {
+	if (kbdev->pm.backend.metrics.values.time_idle +
+				kbdev->pm.backend.metrics.values.time_busy == 0) {
 		/* No data - so we return NOP */
 		utilisation = -1;
 		if (util_gl_share)
@@ -242,25 +273,25 @@ int kbase_pm_get_dvfs_utilisation_old(struct kbase_device *kbdev,
 		goto out;
 	}
 
-	utilisation = (100 * kbdev->pm.backend.metrics.time_busy) /
-			(kbdev->pm.backend.metrics.time_idle +
-			 kbdev->pm.backend.metrics.time_busy);
+	utilisation = (100 * kbdev->pm.backend.metrics.values.time_busy) /
+			(kbdev->pm.backend.metrics.values.time_idle +
+			 kbdev->pm.backend.metrics.values.time_busy);
 
-	busy = kbdev->pm.backend.metrics.busy_gl +
-		kbdev->pm.backend.metrics.busy_cl[0] +
-		kbdev->pm.backend.metrics.busy_cl[1];
+	busy = kbdev->pm.backend.metrics.values.busy_gl +
+		kbdev->pm.backend.metrics.values.busy_cl[0] +
+		kbdev->pm.backend.metrics.values.busy_cl[1];
 
 	if (busy != 0) {
 		if (util_gl_share)
 			*util_gl_share =
-				(100 * kbdev->pm.backend.metrics.busy_gl) /
+				(100 * kbdev->pm.backend.metrics.values.busy_gl) /
 									busy;
 		if (util_cl_share) {
 			util_cl_share[0] =
-				(100 * kbdev->pm.backend.metrics.busy_cl[0]) /
+				(100 * kbdev->pm.backend.metrics.values.busy_cl[0]) /
 									busy;
 			util_cl_share[1] =
-				(100 * kbdev->pm.backend.metrics.busy_cl[1]) /
+				(100 * kbdev->pm.backend.metrics.values.busy_cl[1]) /
 									busy;
 		}
 	} else {

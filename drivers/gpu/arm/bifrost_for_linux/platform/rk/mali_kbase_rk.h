@@ -33,6 +33,8 @@ struct rk_context {
 	 */
 	bool is_powered;
 
+	bool is_regulator_on;
+
 	struct kbase_device *kbdev;
 
 	struct workqueue_struct *power_off_wq;
@@ -48,6 +50,9 @@ struct rk_context {
 
 	/* debug only, the period in ms to count gpu_utilisation. */
 	unsigned int utilisation_period;
+
+	/* to protect operations on 'is_powered' and clks, pd, vd of gpu. */
+	struct mutex lock;
 };
 
 /*---------------------------------------------------------------------------*/

@@ -500,6 +500,9 @@ void kbase_pm_do_poweroff(struct kbase_device *kbdev, bool is_suspend);
 void kbase_pm_get_dvfs_utilisation(struct kbase_device *kbdev,
 		unsigned long *total, unsigned long *busy);
 void kbase_pm_reset_dvfs_utilisation(struct kbase_device *kbdev);
+void kbase_pm_get_dvfs_metrics(struct kbase_device *kbdev,
+			       struct kbasep_pm_metrics *last,
+			       struct kbasep_pm_metrics *diff);
 #endif /* defined(CONFIG_MALI_BIFROST_DEVFREQ) || defined(CONFIG_MALI_BIFROST_DVFS) */
 
 #ifdef CONFIG_MALI_BIFROST_DVFS
@@ -554,5 +557,10 @@ void kbase_pm_cache_snoop_enable(struct kbase_device *kbdev);
  * This function should be called before L2 power off.
  */
 void kbase_pm_cache_snoop_disable(struct kbase_device *kbdev);
+
+/* If true, the driver should explicitly control corestack power management,
+ * instead of relying on the Power Domain Controller.
+ */
+extern bool corestack_driver_control;
 
 #endif /* _KBASE_BACKEND_PM_INTERNAL_H_ */
