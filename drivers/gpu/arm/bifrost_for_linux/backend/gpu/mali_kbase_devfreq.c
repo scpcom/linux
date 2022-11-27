@@ -40,18 +40,22 @@
 #include <linux/pm_runtime.h>
 #include "mali_kbase_devfreq.h"
 
+#ifdef CONFIG_ROCKCHIP_OPP
 #include <soc/rockchip/rockchip_ipa.h>
 #include <soc/rockchip/rockchip_opp_select.h>
 #include <soc/rockchip/rockchip_system_monitor.h>
+#endif
 
 static struct devfreq_simple_ondemand_data ondemand_data;
 
+#ifdef CONFIG_ROCKCHIP_OPP
 static struct monitor_dev_profile mali_mdevp = {
 	.type = MONITOR_TPYE_DEV,
 	.low_temp_adjust = rockchip_monitor_dev_low_temp_adjust,
 	.high_temp_adjust = rockchip_monitor_dev_high_temp_adjust,
 	.update_volt = rockchip_monitor_check_rate_volt,
 };
+#endif
 
 /**
  * get_voltage() - Get the voltage value corresponding to the nominal frequency
@@ -128,6 +132,7 @@ void kbase_devfreq_opp_translate(struct kbase_device *kbdev, unsigned long freq,
 	}
 }
 
+#ifdef CONFIG_ROCKCHIP_OPP
 int kbase_devfreq_opp_helper(struct dev_pm_set_opp_data *data)
 {
 	struct device *dev = data->dev;
@@ -245,6 +250,7 @@ restore_voltage:
 
 	return ret;
 }
+#endif
 
 static int
 kbase_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
@@ -253,8 +259,10 @@ kbase_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	struct dev_pm_opp *opp;
 	int ret = 0;
 
+#ifdef CONFIG_ROCKCHIP_OPP
 	if (!mali_mdevp.is_checked)
 		return -EINVAL;
+#endif
 
 	opp = devfreq_recommended_opp(dev, freq, flags);
 	if (IS_ERR(opp))
@@ -263,13 +271,17 @@ kbase_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 
 	if (*freq == kbdev->current_nominal_freq)
 		return 0;
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_lock(kbdev->mdev_info);
+#endif
 	ret = dev_pm_opp_set_rate(dev, *freq);
 	if (!ret) {
 		kbdev->current_nominal_freq = *freq;
 		KBASE_TLSTREAM_AUX_DEVFREQ_TARGET((u64)*freq);
 	}
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_unlock(kbdev->mdev_info);
+#endif
 
 	return ret;
 }
@@ -672,6 +684,7 @@ static void kbase_devfreq_work_term(struct kbase_device *kbdev)
 	destroy_workqueue(workq);
 }
 
+#ifdef CONFIG_ROCKCHIP_OPP
 static unsigned long kbase_devfreq_get_static_power(struct devfreq *devfreq,
 		unsigned long voltage)
 {
@@ -680,6 +693,7 @@ static unsigned long kbase_devfreq_get_static_power(struct devfreq *devfreq,
 
 	return rockchip_ipa_get_static_power(kbdev->model_data, voltage);
 }
+#endif
 
 int kbase_devfreq_init(struct kbase_device *kbdev)
 {
@@ -704,8 +718,10 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 		else
 			kbdev->current_freqs[i] = 0;
 	}
+#ifdef CONFIG_ROCKCHIP_OPP
 	if (strstr(__clk_get_name(kbdev->clocks[0]), "scmi"))
 		kbdev->opp_info.scmi_clk = kbdev->clocks[0];
+#endif
 	kbdev->current_nominal_freq = kbdev->current_freqs[0];
 
 	opp = devfreq_recommended_opp(kbdev->dev, &kbdev->current_nominal_freq, 0);
@@ -778,6 +794,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 		goto opp_notifier_failed;
 	}
 
+#ifdef CONFIG_ROCKCHIP_OPP
 	mali_mdevp.data = kbdev->devfreq;
 	mali_mdevp.opp_info = &kbdev->opp_info;
 	kbdev->mdev_info = rockchip_system_monitor_register(kbdev->dev,
@@ -787,6 +804,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
                kbdev->mdev_info = NULL;
 	       mali_mdevp.is_checked = true;
 	}
+#endif
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
 	of_property_read_u32(kbdev->dev->of_node, "dynamic-power-coefficient",
 			     (u32 *)&kbase_dcp->dyn_power_coeff);
@@ -794,17 +812,20 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 					     "simple-power-model");
 	if (model_node) {
 		of_node_put(model_node);
+#ifdef CONFIG_ROCKCHIP_OPP
 		kbdev->model_data =
 			rockchip_ipa_power_model_init(kbdev->dev,
 						      "gpu_leakage");
 		if (IS_ERR_OR_NULL(kbdev->model_data)) {
 			kbdev->model_data = NULL;
+#endif
 			if (kbase_dcp->dyn_power_coeff)
 				dev_info(kbdev->dev,
 					 "only calculate dynamic power\n");
 			else
 				dev_err(kbdev->dev,
 					"failed to initialize power model\n");
+#ifdef CONFIG_ROCKCHIP_OPP
 		} else {
 			kbase_dcp->get_static_power =
 				kbase_devfreq_get_static_power;
@@ -812,6 +833,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 				kbase_dcp->dyn_power_coeff =
 					kbdev->model_data->dynamic_coefficient;
 		}
+#endif
 	}
 
 	if (kbase_dcp->dyn_power_coeff) {
@@ -899,8 +921,12 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	kbase_devfreq_term_core_mask_table(kbdev);
 
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#ifdef CONFIG_ROCKCHIP_OPP
 	if (!kbdev->model_data)
+#endif
 		kbase_ipa_term(kbdev);
+#ifdef CONFIG_ROCKCHIP_OPP
 	kfree(kbdev->model_data);
+#endif
 #endif
 }

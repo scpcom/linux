@@ -1173,13 +1173,13 @@ struct kbase_device {
 	u64 current_core_mask;
 	struct kbase_devfreq_opp *devfreq_table;
 	int num_opps;
+	struct kbasep_pm_metrics last_devfreq_metrics;
 #ifdef CONFIG_ROCKCHIP_OPP
 	struct rockchip_opp_info opp_info;
-	struct kbasep_pm_metrics last_devfreq_metrics;
 	struct monitor_dev_info *mdev_info;
 	struct ipa_power_model_data *model_data;
-	struct kbase_devfreq_queue_info devfreq_queue;
 #endif
+	struct kbase_devfreq_queue_info devfreq_queue;
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct devfreq_cooling_device *devfreq_cooling;

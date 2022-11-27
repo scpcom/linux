@@ -31,8 +31,10 @@
 #include <linux/regmap.h>
 #include <linux/soc/rockchip/pvtm.h>
 #include <linux/thermal.h>
+#ifdef CONFIG_ROCKCHIP_OPP
 #include <soc/rockchip/rockchip_opp_select.h>
 #include <soc/rockchip/rockchip_system_monitor.h>
+#endif
 
 #include "mali_kbase_config_platform.h"
 #include "mali_kbase_rk.h"
@@ -96,12 +98,16 @@ static void rk_pm_power_off_delay_work(struct work_struct *work)
 		return;
 	}
 
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_lock(kbdev->mdev_info);
+#endif
 	if (pm_runtime_enabled(kbdev->dev)) {
 		D("to put_sync_suspend mali_dev.");
 		pm_runtime_put_sync_suspend(kbdev->dev);
 	}
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_unlock(kbdev->mdev_info);
+#endif
 
 	rk_pm_disable_clk(kbdev);
 
@@ -195,6 +201,7 @@ struct kbase_platform_funcs_conf platform_funcs = {
 
 static int rk_pm_callback_runtime_on(struct kbase_device *kbdev)
 {
+#ifdef CONFIG_ROCKCHIP_OPP
 	struct rockchip_opp_info *opp_info = &kbdev->opp_info;
 	int ret = 0;
 
@@ -215,12 +222,14 @@ static int rk_pm_callback_runtime_on(struct kbase_device *kbdev)
 			dev_err(kbdev->dev, "failed to restore clk rate\n");
 	}
 	clk_bulk_disable_unprepare(opp_info->num_clks, opp_info->clks);
+#endif
 
 	return 0;
 }
 
 static void rk_pm_callback_runtime_off(struct kbase_device *kbdev)
 {
+#ifdef CONFIG_ROCKCHIP_OPP
 	struct rockchip_opp_info *opp_info = &kbdev->opp_info;
 
 	if (opp_info->scmi_clk) {
@@ -228,6 +237,7 @@ static void rk_pm_callback_runtime_off(struct kbase_device *kbdev)
 			dev_err(kbdev->dev, "failed to set power down rate\n");
 	}
 	opp_info->current_rm = UINT_MAX;
+#endif
 }
 
 static int rk_pm_callback_power_on(struct kbase_device *kbdev)
@@ -264,7 +274,9 @@ static int rk_pm_callback_power_on(struct kbase_device *kbdev)
 		goto out;
 	}
 
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_lock(kbdev->mdev_info);
+#endif
 	/* 若 mali_dev 的 runtime_pm 是 enabled 的, 则... */
 	if (pm_runtime_enabled(kbdev->dev)) {
 		D("to resume mali_dev syncly.");
@@ -281,7 +293,9 @@ static int rk_pm_callback_power_on(struct kbase_device *kbdev)
 			ret = 0;
 		}
 	}
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_monitor_volt_adjust_unlock(kbdev->mdev_info);
+#endif
 
 	platform->is_powered = true;
 	wake_lock(&platform->wake_lock);
@@ -512,6 +526,7 @@ static void kbase_platform_rk_remove_sysfs_files(struct device *dev)
 	device_remove_file(dev, &dev_attr_utilisation);
 }
 
+#ifdef CONFIG_ROCKCHIP_OPP
 static int rk3588_gpu_set_read_margin(struct device *dev,
 				      struct rockchip_opp_info *opp_info,
 				      u32 rm)
@@ -558,13 +573,18 @@ static const struct of_device_id rockchip_mali_of_match[] = {
 	},
 	{},
 };
+#endif
 
 int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev)
 {
+#ifdef CONFIG_ROCKCHIP_OPP
 	rockchip_get_opp_data(rockchip_mali_of_match, &kbdev->opp_info);
 
 	return rockchip_init_opp_table(kbdev->dev, &kbdev->opp_info,
 				       "gpu_leakage", "mali");
+#else
+	return -ENOTSUPP;
+#endif
 }
 
 int kbase_platform_rk_enable_regulator(struct kbase_device *kbdev)
