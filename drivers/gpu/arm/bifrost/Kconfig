@@ -107,19 +107,6 @@ config MALI_CORESTACK
 
 	  If unsure, say N.
 
-config MALI_BIFROST_PRFCNT_SET_SECONDARY
-	bool "Use secondary set of performance counters"
-	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
-	default n
-	help
-	  Select this option to use secondary set of performance counters. Kernel
-	  features that depend on an access to the primary set of counters may
-	  become unavailable. Enabling this option will prevent power management
-	  from working optimally and may cause instrumentation tools to return
-	  bogus results.
-
-	  If unsure, say N.
-
 config MALI_BIFROST_DEBUG
 	bool "Debug build"
 	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
@@ -156,6 +143,9 @@ config MALI_BIFROST_NO_MALI
 	  All calls to the simulated hardware will complete immediately as if the hardware
 	  completed the task.
 
+config MALI_REAL_HW
+	def_bool !MALI_BIFROST_NO_MALI
+
 config MALI_BIFROST_ERROR_INJECT
 	bool "Error injection"
 	depends on MALI_BIFROST && MALI_BIFROST_EXPERT && MALI_BIFROST_NO_MALI
@@ -179,6 +169,34 @@ config MALI_BIFROST_SYSTEM_TRACE
 	  kbase event. This is typically used for debugging but has
 	  minimal overhead when not in use. Enable only if you know what
 	  you are doing.
+
+comment "Instrumentation options"
+	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
+
+choice
+	prompt "Select Performance counters set"
+	default MALI_PRFCNT_SET_PRIMARY
+	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
+
+config MALI_PRFCNT_SET_PRIMARY
+	bool "Primary"
+	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
+	help
+	  Select this option to use primary set of performance counters.
+
+config MALI_BIFROST_PRFCNT_SET_SECONDARY
+	bool "Secondary"
+	depends on MALI_BIFROST && MALI_BIFROST_EXPERT
+	help
+	  Select this option to use secondary set of performance counters. Kernel
+	  features that depend on an access to the primary set of counters may
+	  become unavailable. Enabling this option will prevent power management
+	  from working optimally and may cause instrumentation tools to return
+	  bogus results.
+
+	  If unsure, use MALI_PRFCNT_SET_PRIMARY.
+
+endchoice
 
 config MALI_JOB_DUMP
 	bool "Enable system level support needed for job dumping"
