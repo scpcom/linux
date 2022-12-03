@@ -331,7 +331,11 @@ void vos_pkt_trace_buf_update
 )
 {
    v_U32_t slot;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   struct timespec64 tv;
+#else
    struct timeval tv;
+#endif
 
    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
              "%s %d, %s", __func__, __LINE__, event_string);
@@ -347,9 +351,17 @@ void vos_pkt_trace_buf_update
    trace_buffer[slot].order = trace_buffer_order;
    trace_buffer_order++;
    adf_os_spin_unlock_bh(&trace_buffer_lock);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   ktime_get_real_ts64(&tv);
+#else
    do_gettimeofday(&tv);
+#endif
    trace_buffer[slot].event_sec_time = tv.tv_sec;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   trace_buffer[slot].event_msec_time = tv.tv_usec/1000;
+#else
    trace_buffer[slot].event_msec_time = tv.tv_usec;
+#endif
    strlcpy(trace_buffer[slot].event_string, event_string,
           sizeof(trace_buffer[slot].event_string));
 

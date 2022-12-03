@@ -119,14 +119,32 @@ static inline int vos_wlan_pm_control(bool vote)
 static inline void vos_lock_pm_sem(void) { return; }
 static inline void vos_release_pm_sem(void) { return; }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline void vos_get_monotonic_bootime_ts(struct timespec64 *ts)
+#else
 static inline void vos_get_monotonic_bootime_ts(struct timespec *ts)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	ktime_get_boottime_ts64(ts);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0))
+	ktime_get_boottime_ts(ts);
+#else
 	get_monotonic_boottime(ts);
+#endif
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline void vos_get_boottime_ts(struct timespec64 *ts)
+#else
 static inline void vos_get_boottime_ts(struct timespec *ts)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	ktime_get_ts64(ts);
+#else
 	ktime_get_ts(ts);
+#endif
 }
 
 static inline void *vos_get_virt_ramdump_mem(struct device *dev,
@@ -197,9 +215,19 @@ static inline int vos_wlan_get_dfs_nol(void *info, u16 info_len)
 	return -EINVAL;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline void vos_get_monotonic_boottime_ts(struct timespec64 *ts)
+#else
 static inline void vos_get_monotonic_boottime_ts(struct timespec *ts)
+#endif
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	ktime_get_boottime_ts64(ts);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0))
+	ktime_get_boottime_ts(ts);
+#else
 	get_monotonic_boottime(ts);
+#endif
 }
 
 static inline void vos_schedule_recovery_work(struct device *dev) { return; }
@@ -302,7 +330,11 @@ static inline void vos_pm_wake_lock_destroy(struct wakeup_source *ws)
 	cnss_pm_wake_lock_destroy(ws);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline void vos_get_monotonic_boottime_ts(struct timespec64 *ts)
+#else
 static inline void vos_get_monotonic_boottime_ts(struct timespec *ts)
+#endif
 {
         cnss_get_monotonic_boottime(ts);
 }
@@ -338,7 +370,11 @@ static inline int vos_wlan_get_dfs_nol(void *info, u16 info_len)
 	return cnss_wlan_get_dfs_nol(info, info_len);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline void vos_get_boottime_ts(struct timespec64 *ts)
+#else
 static inline void vos_get_boottime_ts(struct timespec *ts)
+#endif
 {
         cnss_get_boottime(ts);
 }

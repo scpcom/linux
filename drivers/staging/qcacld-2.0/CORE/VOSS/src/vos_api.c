@@ -2630,7 +2630,11 @@ out:
 v_U64_t vos_get_monotonic_boottime(void)
 {
 #ifdef CONFIG_CNSS
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   struct timespec64 ts;
+#else
    struct timespec ts;
+#endif
 
    vos_get_monotonic_boottime_ts(&ts);
    return (((v_U64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
@@ -3241,16 +3245,27 @@ void vos_svc_fw_shutdown_ind(struct device *dev)
 
 v_U64_t vos_get_monotonic_boottime_ns(void)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	struct timespec64 ts;
+
+	ktime_get_ts64(&ts);
+	return timespec64_to_ns(&ts);
+#else
 	struct timespec ts;
 
 	ktime_get_ts(&ts);
 	return timespec_to_ns(&ts);
+#endif
 }
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 10, 0))
 v_U64_t vos_get_bootbased_boottime_ns(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	return ktime_get_boottime_ns();
+#else
 	return ktime_get_boot_ns();
+#endif
 }
 
 #else

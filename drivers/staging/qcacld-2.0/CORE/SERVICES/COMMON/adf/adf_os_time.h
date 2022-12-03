@@ -149,7 +149,11 @@ adf_os_msleep(int msecs)
 static inline a_uint64_t adf_get_boottime(void)
 {
 #ifdef CONFIG_CNSS
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   struct timespec64 ts;
+#else
    struct timespec ts;
+#endif
 
    vos_get_boottime_ts(&ts);
 

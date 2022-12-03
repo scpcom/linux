@@ -868,9 +868,15 @@ v_TIME_t vos_timer_get_system_ticks( v_VOID_t )
   ------------------------------------------------------------------------*/
 v_TIME_t vos_timer_get_system_time( v_VOID_t )
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+   struct timespec64 tv;
+   ktime_get_real_ts64(&tv);
+   return tv.tv_sec*1000 + tv.tv_nsec/1000000;
+#else
    struct timeval tv;
    do_gettimeofday(&tv);
    return tv.tv_sec*1000 + tv.tv_usec/1000;
+#endif
 }
 
 /**
@@ -880,34 +886,66 @@ v_TIME_t vos_timer_get_system_time( v_VOID_t )
  */
 unsigned long vos_get_time_of_the_day_ms(void)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	struct timespec64 tv;
+#else
 	struct timeval tv;
+#endif
 	unsigned long local_time;
 	struct rtc_time tm;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	ktime_get_real_ts64(&tv);
+#else
 	do_gettimeofday(&tv);
+#endif
 
 	local_time = (uint32_t)(tv.tv_sec -
 		(sys_tz.tz_minuteswest * 60));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	rtc_time64_to_tm(local_time, &tm);
+#else
 	rtc_time_to_tm(local_time, &tm);
+#endif
 	return ((tm.tm_hour * 60 * 60 * 1000) +
 		(tm.tm_min *60 * 1000) + (tm.tm_sec * 1000)+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+		(tv.tv_nsec/1000000));
+#else
 		(tv.tv_usec/1000));
+#endif
 }
 
 void vos_get_time_of_the_day_in_hr_min_sec_usec(char *tbuf, int len)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+       struct timespec64 tv;
+#else
        struct timeval tv;
+#endif
        struct rtc_time tm;
        unsigned long local_time;
 
        /* Format the Log time R#: [hr:min:sec.microsec] */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+       ktime_get_real_ts64(&tv);
+#else
        do_gettimeofday(&tv);
+#endif
        /* Convert rtc to local time */
        local_time = (u32)(tv.tv_sec - (sys_tz.tz_minuteswest * 60));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+       rtc_time64_to_tm(local_time, &tm);
+#else
        rtc_time_to_tm(local_time, &tm);
+#endif
        snprintf(tbuf, len,
                "[%02d:%02d:%02d.%06lu] ",
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+               tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_nsec/1000);
+#else
                tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec);
+#endif
 }
 
 /**
