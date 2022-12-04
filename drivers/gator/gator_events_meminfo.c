@@ -257,7 +257,11 @@ static void do_read(void)
                 value = (GLOBAL_ZONE_PAGE_STATE(NR_FILE_PAGES) /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
                 break;
             case MEMINFO_SLAB:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+                value = (GLOBAL_ZONE_PAGE_STATE(NR_SLAB_RECLAIMABLE_B) + GLOBAL_ZONE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE_B)) * PAGE_SIZE;
+#else
                 value = (GLOBAL_ZONE_PAGE_STATE(NR_SLAB_RECLAIMABLE) + GLOBAL_ZONE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE)) * PAGE_SIZE;
+#endif
                 break;
             default:
                 value = 0;
