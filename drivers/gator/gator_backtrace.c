@@ -7,6 +7,8 @@
  *
  */
 
+#include "gator_builtin.h"
+
 #if defined(__arm__) || defined(__aarch64__)
 #define GATOR_KERNEL_UNWINDING                      1
 #define GATOR_USER_UNWINDING                        1
@@ -55,7 +57,7 @@ static int report_trace(struct stackframe *frame, void *d)
     if (*depth) {
 #if defined(MODULE)
         unsigned int cpu = get_physical_cpu();
-        struct module *mod = __module_address(addr);
+        struct module *mod = __gator_module_address(addr);
 
         if (mod) {
             cookie = get_cookie(cpu, current, mod->name, false);
@@ -119,7 +121,7 @@ static void report_trace(unsigned int cpu, unsigned long *entries, unsigned int 
     for (index = 0; index < nr_entries; ++index) {
         unsigned long addr = entries[index];
 #if defined(MODULE)
-        struct module * mod = __module_address(addr);
+        struct module * mod = __gator_module_address(addr);
         if (mod) {
             cookie = get_cookie(cpu, current, mod->name, false);
             addr = addr -

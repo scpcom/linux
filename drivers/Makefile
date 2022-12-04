@@ -184,6 +184,9 @@ obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_GATOR)		+= gator/
+ifneq ($(CONFIG_GATOR),)
+obj-y += gator/gator_builtin.o
+endif
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
 obj-$(CONFIG_SIOX)		+= siox/
 obj-$(CONFIG_GNSS)		+= gnss/
