@@ -1369,6 +1369,21 @@ static void gator_op_create_files(struct super_block *sb, struct dentry *root)
  * Module
  ******************************************************************************/
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+static void gator_for_each_tracepoint_range(
+		tracepoint_ptr_t *begin, tracepoint_ptr_t *end,
+		void (*fct)(struct tracepoint *tp, void *priv),
+		void *priv)
+{
+	tracepoint_ptr_t *iter;
+
+	if (!begin)
+		return;
+	for (iter = begin; iter < end; iter++)
+		fct(tracepoint_ptr_deref(iter), priv);
+}
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
 
 #define GATOR_TRACEPOINTS \
@@ -1437,22 +1452,35 @@ GATOR_TRACEPOINTS;
 int gator_new_tracepoint_module(struct notifier_block * nb, unsigned long action, void * data)
 {
     struct tp_module * tp_mod = (struct tp_module *) data;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+    tracepoint_ptr_t * begin = tp_mod->mod->tracepoints_ptrs;
+    tracepoint_ptr_t * end = tp_mod->mod->tracepoints_ptrs + tp_mod->mod->num_tracepoints;
+#else
     struct tracepoint * const * begin = tp_mod->mod->tracepoints_ptrs;
     struct tracepoint * const * end = tp_mod->mod->tracepoints_ptrs + tp_mod->mod->num_tracepoints;
+#endif
 
     pr_debug("gator: new tracepoint module registered %s\n", tp_mod->mod->name);
 
     if (action == MODULE_STATE_COMING)
     {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+	gator_for_each_tracepoint_range(begin, end, gator_save_tracepoint, NULL);
+#else
         for (; begin != end; ++begin) {
             gator_save_tracepoint(*begin, NULL);
         }
+#endif
     }
     else if (action == MODULE_STATE_GOING)
     {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+        gator_for_each_tracepoint_range(begin, end, gator_unsave_tracepoint, NULL);
+#else
         for (; begin != end; ++begin) {
             gator_unsave_tracepoint(*begin, NULL);
         }
+#endif
     }
     else
     {

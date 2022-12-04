@@ -111,13 +111,13 @@ static void kernel_backtrace(int cpu, struct pt_regs *const regs)
 struct gator_kmod_stack { unsigned long addresses[GATOR_KMOD_STACK_MAX_SIZE]; };
 static DEFINE_PER_CPU(struct gator_kmod_stack, gator_kmod_stack);
 
-static void report_trace(unsigned int cpu, struct stack_trace * trace)
+static void report_trace(unsigned int cpu, unsigned long *entries, unsigned int nr_entries)
 {
     unsigned int cookie = NO_COOKIE;
     unsigned int index;
 
-    for (index = 0; index < trace->nr_entries; ++index) {
-        unsigned long addr = trace->entries[index];
+    for (index = 0; index < nr_entries; ++index) {
+        unsigned long addr = entries[index];
 #if defined(MODULE)
         struct module * mod = __module_address(addr);
         if (mod) {
@@ -136,25 +136,37 @@ static void report_trace(unsigned int cpu, struct stack_trace * trace)
 
 static void kernel_backtrace(int cpu, struct pt_regs *const regs)
 {
+    unsigned int max_entries;
+    unsigned int stack_len;
+    unsigned long *entries;
+#ifndef CONFIG_ARCH_STACKWALK
     struct stack_trace trace;
     trace.skip = 0;
     trace.nr_entries = 0;
-    trace.entries = per_cpu(gator_kmod_stack, cpu).addresses;
-#ifdef GATOR_KERNEL_STACK_UNWINDING
-    trace.max_entries = gator_backtrace_depth;
-#else
-    trace.max_entries = (kernel_stack_unwinding ? gator_backtrace_depth : 1);
 #endif
-    if (trace.max_entries < 1) {
-        trace.max_entries = 1;
+    entries = per_cpu(gator_kmod_stack, cpu).addresses;
+#ifdef GATOR_KERNEL_STACK_UNWINDING
+    max_entries = gator_backtrace_depth;
+#else
+    max_entries = (kernel_stack_unwinding ? gator_backtrace_depth : 1);
+#endif
+    if (max_entries < 1) {
+        max_entries = 1;
     }
-    else if (trace.max_entries > GATOR_KMOD_STACK_MAX_SIZE) {
-        trace.max_entries = GATOR_KMOD_STACK_MAX_SIZE;
+    else if (max_entries > GATOR_KMOD_STACK_MAX_SIZE) {
+        max_entries = GATOR_KMOD_STACK_MAX_SIZE;
     }
 
+#ifdef CONFIG_ARCH_STACKWALK
+    stack_len = stack_trace_save(entries, max_entries, 0);
+#else
+    trace.entries = entries;
+    trace.max_entries = max_entries;
     save_stack_trace(&trace);
+    stack_len = trace->nr_entries;
+#endif
 
-    report_trace(cpu, &trace);
+    report_trace(cpu, entries, stack_len);
 }
 
 
