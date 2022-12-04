@@ -34,6 +34,10 @@
 #include <linux/mmc/sd.h>
 #include <linux/kthread.h>
 #include <linux/pm_qos.h>
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
+#include <linux/pm_runtime.h>
+#endif
 #include "vos_cnss.h"
 #include "if_ath_sdio.h"
 #include "regtable.h"
@@ -2800,6 +2804,24 @@ static int hif_reset_target(HIF_DEVICE *hif_device)
 			("AR6000: %s invalid HIF DEVICE \n", __func__));
 		return -ENODEV;
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
+	ret = pm_runtime_put(&hif_device->func->card->dev);
+	if (ret < 0 && ret != -EBUSY) {
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERROR,
+			("AR6000: %s failed to put pm %d\n",
+			__func__, ret));
+
+		goto done;
+	}
+
+	ret = pm_runtime_get_sync(&hif_device->func->card->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(&hif_device->func->card->dev);
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERROR,
+			("AR6000: %s: failed to get_sync pm %d\n",
+			__func__, ret));
+	}
+#else
 	/* Disable sdio func->pull down WLAN_EN-->pull down DAT_2 line */
 	ret = mmc_power_save_host(hif_device->func->card->host);
 	if(ret) {
@@ -2816,6 +2838,7 @@ static int hif_reset_target(HIF_DEVICE *hif_device)
 			("AR6000: %s Failed to restore mmc Power host %d\n",
 			__func__, ret));
 	}
+#endif
 
 done:
 	return ret;
