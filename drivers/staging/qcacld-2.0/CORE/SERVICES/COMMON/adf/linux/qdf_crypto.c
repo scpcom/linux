@@ -72,7 +72,9 @@ int qdf_get_hash(uint8_t *type,
     } desc;
 
     desc.shash.tfm = tfm;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,2,0))
     desc.shash.flags = 0;
+#endif
     ret = crypto_shash_init(&desc.shash);
     if (ret)
         goto fail;
@@ -105,7 +107,9 @@ int qdf_get_hmac_hash(uint8_t *type, uint8_t *key,
     } desc;
 
     desc.shash.tfm = tfm;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,2,0))
     desc.shash.flags = 0;
+#endif
     ret = crypto_shash_setkey(desc.shash.tfm, key, keylen);
     if (ret)
         goto fail;
@@ -175,7 +179,9 @@ int qdf_get_keyed_hash(const char *alg, const uint8_t *key,
     do {
         SHASH_DESC_ON_STACK(desc, tfm);
         desc->tfm = tfm;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,2,0))
         desc->flags = crypto_shash_get_flags(tfm);
+#endif
 
         ret = crypto_shash_init(desc);
         if (ret) {
