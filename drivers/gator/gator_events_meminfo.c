@@ -92,7 +92,11 @@ static unsigned int mem_event;
 static void wq_sched_handler(struct work_struct *wsptr);
 static DECLARE_WORK(work, wq_sched_handler);
 static struct timer_list meminfo_wake_up_timer;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void meminfo_wake_up_handler(struct timer_list *t);
+#else
 static void meminfo_wake_up_handler(unsigned long unused_data);
+#endif
 
 static void notify(void)
 {
@@ -181,7 +185,11 @@ static int gator_events_meminfo_start(void)
     if (IS_ERR(kthread_run(gator_meminfo_func, NULL, "gator_meminfo")))
         goto kthread_run_exit;
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+    timer_setup(&meminfo_wake_up_timer, meminfo_wake_up_handler, TIMER_DEFERRABLE);
+#else
     setup_deferrable_timer_on_stack(&meminfo_wake_up_timer, meminfo_wake_up_handler, 0);
+#endif
 #endif
 
     return 0;
@@ -293,7 +301,11 @@ static void wq_sched_handler(struct work_struct *wsptr)
     do_read();
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void meminfo_wake_up_handler(struct timer_list *t)
+#else
 static void meminfo_wake_up_handler(unsigned long unused_data)
+#endif
 {
     /* had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater */
     schedule_work(&work);

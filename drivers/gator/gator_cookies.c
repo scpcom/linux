@@ -70,7 +70,11 @@ static uint32_t get_cookie(int cpu, struct task_struct *task, const char *text, 
 static void wq_cookie_handler(struct work_struct *unused);
 static DECLARE_WORK(cookie_work, wq_cookie_handler);
 static struct timer_list app_process_wake_up_timer;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void app_process_wake_up_handler(struct timer_list *t);
+#else
 static void app_process_wake_up_handler(unsigned long unused_data);
+#endif
 
 static uint32_t cookiemap_code(uint64_t value64)
 {
@@ -211,7 +215,11 @@ static void wq_cookie_handler(struct work_struct *unused)
     mutex_unlock(&start_mutex);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void app_process_wake_up_handler(struct timer_list *t)
+#else
 static void app_process_wake_up_handler(unsigned long unused_data)
+#endif
 {
     /* had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater */
     schedule_work(&cookie_work);
@@ -518,7 +526,11 @@ static int cookies_initialize(void)
         gator_crc32_table[i] = crc;
     }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+    timer_setup(&app_process_wake_up_timer, app_process_wake_up_handler, TIMER_DEFERRABLE);
+#else
     setup_deferrable_timer_on_stack(&app_process_wake_up_timer, app_process_wake_up_handler, 0);
+#endif
 
 cookie_setup_error:
     return err;

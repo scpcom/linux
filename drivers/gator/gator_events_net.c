@@ -43,7 +43,11 @@ static void get_network_stats(struct work_struct *wsptr)
 
 static DECLARE_WORK(wq_get_stats, get_network_stats);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void net_wake_up_handler(struct timer_list *t)
+#else
 static void net_wake_up_handler(unsigned long unused_data)
+#endif
 {
     /* had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater */
     schedule_work(&wq_get_stats);
@@ -94,7 +98,11 @@ static int gator_events_net_start(void)
     get_network_stats(NULL);
     netPrev[NETRX] = rx_total;
     netPrev[NETTX] = tx_total;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+    timer_setup(&net_wake_up_timer, net_wake_up_handler, TIMER_DEFERRABLE);
+#else
     setup_deferrable_timer_on_stack(&net_wake_up_timer, net_wake_up_handler, 0);
+#endif
     return 0;
 }
 

@@ -292,7 +292,11 @@ u32 gator_cpuid(void)
 #endif
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+static void gator_buffer_wake_up(struct timer_list *t)
+#else
 static void gator_buffer_wake_up(unsigned long data)
+#endif
 {
     wake_up(&gator_buffer_wait);
 }
@@ -310,7 +314,11 @@ static int gator_buffer_wake_func(void *data)
         if (!gator_buffer_wake_run)
             break;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+        gator_buffer_wake_up(NULL);
+#else
         gator_buffer_wake_up(0);
+#endif
     }
 
     return 0;
@@ -1490,7 +1498,11 @@ static int __init gator_module_init(void)
         return -1;
     }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0))
+    timer_setup(&gator_buffer_wake_up_timer, gator_buffer_wake_up, TIMER_DEFERRABLE);
+#else
     setup_deferrable_timer_on_stack(&gator_buffer_wake_up_timer, gator_buffer_wake_up, 0);
+#endif
 
 #if defined(CONFIG_SMP) && !defined(CONFIG_GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP)
     /* Online all cores */
