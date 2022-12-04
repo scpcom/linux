@@ -5453,6 +5453,9 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 	}
 
 	link_stats_results = wma_handle->link_stats_results;
+	results            = (u_int8_t *)link_stats_results->results;
+	rs_results         = (tSirWifiRadioStat *) &results[0];
+
 	if (link_stats_results->num_radio == 0) {
 		link_stats_results->num_radio = fixed_param->num_radio;
 	} else if (link_stats_results->num_radio < fixed_param->num_radio) {
@@ -5462,10 +5465,10 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 		 * events may be spoofed. Drop all of them and report error.
 		 */
 		WMA_LOGE("Invalid following WMI_RADIO_LINK_STATS_EVENTID. Discarding this set");
+		vos_mem_free(rs_results->tx_time_per_power_level);
 		rs_results->tx_time_per_power_level = NULL;
 		vos_mem_free(wma_handle->link_stats_results);
 		wma_handle->link_stats_results = NULL;
-		vos_mem_free(rs_results->tx_time_per_power_level);
 		return -EINVAL;
 	}
 
