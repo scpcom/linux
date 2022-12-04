@@ -13,7 +13,9 @@
 #endif
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+#   define get_user_pages_remote(tsk,mm,start,nr_pages,write,force,pages,vmas)  get_user_pages_remote(mm,start,nr_pages,((write) ? FOLL_WRITE : 0) | ((force) ? FOLL_FORCE : 0),pages,vmas,NULL)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 /* Kernel version 4.10.0 adds locked argument
    (See https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/include/linux/mm.h?id=5b56d49fc31dbb0487e14ead790fc81ca9fb2c99) */
 #   define get_user_pages_remote(tsk,mm,start,nr_pages,write,force,pages,vmas)  get_user_pages_remote(tsk,mm,start,nr_pages,((write) ? FOLL_WRITE : 0) | ((force) ? FOLL_FORCE : 0),pages,vmas,NULL)
@@ -273,7 +275,11 @@ static int translate_app_process(const char **text, int cpu, struct task_struct 
     if (len > TRANSLATE_TEXT_SIZE)
         len = TRANSLATE_TEXT_SIZE;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+    down_read(&mm->mmap_lock);
+#else
     down_read(&mm->mmap_sem);
+#endif
     while (len) {
         if (get_user_pages_remote(task, mm, addr, 1, 0, 1, &page, &page_vma) <= 0)
             goto outsem;
@@ -303,7 +309,11 @@ static int translate_app_process(const char **text, int cpu, struct task_struct 
         retval = 0;
 
 outsem:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+    up_read(&mm->mmap_lock);
+#else
     up_read(&mm->mmap_sem);
+#endif
 outmm:
     mmput(mm);
 out:
