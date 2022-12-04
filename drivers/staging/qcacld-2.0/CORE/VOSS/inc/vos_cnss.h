@@ -40,6 +40,12 @@
 #include <linux/sched.h>
 #include <linux/wakelock.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0))
+#ifndef PM_QOS_CPU_DMA_LATENCY
+#define PM_QOS_CPU_DMA_LATENCY 1
+#endif
+#endif
+
 enum cnss_bus_width_type {
 	CNSS_BUS_WIDTH_NONE,
 	CNSS_BUS_WIDTH_LOW,
