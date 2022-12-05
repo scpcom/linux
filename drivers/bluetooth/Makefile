@@ -59,6 +59,8 @@ hci_uart-$(CONFIG_BT_HCIUART_AML)	+= hci_aml.o
 hci_uart-objs				:= $(hci_uart-y)
 
 ifneq ($(CONFIG_BT_RTLCOEX),)
+EXTRA_CFLAGS_rtk_coex += -Wno-vla
+
 hci_uart-y += rtk_coex.o
 endif
 hci_uart-$(CONFIG_BT_HCIUART_RTL3WIRE) += hci_rtk_h5.o
