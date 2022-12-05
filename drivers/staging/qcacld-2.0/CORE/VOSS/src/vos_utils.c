@@ -72,6 +72,9 @@
 #include <linux/ieee80211.h>
 #include <crypto/hash.h>
 #include <crypto/aes.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
+#include <crypto/internal/cipher.h>
+#endif
 #include <wcnss_api.h>
 #ifdef CONFIG_CNSS
 #include <linux/qcomwlan_secif.h>
