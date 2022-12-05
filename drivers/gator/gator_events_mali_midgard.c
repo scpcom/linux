@@ -139,7 +139,11 @@ static int counter_dump[NUMBER_OF_EVENTS * 2];
  * here indicates that the activity monitored by this counter is not
  * running.
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static struct timespec64 timeline_event_starttime[NUMBER_OF_TIMELINE_EVENTS];
+#else
 static struct timespec timeline_event_starttime[NUMBER_OF_TIMELINE_EVENTS];
+#endif
 
 /* The data we have recorded */
 static unsigned int timeline_data[NUMBER_OF_TIMELINE_EVENTS];
@@ -147,7 +151,11 @@ static unsigned int sw_counter_data[NUMBER_OF_SOFTWARE_COUNTERS];
 static unsigned int accumulators_data[NUMBER_OF_ACCUMULATORS];
 
 /* Hold the previous timestamp, used to calculate the sample interval. */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static struct timespec64 prev_timestamp;
+#else
 static struct timespec prev_timestamp;
+#endif
 
 static unsigned long long previous_shader_bitmask;
 static unsigned long long previous_tiler_bitmask;
@@ -161,7 +169,11 @@ static unsigned long long previous_l2_bitmask;
  *
  * @return Number of microseconds between the two timestamps (can be negative if start follows end).
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static inline long get_duration_us(const struct timespec64 *start, const struct timespec64 *end)
+#else
 static inline long get_duration_us(const struct timespec *start, const struct timespec *end)
+#endif
 {
     long event_duration_us = (end->tv_nsec - start->tv_nsec) / 1000;
 
@@ -172,13 +184,22 @@ static inline long get_duration_us(const struct timespec *start, const struct ti
 
 static void record_timeline_event(unsigned int timeline_index, unsigned int type)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 event_timestamp;
+    struct timespec64 *event_start = &timeline_event_starttime[timeline_index];
+#else
     struct timespec event_timestamp;
     struct timespec *event_start = &timeline_event_starttime[timeline_index];
+#endif
 
     switch (type) {
     case ACTIVITY_START:
         /* Get the event time... */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+        ktime_get_real_ts64(&event_timestamp);
+#else
         getnstimeofday(&event_timestamp);
+#endif
 
         /* Remember the start time if the activity is not already started */
         if (event_start->tv_sec == 0)
@@ -189,7 +210,11 @@ static void record_timeline_event(unsigned int timeline_index, unsigned int type
         /* if the counter was started... */
         if (event_start->tv_sec != 0) {
             /* Get the event time... */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+            ktime_get_real_ts64(&event_timestamp);
+#else
             getnstimeofday(&event_timestamp);
+#endif
 
             /* Accumulate the duration in us */
             timeline_data[timeline_index] += get_duration_us(event_start, &event_timestamp);
@@ -415,7 +440,11 @@ static int start(void)
      * since it will be the time between 'start' and the first 'read'.
      * This means that timeline values will be divided by a big number for the first sample.
      */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_real_ts64(&prev_timestamp);
+#else
     getnstimeofday(&prev_timestamp);
+#endif
 
     return 0;
 }
@@ -463,13 +492,21 @@ static int read(int **buffer, bool sched_switch)
     int cnt;
     int len = 0;
     long sample_interval_us = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 read_timestamp;
+#else
     struct timespec read_timestamp;
+#endif
 
     if (!on_primary_core())
         return 0;
 
     /* Get the start of this sample period. */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_real_ts64(&read_timestamp);
+#else
     getnstimeofday(&read_timestamp);
+#endif
 
     /*
      * Calculate the sample interval if the previous sample time is valid.

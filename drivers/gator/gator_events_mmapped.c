@@ -74,10 +74,19 @@ static int gator_events_mmapped_create_files(struct super_block *sb,
 static int gator_events_mmapped_start(void)
 {
     int i;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 ts;
+#else
     struct timespec ts;
+#endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_real_ts64(&ts);
+    prev_time = timespec64_to_ns(&ts);
+#else
     getnstimeofday(&ts);
     prev_time = timespec_to_ns(&ts);
+#endif
 
     mmapped_global_enabled = 0;
     for (i = 0; i < MMAPPED_COUNTERS_NUM; i++) {
@@ -162,15 +171,24 @@ static int gator_events_mmapped_read(int **buffer, bool sched_switch)
     int i;
     int len = 0;
     int delta_in_us;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 ts;
+#else
     struct timespec ts;
+#endif
     s64 time;
 
     /* System wide counters - read from one core only */
     if (!on_primary_core() || !mmapped_global_enabled)
         return 0;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_real_ts64(&ts);
+    time = timespec64_to_ns(&ts);
+#else
     getnstimeofday(&ts);
     time = timespec_to_ns(&ts);
+#endif
     delta_in_us = (int)(time - prev_time) / 1000;
     prev_time = time;
 

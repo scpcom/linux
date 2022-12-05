@@ -593,15 +593,24 @@ static int gator_timer_start(unsigned long sample_rate)
 
 u64 gator_get_time(void)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 ts;
+#else
     struct timespec ts;
+#endif
     u64 timestamp;
     u64 prev_timestamp;
     u64 delta;
     int cpu = smp_processor_id();
 
     /* Match clock_gettime(CLOCK_MONOTONIC_RAW, &ts) from userspace */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_raw_ts64(&ts);
+    timestamp = timespec64_to_ns(&ts);
+#else
     getrawmonotonic(&ts);
     timestamp = timespec_to_ns(&ts);
+#endif
 
     /* getrawmonotonic is not monotonic on all systems. Detect and
      * attempt to correct these cases. up to 0.5ms delta has been seen
@@ -720,7 +729,11 @@ static void gator_unregister_hotcpu_notifier(void)
 static int gator_pm_notify(struct notifier_block *nb, unsigned long event, void *dummy)
 {
     int cpu;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 ts;
+#else
     struct timespec ts;
+#endif
 
     switch (event) {
     case PM_HIBERNATION_PREPARE:
@@ -733,15 +746,25 @@ static int gator_pm_notify(struct notifier_block *nb, unsigned long event, void 
         }
 
         /* Record the wallclock hibernate time */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+        ktime_get_real_ts64(&ts);
+        gator_hibernate_time = timespec64_to_ns(&ts) - gator_get_time();
+#else
         getnstimeofday(&ts);
         gator_hibernate_time = timespec_to_ns(&ts) - gator_get_time();
+#endif
         break;
     case PM_POST_HIBERNATION:
     case PM_POST_SUSPEND:
         /* Adjust gator_monotonic_started for the time spent sleeping, as gator_get_time does not account for it */
         if (gator_hibernate_time > 0) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+            ktime_get_real_ts64(&ts);
+            gator_monotonic_started += gator_hibernate_time + gator_get_time() - timespec64_to_ns(&ts);
+#else
             getnstimeofday(&ts);
             gator_monotonic_started += gator_hibernate_time + gator_get_time() - timespec_to_ns(&ts);
+#endif
             gator_hibernate_time = 0;
         }
 
@@ -781,15 +804,27 @@ static void gator_notifier_stop(void)
 static void gator_summary(void)
 {
     u64 timestamp, uptime;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    struct timespec64 ts;
+#else
     struct timespec ts;
+#endif
     char uname_buf[100];
 
     snprintf(uname_buf, sizeof(uname_buf), "%s %s %s %s %s GNU/Linux", utsname()->sysname, utsname()->nodename, utsname()->release, utsname()->version, utsname()->machine);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+    ktime_get_real_ts64(&ts);
+    timestamp = timespec64_to_ns(&ts);
+#else
     getnstimeofday(&ts);
     timestamp = timespec_to_ns(&ts);
+#endif
 
     /* Similar to reading /proc/uptime from fs/proc/uptime.c, calculate uptime */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+    uptime =  ktime_get_boottime_ns();
+#else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
     {
         void (*m2b)(struct timespec *ts);
@@ -804,6 +839,7 @@ static void gator_summary(void)
     get_monotonic_boottime(&ts);
 #endif
     uptime = timespec_to_ns(&ts);
+#endif
 
     /* Disable preemption as gator_get_time calls smp_processor_id to verify time is monotonic */
     preempt_disable();
