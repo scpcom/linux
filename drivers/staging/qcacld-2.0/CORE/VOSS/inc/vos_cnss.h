@@ -95,7 +95,15 @@ static inline void vos_flush_delayed_work(void *dwork)
 static inline void vos_pm_wake_lock_init(struct wakeup_source *ws,
 					const char *name)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0))
+	if (ws) {
+		memset(ws, 0, sizeof(*ws));
+		ws->name = name;
+	}
+	wakeup_source_add(ws);
+#else
 	wakeup_source_init(ws, name);
+#endif
 }
 
 static inline void vos_pm_wake_lock(struct wakeup_source *ws)
@@ -116,7 +124,12 @@ static inline void vos_pm_wake_lock_release(struct wakeup_source *ws)
 
 static inline void vos_pm_wake_lock_destroy(struct wakeup_source *ws)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0))
+	wakeup_source_remove(ws);
+	__pm_relax(ws);
+#else
 	wakeup_source_trash(ws);
+#endif
 }
 
 static inline int vos_wlan_pm_control(bool vote)
