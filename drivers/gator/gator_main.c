@@ -1539,7 +1539,11 @@ static int __init gator_module_init(void)
         for_each_present_cpu(cpu) {
             if (!cpu_online(cpu)) {
                 pr_notice("gator: Onlining cpu %i\n", cpu);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+                add_cpu(cpu);
+#else
                 cpu_up(cpu);
+#endif
             }
         }
     }
