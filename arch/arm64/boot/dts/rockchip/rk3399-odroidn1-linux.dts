@@ -900,11 +900,8 @@
 	no-sdio;
 	no-mmc;
 	bus-width = <4>;
-	supports-highspeed;
 	cap-sd-highspeed;
 	cd-gpios = <&gpio0 RK_PA7 GPIO_ACTIVE_LOW>;
-	mmc-ddr-1_8v;
-	sd-uhs-sdr104;
 	disable-wp;
 	num-slots = <1>;
 	vqmmc-supply = <&vcc_sdio>;
@@ -928,7 +925,6 @@
 	num-slots = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdio0_bus4 &sdio0_cmd &sdio0_clk>;
-	sd-uhs-sdr104;
 	status = "okay";
 	defer_pcie = <2000>;
 };
