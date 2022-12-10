@@ -546,6 +546,13 @@ config PWM_ROCKCHIP_ONESHOT
 	help
 	  Support Rockchip pwm oneshot mode for specified number of cycles.
 
+config PWM_ROCKCHIP_ACTIVE_PINCTRL
+	bool "Rockchip PWM active pinctrl support"
+	depends on PWM_ROCKCHIP
+	default y if PWM_ROCKCHIP
+	help
+	  Make pwm pinctrl setting after pwm enabled.
+
 config PWM_RZ_MTU3
 	tristate "Renesas RZ/G2L MTU3a PWM Timer support"
 	depends on RZ_MTU3
