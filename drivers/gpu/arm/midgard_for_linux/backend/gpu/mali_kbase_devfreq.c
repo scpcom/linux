@@ -48,10 +48,14 @@
 #endif /* Linux >= 3.13 */
 
 #ifdef CONFIG_ROCKCHIP_OPP
-static struct thermal_opp_device_data gpu_devdata = {
-	.type = THERMAL_OPP_TPYE_DEV,
-	.low_temp_adjust = rockchip_dev_low_temp_adjust,
-	.high_temp_adjust = rockchip_dev_high_temp_adjust,
+#include <soc/rockchip/rockchip_ipa.h>
+#include <soc/rockchip/rockchip_opp_select.h>
+#include <soc/rockchip/rockchip_system_monitor.h>
+
+static struct monitor_dev_profile mali_mdevp = {
+	.type = MONITOR_TPYE_DEV,
+	.low_temp_adjust = rockchip_monitor_dev_low_temp_adjust,
+	.high_temp_adjust = rockchip_monitor_dev_high_temp_adjust,
 };
 #endif
 
@@ -274,15 +278,15 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	kbdev->devfreq->last_status.current_frequency = opp_rate;
 
 #ifdef CONFIG_ROCKCHIP_OPP
-	gpu_devdata.data = kbdev->devfreq;
-	kbdev->opp_info = rockchip_register_thermal_notifier(kbdev->dev,
-							     &gpu_devdata);
-	if (IS_ERR(kbdev->opp_info)) {
-		dev_dbg(kbdev->dev, "without thermal notifier\n");
-		kbdev->opp_info = NULL;
+	mali_mdevp.data = kbdev->devfreq;
+	mali_mdevp.opp_info = &kbdev->opp_info;
+	kbdev->mdev_info = rockchip_system_monitor_register(kbdev->dev,
+			&mali_mdevp);
+	if (IS_ERR(kbdev->mdev_info)) {
+		dev_dbg(kbdev->dev, "without system monitor\n");
+		kbdev->mdev_info = NULL;
+		mali_mdevp.is_checked = true;
 	}
-#else
-	 kbdev->opp_info = NULL;
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
@@ -338,7 +342,7 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	dev_dbg(kbdev->dev, "Term Mali devfreq\n");
 
 #ifdef CONFIG_ROCKCHIP_OPP
-	rockchip_unregister_thermal_notifier(kbdev->opp_info);
+	rockchip_system_monitor_unregister(kbdev->mdev_info);
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
