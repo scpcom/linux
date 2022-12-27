@@ -38,9 +38,7 @@
 #include <linux/timer.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#ifdef CONFIG_ARCH_ROCKCHIP_ODROIDGOA
 #include <linux/reboot.h>
-#endif
 
 static int dbg_enable;
 
@@ -482,6 +480,7 @@ struct battery_platform_data {
 	u32 design_max_voltage;
 	bool extcon;
 	u32 low_pwr_sleep;
+	bool low_voltage_poweroff;
 };
 
 struct rk817_battery_device {
@@ -1893,6 +1892,8 @@ static int rk817_bat_parse_dt(struct rk817_battery_device *battery)
 	if (ret < 0)
 		dev_err(dev, "power_off_thresd missing!\n");
 
+	pdata->low_voltage_poweroff = of_property_read_bool(np, "low_voltage_poweroff");
+
 	ret = of_property_read_u32(np, "low_power_sleep", &pdata->low_pwr_sleep);
 	if (ret < 0)
 		dev_info(dev, "low_power_sleep missing!\n");
@@ -2366,11 +2367,11 @@ static void rk817_bat_lowpwr_check(struct rk817_battery_device *battery)
 				battery->dsoc -= 1000;
 			DBG("low power, soc=%d, current=%d\n",
 			    battery->dsoc, battery->current_avg);
-#ifdef CONFIG_ARCH_ROCKCHIP_ODROIDGOA
-			pr_info("battery voltage is under %dmV, voltage_avg=%dmV, power off!\n",
-				pwr_off_thresd, battery->voltage_avg);
-			orderly_poweroff(false);
-#endif
+			if (battery->pdata->low_voltage_poweroff) {
+				pr_info("battery voltage is under %dmV, voltage_avg=%dmV, power off!\n",
+					pwr_off_thresd, battery->voltage_avg);
+				orderly_poweroff(false);
+			}
 		}
 	} else {
 		time = 0;
