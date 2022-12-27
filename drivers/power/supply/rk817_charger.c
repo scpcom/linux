@@ -278,10 +278,8 @@ struct charger_platform_data {
 	u32 dc_det_level;
 	int dc_det_pin;
 	bool support_dc_det;
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 	int chg_led_pin;
 	bool chg_led_on;
-#endif
 	int virtual_power;
 	int sample_res;
 	int otg5v_suspend_enable;
@@ -308,10 +306,8 @@ struct rk817_charger {
 	struct delayed_work host_work;
 	struct delayed_work discnt_work;
 	struct delayed_work irq_work;
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 	struct workqueue_struct *led_wq;
 	struct delayed_work led_work;
-#endif
 	struct notifier_block bc_nb;
 	struct notifier_block cable_cg_nb;
 	struct notifier_block cable_host_nb;
@@ -913,13 +909,8 @@ static irqreturn_t rk817_charge_dc_det_isr(int irq, void *charger)
 	else
 		irq_set_irq_type(irq, IRQF_TRIGGER_HIGH);
 
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 	queue_delayed_work(charge->dc_charger_wq, &charge->dc_work,
-			   msecs_to_jiffies(2000));
-#else
-	queue_delayed_work(charge->dc_charger_wq, &charge->dc_work,
-			   msecs_to_jiffies(10));
-#endif
+			   msecs_to_jiffies(charge->pdata->chg_led_pin ? 2000 : 10));
 
 	return IRQ_HANDLED;
 }
@@ -937,7 +928,6 @@ static enum charger_t rk817_charge_get_dc_state(struct rk817_charger *charge)
 		DC_TYPE_DC_CHARGER : DC_TYPE_NONE_CHARGER;
 }
 
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 static void rk817_charge_led_worker(struct work_struct *work)
 {
 	struct rk817_charger *charge = container_of(work,
@@ -964,7 +954,6 @@ static void rk817_charge_led_worker(struct work_struct *work)
 	queue_delayed_work(charge->led_wq, &charge->led_work,
 		msecs_to_jiffies(1000));
 }
-#endif
 
 static void rk817_charge_dc_det_worker(struct work_struct *work)
 {
@@ -1023,7 +1012,6 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 		return ret;
 	}
 
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 	if (charge->pdata->chg_led_pin) {
 		ret = devm_gpio_request(charge->dev,
 					charge->pdata->chg_led_pin,
@@ -1034,16 +1022,15 @@ static int rk817_charge_init_dc(struct rk817_charger *charge)
 		else
 			gpio_direction_output(charge->pdata->chg_led_pin,
 					     !charge->pdata->chg_led_on);
-	}
 
-	charge->led_wq = alloc_ordered_workqueue("%s",
+		charge->led_wq = alloc_ordered_workqueue("%s",
 				WQ_MEM_RECLAIM | WQ_FREEZABLE,
 				"rk817-led-wq");
-	INIT_DELAYED_WORK(&charge->led_work, rk817_charge_led_worker);
+		INIT_DELAYED_WORK(&charge->led_work, rk817_charge_led_worker);
 
-	queue_delayed_work(charge->led_wq, &charge->led_work,
-		msecs_to_jiffies(500));
-#endif
+		queue_delayed_work(charge->led_wq, &charge->led_work,
+			msecs_to_jiffies(500));
+	}
 
 	level = gpio_get_value(charge->pdata->dc_det_pin);
 
@@ -1513,7 +1500,6 @@ static int rk817_charge_parse_dt(struct rk817_charger *charge)
 			dev_err(dev, "invalid dc det gpio!\n");
 			return -EINVAL;
 		}
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
 		if (!of_find_property(np, "chg_led_gpio", &ret)) {
 			DBG("not support charge led\n");
 			pdata->chg_led_pin = 0;
@@ -1527,7 +1513,6 @@ static int rk817_charge_parse_dt(struct rk817_charger *charge)
 					(flags & OF_GPIO_ACTIVE_LOW) ? 0 : 1;
 			}
 		}
-#endif
 	}
 
 	DBG("input_current:%d\n"
@@ -1744,10 +1729,10 @@ irq_fail:
 	destroy_workqueue(charge->usb_charger_wq);
 	destroy_workqueue(charge->dc_charger_wq);
 
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
-	cancel_delayed_work_sync(&charge->led_work);
-	destroy_workqueue(charge->led_wq);
-#endif
+	if (charge->pdata->chg_led_pin) {
+		cancel_delayed_work_sync(&charge->led_work);
+		destroy_workqueue(charge->led_wq);
+	}
 
 	if (charge->pdata->extcon) {
 		extcon_unregister_notifier(charge->cable_edev,
@@ -1832,10 +1817,11 @@ static void rk817_charger_shutdown(struct platform_device *dev)
 	cancel_delayed_work_sync(&charge->irq_work);
 	flush_workqueue(charge->usb_charger_wq);
 	flush_workqueue(charge->dc_charger_wq);
-#if defined(CONFIG_ARCH_ROCKCHIP_ODROIDGOA)
-	cancel_delayed_work_sync(&charge->led_work);
-	destroy_workqueue(charge->led_wq);
-#endif
+
+	if (charge->pdata->chg_led_pin) {
+		cancel_delayed_work_sync(&charge->led_work);
+		destroy_workqueue(charge->led_wq);
+	}
 
 	if (charge->pdata->extcon) {
 		extcon_unregister_notifier(charge->cable_edev,
