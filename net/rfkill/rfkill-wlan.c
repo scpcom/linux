@@ -43,7 +43,9 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #endif
+#if IS_ENABLED(CONFIG_ROCKCHIP_VENDOR_STORAGE)
 #include <linux/soc/rockchip/rk_vendor_storage.h>
+#endif
 #include <linux/device.h>
 
 #include "../../drivers/mmc/core/pwrseq.h"
@@ -415,6 +417,7 @@ u8 wifi_custom_mac_addr[6] = { 0, 0, 0, 0, 0, 0 };
 //#define RANDOM_ADDRESS_SAVE
 static int get_wifi_addr_vendor(unsigned char *addr)
 {
+#if IS_ENABLED(CONFIG_ROCKCHIP_VENDOR_STORAGE)
 	int ret;
 	int count = 5;
 
@@ -428,12 +431,14 @@ static int get_wifi_addr_vendor(unsigned char *addr)
 	if (ret != 6 || is_zero_ether_addr(addr)) {
 		LOG("%s: rk_vendor_read wifi mac address failed (%d)\n",
 		    __func__, ret);
+#endif
 #ifdef CONFIG_WIFI_GENERATE_RANDOM_MAC_ADDR
 		random_ether_addr(addr);
 		LOG("%s: generate random wifi mac address: "
 		    "%02x:%02x:%02x:%02x:%02x:%02x\n",
 		    __func__, addr[0], addr[1], addr[2], addr[3], addr[4],
 		    addr[5]);
+#if IS_ENABLED(CONFIG_ROCKCHIP_VENDOR_STORAGE)
 		ret = rk_vendor_write(WIFI_MAC_ID, addr, 6);
 		if (ret != 0) {
 			LOG("%s: rk_vendor_write failed %d\n"
@@ -441,15 +446,18 @@ static int get_wifi_addr_vendor(unsigned char *addr)
 			memset(addr, 0, 6);
 			return -1;
 		}
+#endif
 #else
 		return -1;
 #endif
+#if IS_ENABLED(CONFIG_ROCKCHIP_VENDOR_STORAGE)
 	} else {
 		LOG("%s: rk_vendor_read wifi mac address: "
 		    "%02x:%02x:%02x:%02x:%02x:%02x\n",
 		    __func__, addr[0], addr[1], addr[2], addr[3], addr[4],
 		    addr[5]);
 	}
+#endif
 	return 0;
 }
 
