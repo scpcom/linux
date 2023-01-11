@@ -2855,7 +2855,7 @@ static void vop2_disable(struct drm_crtc *crtc)
 }
 
 static void vop2_crtc_atomic_disable(struct drm_crtc *crtc,
-				     struct drm_crtc_state *old_state)
+				     struct drm_atomic_state *state)
 {
 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
 	struct rockchip_crtc_state *vcstate = to_rockchip_crtc_state(crtc->state);
@@ -2968,13 +2968,15 @@ static int vop2_plane_splice_check(struct drm_plane *plane, struct drm_plane_sta
 	return ret;
 }
 
-static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_state *state)
+static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_atomic_state *state)
 {
-	struct vop2_plane_state *vpstate = to_vop2_plane_state(state);
+	struct drm_plane_state *new_plane_state = drm_atomic_get_new_plane_state(state,
+										 plane);
+	struct vop2_plane_state *vpstate = to_vop2_plane_state(new_plane_state);
 	struct vop2_win *win = to_vop2_win(plane);
-	struct drm_framebuffer *fb = state->fb;
+	struct drm_framebuffer *fb = new_plane_state->fb;
 	struct drm_display_mode *mode;
-	struct drm_crtc *crtc = state->crtc;
+	struct drm_crtc *crtc = new_plane_state->crtc;
 	struct drm_crtc_state *cstate;
 	struct rockchip_crtc_state *vcstate;
 	struct vop2_video_port *vp;
@@ -2998,7 +3000,7 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 	vp = to_vop2_video_port(crtc);
 	vop2_data = vp->vop2->data;
 
-	cstate = drm_atomic_get_existing_crtc_state(state->state, crtc);
+	cstate = drm_atomic_get_existing_crtc_state(state, crtc);
 	if (WARN_ON(!cstate))
 		return -EINVAL;
 
@@ -3008,48 +3010,48 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 	if (vop2_has_feature(win->vop2, VOP_FEATURE_SPLICE)) {
 		if (mode->hdisplay > VOP2_MAX_VP_OUTPUT_WIDTH) {
 			vcstate->splice_mode = true;
-			ret = vop2_plane_splice_check(plane, state, mode);
+			ret = vop2_plane_splice_check(plane, new_plane_state, mode);
 			if (ret < 0)
 				return ret;
 		}
 	}
 
-	vpstate->xmirror_en = (state->rotation & DRM_MODE_REFLECT_X) ? 1 : 0;
-	vpstate->ymirror_en = (state->rotation & DRM_MODE_REFLECT_Y) ? 1 : 0;
-	vpstate->rotate_270_en = (state->rotation & DRM_MODE_ROTATE_270) ? 1 : 0;
-	vpstate->rotate_90_en = (state->rotation & DRM_MODE_ROTATE_90) ? 1 : 0;
+	vpstate->xmirror_en = (new_plane_state->rotation & DRM_MODE_REFLECT_X) ? 1 : 0;
+	vpstate->ymirror_en = (new_plane_state->rotation & DRM_MODE_REFLECT_Y) ? 1 : 0;
+	vpstate->rotate_270_en = (new_plane_state->rotation & DRM_MODE_ROTATE_270) ? 1 : 0;
+	vpstate->rotate_90_en = (new_plane_state->rotation & DRM_MODE_ROTATE_90) ? 1 : 0;
 
 	if (vpstate->rotate_270_en && vpstate->rotate_90_en) {
 		DRM_ERROR("Can't rotate 90 and 270 at the same time\n");
 		return -EINVAL;
 	}
 
-	ret = drm_atomic_helper_check_plane_state(state, cstate,
+	ret = drm_atomic_helper_check_plane_state(new_plane_state, cstate,
 						  min_scale, max_scale,
 						  true, true);
 	if (ret)
 		return ret;
 
-	if (!state->visible) {
+	if (!new_plane_state->visible) {
 		DRM_ERROR("%s is invisible(src: pos[%d, %d] rect[%d x %d] dst: pos[%d, %d] rect[%d x %d]\n",
-			  plane->name, state->src_x >> 16, state->src_y >> 16, state->src_w >> 16,
-			  state->src_h >> 16, state->crtc_x, state->crtc_y, state->crtc_w,
-			  state->crtc_h);
+			  plane->name, new_plane_state->src_x >> 16, new_plane_state->src_y >> 16, new_plane_state->src_w >> 16,
+			  new_plane_state->src_h >> 16, new_plane_state->crtc_x, new_plane_state->crtc_y, new_plane_state->crtc_w,
+			  new_plane_state->crtc_h);
 		return 0;
 	}
 
-	src->x1 = state->src.x1;
-	src->y1 = state->src.y1;
-	src->x2 = state->src.x2;
-	src->y2 = state->src.y2;
-	dest->x1 = state->dst.x1;
-	dest->y1 = state->dst.y1;
-	dest->x2 = state->dst.x2;
-	dest->y2 = state->dst.y2;
+	src->x1 = new_plane_state->src.x1;
+	src->y1 = new_plane_state->src.y1;
+	src->x2 = new_plane_state->src.x2;
+	src->y2 = new_plane_state->src.y2;
+	dest->x1 = new_plane_state->dst.x1;
+	dest->y1 = new_plane_state->dst.y1;
+	dest->x2 = new_plane_state->dst.x2;
+	dest->y2 = new_plane_state->dst.y2;
 
-	vpstate->zpos = state->zpos;
-	vpstate->global_alpha = state->alpha >> 8;
-	vpstate->blend_mode = state->pixel_blend_mode;
+	vpstate->zpos = new_plane_state->zpos;
+	vpstate->global_alpha = new_plane_state->alpha >> 8;
+	vpstate->blend_mode = new_plane_state->pixel_blend_mode;
 	vpstate->format = vop2_convert_format(fb->format->format);
 	if (vpstate->format < 0)
 		return vpstate->format;
@@ -3059,7 +3061,7 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 		DRM_ERROR("Invalid size: %dx%d->%dx%d, min size is 4x4\n",
 			  drm_rect_width(src) >> 16, drm_rect_height(src) >> 16,
 			  drm_rect_width(dest), drm_rect_height(dest));
-		state->visible = false;
+		new_plane_state->visible = false;
 		return 0;
 	}
 
@@ -3100,7 +3102,7 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 	 * Src.x1 can be odd when do clip, but yuv plane start point
 	 * need align with 2 pixel.
 	 */
-	if (fb->format->is_yuv && ((state->src.x1 >> 16) % 2)) {
+	if (fb->format->is_yuv && ((new_plane_state->src.x1 >> 16) % 2)) {
 		DRM_ERROR("Invalid Source: Yuv format not support odd xpos\n");
 		return -EINVAL;
 	}
@@ -3133,7 +3135,7 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 		rk_uv_obj = to_rockchip_obj(uv_obj);
 
 		if (vpstate->ymirror_en && !vpstate->afbc_en)
-			offset += fb->pitches[1] * ((state->src_h >> 16) - 2)  / vsub;
+			offset += fb->pitches[1] * ((new_plane_state->src_h >> 16) - 2)  / vsub;
 		dma_addr = rk_uv_obj->dma_addr + offset + fb->offsets[1];
 		vpstate->uv_mst = dma_addr;
 	}
@@ -3141,8 +3143,10 @@ static int vop2_plane_atomic_check(struct drm_plane *plane, struct drm_plane_sta
 	return 0;
 }
 
-static void vop2_plane_atomic_disable(struct drm_plane *plane, struct drm_plane_state *old_state)
+static void vop2_plane_atomic_disable(struct drm_plane *plane, struct drm_atomic_state *state)
 {
+	struct drm_plane_state *old_state = drm_atomic_get_old_plane_state(state,
+									   plane);
 	struct vop2_win *win = to_vop2_win(plane);
 	struct vop2_win *splice_win;
 	struct vop2 *vop2 = win->vop2;
@@ -3470,9 +3474,10 @@ static void vop2_win_atomic_update(struct vop2_win *win, struct drm_rect *src, s
 	spin_unlock(&vop2->reg_lock);
 }
 
-static void vop2_plane_atomic_update(struct drm_plane *plane, struct drm_plane_state *old_state)
+static void vop2_plane_atomic_update(struct drm_plane *plane, struct drm_atomic_state *state)
 {
-	struct drm_plane_state *pstate = plane->state;
+	struct drm_plane_state *pstate = drm_atomic_get_new_plane_state(state,
+									   plane);
 	struct drm_crtc *crtc = pstate->crtc;
 	struct vop2_win *win = to_vop2_win(plane);
 	struct vop2_win *splice_win;
@@ -3520,7 +3525,7 @@ static void vop2_plane_atomic_update(struct drm_plane *plane, struct drm_plane_s
 		return;
 
 	if (!pstate->visible) {
-		vop2_plane_atomic_disable(plane, old_state);
+		vop2_plane_atomic_disable(plane, state);
 		return;
 	}
 
@@ -4754,7 +4759,7 @@ static int vop2_calc_cru_cfg(struct drm_crtc *crtc, int conn_id,
 	return ret;
 }
 
-static void vop2_crtc_atomic_enable(struct drm_crtc *crtc, struct drm_crtc_state *old_state)
+static void vop2_crtc_atomic_enable(struct drm_crtc *crtc, struct drm_atomic_state *state)
 {
 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
 	struct vop2_video_port *splice_vp;
@@ -5109,7 +5114,7 @@ static int vop2_zpos_cmp(const void *a, const void *b)
 }
 
 static int vop2_crtc_atomic_check(struct drm_crtc *crtc,
-				  struct drm_crtc_state *crtc_state)
+				  struct drm_atomic_state *state)
 {
 	return 0;
 }
@@ -5688,7 +5693,7 @@ static void vop2_setup_dly_for_window(struct vop2_video_port *vp, const struct v
 	}
 
 }
-static void vop2_crtc_atomic_begin(struct drm_crtc *crtc, struct drm_crtc_state *old_crtc_state)
+static void vop2_crtc_atomic_begin(struct drm_crtc *crtc, struct drm_atomic_state *state)
 {
 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
 	struct vop2 *vop2 = vp->vop2;
@@ -5958,8 +5963,10 @@ static void vop2_cfg_update(struct drm_crtc *crtc,
 	spin_unlock(&vop2->reg_lock);
 }
 
-static void vop2_crtc_atomic_flush(struct drm_crtc *crtc, struct drm_crtc_state *old_cstate)
+static void vop2_crtc_atomic_flush(struct drm_crtc *crtc, struct drm_atomic_state *state)
 {
+	struct drm_crtc_state *old_cstate = drm_atomic_get_old_crtc_state(state,
+									      crtc);
 	struct rockchip_crtc_state *vcstate = to_rockchip_crtc_state(crtc->state);
 	struct drm_atomic_state *old_state = old_cstate->state;
 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
