@@ -26,7 +26,7 @@
 #ifdef CONFIG_ROCKCHIP_VENDOR_STORAGE
 #include <linux/soc/rockchip/rk_vendor_storage.h>
 #endif
-#include <crypto/sha.h>
+#include <crypto/sha1.h>
 #include <drm/bridge/dw_hdmi.h>
 
 #include "dw-hdmi.h"
