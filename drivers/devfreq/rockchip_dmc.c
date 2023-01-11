@@ -389,9 +389,9 @@ static int rockchip_dmcfreq_target(struct device *dev, unsigned long *freq,
 	 * Do this before taking the policy rwsem to avoid deadlocks between the
 	 * mutex that is locked/unlocked in cpu_hotplug_disable/enable. And it
 	 * can also avoid deadlocks between the mutex that is locked/unlocked
-	 * in get/put_online_cpus (such as store_scaling_max_freq()).
+	 * in get/cpus_read_unlock (such as store_scaling_max_freq()).
 	 */
-	get_online_cpus();
+	cpus_read_lock();
 
 	/*
 	 * Go to specified cpufreq and block other cpufreq changes since
@@ -501,7 +501,7 @@ out:
 	up_write(&policy->rwsem);
 	cpufreq_cpu_put(policy);
 cpufreq:
-	put_online_cpus();
+	cpus_read_unlock();
 	return err;
 }
 
