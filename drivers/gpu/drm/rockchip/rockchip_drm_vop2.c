@@ -2264,11 +2264,8 @@ static int vop2_wb_encoder_atomic_check(struct drm_encoder *encoder,
 
 	wb_state->format = vop2_convert_wb_format(fb->format->format);
 	if (wb_state->format < 0) {
-		struct drm_format_name_buf format_name;
-
-		DRM_DEBUG_KMS("Invalid pixel format %s\n",
-			      drm_get_format_name(fb->format->format,
-						  &format_name));
+		DRM_DEBUG_KMS("Invalid pixel format %p4cc\n",
+			      &fb->format->format);
 		return -EINVAL;
 	}
 
@@ -3298,7 +3295,6 @@ static void vop2_win_atomic_update(struct vop2_win *win, struct drm_rect *src, s
 	dma_addr_t yrgb_mst;
 	dma_addr_t uv_mst;
 
-	struct drm_format_name_buf format_name;
 	bool dither_up;
 
 	actual_w = drm_rect_width(src) >> 16;
@@ -3373,10 +3369,10 @@ static void vop2_win_atomic_update(struct vop2_win *win, struct drm_rect *src, s
 	afbc_half_block_en = vop2_afbc_half_block_enable(vpstate);
 
 	spin_lock(&vop2->reg_lock);
-	DRM_DEV_DEBUG(vop2->dev, "vp%d update %s[%dx%d->%dx%d@%dx%d] fmt[%.4s_%s] addr[%pad]\n",
+	DRM_DEV_DEBUG(vop2->dev, "vp%d update %s[%dx%d->%dx%d@%dx%d] fmt[%p4cc_%s] addr[%pad]\n",
 		      vp->id, win->name, actual_w, actual_h, dsp_w, dsp_h,
 		      dsp_stx, dsp_sty,
-		      drm_get_format_name(fb->format->format, &format_name),
+		      &fb->format->format,
 		      vpstate->afbc_en ? "AFBC" : "", &vpstate->yrgb_mst);
 
 	if (vpstate->afbc_en) {
@@ -3484,7 +3480,6 @@ static void vop2_plane_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	struct vop2_plane_state *vpstate = to_vop2_plane_state(pstate);
 	struct rockchip_crtc_state *vcstate = to_rockchip_crtc_state(crtc->state);
 	struct drm_framebuffer *fb = pstate->fb;
-	struct drm_format_name_buf format_name;
 	struct vop2 *vop2 = win->vop2;
 	struct drm_rect wsrc;
 	struct drm_rect wdst;
@@ -3542,12 +3537,12 @@ static void vop2_plane_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	}
 
 	if (vcstate->splice_mode) {
-		DRM_DEV_DEBUG(vop2->dev, "vp%d update %s[%dx%d->%dx%d@%dx%d] fmt[%.4s_%s] addr[%pad]\n",
+		DRM_DEV_DEBUG(vop2->dev, "vp%d update %s[%dx%d->%dx%d@%dx%d] fmt[%p4cc_%s] addr[%pad]\n",
 			      vp->id, win->name, drm_rect_width(&vpstate->src) >> 16,
 			      drm_rect_height(&vpstate->src) >> 16,
 			      drm_rect_width(&vpstate->dest), drm_rect_height(&vpstate->dest),
 			      vpstate->dest.x1, vpstate->dest.y1,
-			      drm_get_format_name(fb->format->format, &format_name),
+			      &fb->format->format,
 			      vpstate->afbc_en ? "AFBC" : "", &vpstate->yrgb_mst);
 
 		vop2_calc_drm_rect_for_splice(vpstate, &wsrc, &wdst, &right_wsrc, &right_wdst);
@@ -4012,7 +4007,6 @@ static int vop2_plane_info_dump(struct seq_file *s, struct drm_plane *plane)
 	struct vop2_plane_state *vpstate = to_vop2_plane_state(pstate);
 	struct drm_rect *src, *dest;
 	struct drm_framebuffer *fb = pstate->fb;
-	struct drm_format_name_buf format_name;
 	struct drm_gem_object *obj;
 	struct rockchip_gem_object *rk_obj;
 	dma_addr_t fb_addr;
@@ -4028,9 +4022,8 @@ static int vop2_plane_info_dump(struct seq_file *s, struct drm_plane *plane)
 
 	DEBUG_PRINT("\twin_id: %d\n", win->win_id);
 
-	drm_get_format_name(fb->format->format, &format_name);
-	DEBUG_PRINT("\tformat: %s%s%s[%d] color_space[%d] glb_alpha[0x%x]\n",
-		    format_name.str,
+	DEBUG_PRINT("\tformat: %p4cc%s%s[%d] color_space[%d] glb_alpha[0x%x]\n",
+		    &fb->format->format,
 		    rockchip_afbc(plane, fb->modifier) ? "[AFBC]" : "",
 		    vpstate->eotf ? " HDR" : " SDR", vpstate->eotf,
 		    vpstate->color_space, vpstate->global_alpha);
