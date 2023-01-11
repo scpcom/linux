@@ -1661,7 +1661,7 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 	struct drm_crtc_state *crtc_state;
 	struct drm_framebuffer *fb = new_plane_state->fb;
 	struct vop_win *win = to_vop_win(plane);
-	struct vop_plane_state *vop_plane_state = to_vop_plane_state(state);
+	struct vop_plane_state *vop_plane_state = to_vop_plane_state(new_plane_state);
 	const struct vop_data *vop_data;
 	struct vop *vop;
 	int ret;
@@ -1687,16 +1687,16 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 	if (WARN_ON(!crtc_state))
 		return -EINVAL;
 
-	src->x1 = state->src_x;
-	src->y1 = state->src_y;
-	src->x2 = state->src_x + state->src_w;
-	src->y2 = state->src_y + state->src_h;
-	dest->x1 = state->crtc_x;
-	dest->y1 = state->crtc_y;
-	dest->x2 = state->crtc_x + state->crtc_w;
-	dest->y2 = state->crtc_y + state->crtc_h;
-	vop_plane_state->zpos = state->zpos;
-	vop_plane_state->blend_mode = state->pixel_blend_mode;
+	src->x1 = new_plane_state->src_x;
+	src->y1 = new_plane_state->src_y;
+	src->x2 = new_plane_state->src_x + new_plane_state->src_w;
+	src->y2 = new_plane_state->src_y + new_plane_state->src_h;
+	dest->x1 = new_plane_state->crtc_x;
+	dest->y1 = new_plane_state->crtc_y;
+	dest->x2 = new_plane_state->crtc_x + new_plane_state->crtc_w;
+	dest->y2 = new_plane_state->crtc_y + new_plane_state->crtc_h;
+	vop_plane_state->zpos = new_plane_state->zpos;
+	vop_plane_state->blend_mode = new_plane_state->pixel_blend_mode;
 
 	ret = drm_atomic_helper_check_plane_state(new_plane_state, crtc_state,
 						  min_scale, max_scale,
@@ -1714,11 +1714,11 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 	vop = to_vop(crtc);
 	vop_data = vop->data;
 
-	if (state->src_w >> 16 < 4 || state->src_h >> 16 < 4 ||
-	    state->crtc_w < 4 || state->crtc_h < 4) {
+	if (new_plane_state->src_w >> 16 < 4 || new_plane_state->src_h >> 16 < 4 ||
+	    new_plane_state->crtc_w < 4 || new_plane_state->crtc_h < 4) {
 		DRM_ERROR("Invalid size: %dx%d->%dx%d, min size is 4x4\n",
-			  state->src_w >> 16, state->src_h >> 16,
-			  state->crtc_w, state->crtc_h);
+			  new_plane_state->src_w >> 16, new_plane_state->src_h >> 16,
+			  new_plane_state->crtc_w, new_plane_state->crtc_h);
 		return -EINVAL;
 	}
 
@@ -1748,7 +1748,7 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 
 	offset = (src->x1 >> 16) * fb->format->cpp[0];
 	vop_plane_state->offset = offset + fb->offsets[0];
-	if (state->rotation & DRM_MODE_REFLECT_Y)
+	if (new_plane_state->rotation & DRM_MODE_REFLECT_Y)
 		offset += ((src->y2 >> 16) - 1) * fb->pitches[0];
 	else
 		offset += (src->y1 >> 16) * fb->pitches[0];
