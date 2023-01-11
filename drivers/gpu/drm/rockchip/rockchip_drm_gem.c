@@ -291,7 +291,7 @@ static int rockchip_gem_alloc_dma(struct rockchip_gem_object *rk_obj,
 		goto err_sg_table_free;
 	}
 
-	if (drm_prime_sg_to_page_addr_arrays(sgt, rk_obj->pages, NULL,
+	if (drm_prime_sg_to_page_array(sgt, rk_obj->pages,
 					     rk_obj->num_pages)) {
 		DRM_ERROR("invalid sgtable.\n");
 		ret = -EINVAL;
@@ -819,7 +819,7 @@ rockchip_gem_prime_import_sg_table(struct drm_device *drm,
 		goto err_free_rk_obj;
 	}
 
-	ret = drm_prime_sg_to_page_addr_arrays(sg, rk_obj->pages, NULL, rk_obj->num_pages);
+	ret = drm_prime_sg_to_page_array(sg, rk_obj->pages, rk_obj->num_pages);
 	if (ret < 0) {
 		DRM_ERROR("invalid sgtable.\n");
 		drm_free_large(rk_obj->pages);
