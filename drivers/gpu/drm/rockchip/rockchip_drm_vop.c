@@ -1817,7 +1817,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	struct drm_crtc *crtc = new_state->crtc;
 	struct drm_display_mode *mode = NULL;
 	struct vop_win *win = to_vop_win(plane);
-	struct vop_plane_state *vop_plane_state = to_vop_plane_state(state);
+	struct vop_plane_state *vop_plane_state = to_vop_plane_state(new_state);
 	struct drm_display_mode *adjusted_mode = &crtc->state->adjusted_mode;
 	struct rockchip_crtc_state *s;
 	struct vop *vop = to_vop(new_state->crtc);
@@ -3031,8 +3031,6 @@ static void vop_mcu_mode(struct drm_crtc *crtc)
 static void vop_crtc_atomic_enable(struct drm_crtc *crtc,
 				   struct drm_atomic_state *state)
 {
-	struct drm_crtc_state *old_state = drm_atomic_get_old_crtc_state(state,
-									 crtc);
 	struct vop *vop = to_vop(crtc);
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc->state);
 	struct drm_display_mode *adjusted_mode = &crtc->state->adjusted_mode;
@@ -3376,9 +3374,10 @@ static void vop_dclk_source_generate(struct drm_crtc *crtc,
 }
 
 static int vop_crtc_atomic_check(struct drm_crtc *crtc,
-				 struct drm_crtc_state *crtc_state)
+				 struct drm_atomic_state *state)
 {
-	struct drm_atomic_state *state = crtc_state->state;
+	struct drm_crtc_state *crtc_state = drm_atomic_get_new_crtc_state(state,
+									  crtc);
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
 	struct vop *vop = to_vop(crtc);
 	const struct vop_data *vop_data = vop->data;
@@ -3741,8 +3740,10 @@ static void vop_wait_for_irq_handler(struct vop *vop)
 }
 
 static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
-				  struct drm_crtc_state *old_crtc_state)
+				  struct drm_atomic_state *state)
 {
+	struct drm_crtc_state *old_crtc_state = drm_atomic_get_old_crtc_state(state,
+									      crtc);
 	struct drm_atomic_state *old_state = old_crtc_state->state;
 	struct drm_plane_state *old_plane_state;
 	struct vop *vop = to_vop(crtc);
