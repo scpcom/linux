@@ -2410,7 +2410,6 @@ static int vop_plane_info_dump(struct seq_file *s, struct drm_plane *plane)
 	struct vop_plane_state *pstate = to_vop_plane_state(state);
 	struct drm_rect *src, *dest;
 	struct drm_framebuffer *fb = state->fb;
-	struct drm_format_name_buf format_name;
 	int i;
 	struct drm_gem_object *obj;
 	struct rockchip_gem_object *rk_obj;
@@ -2426,9 +2425,8 @@ static int vop_plane_info_dump(struct seq_file *s, struct drm_plane *plane)
 	src = &pstate->src;
 	dest = &pstate->dest;
 
-	drm_get_format_name(fb->format->format, &format_name);
-	DEBUG_PRINT("\tformat: %s%s%s[%d] color_space[%d]\n",
-		    format_name.str,
+	DEBUG_PRINT("\tformat: %p4cc%s%s[%d] color_space[%d]\n",
+		    &fb->format->format,
 		    fb->modifier == afbdc_format ? "[AFBC]" : "",
 		    pstate->eotf ? " HDR" : " SDR", pstate->eotf,
 		    pstate->color_space);
