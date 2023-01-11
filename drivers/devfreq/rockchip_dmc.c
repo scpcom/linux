@@ -35,6 +35,7 @@
 #include <linux/string.h>
 #include <linux/suspend.h>
 #include <linux/thermal.h>
+#include <linux/version.h>
 
 #include <soc/rockchip/pm_domains.h>
 #include <soc/rockchip/rkfb_dmc.h>
@@ -2929,6 +2930,7 @@ static void rockchip_dmcfreq_boost_init(struct rockchip_dmcfreq *dmcfreq)
 		dev_err(dmcfreq->dev, "failed to register input handler\n");
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 static unsigned long model_static_power(struct devfreq *devfreq,
 					unsigned long voltage)
 {
@@ -3047,6 +3049,7 @@ rockchip_dmcfreq_register_cooling_device(struct rockchip_dmcfreq *dmcfreq)
 			ret);
 	}
 }
+#endif
 
 static int rockchip_dmcfreq_probe(struct platform_device *pdev)
 {
@@ -3104,7 +3107,9 @@ static int rockchip_dmcfreq_probe(struct platform_device *pdev)
 	rockchip_dmcfreq_add_interface(data);
 	rockchip_dmcfreq_boost_init(data);
 	rockchip_dmcfreq_vop_bandwidth_init(&data->info);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 	rockchip_dmcfreq_register_cooling_device(data);
+#endif
 
 	rockchip_set_system_status(SYS_STATUS_NORMAL);
 
