@@ -484,6 +484,8 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector, void *data,
 			    const struct drm_display_info *info,
 			    const struct drm_display_mode *mode)
 {
+	/* TODO: get/passthrough atomic state */
+	struct drm_atomic_state *state = NULL;
 	struct drm_encoder *encoder = connector->encoder;
 	enum drm_mode_status status = MODE_OK;
 	struct drm_device *dev = connector->dev;
@@ -505,7 +507,7 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector, void *data,
 		funcs = connector->helper_private;
 		if (funcs->atomic_best_encoder)
 			encoder = funcs->atomic_best_encoder(connector,
-							     connector->state);
+							     state);
 		else
 			encoder = funcs->best_encoder(connector);
 	}
