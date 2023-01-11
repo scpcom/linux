@@ -691,10 +691,10 @@ dw_hdmi_rockchip_select_output(struct drm_connector_state *conn_state,
 	}
 
 	if (*color_format == DRM_HDMI_OUTPUT_DEFAULT_RGB &&
-	    info->edid_hdmi_dc_modes & DRM_EDID_HDMI_DC_30)
+	    info->edid_hdmi_rgb444_dc_modes & DRM_EDID_HDMI_DC_30)
 		support_dc = true;
 	if (*color_format == DRM_HDMI_OUTPUT_YCBCR444 &&
-	    info->edid_hdmi_dc_modes &
+	    info->edid_hdmi_rgb444_dc_modes &
 	    (DRM_EDID_HDMI_DC_Y444 | DRM_EDID_HDMI_DC_30))
 		support_dc = true;
 	if (*color_format == DRM_HDMI_OUTPUT_YCBCR422)
@@ -1268,11 +1268,11 @@ dw_hdmi_rockchip_get_property(struct drm_connector *connector,
 		/* RK3368 only support 8bit */
 		if (hdmi->unsupported_deep_color)
 			return 0;
-		if (info->edid_hdmi_dc_modes & DRM_EDID_HDMI_DC_30)
+		if (info->edid_hdmi_rgb444_dc_modes & DRM_EDID_HDMI_DC_30)
 			*val |= BIT(ROCKCHIP_HDMI_DEPTH_10);
-		if (info->edid_hdmi_dc_modes & DRM_EDID_HDMI_DC_36)
+		if (info->edid_hdmi_rgb444_dc_modes & DRM_EDID_HDMI_DC_36)
 			*val |= BIT(ROCKCHIP_HDMI_DEPTH_12);
-		if (info->edid_hdmi_dc_modes & DRM_EDID_HDMI_DC_48)
+		if (info->edid_hdmi_rgb444_dc_modes & DRM_EDID_HDMI_DC_48)
 			*val |= BIT(ROCKCHIP_HDMI_DEPTH_16);
 		if (info->hdmi.y420_dc_modes & DRM_EDID_YCBCR420_DC_30)
 			*val |= BIT(ROCKCHIP_HDMI_DEPTH_420_10);
