@@ -948,7 +948,7 @@ static struct drm_gem_object *rockchip_drm_gem_prime_import(struct drm_device *d
 	return rockchip_drm_gem_prime_import_dev(dev, dma_buf, dev->dev);
 }
 
-static struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj,
+struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj,
 						     int flags)
 {
 	struct drm_device *dev = obj->dev;
@@ -972,7 +972,6 @@ static const struct drm_driver rockchip_drm_driver = {
 	.open			= rockchip_drm_open,
 	.dumb_create		= rockchip_gem_dumb_create,
 	.gem_prime_import	= rockchip_drm_gem_prime_import,
-	.gem_prime_export	= rockchip_drm_gem_prime_export,
 	.gem_prime_import_sg_table	= rockchip_gem_prime_import_sg_table,
 #ifdef CONFIG_DEBUG_FS
 	.debugfs_init		= rockchip_drm_debugfs_init,

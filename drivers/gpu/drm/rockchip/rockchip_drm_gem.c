@@ -571,6 +571,7 @@ static const struct drm_gem_object_funcs rockchip_gem_object_funcs = {
 	.vunmap	= rockchip_gem_prime_vunmap,
 	.mmap = rockchip_drm_gem_object_mmap,
 	.vm_ops = &drm_gem_dma_vm_ops,
+	.export = rockchip_drm_gem_prime_export,
 };
 
 static struct rockchip_gem_object *

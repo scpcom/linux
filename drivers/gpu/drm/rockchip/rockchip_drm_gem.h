@@ -85,4 +85,7 @@ int rockchip_gem_prime_end_cpu_access_partial(struct drm_gem_object *obj,
 					      unsigned int offset,
 					      unsigned int len);
 
+struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj,
+						     int flags);
+
 #endif /* _ROCKCHIP_DRM_GEM_H */
