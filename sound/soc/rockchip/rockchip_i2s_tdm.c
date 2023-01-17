@@ -1483,7 +1483,7 @@ static int rockchip_i2s_tdm_probe(struct platform_device *pdev)
 		if (val >= 0 && val <= 2) {
 			i2s_tdm->clk_trcm = val << I2S_CKR_TRCM_SHIFT;
 			if (i2s_tdm->clk_trcm)
-				soc_dai->symmetric_rates = 1;
+				soc_dai->symmetric_rate = 1;
 		}
 	}
 

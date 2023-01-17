@@ -749,7 +749,7 @@ static int rockchip_i2s_init_dai(struct rk_i2s_dev *i2s, struct resource *res,
 		if (val >= 0 && val <= 2) {
 			i2s->clk_trcm = val << I2S_CKR_TRCM_SHIFT;
 			if (i2s->clk_trcm)
-				dai->symmetric_rates = 1;
+				dai->symmetric_rate = 1;
 		}
 	}
 
