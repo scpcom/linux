@@ -456,6 +456,23 @@ static int rk_dailink_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+static unsigned int rk_mc_of_parse_daifmt(struct device_node *np,
+				     const char *prefix,
+				     struct device_node **bitclkmaster,
+				     struct device_node **framemaster)
+{
+	unsigned int format = 0;
+	unsigned int bitmap = 0;
+
+	format = snd_soc_daifmt_parse_format(np, prefix);
+
+	bitmap = snd_soc_daifmt_parse_clock_provider_raw(np, prefix, bitclkmaster, framemaster);
+
+	format |= snd_soc_daifmt_clock_provider_from_bitmap(bitmap);
+
+	return format;
+}
+
 static int rk_multicodecs_parse_daifmt(struct device_node *node,
 				       struct device_node *codec,
 				       struct multicodecs_data *mc_data,
@@ -466,7 +483,7 @@ static int rk_multicodecs_parse_daifmt(struct device_node *node,
 	struct device_node *framemaster = NULL;
 	unsigned int daifmt;
 
-	daifmt = snd_soc_of_parse_daifmt(node, prefix,
+	daifmt = rk_mc_of_parse_daifmt(node, prefix,
 					 &bitclkmaster, &framemaster);
 
 	daifmt &= ~SND_SOC_DAIFMT_MASTER_MASK;
@@ -479,7 +496,7 @@ static int rk_multicodecs_parse_daifmt(struct device_node *node,
 		 */
 		pr_debug("%s: Revert to legacy daifmt parsing\n", __func__);
 
-		daifmt = snd_soc_of_parse_daifmt(codec, NULL, NULL, NULL) |
+		daifmt = rk_mc_of_parse_daifmt(codec, NULL, NULL, NULL) |
 			(daifmt & ~SND_SOC_DAIFMT_CLOCK_MASK);
 	} else {
 		if (codec == bitclkmaster)
