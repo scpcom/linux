@@ -214,7 +214,11 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(bool preempt, struct task_struct *prev
     per_cpu(in_scheduler_context, cpu) = true;
 
     /* do as much work as possible before disabling interrupts */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
     if (prev->state == TASK_RUNNING)
+#else
+    if (task_is_running(prev))
+#endif
         state = STATE_CONTENTION;
     else if (prev->in_iowait)
         state = STATE_WAIT_ON_IO;
