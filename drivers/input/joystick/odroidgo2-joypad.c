@@ -26,7 +26,6 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/input.h>
-#include <linux/input-polldev.h>
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
@@ -387,9 +386,9 @@ static struct attribute_group joypad_attr_group = {
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
-static void joypad_gpio_check(struct input_polled_dev *poll_dev)
+static void joypad_gpio_check(struct input_dev *input)
 {
-	struct joypad *joypad = poll_dev->private;
+	struct joypad *joypad = input_get_drvdata(input);
 	int nbtn, value;
 
 	for (nbtn = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
@@ -401,20 +400,20 @@ static void joypad_gpio_check(struct input_polled_dev *poll_dev)
 		}
 		value = gpio_get_value(gpio->num);
 		if (value != gpio->old_value) {
-			input_event(poll_dev->input,
+			input_event(input,
 				gpio->report_type,
 				gpio->linux_code,
 				(value == gpio->active_level) ? 1 : 0);
 			gpio->old_value = value;
 		}
 	}
-	input_sync(poll_dev->input);
+	input_sync(input);
 }
 
 /*----------------------------------------------------------------------------*/
-static void joypad_adc_check(struct input_polled_dev *poll_dev)
+static void joypad_adc_check(struct input_dev *input)
 {
-	struct joypad *joypad = poll_dev->private;
+	struct joypad *joypad = input_get_drvdata(input);
 	int nbtn, value;
 
 	for (nbtn = 0; nbtn < joypad->bt_adc_count; nbtn++) {
@@ -440,39 +439,41 @@ static void joypad_adc_check(struct input_polled_dev *poll_dev)
 		if (nbtn == 0)
 		{
 			// adc-x value is default inverted(h/w)
-			input_report_abs(poll_dev->input,
+			input_report_abs(input,
 				adc->report_type, value * (-1));
 		}
 		else
 		{
-			input_report_abs(poll_dev->input,
+			input_report_abs(input,
 				adc->report_type, value);
 		}
 		adc->old_value = value;
 	}
-	input_sync(poll_dev->input);
+	input_sync(input);
 }
 
 /*----------------------------------------------------------------------------*/
-static void joypad_poll(struct input_polled_dev *poll_dev)
+static void joypad_poll(struct input_dev *input)
 {
-	struct joypad *joypad = poll_dev->private;
+	struct joypad *joypad = input_get_drvdata(input);
 
 	if (joypad->enable) {
-		joypad_adc_check(poll_dev);
-		joypad_gpio_check(poll_dev);
+		joypad_adc_check(input);
+		joypad_gpio_check(input);
 	}
+	/*
 	if (poll_dev->poll_interval != joypad->poll_interval) {
 		mutex_lock(&joypad->lock);
 		poll_dev->poll_interval = joypad->poll_interval;
 		mutex_unlock(&joypad->lock);
 	}
+	*/
 }
 
 /*----------------------------------------------------------------------------*/
-static void joypad_open(struct input_polled_dev *poll_dev)
+static int joypad_open(struct input_dev *input)
 {
-	struct joypad *joypad = poll_dev->private;
+	struct joypad *joypad = input_get_drvdata(input);
 	int nbtn;
 
 	for (nbtn = 0; nbtn < joypad->bt_gpio_count; nbtn++) {
@@ -493,8 +494,8 @@ static void joypad_open(struct input_polled_dev *poll_dev)
 			__func__, nbtn, adc->cal);
 	}
 	/* buttons status sync */
-	joypad_adc_check(poll_dev);
-	joypad_gpio_check(poll_dev);
+	joypad_adc_check(input);
+	joypad_gpio_check(input);
 
 	/* button report enable */
 	mutex_lock(&joypad->lock);
@@ -502,12 +503,13 @@ static void joypad_open(struct input_polled_dev *poll_dev)
 	mutex_unlock(&joypad->lock);
 
 	dev_info(joypad->dev, "%s : opened\n", __func__);
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
-static void joypad_close(struct input_polled_dev *poll_dev)
+static void joypad_close(struct input_dev *input)
 {
-	struct joypad *joypad = poll_dev->private;
+	struct joypad *joypad = input_get_drvdata(input);
 
 	/* button report disable */
 	mutex_lock(&joypad->lock);
@@ -643,23 +645,19 @@ static int joypad_gpio_setup(struct device *dev, struct joypad *joypad)
 /*----------------------------------------------------------------------------*/
 static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 {
-	struct input_polled_dev *poll_dev;
 	struct input_dev *input;
 	int nbtn, error;
 
-	poll_dev = devm_input_allocate_polled_device(dev);
-	if (!poll_dev) {
+	input = devm_input_allocate_device(dev);
+	if (!input) {
 		dev_err(dev, "no memory for polled device\n");
 		return -ENOMEM;
 	}
 
-	poll_dev->private	= joypad;
-	poll_dev->poll		= joypad_poll;
-	poll_dev->poll_interval	= joypad->poll_interval;
-	poll_dev->open		= joypad_open;
-	poll_dev->close		= joypad_close;
+	input_set_drvdata(input, joypad);
 
-	input = poll_dev->input;
+	input->open		= joypad_open;
+	input->close		= joypad_close;
 
 	input->name = DRV_NAME;
 	input->phys = DRV_NAME"/input0";
@@ -698,7 +696,13 @@ static int joypad_input_setup(struct device *dev, struct joypad *joypad)
 
 	joypad->dev = dev;
 
-	error = input_register_polled_device(poll_dev);
+	error = input_setup_polling(input, joypad_poll);
+	if (error)
+		return error;
+
+	input_set_poll_interval(input, joypad->poll_interval);
+
+	error = input_register_device(input);
 	if (error) {
 		dev_err(dev, "unable to register polled device, err=%d\n",
 			error);
