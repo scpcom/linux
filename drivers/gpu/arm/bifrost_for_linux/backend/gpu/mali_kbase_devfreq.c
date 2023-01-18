@@ -32,7 +32,9 @@
 #include <linux/clk-provider.h>
 #include <linux/devfreq.h>
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 #include <linux/devfreq_cooling.h>
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 #include <linux/version.h>
@@ -317,7 +319,9 @@ kbase_devfreq_status(struct device *dev, struct devfreq_dev_status *stat)
 	stat->private_data = NULL;
 
 #if MALI_USE_CSF && defined CONFIG_DEVFREQ_THERMAL
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	kbase_ipa_reset_data(kbdev);
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	return 0;
@@ -697,9 +701,13 @@ static unsigned long kbase_devfreq_get_static_power(struct devfreq *devfreq,
 
 int kbase_devfreq_init(struct kbase_device *kbdev)
 {
-	struct devfreq_cooling_power *kbase_dcp = &kbdev->dfc_power;
 	struct device_node *np = kbdev->dev->of_node;
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
+	struct devfreq_cooling_power *kbase_dcp = &kbdev->dfc_power;
 	struct device_node *model_node;
+#endif
+#endif
 	struct devfreq_dev_profile *dp;
 	int err;
 	struct dev_pm_opp *opp;
@@ -748,11 +756,13 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	};
 
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	err = kbase_ipa_init(kbdev);
 	if (err) {
 		dev_err(kbdev->dev, "IPA initialization failed");
 		goto ipa_init_failed;
 	}
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	err = kbase_devfreq_init_core_mask_table(kbdev);
@@ -806,6 +816,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	}
 #endif
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	of_property_read_u32(kbdev->dev->of_node, "dynamic-power-coefficient",
 			     (u32 *)&kbase_dcp->dyn_power_coeff);
 	model_node = of_get_compatible_child(kbdev->dev->of_node,
@@ -865,13 +876,16 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 			goto cooling_reg_failed;
                }
 	}
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	return 0;
 
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 cooling_reg_failed:
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif /* CONFIG_DEVFREQ_THERMAL */
 
 opp_notifier_failed:
@@ -888,8 +902,10 @@ devfreq_add_dev_failed:
 
 init_core_mask_table_failed:
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	kbase_ipa_term(kbdev);
 ipa_init_failed:
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 	if (free_devfreq_freq_table)
 		kbase_devfreq_term_freq_table(kbdev);
@@ -904,8 +920,10 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	dev_dbg(kbdev->dev, "Term Mali devfreq\n");
 
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 	if (kbdev->devfreq_cooling)
 		devfreq_cooling_unregister(kbdev->devfreq_cooling);
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
@@ -921,6 +939,7 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	kbase_devfreq_term_core_mask_table(kbdev);
 
 #if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 #ifdef CONFIG_ROCKCHIP_OPP
 	if (!kbdev->model_data)
 #endif
@@ -928,5 +947,6 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 #ifdef CONFIG_ROCKCHIP_OPP
 	kfree(kbdev->model_data);
 #endif
+#endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 #endif
 }
