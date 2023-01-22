@@ -100,7 +100,6 @@ static bool rk817_is_volatile_reg(struct device *dev, unsigned int reg)
 	switch (reg) {
 	case RK817_SECONDS_REG ... RK817_WEEKS_REG:
 	case RK817_RTC_STATUS_REG:
-	case RK817_CODEC_DTOP_LPT_SRST:
 	case RK817_GAS_GAUGE_ADC_CONFIG0 ... RK817_GAS_GAUGE_CUR_ADC_K0:
 	case RK817_PMIC_CHRG_STS:
 	case RK817_PMIC_CHRG_OUT:
