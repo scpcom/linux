@@ -424,7 +424,6 @@ extern int get_custom_mac_address(int fmt, char *name, char *addr);
 static int xradio_get_mac_addrs(u8 *macaddr)
 {
 	int ret = 0;
-	char addr_str[20];
 	SYS_BUG(!macaddr);
 	/* Check mac addrs param, if exsist, use it first.*/
 #ifdef XRADIO_MACPARAM_HEX
