@@ -1495,7 +1495,7 @@ static int vop_crtc_atomic_gamma_set(struct drm_crtc *crtc,
 static void vop_power_enable(struct drm_crtc *crtc)
 {
 	struct vop *vop = to_vop(crtc);
-	int ret;
+	int i, ret;
 
 	ret = clk_prepare_enable(vop->hclk);
 	if (ret < 0) {
@@ -1521,7 +1521,8 @@ static void vop_power_enable(struct drm_crtc *crtc)
 		return;
 	}
 
-	memcpy(vop->regsbak, vop->regs, vop->len);
+	for (i = 0; i < vop->len; i += sizeof(u32))
+		vop->regsbak[i / 4] = readl_relaxed(vop->regs + i);
 
 	if (VOP_CTRL_SUPPORT(vop, version)) {
 		uint32_t version = VOP_CTRL_GET(vop, version);
