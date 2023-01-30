@@ -451,7 +451,7 @@ static int etf_alloc_cli_buffer(u32 req_len, struct xradio_etf *priv)
 		else
 			etf_printk(XRADIO_DBG_WARN,
 				"%s: req_len = %d, priv->cli_data_len = %d.\n",
-				req_len, priv->cli_data_len);
+				__func__, req_len, priv->cli_data_len);
 	}
 
 	return ret;
