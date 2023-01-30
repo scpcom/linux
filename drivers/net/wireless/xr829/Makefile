@@ -209,5 +209,6 @@ ccflags-y += -DDEBUG_P2P_SETTING_CRASH
 
 EXTRA_CFLAGS += -Wno-error=date-time
 EXTRA_CFLAGS +=-Wno-date-time
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
 
 clean-files += Module.symvers Module.markers modules modules.order
