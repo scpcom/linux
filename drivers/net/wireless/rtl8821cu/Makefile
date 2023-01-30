@@ -15,7 +15,7 @@ EXTRA_CFLAGS += -Wno-unused-function
 #EXTRA_CFLAGS += -Wno-unused
 #EXTRA_CFLAGS += -Wno-uninitialized
 #EXTRA_CFLAGS += -Wno-vla
-#EXTRA_CFLAGS += -Wno-implicit-fallthrough
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
 #EXTRA_CFLAGS += -Wno-return-type
 
 EXTRA_CFLAGS += -I$(src)/include
