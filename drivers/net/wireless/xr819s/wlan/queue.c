@@ -215,7 +215,7 @@ int xradio_queue_stats_init(struct xradio_queue_stats *stats,
 	INIT_WORK(&stats->gc_work, xradio_queue_gc_work);
 	INIT_LIST_HEAD(&stats->gc_list);
 	for (i = 0; i < XRWL_MAX_VIFS; i++) {
-		stats->link_map_cache[i] = xr_kzalloc(sizeof(int[map_capacity]), false);
+		stats->link_map_cache[i] = (int *)xr_kzalloc(sizeof(int) * map_capacity, false);
 		if (!stats->link_map_cache[i]) {
 			for (i--; i >= 0; i--)
 				kfree(stats->link_map_cache[i]);
@@ -255,7 +255,7 @@ int xradio_queue_init(struct xradio_queue *queue,
 
 	for (i = 0; i < XRWL_MAX_VIFS; i++) {
 		queue->link_map_cache[i] =
-				xr_kzalloc(sizeof(int[stats->map_capacity]), false);
+			(int *)xr_kzalloc(sizeof(int) * stats->map_capacity, false);
 		if (!queue->link_map_cache[i]) {
 			for (i--; i >= 0; i--)
 				kfree(queue->link_map_cache[i]);
