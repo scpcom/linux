@@ -190,5 +190,6 @@ ccflags-y += -DTES_P2P_000B_DISABLE_EAPOL_FILTER
 
 EXTRA_CFLAGS += -Wno-error=date-time
 EXTRA_CFLAGS +=-Wno-date-time
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
 
 clean-files += Module.symvers Module.markers modules modules.order
