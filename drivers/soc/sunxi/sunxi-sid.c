@@ -471,7 +471,11 @@ static inline void reg_dump(const char *name, void *reg, unsigned len)
 	unsigned i, j;
 
 	for (i=0; i<len; ) {
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARCH_RV64I)
+		pr_info("soc-detect: %s (0x%08llx):", name, (u64)reg);
+#else
 		pr_info("soc-detect: %s (0x%08x):", name, (u32)reg);
+#endif
 
 		for (j=0; i<len && j<4; i++, j++, reg += 0x04) {
 			u32 val = readl(reg);
