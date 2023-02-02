@@ -214,8 +214,8 @@ int mem_write_safe_wrapper(struct mali_session_data *session_data, _mali_uk_mem_
 
 	/* Check if we can access the buffers */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
-	if (!access_ok((void __user *)kargs.dest, kargs.size)
-	    || !access_ok((void __user *)kargs.src, kargs.size)) {
+	if (!access_ok((void __user *)(size_t)kargs.dest, kargs.size)
+	    || !access_ok((void __user *)(size_t)kargs.src, kargs.size)) {
 #else
 	if (!access_ok(VERIFY_WRITE, (const void __user *)kargs.dest, kargs.size)
 	    || !access_ok(VERIFY_READ, (const void __user *)kargs.src, kargs.size)) {
