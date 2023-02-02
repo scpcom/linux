@@ -269,6 +269,7 @@ static int snd_soc_rpaf_misc_release(struct inode *inode, struct file *file)
 		result = snd_soc_rpaf_misc_common_stop(dsp_component);
 		if (result < 0)
 			return result;
+		fallthrough;
 	case SND_DSP_COMPONENT_STATE_STOP:
 		result = snd_soc_rpaf_misc_common_remove(dsp_component);
 		if (result < 0)
