@@ -539,9 +539,14 @@ static __s32 g2d_mixer_mem_setup(struct g2d_mixer_task *p_task,
 					    p_task->p_rcq_info->rcq_header_len;
 				++rcq_hd;
 			} else {
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARCH_RV64I)
+				rcq_hd->low_addr =
+				    (__u32)((__u64)(reg_blk->phy_addr));
+#else
 				rcq_hd->low_addr =
 				    (__u32)((__u32)(reg_blk->phy_addr));
-#if defined(CONFIG_ARM64)
+#endif
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARCH_RV64I)
 				rcq_hd->dw0.bits.high_addr =
 				    (u8)((__u64)(reg_blk->phy_addr) >> 32);
 #else
@@ -872,7 +877,7 @@ static __s32 g2d_mixer_apply(struct g2d_mixer_task *p_task,
 #if G2D_MIXER_RCQ_USED == 1
 	g2d_top_rcq_update_en(0);
 	g2d_top_rcq_irq_en(0);
-#if defined(CONFIG_ARM64)
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARCH_RV64I)
 	g2d_top_set_rcq_head((__u64)p_task->p_rcq_info->phy_addr,
 			     p_task->p_rcq_info->rcq_header_len);
 #else
