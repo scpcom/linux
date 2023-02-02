@@ -655,7 +655,7 @@ static u16 bscp_get_crc(struct h5_struct *h5)
 static int h5_recv(struct hci_uart *hu, const void *data, int count)
 {
 	struct h5_struct *h5 = hu->priv;
-	register unsigned char *ptr;
+	register const unsigned char *ptr;
 
 	BT_DBG("hu %p count %d rx_state %d rx_count %ld",
 	       hu, count, h5->rx_state, h5->rx_count);
