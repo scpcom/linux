@@ -12,68 +12,6 @@
 	model = "ODROID-GO Super";
 	compatible = "hardkernel,rk3326-odroid-go3", "rockchip,rk3326";
 
-	joystick_mux_controller: mux-controller {
-		compatible = "gpio-mux";
-		pinctrl = <&mux_en_pins>;
-		#mux-control-cells = <0>;
-
-		mux-gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_LOW>,
-			    <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
-	};
-
-	joystick_mux: adc-mux {
-		compatible = "io-channel-mux";
-		io-channels = <&saradc 1>;
-		io-channel-names = "parent";
-		#io-channel-cells = <1>;
-
-		mux-controls = <&joystick_mux_controller>;
-		channels = "0", "1", "2", "3";
-	};
-
-	analog_sticks: adc-joystick {
-		compatible = "adc-joystick";
-		io-channels = <&joystick_mux 0>,
-			      <&joystick_mux 1>,
-			      <&joystick_mux 2>,
-			      <&joystick_mux 3>;
-		poll-interval = <60>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		axis@0 {
-			reg = <0>;
-			abs-flat = <10>;
-			abs-fuzz = <10>;
-			abs-range = <180 800>;
-			linux,code = <ABS_X>;
-		};
-
-		axis@1 {
-			reg = <1>;
-			abs-flat = <10>;
-			abs-fuzz = <10>;
-			abs-range = <180 800>;
-			linux,code = <ABS_RX>;
-		};
-
-		axis@2 {
-			reg = <2>;
-			abs-flat = <10>;
-			abs-fuzz = <10>;
-			abs-range = <180 800>;
-			linux,code = <ABS_Y>;
-		};
-
-		axis@3 {
-			reg = <3>;
-			abs-flat = <10>;
-			abs-fuzz = <10>;
-			abs-range = <180 800>;
-			linux,code = <ABS_RY>;
-		};
-	};
-
 	gpio-keys-vol {
 		compatible = "gpio-keys";
 		#address-cells = <1>;
