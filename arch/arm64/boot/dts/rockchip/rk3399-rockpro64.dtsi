@@ -103,6 +103,18 @@
 		pwms = <&pwm1 0 50000 0>;
 	};
 
+	hdmi_codec: hdmi-codec {
+		compatible = "rockchip,multicodecs-card";
+		rockchip,card-name = "HDMI-CODEC";
+		//hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_LOW>;
+		rockchip,format = "i2s";
+		rockchip,mclk-fs = <256>;
+		rockchip,cpu = <&i2s2>;
+		rockchip,codec = <&hdmi>;
+		pinctrl-names = "default";
+		//pinctrl-0 = <&hp_det>;
+	};
+
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		clocks = <&rk808 1>;
@@ -346,10 +358,6 @@
 	ddc-i2c-bus = <&i2c3>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&hdmi_cec>;
-	status = "okay";
-};
-
-&hdmi_sound {
 	status = "okay";
 };
 
