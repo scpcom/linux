@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2023 scpcom <scpcom@gmx.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "sun20i-d1-lichee-rv-dock-80p.dts"
