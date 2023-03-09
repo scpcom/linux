@@ -17,3 +17,4 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun20i-d1s-mangopi-mq.dtb
 
 dtb-$(CONFIG_ARCH_SUNXI) += sun20i-d1-licheerv-86panel.dtb
 dtb-$(CONFIG_ARCH_SUNXI) += sun20i-d1-licheerv-86panel-720x720.dtb
+dtb-$(CONFIG_ARCH_SUNXI) += sun20i-d1-licheerv-dock.dtb
