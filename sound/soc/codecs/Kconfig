@@ -1506,6 +1506,11 @@ config SND_SOC_RK817
 	tristate "Rockchip RK817 audio CODEC"
 	depends on MFD_RK8XX || COMPILE_TEST
 
+config SND_SOC_RK817_ODROIDGOA
+	bool "Rockchip RK817 ODROIDGOA"
+	default ARCH_ROCKCHIP_ODROIDGOA
+	depends on SND_SOC_RK817
+
 config SND_SOC_RL6231
 	tristate
 	default y if SND_SOC_RT5514=y
