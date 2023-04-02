@@ -264,22 +264,36 @@ static int rga2_dma_memory_check(struct rga_dma_buffer_t *buffer,
 				 struct rga_img_info_t *img)
 {
 	int ret = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	struct dma_buf_map map;
+#else
 	void *vaddr;
+#endif
 	struct dma_buf *dma_buffer;
 
 	dma_buffer = buffer->dma_buf;
 
 	if (!IS_ERR_OR_NULL(dma_buffer)) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+		ret = dma_buf_vmap(dma_buffer, &map);
+		if (!ret) {
+			ret = rga2_virtual_memory_check(map.vaddr, img->vir_w, img->vir_h,
+#else
 		vaddr = dma_buf_vmap(dma_buffer);
 		if (vaddr) {
 			ret = rga2_virtual_memory_check(vaddr, img->vir_w, img->vir_h,
+#endif
 							img->format, img->yrgb_addr);
 		} else {
 			pr_err("can't vmap the dma buffer!\n");
 			return -EINVAL;
 		}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+		dma_buf_vunmap(dma_buffer, &map);
+#else
 		dma_buf_vunmap(dma_buffer, vaddr);
+#endif
 	}
 
 	return ret;
