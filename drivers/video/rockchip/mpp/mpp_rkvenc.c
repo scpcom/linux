@@ -28,7 +28,9 @@
 #include <linux/nospec.h>
 #include <linux/workqueue.h>
 #include <soc/rockchip/pm_domains.h>
+#if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 #include <soc/rockchip/rockchip_ipa.h>
+#endif
 #include <soc/rockchip/rockchip_opp_select.h>
 #include <soc/rockchip/rockchip_system_monitor.h>
 
@@ -197,7 +199,9 @@ struct rkvenc_dev {
 	unsigned long volt;
 	unsigned long core_rate_hz;
 	unsigned long core_last_rate_hz;
+#if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 	struct ipa_power_model_data *model_data;
+#endif
 	struct thermal_cooling_device *devfreq_cooling;
 	struct monitor_dev_info *mdev_info;
 #endif
@@ -942,6 +946,7 @@ static struct devfreq_governor devfreq_venc_ondemand = {
 static unsigned long rkvenc_get_static_power(struct devfreq *devfreq,
 					     unsigned long voltage)
 {
+#if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 	struct rkvenc_dev *enc = devfreq->data;
 
 	if (!enc->model_data)
@@ -949,6 +954,9 @@ static unsigned long rkvenc_get_static_power(struct devfreq *devfreq,
 	else
 		return rockchip_ipa_get_static_power(enc->model_data,
 						     voltage);
+#else
+	return 0;
+#endif
 }
 
 static struct devfreq_cooling_power venc_cooling_power_data = {
@@ -1047,6 +1055,7 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 
 	of_property_read_u32(mpp->dev->of_node, "dynamic-power-coefficient",
 			     (u32 *)&venc_dcp->dyn_power_coeff);
+#if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 	enc->model_data = rockchip_ipa_power_model_init(mpp->dev,
 							"venc_leakage");
 	if (IS_ERR_OR_NULL(enc->model_data)) {
@@ -1056,6 +1065,7 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 		venc_dcp->dyn_power_coeff =
 			enc->model_data->dynamic_coefficient;
 	}
+#endif
 	if (!venc_dcp->dyn_power_coeff) {
 		dev_err(mpp->dev, "failed to get dynamic-coefficient\n");
 		goto out;
