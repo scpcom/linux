@@ -258,7 +258,11 @@ int mpp_dma_unmap_kernel(struct mpp_dma_session *dma,
 	    IS_ERR_OR_NULL(dmabuf))
 		return -EINVAL;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	dma_buf_vunmap(dmabuf, &buffer->map);
+#else
 	dma_buf_vunmap(dmabuf, vaddr);
+#endif
 	buffer->vaddr = NULL;
 
 	dma_buf_end_cpu_access(dmabuf, DMA_FROM_DEVICE);
@@ -270,7 +274,10 @@ int mpp_dma_map_kernel(struct mpp_dma_session *dma,
 		       struct mpp_dma_buffer *buffer)
 {
 	int ret;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+#else
 	void *vaddr;
+#endif
 	struct dma_buf *dmabuf = buffer->dmabuf;
 
 	if (IS_ERR_OR_NULL(dmabuf))
@@ -282,14 +289,23 @@ int mpp_dma_map_kernel(struct mpp_dma_session *dma,
 		goto failed_access;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	ret = dma_buf_vmap(dmabuf, &buffer->map);
+	if (ret) {
+#else
 	vaddr = dma_buf_vmap(dmabuf);
 	if (!vaddr) {
+#endif
 		dev_dbg(dma->dev, "can't vmap the dma buffer\n");
 		ret = -EIO;
 		goto failed_vmap;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	buffer->vaddr = buffer->map.vaddr;
+#else
 	buffer->vaddr = vaddr;
+#endif
 
 	return 0;
 

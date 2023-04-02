@@ -26,6 +26,7 @@
 #include <linux/thermal.h>
 #include <linux/notifier.h>
 #include <linux/proc_fs.h>
+#include <linux/version.h>
 #include <linux/rockchip/rockchip_sip.h>
 #include <linux/regulator/consumer.h>
 
@@ -555,7 +556,11 @@ static int fill_scaling_list_pps(struct rkvdec_task *task,
 				 int pps_info_size, int sub_addr_offset)
 {
 	struct dma_buf *dmabuf = NULL;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	struct dma_buf_map map;
+#else
 	void *vaddr = NULL;
+#endif
 	u8 *pps = NULL;
 	u32 scaling_fd = 0;
 	int ret = 0;
@@ -573,13 +578,22 @@ static int fill_scaling_list_pps(struct rkvdec_task *task,
 		goto done;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	ret = dma_buf_vmap(dmabuf, &map);
+	if (ret) {
+#else
 	vaddr = dma_buf_vmap(dmabuf);
 	if (!vaddr) {
+#endif
 		mpp_err("can't access the pps buffer\n");
 		ret = -EIO;
 		goto done;
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	pps = map.vaddr + offset;
+#else
 	pps = vaddr + offset;
+#endif
 	/* NOTE: scaling buffer in pps, have no offset */
 	memcpy(&scaling_fd, pps + base, sizeof(scaling_fd));
 	scaling_fd = le32_to_cpu(scaling_fd);
@@ -607,7 +621,11 @@ static int fill_scaling_list_pps(struct rkvdec_task *task,
 	}
 
 done:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	dma_buf_vunmap(dmabuf, &map);
+#else
 	dma_buf_vunmap(dmabuf, vaddr);
+#endif
 	dma_buf_end_cpu_access(dmabuf, DMA_FROM_DEVICE);
 	dma_buf_put(dmabuf);
 
