@@ -1112,7 +1112,11 @@ static int rga_get_img_info(rga_img_info_t *img,
 	u32 vir_w, vir_h;
 	int yrgb_addr = -1;
 	int ret = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	struct dma_buf_map map;
+#else
 	void *vaddr = NULL;
+#endif
 
 	rga_dev = drvdata->dev;
 	yrgb_addr = (int)img->yrgb_addr;
@@ -1136,11 +1140,21 @@ static int rga_get_img_info(rga_img_info_t *img,
 		}
 #if RGA_DEBUGFS
 	if (RGA_CHECK_MODE) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+		ret =  dma_buf_vmap(dma_buf, &map);
+		if (!ret)
+			rga_memory_check(map.vaddr, img->vir_w, img->vir_h,
+#else
 		vaddr = dma_buf_vmap(dma_buf);
 		if (vaddr)
 			rga_memory_check(vaddr, img->vir_w, img->vir_h,
+#endif
 					 img->format, img->yrgb_addr);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+		dma_buf_vunmap(dma_buf, &map);
+#else
 		dma_buf_vunmap(dma_buf, vaddr);
+#endif
 	}
 #endif
 		*pattach = attach;
