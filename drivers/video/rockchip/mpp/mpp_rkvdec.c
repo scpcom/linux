@@ -180,7 +180,9 @@ struct rkvdec_dev {
 	struct devfreq *devfreq;
 	struct devfreq *parent_devfreq;
 	struct notifier_block devfreq_nb;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	struct thermal_cooling_device *devfreq_cooling;
+#endif
 	struct thermal_zone_device *thermal_zone;
 	u32 static_power_coeff;
 	s32 ts[4];
@@ -418,6 +420,7 @@ static struct devfreq_dev_profile devfreq_profile = {
 	.get_dev_status	= devfreq_get_dev_status,
 };
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 static unsigned long
 model_static_power(struct devfreq *devfreq,
 		   unsigned long voltage)
@@ -461,6 +464,7 @@ static struct devfreq_cooling_power cooling_power_data = {
 	.get_static_power = model_static_power,
 	.dyn_power_coeff = 120,
 };
+#endif
 
 static int power_model_simple_init(struct mpp_dev *mpp)
 {
@@ -503,7 +507,9 @@ static int power_model_simple_init(struct mpp_dev *mpp)
 		dev_err(mpp->dev, "dynamic-power-coefficient not available\n");
 		return -EINVAL;
 	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	cooling_power_data.dyn_power_coeff = (unsigned long)temp;
+#endif
 
 	if (of_property_read_u32_array(power_model_node,
 				       "ts",
@@ -1365,6 +1371,7 @@ static int rkvdec_devfreq_init(struct mpp_dev *mpp)
 
 	/* power simplle init */
 	ret = power_model_simple_init(mpp);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	if (!ret && dec->devfreq) {
 		dec->devfreq_cooling =
 			of_devfreq_cooling_register_power(mpp->dev->of_node,
@@ -1376,6 +1383,7 @@ static int rkvdec_devfreq_init(struct mpp_dev *mpp)
 			goto done;
 		}
 	}
+#endif
 
 done:
 	return ret;

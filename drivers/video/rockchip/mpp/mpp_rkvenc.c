@@ -202,7 +202,9 @@ struct rkvenc_dev {
 #if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 	struct ipa_power_model_data *model_data;
 #endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	struct thermal_cooling_device *devfreq_cooling;
+#endif
 	struct monitor_dev_info *mdev_info;
 #endif
 	/* for iommu pagefault handle */
@@ -943,6 +945,7 @@ static struct devfreq_governor devfreq_venc_ondemand = {
 	.event_handler = devfreq_venc_ondemand_handler,
 };
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 static unsigned long rkvenc_get_static_power(struct devfreq *devfreq,
 					     unsigned long voltage)
 {
@@ -962,6 +965,7 @@ static unsigned long rkvenc_get_static_power(struct devfreq *devfreq,
 static struct devfreq_cooling_power venc_cooling_power_data = {
 	.get_static_power = rkvenc_get_static_power,
 };
+#endif
 
 static struct monitor_dev_profile enc_mdevp = {
 	.type = MONITOR_TPYE_DEV,
@@ -1007,7 +1011,9 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 {
 	struct rkvenc_dev *enc = to_rkvenc_dev(mpp);
 	struct clk *clk_core = enc->core_clk_info.clk;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	struct devfreq_cooling_power *venc_dcp = &venc_cooling_power_data;
+#endif
 	int ret = 0;
 
 	if (!clk_core)
@@ -1053,8 +1059,10 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 
 	devfreq_register_opp_notifier(mpp->dev, enc->devfreq);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	of_property_read_u32(mpp->dev->of_node, "dynamic-power-coefficient",
 			     (u32 *)&venc_dcp->dyn_power_coeff);
+#endif
 #if IS_ENABLED(CONFIG_ROCKCHIP_IPA)
 	enc->model_data = rockchip_ipa_power_model_init(mpp->dev,
 							"venc_leakage");
@@ -1066,6 +1074,7 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 			enc->model_data->dynamic_coefficient;
 	}
 #endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 	if (!venc_dcp->dyn_power_coeff) {
 		dev_err(mpp->dev, "failed to get dynamic-coefficient\n");
 		goto out;
@@ -1076,6 +1085,7 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 						  enc->devfreq, venc_dcp);
 	if (IS_ERR_OR_NULL(enc->devfreq_cooling))
 		dev_err(mpp->dev, "failed to register cooling device\n");
+#endif
 
 	enc_mdevp.data = enc->devfreq;
 	enc->mdev_info = rockchip_system_monitor_register(mpp->dev, &enc_mdevp);
@@ -1084,7 +1094,9 @@ static int rkvenc_devfreq_init(struct mpp_dev *mpp)
 		enc->mdev_info = NULL;
 	}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 out:
+#endif
 
 	return 0;
 
