@@ -36,6 +36,8 @@
 #include "rga2_rop.h"
 #include "rga2.h"
 
+extern struct rga2_service_info rga2_service;
+
 static void RGA2_reg_get_param(unsigned char *base, struct rga2_req *msg)
 {
     RK_U32 *bRGA_SRC_INFO;
@@ -158,6 +160,7 @@ static void RGA2_set_reg_src_info(RK_U8 *base, struct rga2_req *msg)
 	RK_U8 src_fmt_yuv400_en = 0;
 
     RK_U32 reg = 0;
+    RK_U8 rgb565_rb_swp = rga2_service.rgb565_rb_swap ? 0x1 : 0x0;
     RK_U8 src0_format = 0;
 
     RK_U8 src0_rb_swp = 0;
@@ -245,10 +248,10 @@ static void RGA2_set_reg_src_info(RK_U8 *base, struct rga2_req *msg)
         case RGA2_FORMAT_BGRX_8888    : src0_format = 0x1; src0_rb_swp = 0x1; pixel_width = 4; msg->src_trans_mode &= 0x07; break;
         case RGA2_FORMAT_RGB_888      : src0_format = 0x2; src0_rgb_pack = 1; pixel_width = 3; msg->src_trans_mode &= 0x07; break;
         case RGA2_FORMAT_BGR_888      : src0_format = 0x2; src0_rgb_pack = 1; src0_rb_swp = 1; pixel_width = 3; msg->src_trans_mode &= 0x07; break;
-        case RGA2_FORMAT_RGB_565      : src0_format = 0x4; pixel_width = 2; msg->src_trans_mode &= 0x07; break;
+        case RGA2_FORMAT_RGB_565      : src0_format = 0x4; pixel_width = 2; msg->src_trans_mode &= 0x07; src0_rb_swp = rgb565_rb_swp; break;
         case RGA2_FORMAT_RGBA_5551    : src0_format = 0x5; pixel_width = 2; src0_rb_swp = 0x1; break;
         case RGA2_FORMAT_RGBA_4444    : src0_format = 0x6; pixel_width = 2; src0_rb_swp = 0x1; break;
-        case RGA2_FORMAT_BGR_565      : src0_format = 0x4; pixel_width = 2; msg->src_trans_mode &= 0x07; src0_rb_swp = 0x1; break;
+        case RGA2_FORMAT_BGR_565      : src0_format = 0x4; pixel_width = 2; msg->src_trans_mode &= 0x07; src0_rb_swp = !rgb565_rb_swp; break;
         case RGA2_FORMAT_BGRA_5551    : src0_format = 0x5; pixel_width = 2; break;
         case RGA2_FORMAT_BGRA_4444    : src0_format = 0x6; pixel_width = 2; break;
 
@@ -372,6 +375,7 @@ static void RGA2_set_reg_dst_info(u8 *base, struct rga2_req *msg)
 
 	RK_U8 ydither_en = 0;
 
+    RK_U8 rgb565_rb_swp = rga2_service.rgb565_rb_swap ? 0x1 : 0x0;
     RK_U8 src1_format = 0;
     RK_U8 src1_rb_swp = 0;
     RK_U8 src1_rgb_pack = 0;
@@ -424,10 +428,10 @@ static void RGA2_set_reg_dst_info(u8 *base, struct rga2_req *msg)
         case RGA2_FORMAT_BGRX_8888    : src1_format = 0x1; src1_rb_swp = 0x1; spw = 4; break;
         case RGA2_FORMAT_RGB_888      : src1_format = 0x2; src1_rgb_pack = 1; spw = 3; break;
         case RGA2_FORMAT_BGR_888      : src1_format = 0x2; src1_rgb_pack = 1; src1_rb_swp = 1; spw = 3; break;
-        case RGA2_FORMAT_RGB_565      : src1_format = 0x4; spw = 2; break;
+        case RGA2_FORMAT_RGB_565      : src1_format = 0x4; spw = 2; src1_rb_swp = rgb565_rb_swp; break;
         case RGA2_FORMAT_RGBA_5551    : src1_format = 0x5; spw = 2; src1_rb_swp = 0x1; break;
         case RGA2_FORMAT_RGBA_4444    : src1_format = 0x6; spw = 2; src1_rb_swp = 0x1; break;
-        case RGA2_FORMAT_BGR_565      : src1_format = 0x4; spw = 2; src1_rb_swp = 0x1; break;
+        case RGA2_FORMAT_BGR_565      : src1_format = 0x4; spw = 2; src1_rb_swp = !rgb565_rb_swp; break;
         case RGA2_FORMAT_BGRA_5551    : src1_format = 0x5; spw = 2; break;
         case RGA2_FORMAT_BGRA_4444    : src1_format = 0x6; spw = 2; break;
 
@@ -456,10 +460,10 @@ static void RGA2_set_reg_dst_info(u8 *base, struct rga2_req *msg)
         case RGA2_FORMAT_BGRX_8888    : dst_format = 0x1; dst_rb_swp = 0x1; dpw = 4; break;
         case RGA2_FORMAT_RGB_888      : dst_format = 0x2; dst_rgb_pack = 1; dpw = 3; break;
         case RGA2_FORMAT_BGR_888      : dst_format = 0x2; dst_rgb_pack = 1; dst_rb_swp = 1; dpw = 3; break;
-        case RGA2_FORMAT_RGB_565      : dst_format = 0x4; dpw = 2; break;
+        case RGA2_FORMAT_RGB_565      : dst_format = 0x4; dpw = 2; dst_rb_swp = rgb565_rb_swp; break;
         case RGA2_FORMAT_RGBA_5551    : dst_format = 0x5; dpw = 2; dst_rb_swp = 0x1; break;
         case RGA2_FORMAT_RGBA_4444    : dst_format = 0x6; dpw = 2; dst_rb_swp = 0x1; break;
-        case RGA2_FORMAT_BGR_565      : dst_format = 0x4; dpw = 2; dst_rb_swp = 0x1; break;
+        case RGA2_FORMAT_BGR_565      : dst_format = 0x4; dpw = 2; dst_rb_swp = !rgb565_rb_swp; break;
         case RGA2_FORMAT_BGRA_5551    : dst_format = 0x5; dpw = 2; break;
         case RGA2_FORMAT_BGRA_4444    : dst_format = 0x6; dpw = 2; break;
 

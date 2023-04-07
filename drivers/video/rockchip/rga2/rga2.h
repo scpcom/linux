@@ -769,6 +769,8 @@ struct rga2_service_info {
     //struct rga_req      req[10];
 
     struct mutex	mutex;	// mutex
+
+    uint32_t            rgb565_rb_swap;
 };
 
 #define RGA2_TEST_CASE 0

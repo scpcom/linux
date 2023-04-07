@@ -1816,6 +1816,7 @@ static int rga2_drv_probe(struct platform_device *pdev)
 	of_property_read_u32(np, "dev_mode", &rga2_service.dev_mode);
 	if (of_machine_is_compatible("rockchip,rk3368"))
 		rk3368 = 1;
+	of_property_read_u32(np, "rgb565_rb_swap", &rga2_service.rgb565_rb_swap);
 
 #if defined(CONFIG_ION_ROCKCHIP) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
 	data->ion_client = rockchip_ion_client_create("rga");
