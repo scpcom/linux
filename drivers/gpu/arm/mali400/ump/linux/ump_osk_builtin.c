@@ -38,6 +38,7 @@ void _ump_osk_set_dma_ops(struct device *dev)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 	set_dma_ops(dev, &dma_dummy_ops);
+	dma_coerce_mask_and_coherent(dev, DMA_BIT_MASK(32));
 #endif
 }
 EXPORT_SYMBOL(_ump_osk_set_dma_ops);
