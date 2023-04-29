@@ -1155,3 +1155,7 @@ module_exit(mali_module_exit);
 MODULE_LICENSE(MALI_KERNEL_LINUX_LICENSE);
 MODULE_AUTHOR("ARM Ltd.");
 MODULE_VERSION(SVN_REV_STRING);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
+MODULE_SOFTDEP("pre: memory_group_manager");
+MODULE_INFO(import_ns, "DMA_BUF");
+#endif
