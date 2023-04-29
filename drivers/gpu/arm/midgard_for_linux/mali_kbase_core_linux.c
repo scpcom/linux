@@ -1417,13 +1417,57 @@ static int kbase_check_flags(int flags)
 }
 
 #ifdef CONFIG_64BIT
+/**
+ * align_and_check - Align the specified pointer to the provided alignment and
+ *                   check that it is still in range.
+ * @gap_end:        Highest possible start address for allocation (end of gap in
+ *                  address space)
+ * @gap_start:      Start address of current memory area / gap in address space
+ * @info:           vm_unmapped_area_info structure passed to caller, containing
+ *                  alignment, length and limits for the allocation
+ * @is_shader_code: True if the allocation is for shader code (which has
+ *                  additional alignment requirements)
+ *
+ * Return: true if gap_end is now aligned correctly and is still in range,
+ *         false otherwise
+ */
+static bool align_and_check(unsigned long *gap_end, unsigned long gap_start,
+		struct vm_unmapped_area_info *info, bool is_shader_code)
+{
+	/* Compute highest gap address at the desired alignment */
+	(*gap_end) -= info->length;
+	(*gap_end) -= (*gap_end - info->align_offset) & info->align_mask;
+
+	if (is_shader_code) {
+		/* Check for 4GB boundary */
+		if (0 == (*gap_end & BASE_MEM_MASK_4GB))
+			(*gap_end) -= (info->align_offset ? info->align_offset :
+					info->length);
+		if (0 == ((*gap_end + info->length) & BASE_MEM_MASK_4GB))
+			(*gap_end) -= (info->align_offset ? info->align_offset :
+					info->length);
+
+		if (!(*gap_end & BASE_MEM_MASK_4GB) || !((*gap_end +
+				info->length) & BASE_MEM_MASK_4GB))
+			return false;
+	}
+
+
+	if ((*gap_end < info->low_limit) || (*gap_end < gap_start))
+		return false;
+
+
+	return true;
+}
+
 /* The following function is taken from the kernel and just
  * renamed. As it's not exported to modules we must copy-paste it here.
  */
 
 static unsigned long kbase_unmapped_area_topdown(struct vm_unmapped_area_info
-		*info)
+		*info, bool is_shader_code)
 {
+#if (KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE)
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma;
 	unsigned long length, low_limit, high_limit, gap_start, gap_end;
@@ -1448,8 +1492,10 @@ static unsigned long kbase_unmapped_area_topdown(struct vm_unmapped_area_info
 
 	/* Check highest gap, which does not precede any rbtree node */
 	gap_start = mm->highest_vm_end;
-	if (gap_start <= high_limit)
-		goto found_highest;
+	if (gap_start <= high_limit) {
+		if (align_and_check(&gap_end, gap_start, info, is_shader_code))
+			return gap_end;
+	}
 
 	/* Check if rbtree root looks promising */
 	if (RB_EMPTY_ROOT(&mm->mm_rb))
@@ -1476,8 +1522,16 @@ check_current:
 		gap_end = vma->vm_start;
 		if (gap_end < low_limit)
 			return -ENOMEM;
-		if (gap_start <= high_limit && gap_end - gap_start >= length)
-			goto found;
+		if (gap_start <= high_limit && gap_end - gap_start >= length) {
+			/* We found a suitable gap. Clip it with the original
+			 * high_limit. */
+			if (gap_end > info->high_limit)
+				gap_end = info->high_limit;
+
+			if (align_and_check(&gap_end, gap_start, info,
+					is_shader_code))
+				return gap_end;
+		}
 
 		/* Visit left subtree if it looks promising */
 		if (vma->vm_rb.rb_left) {
@@ -1493,6 +1547,7 @@ check_current:
 		/* Go back up the rbtree to find next candidate node */
 		while (true) {
 			struct rb_node *prev = &vma->vm_rb;
+
 			if (!rb_parent(prev))
 				return -ENOMEM;
 			vma = rb_entry(rb_parent(prev),
@@ -1504,20 +1559,38 @@ check_current:
 			}
 		}
 	}
+#else
+	unsigned long length, high_limit, gap_start, gap_end;
 
-found:
-	/* We found a suitable gap. Clip it with the original high_limit. */
-	if (gap_end > info->high_limit)
-		gap_end = info->high_limit;
+	MA_STATE(mas, &current->mm->mm_mt, 0, 0);
+	/* Adjust search length to account for worst case alignment overhead */
+	length = info->length + info->align_mask;
+	if (length < info->length)
+		return -ENOMEM;
 
-found_highest:
-	/* Compute highest gap address at the desired alignment */
-	gap_end -= info->length;
-	gap_end -= (gap_end - info->align_offset) & info->align_mask;
+	/*
+	 * Adjust search limits by the desired length.
+	 * See implementation comment at top of unmapped_area().
+	 */
+	gap_end = info->high_limit;
+	if (gap_end < length)
+		return -ENOMEM;
+	high_limit = gap_end - length;
 
-	VM_BUG_ON(gap_end < info->low_limit);
-	VM_BUG_ON(gap_end < gap_start);
-	return gap_end;
+	if (info->low_limit > high_limit)
+		return -ENOMEM;
+
+	while (true) {
+		if (mas_empty_area_rev(&mas, info->low_limit, info->high_limit - 1, length))
+			return -ENOMEM;
+		gap_end = mas.last + 1;
+		gap_start = mas.min;
+
+		if (align_and_check(&gap_end, gap_start, info, is_shader_code))
+			return gap_end;
+	}
+#endif
+	return -ENOMEM;
 }
 
 
@@ -1530,6 +1603,7 @@ static unsigned long kbase_get_unmapped_area(struct file *filp,
 	struct kbase_context *kctx = filp->private_data;
 	struct mm_struct *mm = current->mm;
 	struct vm_unmapped_area_info info;
+	bool is_shader_code = false;
 
 	/* err on fixed address */
 	if ((flags & MAP_FIXED) || addr)
@@ -1562,7 +1636,7 @@ static unsigned long kbase_get_unmapped_area(struct file *filp,
 	info.flags = 0;
 	info.length = len;
 	info.low_limit = SZ_2M;
-	return kbase_unmapped_area_topdown(&info);
+	return kbase_unmapped_area_topdown(&info, is_shader_code);
 }
 #endif
 
