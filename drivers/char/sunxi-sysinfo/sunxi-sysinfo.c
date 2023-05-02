@@ -191,7 +191,7 @@ static ssize_t key_info_show(struct class *class,
 	u32 *key_data = NULL;
 	size_t size = 0;
 
-	key_data = vmalloc(256);
+	key_data = vmalloc(256*4);
 	if (key_data == NULL)
 		return -ENOMEM;
 
