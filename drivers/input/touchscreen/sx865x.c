@@ -492,7 +492,7 @@ err_free_irq:
 	return err;
 }
 
-static int sx865x_remove(struct i2c_client *client)
+static void sx865x_remove(struct i2c_client *client)
 {
 	struct sx865x *ts = i2c_get_clientdata(client);
 	struct sx865x_platform_data *pdata;
@@ -507,8 +507,6 @@ static int sx865x_remove(struct i2c_client *client)
 		free_irq(ts->irq, ts);
 
 	input_unregister_device(ts->input);
-
-	return 0;
 }
 
 static struct i2c_driver sx865x_driver = {
