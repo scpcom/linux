@@ -179,7 +179,7 @@ static void rockchip_free_loader_memory(struct drm_device *drm)
 		iommu_unmap(private->domain, logo->dma_addr, ALIGN(logo->size, pg_size));
 	}
 
-	memblock_free(logo->start, logo->size);
+	memblock_phys_free(logo->start, logo->size);
 	rockchip_drm_free_reserved_area(start, end, -1, "drm_logo");
 	kfree(logo);
 	private->logo = NULL;
