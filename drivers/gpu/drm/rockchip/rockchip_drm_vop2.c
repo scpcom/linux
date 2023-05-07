@@ -2300,7 +2300,6 @@ static int vop2_wb_connector_init(struct vop2 *vop2, int nr_crtcs)
 	int ret;
 
 	vop2->wb.regs = vop2_data->wb->regs;
-	vop2->wb.conn.encoder.possible_crtcs = (1 << nr_crtcs) - 1;
 	spin_lock_init(&vop2->wb.job_lock);
 	drm_connector_helper_add(&vop2->wb.conn.base, &vop2_wb_connector_helper_funcs);
 
@@ -2308,7 +2307,8 @@ static int vop2_wb_connector_init(struct vop2 *vop2, int nr_crtcs)
 					   &vop2_wb_connector_funcs,
 					   &vop2_wb_encoder_helper_funcs,
 					   vop2_data->wb->formats,
-					   vop2_data->wb->nformats);
+					   vop2_data->wb->nformats,
+					   (1 << nr_crtcs) - 1);
 	if (ret)
 		DRM_DEV_ERROR(vop2->dev, "writeback connector init failed\n");
 	return ret;
