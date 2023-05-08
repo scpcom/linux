@@ -29,7 +29,9 @@
 #include <linux/mfd/syscon.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/regmap.h>
+#ifdef CONFIG_ROCKCHIP_PVTM
 #include <linux/soc/rockchip/pvtm.h>
+#endif
 #include <linux/thermal.h>
 #ifdef CONFIG_ROCKCHIP_OPP
 #include <soc/rockchip/rockchip_opp_select.h>
