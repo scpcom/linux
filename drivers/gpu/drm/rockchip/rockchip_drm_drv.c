@@ -685,8 +685,6 @@ static int rockchip_drm_bind(struct device *dev)
 
 	rockchip_drm_show_logo(drm_dev);
 
-	drm_dev->mode_config.allow_fb_modifiers = true;
-
 	ret = drm_dev_register(drm_dev, 0);
 	if (ret)
 		goto err_kms_helper_poll_fini;
