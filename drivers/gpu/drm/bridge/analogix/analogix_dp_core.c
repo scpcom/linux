@@ -1542,8 +1542,7 @@ static ssize_t analogix_dpaux_transfer(struct drm_dp_aux *aux,
 
 	ret = analogix_dp_transfer(dp, msg);
 out:
-	pm_runtime_mark_last_busy(dp->dev);
-	pm_runtime_put_autosuspend(dp->dev);
+	pm_runtime_put(dp->dev);
 
 	return ret;
 }
@@ -1708,8 +1707,6 @@ int analogix_dp_bind(struct analogix_dp_device *dp, struct drm_device *drm_dev)
 	dp->encoder = dp->plat_data->encoder;
 
 	if (IS_ENABLED(CONFIG_PM)) {
-		pm_runtime_use_autosuspend(dp->dev);
-		pm_runtime_set_autosuspend_delay(dp->dev, 100);
 		pm_runtime_enable(dp->dev);
 	} else {
 		ret = analogix_dp_resume(dp);
@@ -1740,7 +1737,6 @@ err_unregister_aux:
 	drm_dp_aux_unregister(&dp->aux);
 err_disable_pm_runtime:
 	if (IS_ENABLED(CONFIG_PM)) {
-		pm_runtime_dont_use_autosuspend(dp->dev);
 		pm_runtime_disable(dp->dev);
 	} else {
 		analogix_dp_suspend(dp);
@@ -1763,7 +1759,6 @@ void analogix_dp_unbind(struct analogix_dp_device *dp)
 	drm_dp_aux_unregister(&dp->aux);
 
 	if (IS_ENABLED(CONFIG_PM)) {
-		pm_runtime_dont_use_autosuspend(dp->dev);
 		pm_runtime_disable(dp->dev);
 	} else {
 		analogix_dp_suspend(dp);
