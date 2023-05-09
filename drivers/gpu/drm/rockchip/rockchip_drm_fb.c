@@ -186,7 +186,7 @@ rockchip_fb_create(struct drm_device *dev, struct drm_file *file,
 static void rockchip_drm_output_poll_changed(struct drm_device *dev)
 {
 	struct rockchip_drm_private *private = dev->dev_private;
-	struct drm_fb_helper *fb_helper = private->fbdev_helper;
+	struct drm_fb_helper *fb_helper = dev->fb_helper;
 
 	if (fb_helper && dev->mode_config.poll_enabled && !private->loader_protect)
 		drm_fb_helper_hotplug_event(fb_helper);

@@ -761,9 +761,10 @@ static void rockchip_drm_postclose(struct drm_device *dev,
 static void rockchip_drm_lastclose(struct drm_device *dev)
 {
 	struct rockchip_drm_private *priv = dev->dev_private;
+	struct drm_fb_helper *fb_helper = dev->fb_helper;
 
-	if (!priv->logo)
-		drm_fb_helper_restore_fbdev_mode_unlocked(priv->fbdev_helper);
+	if (fb_helper && !priv->logo)
+		drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
 }
 
 static struct drm_pending_vblank_event *

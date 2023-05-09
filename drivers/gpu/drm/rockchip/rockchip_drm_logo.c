@@ -984,7 +984,7 @@ void rockchip_drm_show_logo(struct drm_device *drm_dev)
 	drm_modeset_unlock_all(drm_dev);
 
 	drm_for_each_crtc(crtc, drm_dev) {
-		struct drm_fb_helper *helper = private->fbdev_helper;
+		struct drm_fb_helper *helper = drm_dev->fb_helper;
 		struct rockchip_crtc_state *s = NULL;
 
 		if (!helper)
