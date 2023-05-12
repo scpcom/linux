@@ -622,7 +622,11 @@ static int esp_op_config_interface (struct ieee80211_hw *hw,
 static void esp_op_bss_info_changed(struct ieee80211_hw *hw,
                                     struct ieee80211_vif *vif,
                                     struct ieee80211_bss_conf *info,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+                                    u64 changed)
+#else
                                     u32 changed)
+#endif
 {
         struct esp_pub *epub = (struct esp_pub *)hw->priv;
         struct esp_vif *evif = (struct esp_vif *)vif->drv_priv;
@@ -635,7 +639,11 @@ static void esp_op_bss_info_changed(struct ieee80211_hw *hw,
     u8 addr_0[ETH_ALEN];
     memset(addr_0,0,ETH_ALEN);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+    ESP_IEEE80211_DBG(ESP_DBG_OP,"%s enter, changed %llx\n",__func__,changed);
+#else
     ESP_IEEE80211_DBG(ESP_DBG_OP,"%s enter, changed %x\n",__func__,changed);
+#endif
 
     if((changed & BSS_CHANGED_ASSOC) && (memcmp(epub->wl.bssid,addr_0, ETH_ALEN)))
     {
@@ -667,7 +675,7 @@ static void esp_op_bss_info_changed(struct ieee80211_hw *hw,
 	// sdata->u.sta.bssid
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: changed %x, assoc %x, bssid %pM\n", __func__, changed, vif->cfg.assoc, info->bssid);
+	ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: changed %llx, assoc %x, bssid %pM\n", __func__, changed, vif->cfg.assoc, info->bssid);
 #else
         ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: changed %x, assoc %x, bssid %pM\n", __func__, changed, info->assoc, info->bssid);
 #endif
