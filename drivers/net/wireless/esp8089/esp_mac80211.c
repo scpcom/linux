@@ -456,7 +456,11 @@ static void drv_handle_beacon(struct timer_list *list)
 
 	mdelay(2400 * (cycle_beacon_count % 25) % 10000 /1000);
 	
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	beacon = ieee80211_beacon_get(evif->epub->hw, vif, 0);
+#else
 	beacon = ieee80211_beacon_get(evif->epub->hw, vif);
+#endif
 
 	tim_reach = beacon_tim_alter(beacon);
 
