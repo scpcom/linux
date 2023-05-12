@@ -3351,7 +3351,9 @@ int xradio_logfile(char *buffer, int buf_len, u8 b_time)
 {
 	int ret = -1;
 	int size = buf_len;
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	mm_segment_t old_fs = get_fs();
+	#endif
 
 	if (!buffer)
 		return ret;
@@ -3376,7 +3378,9 @@ int xradio_logfile(char *buffer, int buf_len, u8 b_time)
 		       __func__);
 		goto exit;
 	} else {
+		#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 		set_fs(KERNEL_DS);
+		#endif
 		if (fp_log->f_op->llseek != NULL) {
 			vfs_llseek(fp_log, 0, SEEK_END);
 		} else {
@@ -3400,7 +3404,9 @@ int xradio_logfile(char *buffer, int buf_len, u8 b_time)
 			}
 		}
 		ret = vfs_write(fp_log, buffer, size, &fp_log->f_pos);
+		#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 		set_fs(old_fs);
+		#endif
 	}
 
 exit:
