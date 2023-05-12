@@ -76,7 +76,11 @@ esp_op_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
 				struct ieee80211_sta *sta = tx_info->control.sta;
 				struct esp_node * node = (struct esp_node *)sta->drv_priv;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+				if(sta->ht_cap.deflink.ht_supported)
+#else
 				if(sta->ht_cap.ht_supported)
+#endif
 #else
 				struct esp_node * node = esp_get_node_by_addr(epub, wh->addr1);
 				if(node->ht_info.ht_supported)
@@ -1643,7 +1647,9 @@ static int esp_op_ampdu_action(struct ieee80211_hw *hw,
                         !(hw->conf.flags&IEEE80211_CONF_SUPPORT_HT_MODE)
 #endif
 			||
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+			!sta->deflink.ht_cap.ht_supported
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
                         !sta->ht_cap.ht_supported
 #else
                         !node->ht_info.ht_supported
@@ -1775,7 +1781,9 @@ static int esp_op_ampdu_action(struct ieee80211_hw *hw,
                         !(hw->conf.flags&IEEE80211_CONF_SUPPORT_HT_MODE)
 #endif
 			||
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+			!sta->deflink.ht_cap.ht_supported
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
                         !sta->ht_cap.ht_supported
 #else
                         !node->ht_info.ht_supported

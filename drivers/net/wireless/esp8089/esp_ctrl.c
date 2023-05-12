@@ -743,15 +743,29 @@ int sip_send_set_sta(struct esp_pub *epub, u8 ifidx, u8 set, struct esp_node *no
 		setstacmd->aid = sta->aid;
 	memcpy(setstacmd->mac, sta->addr, ETH_ALEN);
 	if(set){
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+		if(sta->deflink.ht_cap.ht_supported){
+			if(sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_20)
+#else
 		if(sta->ht_cap.ht_supported){
 			if(sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_20)
+#endif
 				setstacmd->phymode = ESP_IEEE80211_T_HT20_S;
 			else
 				setstacmd->phymode = ESP_IEEE80211_T_HT20_L;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+			setstacmd->ampdu_factor = sta->deflink.ht_cap.ampdu_factor;
+			setstacmd->ampdu_density = sta->deflink.ht_cap.ampdu_density;
+#else
 			setstacmd->ampdu_factor = sta->ht_cap.ampdu_factor;
 			setstacmd->ampdu_density = sta->ht_cap.ampdu_density;
+#endif
 		} else {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+			if(sta->deflink.supp_rates[IEEE80211_BAND_2GHZ] & (~(u32)CONF_HW_BIT_RATE_11B_MASK)){
+#else
 			if(sta->supp_rates[IEEE80211_BAND_2GHZ] & (~(u32)CONF_HW_BIT_RATE_11B_MASK)){
+#endif
 				setstacmd->phymode = ESP_IEEE80211_T_OFDM;
 			} else {
 				setstacmd->phymode = ESP_IEEE80211_T_CCK;
@@ -771,7 +785,11 @@ int sip_send_set_sta(struct esp_pub *epub, u8 ifidx, u8 set, struct esp_node *no
             setstacmd->ampdu_density = ht_info.ampdu_density;
         } else {
             //note supp_rates is u64[] in 2.6.27
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0))
+	    if(node->deflink.supp_rates[IEEE80211_BAND_2GHZ] & (~(u64)CONF_HW_BIT_RATE_11B_MASK)){
+#else
             if(node->supp_rates[IEEE80211_BAND_2GHZ] & (~(u64)CONF_HW_BIT_RATE_11B_MASK)){
+#endif
                 setstacmd->phymode = ESP_IEEE80211_T_OFDM;
             } else {
                 setstacmd->phymode = ESP_IEEE80211_T_CCK;
