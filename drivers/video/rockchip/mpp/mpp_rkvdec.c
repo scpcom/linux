@@ -563,7 +563,7 @@ static int fill_scaling_list_pps(struct rkvdec_task *task,
 {
 	struct dma_buf *dmabuf = NULL;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct dma_buf_map map;
+	struct iosys_map map;
 #else
 	void *vaddr = NULL;
 #endif

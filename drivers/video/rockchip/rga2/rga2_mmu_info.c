@@ -265,7 +265,7 @@ static int rga2_dma_memory_check(struct rga_dma_buffer_t *buffer,
 {
 	int ret = 0;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct dma_buf_map map;
+	struct iosys_map map;
 #else
 	void *vaddr;
 #endif

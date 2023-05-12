@@ -13,7 +13,7 @@
 
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
-#include <linux/dma-buf-map.h>
+#include <linux/iosys-map.h>
 #include <linux/version.h>
 
 struct mpp_dma_buffer {
@@ -32,7 +32,7 @@ struct mpp_dma_buffer {
 	dma_addr_t iova;
 	unsigned long size;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct dma_buf_map map;
+	struct iosys_map map;
 #endif
 	void *vaddr;
 
