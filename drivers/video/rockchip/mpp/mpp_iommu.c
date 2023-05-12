@@ -10,7 +10,6 @@
  */
 #include <linux/delay.h>
 #include <linux/dma-buf.h>
-#include <linux/dma-iommu.h>
 #include <linux/iommu.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>

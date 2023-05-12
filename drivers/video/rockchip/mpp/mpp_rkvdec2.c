@@ -12,9 +12,9 @@
 #include <linux/delay.h>
 #include <linux/devfreq.h>
 #include <linux/devfreq_cooling.h>
-#include <linux/dma-iommu.h>
 #include <linux/gfp.h>
 #include <linux/interrupt.h>
+#include <linux/iommu.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/types.h>
