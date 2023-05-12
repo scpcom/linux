@@ -2002,7 +2002,7 @@ static int fops_show_u32(struct seq_file *file, void *v)
 
 static int fops_open_u32(struct inode *inode, struct file *file)
 {
-	return single_open(file, fops_show_u32, PDE_DATA(inode));
+	return single_open(file, fops_show_u32, pde_data(inode));
 }
 
 static ssize_t fops_write_u32(struct file *file, const char __user *buf,
