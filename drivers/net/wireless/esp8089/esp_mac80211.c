@@ -666,9 +666,27 @@ static void esp_op_bss_info_changed(struct ieee80211_hw *hw,
 	// ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: vif addr %pM, changed %x, assoc %x, bssid %pM\n", __func__, vif->addr, changed, info->assoc, info->bssid);
 	// sdata->u.sta.bssid
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: changed %x, assoc %x, bssid %pM\n", __func__, changed, vif->cfg.assoc, info->bssid);
+#else
         ESP_IEEE80211_DBG(ESP_DBG_OP, " %s enter: changed %x, assoc %x, bssid %pM\n", __func__, changed, info->assoc, info->bssid);
+#endif
 
         if (vif->type == NL80211_IFTYPE_STATION) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		if ((changed & BSS_CHANGED_BSSID) ||
+				((changed & BSS_CHANGED_ASSOC) && (vif->cfg.assoc)))
+		{
+			ESP_IEEE80211_DBG(ESP_DBG_TRACE, " %s STA change bssid or assoc\n", __func__);
+			evif->beacon_interval = vif->cfg.aid;
+			memcpy(epub->wl.bssid, (u8*)info->bssid, ETH_ALEN);
+			sip_send_bss_info_update(epub, evif, (u8*)info->bssid, vif->cfg.assoc);
+		} else if ((changed & BSS_CHANGED_ASSOC) && (!vif->cfg.assoc)) {
+			ESP_IEEE80211_DBG(ESP_DBG_TRACE, " %s STA change disassoc\n", __func__);
+			evif->beacon_interval = 0;
+			memset(epub->wl.bssid, 0, ETH_ALEN);
+			sip_send_bss_info_update(epub, evif, (u8*)info->bssid, vif->cfg.assoc);
+#else
 		if ((changed & BSS_CHANGED_BSSID) ||
 				((changed & BSS_CHANGED_ASSOC) && (info->assoc)))
 		{
@@ -681,6 +699,7 @@ static void esp_op_bss_info_changed(struct ieee80211_hw *hw,
 			evif->beacon_interval = 0;
 			memset(epub->wl.bssid, 0, ETH_ALEN);
 			sip_send_bss_info_update(epub, evif, (u8*)info->bssid, info->assoc);
+#endif
 		} else {
 			ESP_IEEE80211_DBG(ESP_DBG_TRACE, "%s wrong mode of STA mode\n", __func__);
 		}

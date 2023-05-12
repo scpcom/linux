@@ -738,7 +738,11 @@ int sip_send_set_sta(struct esp_pub *epub, u8 ifidx, u8 set, struct esp_node *no
 	setstacmd->set = set;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
 	if(sta->aid == 0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		setstacmd->aid = vif->cfg.aid;
+#else
 		setstacmd->aid = vif->bss_conf.aid;
+#endif
 	else
 		setstacmd->aid = sta->aid;
 	memcpy(setstacmd->mac, sta->addr, ETH_ALEN);
