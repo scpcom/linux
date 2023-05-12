@@ -1287,7 +1287,6 @@ static const struct snd_soc_component_driver soc_codec_dev_rk817 = {
 	.idle_bias_on = 1,
 	.use_pmdown_time = 1,
 	.endianness = 1,
-	.non_legacy_dai_naming = 1,
 #ifdef CONFIG_SND_SOC_RK817_ODROIDGOA
 	.controls = rk817_dac_controls,
 	.num_controls = ARRAY_SIZE(rk817_dac_controls),
