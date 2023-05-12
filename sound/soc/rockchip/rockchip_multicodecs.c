@@ -417,7 +417,7 @@ static int rk_dailink_init(struct snd_soc_pcm_runtime *rtd)
 	if (!zones)
 		return -ENOMEM;
 
-	ret = snd_soc_card_jack_new(card, "Headset",
+	ret = snd_soc_card_jack_new_pins(card, "Headset",
 				    SND_JACK_HEADSET,
 				    jack_headset,
 				    pins, ARRAY_SIZE(jack_pins));
