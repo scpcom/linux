@@ -18,6 +18,8 @@
 #include <linux/regulator/machine.h>
 #include <linux/regmap.h>
 
+struct sys_off_data;
+
 /*
  * rk808 Global Register Map.
  */
@@ -1553,7 +1555,7 @@ struct rk808 {
 	long				variant;
 	const struct regmap_config	*regmap_cfg;
 	const struct regmap_irq_chip	*regmap_irq_chip;
-	void				(*pm_pwroff_prep_fn)(void);
+	int				(*pm_pwroff_prep_fn)(struct sys_off_data *data);
 	struct rk808_pin_info *pins;
 };
 
