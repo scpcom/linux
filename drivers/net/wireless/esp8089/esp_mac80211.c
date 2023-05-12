@@ -1349,6 +1349,9 @@ static void esp_op_sta_notify(struct ieee80211_hw *hw, struct ieee80211_vif *vif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 static int esp_op_conf_tx(struct ieee80211_hw *hw, 
 			  struct ieee80211_vif *vif,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+			  unsigned int link_id,
+#endif
 			  u16 queue,
                           const struct ieee80211_tx_queue_params *params)
 
