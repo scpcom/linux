@@ -521,18 +521,18 @@ static int rockchip_init_temp_opp_table(struct monitor_dev_info *info)
 	list_for_each_entry(opp, &opp_table->opp_list, node) {
 		if (!opp->available)
 			continue;
-		info->opp_table[i].rate = opp->rate;
+		info->opp_table[i].rate = opp->rates[0];
 		info->opp_table[i].volt = opp->supplies[0].u_volt;
 		info->opp_table[i].max_volt = opp->supplies[0].u_volt_max;
 
 		if (opp->supplies[0].u_volt <= info->high_temp_max_volt) {
 			if (!reach_high_temp_max_volt)
-				high_limit = opp->rate;
+				high_limit = opp->rates[0];
 			if (opp->supplies[0].u_volt == info->high_temp_max_volt)
 				reach_high_temp_max_volt = true;
 		}
 
-		if (rockchip_get_low_temp_volt(info, opp->rate, &delta_volt))
+		if (rockchip_get_low_temp_volt(info, opp->rates[0], &delta_volt))
 			delta_volt = 0;
 		if ((opp->supplies[0].u_volt + delta_volt) <= info->max_volt) {
 			info->opp_table[i].low_temp_volt =
@@ -542,15 +542,15 @@ static int rockchip_init_temp_opp_table(struct monitor_dev_info *info)
 				info->opp_table[i].low_temp_volt =
 					info->low_temp_min_volt;
 			if (!reach_max_volt)
-				low_limit = opp->rate;
+				low_limit = opp->rates[0];
 			if (info->opp_table[i].low_temp_volt == info->max_volt)
 				reach_max_volt = true;
 		} else {
 			info->opp_table[i].low_temp_volt = info->max_volt;
 		}
-		if (low_limit && low_limit != opp->rate)
+		if (low_limit && low_limit != opp->rates[0])
 			info->low_limit = low_limit;
-		if (high_limit && high_limit != opp->rate)
+		if (high_limit && high_limit != opp->rates[0])
 			info->high_limit = high_limit;
 
 		if (opp_table->regulator_count > 1) {
@@ -559,7 +559,7 @@ static int rockchip_init_temp_opp_table(struct monitor_dev_info *info)
 
 			if (opp->supplies[1].u_volt <= info->high_temp_max_volt) {
 				if (!reach_high_temp_max_mem_volt)
-					high_limit_mem = opp->rate;
+					high_limit_mem = opp->rates[0];
 				if (opp->supplies[1].u_volt == info->high_temp_max_volt)
 					reach_high_temp_max_mem_volt = true;
 			}
@@ -572,18 +572,18 @@ static int rockchip_init_temp_opp_table(struct monitor_dev_info *info)
 					info->opp_table[i].low_temp_mem_volt =
 						info->low_temp_min_volt;
 				if (!reach_max_mem_volt)
-					low_limit_mem = opp->rate;
+					low_limit_mem = opp->rates[0];
 				if (info->opp_table[i].low_temp_mem_volt == info->max_volt)
 					reach_max_mem_volt = true;
 			} else {
 				info->opp_table[i].low_temp_mem_volt = info->max_volt;
 			}
 
-			if (low_limit_mem && low_limit_mem != opp->rate) {
+			if (low_limit_mem && low_limit_mem != opp->rates[0]) {
 				if (info->low_limit > low_limit_mem)
 					info->low_limit = low_limit_mem;
 			}
-			if (high_limit_mem && high_limit_mem != opp->rate) {
+			if (high_limit_mem && high_limit_mem != opp->rates[0]) {
 				if (info->high_limit > high_limit_mem)
 					info->high_limit = high_limit_mem;
 			}
