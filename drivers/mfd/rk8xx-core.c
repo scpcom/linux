@@ -55,11 +55,6 @@ static const struct resource rk817_pwrkey_resources[] = {
 	DEFINE_RES_IRQ(RK817_IRQ_PWRON_RISE),
 };
 
-static const struct resource rk817_charger_resources[] = {
-	DEFINE_RES_IRQ(RK817_IRQ_PLUG_IN),
-	DEFINE_RES_IRQ(RK817_IRQ_PLUG_OUT),
-};
-
 static const struct mfd_cell rk805s[] = {
 	{ .name = "rk808-clkout", },
 	{ .name = "rk808-regulator", },
@@ -130,11 +125,6 @@ static const struct mfd_cell rk817s[] = {
 	{
 		.name = "rk817-codec",
 		.of_compatible = "rockchip,rk817-codec",
-	},
-	{
-		.name = "rk817-charger",
-		.num_resources = ARRAY_SIZE(rk817_charger_resources),
-		.resources = &rk817_charger_resources[0],
 	},
 };
 
