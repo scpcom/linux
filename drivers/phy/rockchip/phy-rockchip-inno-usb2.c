@@ -70,6 +70,7 @@ enum usb_chg_state {
 static const unsigned int rockchip_usb2phy_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
+	EXTCON_USB_VBUS_EN,
 	EXTCON_CHG_USB_SDP,
 	EXTCON_CHG_USB_CDP,
 	EXTCON_CHG_USB_DCP,
@@ -163,6 +164,7 @@ struct rockchip_usb2phy_port_cfg {
 	struct usb2phy_reg	utmi_id;
 	struct usb2phy_reg	utmi_ls;
 	struct usb2phy_reg	utmi_hstdet;
+	struct usb2phy_reg	vbus_det_en;
 };
 
 /**
@@ -209,6 +211,7 @@ struct rockchip_usb2phy_port {
 	unsigned int	port_id;
 	bool		suspended;
 	bool		vbus_attached;
+	bool		vbus_enabled;
 	bool            host_disconnect;
 	int		bvalid_irq;
 	int		id_irq;
@@ -218,6 +221,7 @@ struct rockchip_usb2phy_port {
 	struct		delayed_work chg_work;
 	struct		delayed_work otg_sm_work;
 	struct		delayed_work sm_work;
+	struct		regulator *vbus;
 	const struct	rockchip_usb2phy_port_cfg *port_cfg;
 	struct notifier_block	event_nb;
 	enum usb_otg_state	state;
@@ -253,6 +257,7 @@ struct rockchip_usb2phy {
 	enum usb_chg_state	chg_state;
 	enum power_supply_type	chg_type;
 	u8			dcd_retries;
+	bool			edev_self;
 	struct extcon_dev	*edev;
 	int			irq;
 	const struct rockchip_usb2phy_cfg	*phy_cfg;
@@ -439,6 +444,8 @@ static int rockchip_usb2phy_extcon_register(struct rockchip_usb2phy *rphy)
 		if (ret)
 			return dev_err_probe(rphy->dev, ret,
 					     "failed to register extcon device\n");
+
+		rphy->edev_self = true;
 	}
 
 	rphy->edev = edev;
@@ -629,11 +636,83 @@ static int rockchip_usb2phy_exit(struct phy *phy)
 	return 0;
 }
 
+static int rockchip_set_vbus_power(struct rockchip_usb2phy_port *rport,
+				   bool en)
+{
+	int ret = 0;
+
+	if (!rport->vbus)
+		return 0;
+
+	if (en && !rport->vbus_enabled) {
+		ret = regulator_enable(rport->vbus);
+		if (ret)
+			dev_err(&rport->phy->dev,
+				"Failed to enable VBUS supply\n");
+	} else if (!en && rport->vbus_enabled) {
+		ret = regulator_disable(rport->vbus);
+	}
+
+	if (ret == 0)
+		rport->vbus_enabled = en;
+
+	return ret;
+}
+
+static int rockchip_usb2phy_set_mode(struct phy *phy,
+				     enum phy_mode mode, int submode)
+{
+	struct rockchip_usb2phy_port *rport = phy_get_drvdata(phy);
+	struct rockchip_usb2phy *rphy = dev_get_drvdata(phy->dev.parent);
+	bool vbus_det_en;
+	int ret = 0;
+
+	if (rport->port_id != USB2PHY_PORT_OTG)
+		return ret;
+
+	switch (mode) {
+	case PHY_MODE_USB_OTG:
+		/*
+		 * In case of using vbus to detect connect state by u2phy,
+		 * enable vbus detect on otg mode.
+		 */
+		fallthrough;
+	case PHY_MODE_USB_DEVICE:
+		/* Disable VBUS supply */
+		rockchip_set_vbus_power(rport, false);
+		extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, false);
+		vbus_det_en = true;
+		break;
+	case PHY_MODE_USB_HOST:
+		/* Enable VBUS supply */
+		ret = rockchip_set_vbus_power(rport, true);
+		if (ret) {
+			dev_err(&rport->phy->dev,
+				"Failed to set host mode\n");
+			return ret;
+		}
+
+		extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, true);
+		fallthrough;
+	case PHY_MODE_INVALID:
+		vbus_det_en = false;
+		break;
+	default:
+		dev_info(&rport->phy->dev, "illegal mode\n");
+		return ret;
+	}
+
+	ret = property_enable(rphy->grf, &rport->port_cfg->vbus_det_en, vbus_det_en);
+
+	return ret;
+}
+
 static const struct phy_ops rockchip_usb2phy_ops = {
 	.init		= rockchip_usb2phy_init,
 	.exit		= rockchip_usb2phy_exit,
 	.power_on	= rockchip_usb2phy_power_on,
 	.power_off	= rockchip_usb2phy_power_off,
+	.set_mode	= rockchip_usb2phy_set_mode,
 	.owner		= THIS_MODULE,
 };
 
@@ -663,7 +742,8 @@ static void rockchip_usb2phy_otg_sm_work(struct work_struct *work)
 			rockchip_usb2phy_power_off(rport->phy);
 		fallthrough;
 	case OTG_STATE_B_IDLE:
-		if (extcon_get_state(rphy->edev, EXTCON_USB_HOST) > 0) {
+		if (extcon_get_state(rphy->edev, EXTCON_USB_HOST) > 0 ||
+		    extcon_get_state(rphy->edev, EXTCON_USB_VBUS_EN) > 0) {
 			dev_dbg(&rport->phy->dev, "usb otg host connect\n");
 			rport->state = OTG_STATE_A_HOST;
 			rockchip_usb2phy_power_on(rport->phy);
@@ -1062,6 +1142,7 @@ static irqreturn_t rockchip_usb2phy_id_irq(int irq, void *data)
 
 	id = property_enabled(rphy->grf, &rport->port_cfg->utmi_id);
 	extcon_set_state_sync(rphy->edev, EXTCON_USB_HOST, !id);
+	extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, !id);
 
 	return IRQ_HANDLED;
 }
@@ -1279,10 +1360,33 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 	 */
 	rport->suspended = true;
 	rport->vbus_attached = false;
+	rport->vbus_enabled = false;
 
 	mutex_init(&rport->mutex);
 
+	/* Get Vbus regulators */
+	rport->vbus = devm_regulator_get_optional(&rport->phy->dev, "vbus");
+	if (IS_ERR(rport->vbus)) {
+		ret = PTR_ERR(rport->vbus);
+		if (ret == -EPROBE_DEFER)
+			return ret;
+
+		dev_warn(&rport->phy->dev, "No vbus specified for otg port\n");
+		rport->vbus = NULL;
+	}
+
 	rport->mode = of_usb_get_dr_mode_by_phy(child_np, -1);
+	id = property_enabled(rphy->grf, &rport->port_cfg->utmi_id);
+	if (rphy->edev_self && (rport->mode == USB_DR_MODE_HOST ||
+	    rport->mode == USB_DR_MODE_UNKNOWN || !id)) {
+		/* Enable VBUS supply for otg port */
+		extcon_set_state(rphy->edev, EXTCON_USB, false);
+		extcon_set_state(rphy->edev, EXTCON_USB_HOST, true);
+		extcon_set_state(rphy->edev, EXTCON_USB_VBUS_EN, true);
+		ret = rockchip_set_vbus_power(rport, true);
+		if (ret)
+			return ret;
+	}
 	if (rport->mode == USB_DR_MODE_HOST ||
 	    rport->mode == USB_DR_MODE_UNKNOWN) {
 		ret = 0;
@@ -1312,6 +1416,7 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 			/* do initial sync of usb state */
 			id = property_enabled(rphy->grf, &rport->port_cfg->utmi_id);
 			extcon_set_state_sync(rphy->edev, EXTCON_USB_HOST, !id);
+			extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, !id);
 		}
 	}
 
@@ -1377,6 +1482,7 @@ static int rockchip_usb2phy_probe(struct platform_device *pdev)
 	phy_cfgs = device_get_match_data(dev);
 	rphy->chg_state = USB_CHG_STATE_UNDEFINED;
 	rphy->chg_type = POWER_SUPPLY_TYPE_UNKNOWN;
+	rphy->edev_self = false;
 	rphy->irq = platform_get_irq_optional(pdev, 0);
 	platform_set_drvdata(pdev, rphy);
 
@@ -1612,6 +1718,7 @@ static const struct rockchip_usb2phy_cfg rk3228_phy_cfgs[] = {
 				.utmi_bvalid	= { 0x0480, 4, 4, 0, 1 },
 				.utmi_id	= { 0x0480, 1, 1, 0, 1 },
 				.utmi_ls	= { 0x0480, 3, 2, 0, 1 },
+				.vbus_det_en	= { 0x0788, 15, 15, 1, 0 },
 			},
 			[USB2PHY_PORT_HOST] = {
 				.phy_sus	= { 0x0764, 15, 0, 0, 0x1d1 },
@@ -1729,6 +1836,7 @@ static const struct rockchip_usb2phy_cfg rk3328_phy_cfgs[] = {
 				.utmi_bvalid	= { 0x0120, 9, 9, 0, 1 },
 				.utmi_id	= { 0x0120, 6, 6, 0, 1 },
 				.utmi_ls	= { 0x0120, 5, 4, 0, 1 },
+				.vbus_det_en	= { 0x001c, 15, 15, 1, 0 },
 			},
 			[USB2PHY_PORT_HOST] = {
 				.phy_sus	= { 0x104, 15, 0, 0, 0x1d1 },
@@ -1794,6 +1902,7 @@ static const struct rockchip_usb2phy_cfg rk3399_phy_cfgs[] = {
 				.utmi_avalid	= { 0xe2ac, 7, 7, 0, 1 },
 				.utmi_bvalid	= { 0xe2ac, 12, 12, 0, 1 },
 				.utmi_id	= { 0xe2ac, 8, 8, 0, 1 },
+				.vbus_det_en    = { 0x449c, 15, 15, 1, 0 },
 			},
 			[USB2PHY_PORT_HOST] = {
 				.phy_sus	= { 0xe458, 1, 0, 0x2, 0x1 },
@@ -1836,6 +1945,7 @@ static const struct rockchip_usb2phy_cfg rk3399_phy_cfgs[] = {
 				.utmi_avalid	= { 0xe2ac, 10, 10, 0, 1 },
 				.utmi_bvalid    = { 0xe2ac, 16, 16, 0, 1 },
 				.utmi_id	= { 0xe2ac, 11, 11, 0, 1 },
+				.vbus_det_en    = { 0x451c, 15, 15, 1, 0 },
 			},
 			[USB2PHY_PORT_HOST] = {
 				.phy_sus	= { 0xe468, 1, 0, 0x2, 0x1 },
