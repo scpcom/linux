@@ -384,7 +384,7 @@ static int sii902x_get_modes(struct drm_connector *connector)
 				if (!i)
 					mode->type = DRM_MODE_TYPE_PREFERRED;
 				drm_mode_probed_add(connector, mode);
-				ret++;
+				num++;
 			}
 		}
 		sii902x->sink_is_hdmi = true;
