@@ -1667,10 +1667,10 @@ static int rkvdec_reset(struct mpp_dev *mpp)
 
 static int rkvdec_sip_reset(struct mpp_dev *mpp)
 {
+#if IS_ENABLED(CONFIG_ROCKCHIP_SIP)
 	struct rkvdec_dev *dec = to_rkvdec_dev(mpp);
 
 /* The reset flow in arm trustzone firmware */
-#if IS_ENABLED(CONFIG_ROCKCHIP_SIP)
 	mutex_lock(&dec->sip_reset_lock);
 	sip_smc_vpu_reset(0, 0, 0);
 	mutex_unlock(&dec->sip_reset_lock);
