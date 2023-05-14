@@ -1293,3 +1293,5 @@ module_exit(rockchip_drm_fini);
 MODULE_AUTHOR("Mark Yao <mark.yao@rock-chips.com>");
 MODULE_DESCRIPTION("ROCKCHIP DRM Driver");
 MODULE_LICENSE("GPL v2");
+MODULE_SOFTDEP("pre: memory_group_manager");
+MODULE_INFO(import_ns, "DMA_BUF");
