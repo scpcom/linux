@@ -5788,6 +5788,8 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	u32 val;
 	int err;
 
+	desc->desc.connector_type = DRM_MODE_CONNECTOR_DSI;
+
 	err = panel_simple_of_get_desc_data(dev, &desc->desc);
 	if (err)
 		return err;
