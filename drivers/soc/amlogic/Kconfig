@@ -19,8 +19,8 @@ config MESON_CLK_MEASURE
 
 config MESON_GX_CPUINFO
 	tristate "Amlogic Meson GX cpuinfo support"
-	depends on MESON_EFUSE && (ARM64 || ARM)
-	default MESON_EFUSE
+	depends on NVMEM_MESON_EFUSE && (ARM64 || ARM)
+	default NVMEM_MESON_EFUSE
 	help
 	  Say y here to enable Amlogic Meson GX cpuinfo support.
 	  Set system_serial from eFuse SN.
