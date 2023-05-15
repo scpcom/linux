@@ -448,7 +448,17 @@ static unsigned long get_address_cookie(int cpu, struct task_struct *task, unsig
     if (!mm)
         return cookie;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+    vma = find_vma(mm, addr);
+    if (!vma)
+        return UNRESOLVED_COOKIE;
+    {
+      struct maple_tree *mt = &vma->vm_mm->mm_mt;
+      MA_STATE(mas, mt, vma->vm_end, vma->vm_end);
+      for ( ; vma; vma = mas_find(&mas, ULONG_MAX)) {
+#else
     for (vma = find_vma(mm, addr); vma; vma = vma->vm_next) {
+#endif
         if (addr < vma->vm_start || addr >= vma->vm_end)
             continue;
 
@@ -462,6 +472,9 @@ static unsigned long get_address_cookie(int cpu, struct task_struct *task, unsig
         }
 
         break;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+      }
+#endif
     }
 
     if (!vma)
