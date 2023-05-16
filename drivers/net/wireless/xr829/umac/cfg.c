@@ -1274,7 +1274,11 @@ static void ieee80211_send_layer2_update(struct sta_info *sta)
 	skb->dev = sta->sdata->dev;
 	skb->protocol = eth_type_trans(skb, sta->sdata->dev);
 	memset(skb->cb, 0, sizeof(skb->cb));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
+	netif_rx(skb);
+#else
 	netif_rx_ni(skb);
+#endif
 }
 
 static void sta_apply_parameters(struct ieee80211_local *local,
