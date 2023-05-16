@@ -665,7 +665,11 @@ static bool ieee80211_powersave_allowed(struct ieee80211_sub_if_data *sdata)
 		return false;
 
 	rcu_read_lock();
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	sta = xrmac_sta_info_get(sdata, sdata->vif.cfg.ap_addr);
+#else
 	sta = xrmac_sta_info_get(sdata, mgd->bssid);
+#endif
 	if (sta)
 		authorized = test_sta_flag(sta, WLAN_STA_AUTHORIZED);
 	rcu_read_unlock();
@@ -1171,6 +1175,9 @@ static void ieee80211_set_associated(struct ieee80211_sub_if_data *sdata,
 		IEEE80211_BEACON_LOSS_COUNT * bss_conf->beacon_int));
 	sdata->u.mgd.associated = cbss;
 	memcpy(sdata->u.mgd.bssid, cbss->bssid, ETH_ALEN);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	memcpy(sdata->vif.cfg.ap_addr, cbss->bssid, ETH_ALEN);
+#endif
 
 	sdata->u.mgd.flags |= IEEE80211_STA_RESET_SIGNAL_AVE;
 
@@ -1245,6 +1252,9 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	ifmgd->associated = NULL;
 	sdata->fourway_state = SDATA_4WAY_STATE_NONE;
 	memset(ifmgd->bssid, 0, ETH_ALEN);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	eth_zero_addr(sdata->vif.cfg.ap_addr);
+#endif
 
 	/*
 	 * we need to commit the associated = NULL change because the
@@ -1395,7 +1405,11 @@ static void ieee80211_mgd_probe_ap_send(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 	const u8 *ssid;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	u8 *dst = sdata->vif.cfg.ap_addr;
+#else
 	u8 *dst = ifmgd->associated->bssid;
+#endif
 	u8 unicast_limit = max(1, max_probe_tries - 3);
 
 	/*
@@ -3079,6 +3093,11 @@ int mac80211_mgd_disassoc(struct ieee80211_sub_if_data *sdata,
 
 	mutex_lock(&ifmgd->mtx);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (!sdata->u.mgd.associated ||
+	    memcmp(sdata->vif.cfg.ap_addr, req->ap_addr, ETH_ALEN))
+		return -ENOTCONN;
+#else
 	/*
 	 * cfg80211 should catch this ... but it's racy since
 	 * we can receive a disassoc frame, process it, hand it
@@ -3089,16 +3108,29 @@ int mac80211_mgd_disassoc(struct ieee80211_sub_if_data *sdata,
 		mutex_unlock(&ifmgd->mtx);
 		return -ENOLINK;
 	}
+#endif
 
 	printk(KERN_DEBUG "%s: disassociating from %pM by local choice (reason=%d)\n",
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	       sdata->name, req->ap_addr, req->reason_code);
+#else
 	       sdata->name, req->bss->bssid, req->reason_code);
+#endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	memcpy(bssid, req->ap_addr, ETH_ALEN);
+#else
 	memcpy(bssid, req->bss->bssid, ETH_ALEN);
+#endif
 	ieee80211_set_disassoc(sdata, false, true);
 
 	mutex_unlock(&ifmgd->mtx);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	ieee80211_send_deauth_disassoc(sdata, req->ap_addr,
+#else
 	ieee80211_send_deauth_disassoc(sdata, req->bss->bssid,
+#endif
 			IEEE80211_STYPE_DISASSOC, req->reason_code,
 			 sdata->dev->ieee80211_ptr, !req->local_state_change);
 	xrmac_sta_info_flush(sdata->local, sdata);
