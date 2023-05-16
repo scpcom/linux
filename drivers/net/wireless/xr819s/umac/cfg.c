@@ -139,6 +139,9 @@ static void ieee80211_stop_p2p_device(struct wiphy *wiphy,
 }
 
 static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			     int link_id,
+#endif
 			     u8 key_idx, bool pairwise, const u8 *mac_addr,
 			     struct key_params *params)
 {
@@ -219,6 +222,9 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			     int link_id,
+#endif
 			     u8 key_idx, bool pairwise, const u8 *mac_addr)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -260,6 +266,9 @@ static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			     int link_id,
+#endif
 			     u8 key_idx, bool pairwise, const u8 *mac_addr,
 			     void *cookie,
 			     void (*callback)(void *cookie,
@@ -354,6 +363,9 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 
 static int ieee80211_config_default_key(struct wiphy *wiphy,
 					struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+					int link_id,
+#endif
 					u8 key_idx, bool uni,
 					bool multi)
 {
@@ -366,6 +378,9 @@ static int ieee80211_config_default_key(struct wiphy *wiphy,
 
 static int ieee80211_config_default_mgmt_key(struct wiphy *wiphy,
 					     struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+					     int link_id,
+#endif
 					     u8 key_idx)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -1133,7 +1148,11 @@ static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 #endif
 }
 
-static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
+static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			    , unsigned int link_id
+#endif
+			    )
 {
 	struct ieee80211_sub_if_data *sdata;
 	struct beacon_data *old;
@@ -2428,6 +2447,9 @@ static int ieee80211_set_cqm_tx_fail_config(struct wiphy *wiphy,
 
 static int ieee80211_set_bitrate_mask(struct wiphy *wiphy,
 				      struct net_device *dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				      unsigned int link_id,
+#endif
 				      const u8 *addr,
 				      const struct cfg80211_bitrate_mask *mask)
 {
