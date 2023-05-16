@@ -953,6 +953,10 @@ struct ieee80211_channel_switch {
 	u8 count;
 };
 
+struct ieee80211_vif_cfg {
+	u8 ap_addr[ETH_ALEN] __aligned(2);
+};
+
 /**
  * struct ieee80211_vif - per-interface data
  *
@@ -972,6 +976,7 @@ struct ieee80211_channel_switch {
  */
 struct ieee80211_vif {
 	enum nl80211_iftype type;
+	struct ieee80211_vif_cfg cfg;
 	struct ieee80211_bss_conf bss_conf;
 	u8 addr[ETH_ALEN];
 	bool p2p;
