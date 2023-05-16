@@ -2779,8 +2779,18 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 	u16 status;
 
 	if (!skb) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+		struct cfg80211_assoc_failure data = {
+			.timeout = true,
+			.bss[0] = cbss,
+		};
+#endif
 		xrmac_sta_info_destroy_addr(wk->sdata, cbss->bssid);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+		cfg80211_assoc_failure(wk->sdata->dev, &data);
+#else
 		cfg80211_assoc_timeout(wk->sdata->dev, cbss);
+#endif
 		goto destroy;
 	}
 
@@ -2807,10 +2817,20 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 
 		mutex_lock(&wk->sdata->u.mgd.mtx);
 		if (!ieee80211_assoc_success(wk, mgmt, skb->len)) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			struct cfg80211_assoc_failure data = {
+				.timeout = true,
+				.bss[0] = cbss,
+			};
+#endif
 			mutex_unlock(&wk->sdata->u.mgd.mtx);
 			/* oops -- internal error -- send timeout for now */
 			xrmac_sta_info_destroy_addr(wk->sdata, cbss->bssid);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+			cfg80211_assoc_failure(wk->sdata->dev, &data);
+#else
 			cfg80211_assoc_timeout(wk->sdata->dev, cbss);
+#endif
 			printk(KERN_ERR "%s return WORK_DONE_DESTROY\n", __func__);
 			return WORK_DONE_DESTROY;
 		}
