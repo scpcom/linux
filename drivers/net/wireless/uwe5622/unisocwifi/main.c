@@ -1128,7 +1128,11 @@ static int sprdwl_get_mac_from_file(struct sprdwl_vif *vif, u8 *addr)
 
 	return 0;
 random_mac:
+#if KERNEL_VERSION(5, 16, 0) <= LINUX_VERSION_CODE
+	eth_random_addr(addr);
+#else
 	random_ether_addr(addr);
+#endif
 	wl_warn("%s use random MAC address\n",
 			__func__);
 	/* initialize MAC addr with specific OUI */
