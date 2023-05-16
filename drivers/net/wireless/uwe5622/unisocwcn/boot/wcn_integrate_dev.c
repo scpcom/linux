@@ -44,6 +44,10 @@
 #include "wcn_procfs.h"
 #include "wcn_txrx.h"
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+#define PDE_DATA(i)    pde_data(i)
+#endif
+
 struct wcn_device_manage s_wcn_device;
 
 static void wcn_global_source_init(void)

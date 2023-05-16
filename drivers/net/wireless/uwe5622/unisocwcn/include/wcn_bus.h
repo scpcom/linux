@@ -1,6 +1,12 @@
 #ifndef __WCN_BUS_H__
 #define __WCN_BUS_H__
 
+#include <linux/version.h>
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+#define PDE_DATA(i)    pde_data(i)
+#endif
+
 #define CHN_MAX_NUM 32
 
 #ifdef CONFIG_WCN_SDIO
