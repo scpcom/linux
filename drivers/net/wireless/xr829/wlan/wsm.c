@@ -3321,8 +3321,10 @@ static int xradio_get_prio_queue(struct xradio_vif *priv,
 				(edca->cwMax - edca->cwMin) *
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0))
 				(random32() & 0xFFFF);
-#else
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 				(get_random_int() & 0xFFFF);
+#else
+				(get_random_u32() & 0xFFFF);
 #endif
 		if (score < best && (winner < 0 || i != 3)) {
 			best = score;
