@@ -2383,7 +2383,11 @@ void sprdwl_report_connection(struct sprdwl_vif *vif,
 		 conn_info->status == SPRDWL_ROAM_SUCCESS){
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 		struct cfg80211_roam_info roam_info = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+			.links[0].bss = bss,
+#else
 			.bss = bss,
+#endif
 			.req_ie = conn_info->req_ie,
 			.req_ie_len = conn_info->req_ie_len,
 			.resp_ie = conn_info->resp_ie,
