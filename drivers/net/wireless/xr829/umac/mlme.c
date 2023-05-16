@@ -2786,6 +2786,11 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 	struct cfg80211_bss *cbss = wk->assoc.bss;
 	struct ieee80211_if_managed *ifmgd = &wk->sdata->u.mgd;
 	u16 status;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+	struct cfg80211_rx_assoc_resp resp = {
+		.uapsd_queues = -1,
+	};
+#endif
 
 	if (!skb) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
@@ -2850,7 +2855,14 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 		xrmac_sta_info_destroy_addr(wk->sdata, cbss->bssid);
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+	resp.links[0].bss = cbss;
+	resp.buf = skb->data;
+	resp.len = skb->len;
+	resp.req_ies = ifmgd->assoc_req_ies;
+	resp.req_ies_len = ifmgd->assoc_req_ies_len;
+	cfg80211_rx_assoc_resp(wk->sdata->dev, &resp);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
 	cfg80211_rx_assoc_resp(wk->sdata->dev, cbss, skb->data, skb->len, -1,
 		ifmgd->assoc_req_ies, ifmgd->assoc_req_ies_len);
 #else
