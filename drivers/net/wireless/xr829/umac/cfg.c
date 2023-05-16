@@ -1364,11 +1364,20 @@ static void sta_apply_parameters(struct ieee80211_local *local,
 	if (params->listen_interval >= 0)
 		sta->listen_interval = params->listen_interval;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (params->link_sta_params.supported_rates) {
+#else
 	if (params->supported_rates) {
+#endif
 		rates = 0;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+		for (i = 0; i < params->link_sta_params.supported_rates_len; i++) {
+			int rate = (params->link_sta_params.supported_rates[i] & 0x7f) * 5;
+#else
 		for (i = 0; i < params->supported_rates_len; i++) {
 			int rate = (params->supported_rates[i] & 0x7f) * 5;
+#endif
 			for (j = 0; j < sband->n_bitrates; j++) {
 				if (sband->bitrates[j].bitrate == rate)
 					rates |= BIT(j);
@@ -1377,10 +1386,17 @@ static void sta_apply_parameters(struct ieee80211_local *local,
 		sta->sta.supp_rates[chan_state->oper_channel->band] = rates;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (params->link_sta_params.ht_capa)
+		mac80211_ht_cap_ie_to_sta_ht_cap(sband,
+						  params->link_sta_params.ht_capa,
+						  &sta->sta.ht_cap);
+#else
 	if (params->ht_capa)
 		mac80211_ht_cap_ie_to_sta_ht_cap(sband,
 						  params->ht_capa,
 						  &sta->sta.ht_cap);
+#endif
 
 	if (ieee80211_vif_is_mesh(&sdata->vif)) {
 #ifdef CONFIG_XRMAC_MESH
