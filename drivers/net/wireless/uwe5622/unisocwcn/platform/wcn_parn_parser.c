@@ -145,7 +145,10 @@ static int prefixcmp(const char *str, const char *prefix)
 			return (unsigned char)*prefix - (unsigned char)*str;
 }
 
-#if KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE
+static bool find_callback(struct dir_context *ctx, const char *name, int namlen,
+		     loff_t offset, u64 ino, unsigned int d_type)
+#elif KERNEL_VERSION(3, 19, 0) <= LINUX_VERSION_CODE
 static int find_callback(struct dir_context *ctx, const char *name, int namlen,
 		     loff_t offset, u64 ino, unsigned int d_type)
 #else
@@ -162,7 +165,11 @@ static int find_callback(void *ctx, const char *name, int namlen,
 		WCN_INFO("full fstab name %s\n", fstab_name);
 	}
 
+#if KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE
+	return true;
+#else
 	return 0;
+#endif
 }
 
 static struct dir_context ctx =  {
