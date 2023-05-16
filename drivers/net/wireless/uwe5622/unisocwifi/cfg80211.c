@@ -703,6 +703,9 @@ static int sprdwl_add_cipher_key(struct sprdwl_vif *vif, bool pairwise,
 }
 
 static int sprdwl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				   int link_id,
+#endif
 				   u8 key_index, bool pairwise,
 				   const u8 *mac_addr,
 				   struct key_params *params)
@@ -725,6 +728,9 @@ static int sprdwl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
 }
 
 static int sprdwl_cfg80211_del_key(struct wiphy *wiphy, struct net_device *ndev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				   int link_id,
+#endif
 				   u8 key_index, bool pairwise,
 				   const u8 *mac_addr)
 {
@@ -755,6 +761,9 @@ static int sprdwl_cfg80211_del_key(struct wiphy *wiphy, struct net_device *ndev,
 
 static int sprdwl_cfg80211_set_default_key(struct wiphy *wiphy,
 					   struct net_device *ndev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+					   int link_id,
+#endif
 					   u8 key_index, bool unicast,
 					   bool multicast)
 {
@@ -984,7 +993,11 @@ static int sprdwl_cfg80211_change_beacon(struct wiphy *wiphy,
 	return sprdwl_change_beacon(vif, beacon);
 }
 
-static int sprdwl_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *ndev)
+static int sprdwl_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *ndev
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				  , unsigned int link_id
+#endif
+				  )
 {
 #ifdef DFS_MASTER
 	struct sprdwl_vif *vif = netdev_priv(ndev);
