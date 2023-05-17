@@ -351,6 +351,10 @@ DEFINE_MUTEX(_dhd_mutex_lock_);
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) */
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
+#define netif_rx_ni(s) netif_rx(s)
+#endif
+
 #ifdef CONFIG_BCM_DETECT_CONSECUTIVE_HANG
 #define MAX_CONSECUTIVE_HANG_COUNTS 5
 #endif /* CONFIG_BCM_DETECT_CONSECUTIVE_HANG */
