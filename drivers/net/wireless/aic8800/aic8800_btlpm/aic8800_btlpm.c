@@ -878,11 +878,15 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 	return 0;
 
 err3:
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
 	devm_gpio_free(dev, bsi->ext_wake);
+#endif
 err2:
 	device_init_wakeup(dev, false);
 err1:
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
 	devm_gpio_free(dev, bsi->host_wake);
+#endif
 err0:
 	devm_kfree(dev, bsi);
 
