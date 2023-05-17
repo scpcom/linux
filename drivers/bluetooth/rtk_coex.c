@@ -1090,7 +1090,9 @@ static int udpsocket_send(char *tx_msg, int msg_size)
 {
 	u8 error = 0;
 	struct msghdr udpmsg;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	mm_segment_t oldfs;
+#endif
 	struct iovec iov;
 
 	RTKBT_DBG("send msg %s with len:%d", tx_msg, msg_size);
@@ -1109,14 +1111,18 @@ static int udpsocket_send(char *tx_msg, int msg_size)
 		udpmsg.msg_control = NULL;
 		udpmsg.msg_controllen = 0;
 		udpmsg.msg_flags = MSG_DONTWAIT | MSG_NOSIGNAL;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 		oldfs = get_fs();
 		set_fs(KERNEL_DS);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 		error = sock_sendmsg(btrtl_coex.udpsock, &udpmsg, msg_size);
 #else
 		error = sock_sendmsg(btrtl_coex.udpsock, &udpmsg);
 #endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 		set_fs(oldfs);
+#endif
 
 		if (error < 0)
 			RTKBT_DBG("Error when sendimg msg, error:%d", error);
