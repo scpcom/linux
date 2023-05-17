@@ -3234,13 +3234,15 @@ wl_ext_iapsta_attach_netdev(struct net_device *net, int ifidx, uint8 bssidx)
 			net->name[IFNAMSIZ-1] = '\0';
 		}
 		if (apsta_params->apstamode != ISTAAPAP_MODE) {
-			memcpy(net->dev_addr, primary_if->dev->dev_addr, ETHER_ADDR_LEN);
-			net->dev_addr[0] |= 0x02;
+			unsigned char new_dev_addr[ETH_ALEN];
+			memcpy(new_dev_addr, primary_if->dev->dev_addr, ETHER_ADDR_LEN);
+			new_dev_addr[0] |= 0x02;
 			if (ifidx >= 2) {
-				net->dev_addr[4] ^= 0x80;
-				net->dev_addr[4] += ifidx;
-				net->dev_addr[5] += (ifidx-1);
+				new_dev_addr[4] ^= 0x80;
+				new_dev_addr[4] += ifidx;
+				new_dev_addr[5] += (ifidx-1);
 			}
+			memcpy(net->dev_addr, new_dev_addr, ETHER_ADDR_LEN);
 		}
 		if (cur_if->ifmode == ISTA_MODE) {
 			int pm;
