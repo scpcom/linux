@@ -33,6 +33,7 @@
 #include <bcmendian.h>
 #include <linuxver.h>
 #include <bcmdefs.h>
+#include <linux_dma.h>
 #ifdef CUSTOMER_HW_ALLWINNER
 //#include <asm-generic/pci-dma-compat.h>
 #endif
