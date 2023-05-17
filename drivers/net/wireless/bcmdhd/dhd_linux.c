@@ -19373,6 +19373,9 @@ static struct attribute *default_attrs[] = {
 #endif /* DHD_LB_TXP */
 	NULL
 };
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+ATTRIBUTE_GROUPS(default);
+#endif
 
 #define to_dhd(k) container_of(k, struct dhd_info, dhd_kobj)
 #define to_attr(a) container_of(a, struct dhd_attr, attr)
@@ -19436,7 +19439,11 @@ static struct sysfs_ops dhd_sysfs_ops = {
 
 static struct kobj_type dhd_ktype = {
 	.sysfs_ops = &dhd_sysfs_ops,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	.default_groups = default_groups,
+#else
 	.default_attrs = default_attrs,
+#endif
 };
 
 /* Create a kobject and attach to sysfs interface */
