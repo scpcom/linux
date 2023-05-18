@@ -1310,7 +1310,11 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 						 const u8 *mac, u8 inst_nbr, struct me_sta_add_cfm *cfm)
 {
 	struct me_sta_add_req *req;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	u8 *ht_mcs = (u8 *)&params->link_sta_params.ht_capa->mcs;
+#else
 	u8 *ht_mcs = (u8 *)&params->ht_capa->mcs;
+#endif
 	int i;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
@@ -1324,13 +1328,24 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 	/* Set parameters for the MM_STA_ADD_REQ message */
 	memcpy(&(req->mac_addr.array[0]), mac, ETH_ALEN);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	req->rate_set.length = params->link_sta_params.supported_rates_len;
+	for (i = 0; i < params->link_sta_params.supported_rates_len; i++)
+		req->rate_set.array[i] = params->link_sta_params.supported_rates[i];
+#else
 	req->rate_set.length = params->supported_rates_len;
 	for (i = 0; i < params->supported_rates_len; i++)
 		req->rate_set.array[i] = params->supported_rates[i];
+#endif
 
 	req->flags = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (params->link_sta_params.ht_capa) {
+		const struct ieee80211_ht_cap *ht_capa = params->link_sta_params.ht_capa;
+#else
 	if (params->ht_capa) {
 		const struct ieee80211_ht_cap *ht_capa = params->ht_capa;
+#endif
 
 		req->flags |= STA_HT_CAPA;
 		req->ht_cap.ht_capa_info = cpu_to_le16(ht_capa->cap_info);
@@ -1342,8 +1357,13 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 		req->ht_cap.asel_capa = ht_capa->antenna_selection_info;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (params->link_sta_params.vht_capa) {
+		const struct ieee80211_vht_cap *vht_capa = params->link_sta_params.vht_capa;
+#else
 	if (params->vht_capa) {
 		const struct ieee80211_vht_cap *vht_capa = params->vht_capa;
+#endif
 
 		req->flags |= STA_VHT_CAPA;
 		req->vht_cap.vht_capa_info = cpu_to_le32(vht_capa->vht_cap_info);
@@ -1354,8 +1374,13 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	if (params->link_sta_params.he_capa) {
+		const struct ieee80211_he_cap_elem *he_capa = params->link_sta_params.he_capa;
+#else
 	if (params->he_capa) {
 		const struct ieee80211_he_cap_elem *he_capa = params->he_capa;
+#endif
 		struct ieee80211_he_mcs_nss_supp *mcs_nss_supp =
 								(struct ieee80211_he_mcs_nss_supp *)(he_capa + 1);
 
@@ -1381,7 +1406,12 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 	if (params->sta_flags_set & BIT(NL80211_STA_FLAG_MFP))
 		req->flags |= STA_MFP_CAPA;
 
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+        if (params->link_sta_params.opmode_notif_used) {
+                req->flags |= STA_OPMOD_NOTIF;
+                req->opmode = params->link_sta_params.opmode_notif;
+        }
+	#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
 	if (params->opmode_notif_used) {
 		req->flags |= STA_OPMOD_NOTIF;
 		req->opmode = params->opmode_notif;
