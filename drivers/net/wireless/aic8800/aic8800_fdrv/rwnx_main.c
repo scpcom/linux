@@ -1973,8 +1973,10 @@ static struct rwnx_vif *rwnx_interface_add(struct rwnx_hw *rwnx_hw,
 		memcpy(ndev->dev_addr, params->macaddr, ETH_ALEN);
 		memcpy(vif->wdev.address, params->macaddr, ETH_ALEN);
 	} else {
-		memcpy(ndev->dev_addr, rwnx_hw->wiphy->perm_addr, ETH_ALEN);
-		ndev->dev_addr[5] ^= vif_idx;
+		unsigned char temp_dev_addr[ETH_ALEN];
+		memcpy(temp_dev_addr, rwnx_hw->wiphy->perm_addr, ETH_ALEN);
+		temp_dev_addr[5] ^= vif_idx;
+		memcpy(ndev->dev_addr, temp_dev_addr, ETH_ALEN);
 		memcpy(vif->wdev.address, ndev->dev_addr, ETH_ALEN);
 	}
 
