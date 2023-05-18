@@ -2585,4 +2585,10 @@ wake_counts_t* dhd_get_wakecount(dhd_pub_t *dhdp);
 #ifdef BCM_ASLR_HEAP
 extern uint32 dhd_get_random_number(void);
 #endif /* BCM_ASLR_HEAP */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+#define dhd_thread_complete_and_exit(c, d) kthread_complete_and_exit(c, d)
+#else
+#define dhd_thread_complete_and_exit(c, d) complete_and_exit(c, d)
+#endif
 #endif /* _dhd_h_ */
