@@ -13421,8 +13421,13 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	wl_cfg80211_check_in4way(cfg, ndev, 0, WL_EXT_STATUS_CONNECTED, NULL);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	roam_info.links[0].channel = notify_channel;
+	roam_info.links[0].bssid = curbssid;
+#else
 	roam_info.channel = notify_channel;
 	roam_info.bssid = curbssid;
+#endif
 	roam_info.req_ie = conn_info->req_ie;
 	roam_info.req_ie_len = conn_info->req_ie_len;
 	roam_info.resp_ie = conn_info->resp_ie;
