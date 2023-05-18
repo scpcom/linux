@@ -26,6 +26,10 @@
 #include "rwnx_msg_tx.h"
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
+#define netif_rx_ni(s) netif_rx(s)
+#endif
+
 #ifndef IEEE80211_MAX_CHAINS
 #define IEEE80211_MAX_CHAINS 4
 #endif
