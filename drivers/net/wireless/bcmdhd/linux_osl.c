@@ -666,6 +666,29 @@ osl_is_flag_set(osl_t *osh, uint32 mask)
 
 
 #if (defined(__ARM_ARCH_7A__) && !defined(DHD_USE_COHERENT_MEM_FOR_RING))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+#ifndef __virt_to_bus
+#define __virt_to_bus	__virt_to_phys
+#define __bus_to_virt	__phys_to_virt
+#define __pfn_to_bus(x)	__pfn_to_phys(x)
+#define __bus_to_pfn(x)	__phys_to_pfn(x)
+#endif
+
+static inline dma_addr_t pfn_to_dma(struct device *dev, unsigned long pfn)
+{
+	if (dev && dev->dma_range_map)
+		pfn = PFN_DOWN(translate_phys_to_dma(dev, PFN_PHYS(pfn)));
+	return (dma_addr_t)__pfn_to_bus(pfn);
+}
+
+static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
+{
+	if (dev)
+		return pfn_to_dma(dev, virt_to_pfn(addr));
+
+	return (dma_addr_t)__virt_to_bus((unsigned long)(addr));
+}
+#endif
 
 inline int BCMFASTPATH
 osl_arch_is_coherent(void)
