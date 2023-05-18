@@ -2493,6 +2493,9 @@ static int rwnx_cfg80211_scan(struct wiphy *wiphy,
  *	when adding a group key.
  */
 static int rwnx_cfg80211_add_key(struct wiphy *wiphy, struct net_device *netdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				 int link_id,
+#endif
 								 u8 key_index, bool pairwise, const u8 *mac_addr,
 								 struct key_params *params)
 {
@@ -2585,6 +2588,9 @@ static int rwnx_cfg80211_add_key(struct wiphy *wiphy, struct net_device *netdev,
  *
  */
 static int rwnx_cfg80211_get_key(struct wiphy *wiphy, struct net_device *netdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				 int link_id,
+#endif
 								 u8 key_index, bool pairwise, const u8 *mac_addr,
 								 void *cookie,
 								 void (*callback)(void *cookie, struct key_params*))
@@ -2600,6 +2606,9 @@ static int rwnx_cfg80211_get_key(struct wiphy *wiphy, struct net_device *netdev,
  *	and @key_index, return -ENOENT if the key doesn't exist.
  */
 static int rwnx_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				 int link_id,
+#endif
 								 u8 key_index, bool pairwise, const u8 *mac_addr)
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
@@ -2634,6 +2643,9 @@ static int rwnx_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
  */
 static int rwnx_cfg80211_set_default_key(struct wiphy *wiphy,
 										 struct net_device *netdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+					 int link_id,
+#endif
 										 u8 key_index, bool unicast, bool multicast)
 {
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
@@ -2646,6 +2658,9 @@ static int rwnx_cfg80211_set_default_key(struct wiphy *wiphy,
  */
 static int rwnx_cfg80211_set_default_mgmt_key(struct wiphy *wiphy,
 											  struct net_device *netdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+					      int link_id,
+#endif
 											  u8 key_index)
 {
 	return 0;
@@ -2707,7 +2722,11 @@ static int rwnx_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		key_params.key_len = sme->key_len;
 		key_params.seq_len = 0;
 		key_params.cipher = sme->crypto.cipher_group;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+		rwnx_cfg80211_add_key(wiphy, dev, 0, sme->key_idx, false, NULL, &key_params);
+#else
 		rwnx_cfg80211_add_key(wiphy, dev, sme->key_idx, false, NULL, &key_params);
+#endif
 	}
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 	else if ((sme->auth_type == NL80211_AUTHTYPE_SAE) &&
@@ -3401,7 +3420,11 @@ static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *d
 /**
  * * @stop_ap: Stop being an AP, including stopping beaconing.
  */
-static int rwnx_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
+static int rwnx_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+	, unsigned int link_id
+#endif
+	)
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *rwnx_vif = netdev_priv(dev);
@@ -3821,6 +3844,9 @@ static int rwnx_cfg80211_dump_survey(struct wiphy *wiphy, struct net_device *net
  */
 static int rwnx_cfg80211_get_channel(struct wiphy *wiphy,
 									 struct wireless_dev *wdev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+				     unsigned int link_id,
+#endif
 									 struct cfg80211_chan_def *chandef)
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
