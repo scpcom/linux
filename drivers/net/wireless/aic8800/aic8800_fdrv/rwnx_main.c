@@ -718,7 +718,11 @@ static void rwnx_csa_finish(struct work_struct *ws)
 		} else
 			rwnx_txq_vif_stop(vif, RWNX_TXQ_STOP_CHAN, rwnx_hw);
 		spin_unlock_bh(&rwnx_hw->cb_lock);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
+#else
 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef);
+#endif
 		mutex_unlock(&vif->wdev.mtx);
 		__release(&vif->wdev.mtx);
 	}

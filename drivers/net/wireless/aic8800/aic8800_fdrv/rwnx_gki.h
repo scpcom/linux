@@ -58,7 +58,13 @@ static inline void rwnx_cfg80211_ch_switch_started_notify(struct net_device *dev
 				struct cfg80211_chan_def *chandef,
 				u8 count)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+	cfg80211_ch_switch_started_notify(dev, chandef, 0, count, false);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	cfg80211_ch_switch_started_notify(dev, chandef, count, false);
+#else
+	cfg80211_ch_switch_started_notify(dev, chandef, count);
+#endif
 }
 
 static inline int rwnx_regulatory_set_wiphy_regd_sync_rtnl(struct wiphy *wiphy,
