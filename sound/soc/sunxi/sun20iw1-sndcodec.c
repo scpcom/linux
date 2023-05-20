@@ -560,7 +560,7 @@ static int sunxi_card_init(struct snd_soc_pcm_runtime *rtd)
 			       SND_JACK_HEADSET | SND_JACK_HEADPHONE |
 				   SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 				   SND_JACK_BTN_2 | SND_JACK_BTN_3,
-			       &priv->jack, NULL, 0);
+			       &priv->jack);
 	if (ret) {
 		LOG_ERR("jack creation failed");
 		return ret;
