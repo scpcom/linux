@@ -106,6 +106,99 @@ void flush_icache_pte(struct mm_struct *mm, pte_t pte)
 		set_bit(PG_dcache_clean, &folio->flags);
 	}
 }
+
+void dma_wbinv_range(unsigned long start, unsigned long end)
+{
+	register unsigned long i asm("a0") = start & ~(L1_CACHE_BYTES - 1);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile (".long 0x02b5000b"); /* dcache.cipa a0 */
+
+	asm volatile (".long 0x01b0000b");
+}
+
+void dma_wb_range(unsigned long start, unsigned long end)
+{
+	register unsigned long i asm("a0") = start & ~(L1_CACHE_BYTES - 1);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile (".long 0x0295000b"); /* dcache.cpa a0 */
+
+	asm volatile (".long 0x01b0000b");
+}
+
+void dma_usr_va_wb_range(void *user_addr, unsigned long len)
+{
+	unsigned long start = (unsigned long)user_addr;
+	unsigned long end = start + len;
+	register unsigned long i asm("a5") = start & ~(L1_CACHE_BYTES - 1);
+
+	csr_set(CSR_SSTATUS, SR_SUM);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile(".long 0x0257800b"); /* dcache.cva a5 */
+
+	asm volatile(".long 0x01b0000b");
+
+	csr_clear(CSR_SSTATUS, SR_SUM);
+}
+
+void dma_usr_va_inv_range(void *user_addr, unsigned long len)
+{
+	unsigned long start = (unsigned long)user_addr;
+	unsigned long end = start + len;
+	register unsigned long i asm("a5") = start & ~(L1_CACHE_BYTES - 1);
+
+	csr_set(CSR_SSTATUS, SR_SUM);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile (".long 0x0267800b"); /* dcache.iva a5 */
+
+	asm volatile(".long 0x01b0000b");
+
+	csr_clear(CSR_SSTATUS, SR_SUM);
+}
+
+void dma_va_wb_range(void *kernel_addr, unsigned long len)
+{
+	unsigned long start = (unsigned long)kernel_addr;
+	unsigned long end = start + len;
+	register unsigned long i asm("a5") = start & ~(L1_CACHE_BYTES - 1);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile(".long 0x0257800b"); /* dcache.cva a5 */
+
+	asm volatile(".long 0x01b0000b");
+}
+
+void dma_va_inv_range(void *kernel_addr, unsigned long len)
+{
+	unsigned long start = (unsigned long)kernel_addr;
+	unsigned long end = start + len;
+	register unsigned long i asm("a5") = start & ~(L1_CACHE_BYTES - 1);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile (".long 0x0267800b"); /* dcache.iva a5 */
+
+	asm volatile(".long 0x01b0000b");
+}
+
+void dma_va_wbinv_range(void *kernel_addr, unsigned long len)
+{
+	unsigned long start = (unsigned long)kernel_addr;
+	unsigned long end = start + len;
+	register unsigned long i asm("a5") = start & ~(L1_CACHE_BYTES - 1);
+
+	for (; i < end; i += L1_CACHE_BYTES)
+		asm volatile (".long 0x0277800b"); /* dcache.civa a5 */
+
+	asm volatile(".long 0x01b0000b");
+}
+
+void dma_clean_dcache_all(void)
+{
+	asm volatile(".long 0x0010000b":::"memory") ;
+}
 #endif /* CONFIG_MMU */
 
 unsigned int riscv_cbom_block_size;

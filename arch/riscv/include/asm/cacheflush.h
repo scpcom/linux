@@ -86,6 +86,17 @@ static inline void flush_icache_range(unsigned long start, unsigned long end)
 	flush_icache_all();
 }
 
+#ifdef CONFIG_MMU
+void dma_wbinv_range(unsigned long start, unsigned long end);
+void dma_wb_range(unsigned long start, unsigned long end);
+void dma_usr_va_wb_range(void *user_addr, unsigned long len);
+void dma_usr_va_inv_range(void *user_addr, unsigned long len);
+void dma_va_wb_range(void *kernel_addr, unsigned long len);
+void dma_va_inv_range(void *kernel_addr, unsigned long len);
+void dma_va_wbinv_range(void *kernel_addr, unsigned long len);
+void dma_clean_dcache_all(void);
+#endif /* CONFIG_MMU */
+
 extern unsigned int riscv_cbom_block_size;
 extern unsigned int riscv_cboz_block_size;
 void riscv_init_cbo_blocksizes(void);
