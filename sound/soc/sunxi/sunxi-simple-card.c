@@ -885,7 +885,8 @@ static int asoc_simple_card_remove(struct platform_device *pdev)
 	/* asoc_simple_card_remove_jack(&priv->hp_jack); */
 	/* asoc_simple_card_remove_jack(&priv->mic_jack); */
 
-	return asoc_simple_clean_reference(card);
+	asoc_simple_clean_reference(card);
+	return 0;
 }
 
 static const struct of_device_id asoc_simple_of_match[] = {
