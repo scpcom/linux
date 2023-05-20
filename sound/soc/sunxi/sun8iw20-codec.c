@@ -2631,11 +2631,6 @@ static int  __exit sunxi_internal_codec_remove(struct platform_device *pdev)
 	if (sunxi_codec->rx_sync_en)
 		sunxi_rx_sync_remove(sunxi_codec->rx_sync_domain);
 
-	if (spk_cfg->used) {
-		devm_gpio_free(&pdev->dev,
-					sunxi_codec->spk_config.spk_gpio);
-	}
-
 	if (sunxi_codec->vol_supply.avcc) {
 		regulator_disable(sunxi_codec->vol_supply.avcc);
 		regulator_put(sunxi_codec->vol_supply.avcc);

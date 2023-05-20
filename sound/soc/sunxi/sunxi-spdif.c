@@ -1610,8 +1610,6 @@ static int __exit sunxi_spdif_dev_remove(struct platform_device *pdev)
 
 	snd_soc_unregister_component(&pdev->dev);
 
-	if (gpio_is_valid(pin_info->gpio_cfg.gpio))
-		devm_gpio_free(&pdev->dev, pin_info->gpio_cfg.gpio);
 	devm_pinctrl_put(pin_info->pinctrl);
 
 	clk_disable_unprepare(clk_info->clk_module);

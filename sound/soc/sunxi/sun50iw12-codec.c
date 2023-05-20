@@ -2655,11 +2655,6 @@ static int  __exit sunxi_internal_codec_remove(struct platform_device *pdev)
 	struct sunxi_codec_info *sunxi_codec = dev_get_drvdata(&pdev->dev);
 	struct codec_spk_config *spk_cfg = &(sunxi_codec->spk_cfg);
 
-	if (spk_cfg->spk_used) {
-		devm_gpio_free(&pdev->dev,
-					sunxi_codec->spk_cfg.spk_gpio);
-	}
-
 	if (sunxi_codec->vol_supply.avcc) {
 		regulator_disable(sunxi_codec->vol_supply.avcc);
 		regulator_put(sunxi_codec->vol_supply.avcc);
