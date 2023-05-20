@@ -16,6 +16,7 @@
  */
 #include "g2d_mixer.h"
 #include <linux/idr.h>
+#include <linux/version.h>
 
 static LIST_HEAD(g2d_task_list);
 static DEFINE_IDA(g2d_task_ida);
@@ -814,7 +815,9 @@ static __s32 g2d_mixer_rcq_debug(struct g2d_mixer_task *p_task)
 	__u32 frame_index = 0, size = 0, i = 0;
 	__s32 ret = -1;
 	struct file *pfile = NULL, *regblk_file = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t old_fs;
+#endif
 	ssize_t bw;
 	loff_t pos = 0;
 	char regblk_name[100];
@@ -822,10 +825,14 @@ static __s32 g2d_mixer_rcq_debug(struct g2d_mixer_task *p_task)
 	if (!p_task)
 		goto OUT;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pfile = filp_open("/tmp/g2d_rcq_header", O_RDWR | O_CREAT | O_EXCL, 0755);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(old_fs);
+#endif
 	if (IS_ERR(pfile)) {
 		G2D_ERR_MSG("%s, open /tmp/g2d_rcq_header err\n", __func__);
 		goto OUT;
@@ -841,11 +848,15 @@ static __s32 g2d_mixer_rcq_debug(struct g2d_mixer_task *p_task)
 			snprintf(regblk_name, 100,
 				 "/tmp/g2d_regblk_frame%d_0x%px", frame_index,
 				 reg_blk->reg_addr);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 			old_fs = get_fs();
 			set_fs(KERNEL_DS);
+#endif
 			regblk_file = filp_open(
 			    regblk_name, O_RDWR | O_CREAT | O_EXCL, 0755);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 			set_fs(old_fs);
+#endif
 			if (IS_ERR(regblk_file)) {
 				G2D_ERR_MSG("%s, open %s err\n", __func__,
 					    regblk_name);
