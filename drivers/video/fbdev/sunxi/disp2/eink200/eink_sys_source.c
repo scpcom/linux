@@ -857,7 +857,9 @@ void print_free_img_list(struct buf_manager *mgr)
 int save_as_bin_file(__u8 *buf, char *file_name, __u32 length, loff_t pos)
 {
 	struct file *fp = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t old_fs;
+#endif
 	ssize_t ret = 0;
 
 	if ((buf == NULL) || (file_name == NULL)) {
@@ -872,14 +874,18 @@ int save_as_bin_file(__u8 *buf, char *file_name, __u32 length, loff_t pos)
 		return -1;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	ret = vfs_write(fp, buf, length, &pos);
 	pr_info("%s: save %s done, len=%u, pos=%lld, ret=%d\n",
 					__func__, file_name, length, pos, (unsigned int)ret);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(old_fs);
+#endif
 	filp_close(fp, NULL);
 
 	return ret;
@@ -890,7 +896,9 @@ s32 save_gray_image_as_bmp(u8 *buf, char *file_name, u32 scn_w, u32 scn_h)
 {
 	int ret = -1;
 	ES_FILE *fd = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t old_fs;
+#endif
 	loff_t pos = 0;
 	BMP_FILE_HEADER st_file_header;
 	BMP_INFO_HEADER st_info_header;
@@ -949,8 +957,10 @@ s32 save_gray_image_as_bmp(u8 *buf, char *file_name, u32 scn_w, u32 scn_h)
 
 	dest_buf = (ST_RGB *)src_buf;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	ret = vfs_write(fd, (u8 *)(&st_file_header), BMP_FILE_HEADER_SIZE, &pos);
 	EINK_INFO_MSG("save file header, len=%u, pos=%d, ret=%d\n", (unsigned int)BMP_FILE_HEADER_SIZE, (int)pos, ret);
@@ -964,7 +974,9 @@ s32 save_gray_image_as_bmp(u8 *buf, char *file_name, u32 scn_w, u32 scn_h)
 	ret = vfs_write(fd, (u8 *)(dest_buf), dest_info.image_size, &pos);
 	EINK_INFO_MSG("save file header, len=%u, pos=%d, ret=%d\n", dest_info.image_size, (int)pos, ret);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(old_fs);
+#endif
 
 	ret = 0;
 
@@ -1061,8 +1073,10 @@ int eink_get_default_file_from_mem(__u8 *buf, char *file_name, __u32 length, lof
 				__func__, file_name, fp);
 		return -1;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	read_len = vfs_read(fp, buf, length, &pos);
 	if (read_len != length) {
@@ -1070,7 +1084,9 @@ int eink_get_default_file_from_mem(__u8 *buf, char *file_name, __u32 length, lof
 				read_len, length);
 		ret = -EAGAIN;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(fs);
+#endif
 	filp_close(fp, NULL);
 
 	return ret;

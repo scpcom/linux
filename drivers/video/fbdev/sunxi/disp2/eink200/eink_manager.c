@@ -56,7 +56,9 @@ static int eink_get_vcom_file(char *path, int *vcom)
 	char vcombuf[64] = {0};
 	__s32 file_len = 0;
 	__s32 read_len = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t fs;
+#endif
 	loff_t pos;
 	int nVcomVoltage = 0;
 	int ret = 0;
@@ -73,8 +75,10 @@ static int eink_get_vcom_file(char *path, int *vcom)
 	}
 
 	/* get vcom voltage */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pos = 0;
 	file_len = fp->f_path.dentry->d_inode->i_size;
 
@@ -96,7 +100,9 @@ static int eink_get_vcom_file(char *path, int *vcom)
 out:
 	if (fp) {
 		filp_close(fp, NULL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 		set_fs(fs);
+#endif
 	}
 	return ret;
 }

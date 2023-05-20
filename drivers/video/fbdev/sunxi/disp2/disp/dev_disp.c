@@ -999,7 +999,9 @@ static ssize_t disp_capture_dump_store(struct device *dev,
 {
 #ifndef MODULE
 	struct file *pfile;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t old_fs;
+#endif
 	ssize_t bw;
 	loff_t pos = 0;
 	dma_addr_t phy_addr = 0;
@@ -1029,10 +1031,15 @@ static ssize_t disp_capture_dump_store(struct device *dev,
 	strncpy(image_name, buf, count);
 	image_name[count - 1] = '\0';
 
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pfile = filp_open(image_name, O_RDWR | O_CREAT | O_EXCL, 0755);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(old_fs);
+#endif
 	if (IS_ERR(pfile)) {
 		__wrn("%s, open %s err\n", __func__, image_name);
 		goto FREE;

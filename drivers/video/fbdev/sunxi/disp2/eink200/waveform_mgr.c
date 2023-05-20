@@ -511,7 +511,9 @@ int init_waveform(const char *path, u32 bit_num)
 {
 	struct file *fp = NULL;
 	__s32 read_len = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t fs;
+#endif
 	loff_t pos;
 	u32 *pAddr = NULL;
 	__s32 ret = -EINVAL;
@@ -530,8 +532,10 @@ int init_waveform(const char *path, u32 bit_num)
 	}
 
 	memset(&g_waveform_file, 0, sizeof(g_waveform_file));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pos = 0;
 	file_len = fp->f_path.dentry->d_inode->i_size;
 
@@ -613,7 +617,9 @@ int init_waveform(const char *path, u32 bit_num)
 
 	if (fp) {
 		filp_close(fp, NULL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 		set_fs(fs);
+#endif
 	}
 
 	g_waveform_file.load_flag = 1;
@@ -638,7 +644,9 @@ error:
 
 	if (fp) {
 		filp_close(fp, NULL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 		set_fs(fs);
+#endif
 	}
 
 	return ret;

@@ -35,7 +35,9 @@ static int __save_buf2storg(__u8 *buf, char *file_name, __u32 length,
 			    loff_t pos)
 {
 	struct file *fp = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t old_fs;
+#endif
 	ssize_t ret = 0;
 
 	if ((buf == NULL) || (file_name == NULL)) {
@@ -50,14 +52,18 @@ static int __save_buf2storg(__u8 *buf, char *file_name, __u32 length,
 		return -1;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	ret = vfs_write(fp, buf, length, &pos);
 	__debug(KERN_ALERT "%s: save %s done, len=%d, pos=%lld, ret=%d\n",
 			__func__, file_name, length, pos, ret);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(old_fs);
+#endif
 	filp_close(fp, NULL);
 
 	return ret;
@@ -66,7 +72,9 @@ static int __save_buf2storg(__u8 *buf, char *file_name, __u32 length,
 int __put_gary2buf(__u8 *buf, char *file_name, __u32 length, loff_t pos)
 {
 	struct file *fp = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t fs;
+#endif
 	__s32 read_len = 0;
 	ssize_t ret = 0;
 
@@ -81,8 +89,10 @@ int __put_gary2buf(__u8 *buf, char *file_name, __u32 length, loff_t pos)
 						__func__, file_name, (u32)fp);
 		return -1;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	read_len = vfs_read(fp, buf, length, &pos);
 	if (read_len != length) {
@@ -90,7 +100,9 @@ int __put_gary2buf(__u8 *buf, char *file_name, __u32 length, loff_t pos)
 				read_len, length);
 		ret = -EAGAIN;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 		set_fs(fs);
+#endif
 		filp_close(fp, NULL);
 
 	return ret;
