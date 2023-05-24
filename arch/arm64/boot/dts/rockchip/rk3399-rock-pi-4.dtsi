@@ -214,7 +214,20 @@
 
 &gpu {
 	mali-supply = <&vdd_gpu>;
+	compatible = "arm,mali-midgard";
+	interrupt-names = "GPU", "JOB", "MMU";
+	clock-names = "clk_mali";
+	power-off-delay-ms = <200>;
 	status = "okay";
+};
+
+/* HACK: keep MALI version on linux */
+&gpu_power_model {
+	// for DDK r14.
+	voltage = <900>;
+	frequency = <500>;
+	static-power = <300>;
+	dynamic-power = <396>;
 };
 
 &hdmi {
