@@ -208,6 +208,42 @@
 	cpu-supply = <&vdd_cpu_b>;
 };
 
+&display_subsystem {
+	status = "okay";
+
+	ports = <&vopb_out>, <&vopl_out>;
+	logo-memory-region = <&drm_logo>;
+
+	route {
+		route_hdmi: route-hdmi {
+			status = "disabled";
+			logo,uboot = "logo.bmp";
+			logo,kernel = "logo_kernel.bmp";
+			logo,mode = "center";
+			charge_logo,mode = "center";
+			connect = <&vopb_out_hdmi>;
+		};
+
+		route_dsi: route-dsi {
+			status = "disabled";
+			logo,uboot = "logo.bmp";
+			logo,kernel = "logo_kernel.bmp";
+			logo,mode = "center";
+			charge_logo,mode = "center";
+			connect = <&vopl_out_mipi>;
+		};
+
+		route_edp: route-edp {
+			status = "disabled";
+			logo,uboot = "logo.bmp";
+			logo,kernel = "logo_kernel.bmp";
+			logo,mode = "center";
+			charge_logo,mode = "center";
+			connect = <&vopl_out_edp>;
+		};
+	};
+};
+
 &emmc_phy {
 	rockchip,enable-strobe-pulldown;
 	status = "okay";
@@ -253,6 +289,14 @@
 	ddc-i2c-bus = <&i2c3>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&hdmi_cec>;
+	status = "okay";
+};
+
+&hdmi_in_vopl {
+	status = "disabled";
+};
+
+&hdmi_in_vopb {
 	status = "okay";
 };
 
@@ -725,6 +769,14 @@
 
 &tcphy1 {
 	status = "okay";
+};
+
+&cdn_dp {
+	status = "disabled";
+};
+
+&dp_in_vopb {
+	status = "disabled";
 };
 
 &tsadc {
