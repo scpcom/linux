@@ -81,7 +81,7 @@ static inline void sun8i_pwm_writel(struct sun8i_pwm_chip *chip,
 	writel(val, chip->base + offset);
 }
 
-static void sun8i_pwm_get_state(struct pwm_chip *chip,
+static int sun8i_pwm_get_state(struct pwm_chip *chip,
 				 struct pwm_device *pwm,
 				 struct pwm_state *state)
 {
@@ -131,6 +131,8 @@ static void sun8i_pwm_get_state(struct pwm_chip *chip,
 				state->duty_cycle, state->period,
 				state->polarity ? "inversed":"normal",
 				state->enabled ? "true":"false");
+
+	return 0;
 }
 
 static void sun8i_pwm_set_polarity(struct pwm_chip *chip, struct pwm_device *pwm,
