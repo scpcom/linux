@@ -560,7 +560,8 @@
 		};
 
 		syscon: syscon@3000000 {
-			compatible = "allwinner,sun20i-d1-system-control";
+			compatible = "allwinner,sun20i-d1-system-control",
+				     "allwinner,sunxi-system-control";
 			reg = <0x3000000 0x1000>;
 			ranges;
 			#address-cells = <1>;
@@ -591,6 +592,27 @@
 				reg_ldob: ldob {
 				};
 			};
+
+			soc_ver {
+				offset = <0x24>;
+				mask = <0x7>;
+				shift = <0>;
+				ver_a = <0x18590000>;
+				ver_b = <0x18590002>;
+				ver_d = <0x18590003>;
+			};
+
+			soc_id {
+				offset = <0x200>;
+				mask = <0x1>;
+				shift = <22>;
+			};
+
+			soc_bin {
+				offset = <0x0>;
+				mask = <0x3ff>;
+				shift = <0x0>;
+			};
 		};
 
 		dma: dma-controller@3002000 {
@@ -606,10 +628,37 @@
 		};
 
 		sid: efuse@3006000 {
-			compatible = "allwinner,sun20i-d1-sid";
+			compatible = "allwinner,sun20i-d1-sid",
+				     "allwinner,sunxi-sid";
 			reg = <0x3006000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			chipid {
+				reg = <0x0 0>;
+				offset = <0x200>;
+				size = <0x10>;
+			};
+
+			oem {
+				reg = <0x0 0>;
+				offset = <0x238>;
+				size = <0x8>;
+			};
+
+			secure_status {
+				reg = <0x0 0>;
+				offset = <0x210>;
+				size = <0x4>;
+			};
+
+			speedbin_efuse: speedbin@0 {
+				reg = <0x00 2>;
+			};
+
+			cpubin_efuse: cpubin@28 {
+				reg = <0x28 2>;
+			};
 
 			ths_calib: ths-calib@14 {
 				reg = <0x14 0x4>;
@@ -622,7 +671,8 @@
 		};
 
 		crypto: crypto@3040000 {
-			compatible = "allwinner,sun20i-d1-crypto";
+			compatible = "allwinner,sun20i-d1-crypto",
+				     "allwinner,sunxi-ce";
 			reg = <0x3040000 0x800>;
 			interrupts = <SOC_PERIPHERAL_IRQ(52) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_CE>,
