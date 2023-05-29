@@ -48,6 +48,14 @@
 		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; /* PG12 */
 	};
 
+	addr_mgt: addr_mgt@0 {
+		compatible     = "allwinner,sunxi-addr_mgt";
+		type_addr_wifi = <0x0>;
+		type_addr_bt   = <0x0>;
+		type_addr_eth  = <0x0>;
+		status         = "okay";
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		power-supply = <&reg_vcc>;
