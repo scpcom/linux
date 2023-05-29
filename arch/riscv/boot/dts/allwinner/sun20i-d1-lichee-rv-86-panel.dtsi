@@ -56,6 +56,14 @@
 		pinctrl-0 = <&clk_pg11_pin>;
 		pinctrl-names = "default";
 	};
+
+	addr_mgt: addr_mgt@0 {
+		compatible     = "allwinner,sunxi-addr_mgt";
+		type_addr_wifi = <0x0>;
+		type_addr_bt   = <0x0>;
+		type_addr_eth  = <0x0>;
+		status         = "okay";
+	};
 };
 
 &codec {
