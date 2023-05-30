@@ -101,6 +101,7 @@ static int adapter_init_msgbuf(void)
 	}
 
 #if (ETF_QUEUEMODE)
+	spin_lock_init(&adapter_priv.recv_lock);
 	atomic_set(&adapter_priv.rx_cnt, 0);
 	INIT_LIST_HEAD(&adapter_priv.rx_queue);
 	INIT_LIST_HEAD(&adapter_priv.rx_pool);
