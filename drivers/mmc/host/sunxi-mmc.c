@@ -29,6 +29,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
@@ -301,6 +302,11 @@ struct sunxi_mmc_host {
 
 	/* timings */
 	bool		use_new_timings;
+
+	/* pinctrl handles */
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pins_default;
+	struct pinctrl_state *pins_sleep;
 };
 
 static int sunxi_mmc_reset_host(struct sunxi_mmc_host *host)
@@ -1225,6 +1231,17 @@ static int sunxi_mmc_enable(struct sunxi_mmc_host *host)
 {
 	int ret;
 
+	if (!IS_ERR(host->pins_default)) {
+		ret =
+		    pinctrl_select_state(host->pinctrl,
+					 host->pins_default);
+		if (ret) {
+			dev_err(mmc_dev(host->base.mmc),
+				"could not set default pins in resume\n");
+			return ret;
+		}
+	}
+
 	if (!IS_ERR(host->base.reset)) {
 		ret = reset_control_reset(host->base.reset);
 		if (ret) {
@@ -1284,6 +1301,8 @@ error_assert_reset:
 
 static void sunxi_mmc_disable(struct sunxi_mmc_host *host)
 {
+	int rval;
+
 	sunxi_mmc_reset_host(host);
 
 	clk_disable_unprepare(host->clk_sample);
@@ -1293,6 +1312,17 @@ static void sunxi_mmc_disable(struct sunxi_mmc_host *host)
 
 	if (!IS_ERR(host->base.reset))
 		reset_control_assert(host->base.reset);
+
+	if (!IS_ERR(host->pins_sleep)) {
+		rval =
+		    pinctrl_select_state(host->pinctrl,
+					 host->pins_sleep);
+		if (rval) {
+			dev_err(mmc_dev(host->base.mmc),
+				"could not set sleep pins\n");
+			return;
+		}
+	}
 }
 
 static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
@@ -1308,6 +1338,24 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
 	ret = mmc_regulator_get_supply(host->base.mmc);
 	if (ret)
 		return ret;
+
+	host->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(host->pinctrl)) {
+		dev_warn(&pdev->dev,
+			 "Could not get pinctrl,check if pin is needed\n");
+	}
+
+	host->pins_default = pinctrl_lookup_state(host->pinctrl,
+						  PINCTRL_STATE_DEFAULT);
+	if (IS_ERR(host->pins_default)) {
+		dev_warn(&pdev->dev,
+			 "could not get default pinstate,check if pin is needed\n");
+	}
+
+	host->pins_sleep = pinctrl_lookup_state(host->pinctrl,
+				PINCTRL_STATE_SLEEP);
+	if (IS_ERR(host->pins_sleep))
+		dev_warn(&pdev->dev, "Cann't get sleep pinstate,check if needed\n");
 
 	host->base.reg_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(host->base.reg_base))
