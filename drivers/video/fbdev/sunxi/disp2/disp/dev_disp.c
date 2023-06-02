@@ -4881,3 +4881,5 @@ MODULE_AUTHOR("tan");
 MODULE_DESCRIPTION("display driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:disp");
+MODULE_SOFTDEP("pre: memory_group_manager");
+MODULE_INFO(import_ns, "DMA_BUF");
