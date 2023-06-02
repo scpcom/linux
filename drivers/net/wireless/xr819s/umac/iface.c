@@ -284,7 +284,11 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	 * this interface, if it has the special null one.
 	 */
 	if (dev && is_zero_ether_addr(dev->dev_addr)) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+		dev_addr_mod(dev, 0,
+#else
 		memcpy(dev->dev_addr,
+#endif
 		       local->hw.wiphy->perm_addr,
 		       ETH_ALEN);
 		memcpy(dev->perm_addr, dev->dev_addr, ETH_ALEN);
@@ -1337,7 +1341,11 @@ int mac80211_if_add(struct ieee80211_local *local, const char *name,
 		}
 
 		ieee80211_assign_perm_addr(local, ndev->perm_addr, type);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+		dev_addr_mod(ndev, 0, ndev->perm_addr, ETH_ALEN);
+#else
 		memcpy(ndev->dev_addr, ndev->perm_addr, ETH_ALEN);
+#endif
 		SET_NETDEV_DEV(ndev, wiphy_dev(local->hw.wiphy));
 
 		/* don't use IEEE80211_DEV_TO_SUB_IF -- it checks too much */
