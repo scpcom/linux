@@ -1597,7 +1597,13 @@ static int rgb24_to_rgb32(const void *psrc, struct bmp_header *bmp_header,
 }
 #endif
 
+#ifndef MODULE
 #if defined(CONFIG_DECOMPRESS_LZMA)
+#define USE_DECOMPRESS_LZMA
+#endif
+#endif
+
+#if defined(USE_DECOMPRESS_LZMA)
 int lzma_decode(uintptr_t paddr, struct fb_info *info)
 {
 	void *vaddr = NULL;
@@ -1834,7 +1840,7 @@ static int Fb_map_kernel_logo(u32 sel, struct fb_info *info)
 	if ((bmp_header->signature[0] != 'B')
 	    || (bmp_header->signature[1] != 'M')) {
 		Fb_unmap_kernel(vaddr);
-#if defined(CONFIG_DECOMPRESS_LZMA)
+#if defined(USE_DECOMPRESS_LZMA)
 		return lzma_decode(paddr, info);
 #else
 		__wrn("this is not a bmp picture.\n");
