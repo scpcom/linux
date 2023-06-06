@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 // Copyright (C) 2021-2022 Samuel Holland <samuel@sholland.org>
 
+/memreserve/ 0x41fc0000 0x020000;  /* opensbi */
+
 #include <dt-bindings/clock/sun6i-rtc.h>
 #include <dt-bindings/clock/sun8i-de2.h>
 #include <dt-bindings/clock/sun8i-tcon-top.h>
@@ -16,6 +18,11 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
+	chosen {
+		linux,initrd-start = <0x42000000>;
+		linux,initrd-end   = <0x43000000>;
+	};
+
 	dcxo: dcxo-clk {
 		compatible = "fixed-clock";
 		clock-output-names = "dcxo";
@@ -26,6 +33,18 @@
 		compatible = "allwinner,sun20i-d1-display-engine";
 		allwinner,pipelines = <&mixer0>, <&mixer1>;
 		status = "disabled";
+	};
+
+	dram: dram {
+		device_type = "dram";
+		compatible = "allwinner,dram";
+		clocks = <&ccu CLK_PLL_DDR0>;
+		clock-names = "pll_ddr";
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x40000000 0x8000000>;
 	};
 
 	thermal-zones {
