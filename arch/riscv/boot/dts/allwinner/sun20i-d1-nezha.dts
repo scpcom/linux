@@ -74,6 +74,11 @@
 		regulator-max-microvolt = <1160000>;
 	};
 
+	soc {
+		/delete-node/ mixer0;
+		/delete-node/ mixer@5100000;
+	};
+
 /*
 	wifi_pwrseq: wifi-pwrseq {
 		compatible = "mmc-pwrseq-simple";
@@ -159,6 +164,7 @@
 
 &de {
 	status = "okay";
+	allwinner,pipelines = <&mixer1>;
 };
 
 &ehci0 {
@@ -246,6 +252,60 @@
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <1>;
 	};
+};
+
+&mixer1 {
+	status = "okay";
+};
+
+&tcon_lcd0 {
+	status = "disabled";
+};
+
+&dsi {
+	/delete-node/ port;
+/*
+	/delete-node/ dsi_in_tcon_lcd0;
+	/delete-node/ endpoint;
+*/
+};
+
+&tcon_top {
+	ports {
+		/delete-node/ tcon_top_mixer0_in;
+		/delete-node/ tcon_top_mixer0_out;
+		/delete-node/ port@0;
+		/delete-node/ port@1;
+	};
+};
+
+&tcon_top_mixer1_out {
+	/delete-node/ tcon_top_mixer1_out_tcon_lcd0;
+	/delete-node/ endpoint@0;
+};
+
+&tcon_lcd0 {
+	/delete-node/ tcon_lcd0_in;
+	/delete-node/ tcon_lcd0_out;
+	/delete-node/ endpoint@0;
+	/delete-node/ endpoint@1;
+};
+
+&tcon_lcd0_in {
+	/delete-node/ tcon_lcd0_in_tcon_top_mixer0;
+	/delete-node/ endpoint@0;
+	/delete-node/ tcon_lcd0_in_tcon_top_mixer1;
+	/delete-node/ endpoint@1;
+};
+
+&tcon_tv0_in {
+	/delete-node/ tcon_tv0_in_tcon_top_mixer0;
+	/delete-node/ endpoint@0;
+};
+
+&tcon_lcd0_out {
+	/delete-node/ tcon_lcd0_out_dsi;
+	/delete-node/ endpoint@1;
 };
 
 &mmc0 {
