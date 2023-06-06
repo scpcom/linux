@@ -114,6 +114,8 @@ struct sun50i_iommu {
 
 	struct iommu_domain *domain;
 	struct kmem_cache *pt_pool;
+
+	u32 bypass;
 };
 
 struct sun50i_iommu_domain {
@@ -128,6 +130,22 @@ struct sun50i_iommu_domain {
 
 	struct sun50i_iommu *iommu;
 };
+
+struct sunxi_iommu_owner {
+	unsigned int tlbid;
+	bool flag;
+	struct sunxi_iommu_dev *data;
+	struct device *dev;
+	//struct dma_iommu_mapping *mapping;
+};
+
+#if defined(CONFIG_ARCH_SUN8IW15) || defined(CONFIG_ARCH_SUN50IW9) \
+	|| defined(CONFIG_ARCH_SUN8IW19) || defined(CONFIG_ARCH_SUN50IW10) \
+	|| defined(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN50IW12) \
+	|| defined(CONFIG_ARCH_SUN20IW1)
+#define DEFAULT_BYPASS_VALUE     0x7f
+static const u32 master_id_bitmap[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40};
+#endif
 
 static struct sun50i_iommu_domain *to_sun50i_domain(struct iommu_domain *domain)
 {
@@ -463,7 +481,7 @@ static void sun50i_iommu_iotlb_sync(struct iommu_domain *domain,
 	sun50i_iommu_flush_iotlb_all(domain);
 }
 
-static int sun50i_iommu_enable(struct sun50i_iommu *iommu)
+static int sun50i_iommu_enable(struct sun50i_iommu *iommu, struct sunxi_iommu_owner *owner)
 {
 	struct sun50i_iommu_domain *sun50i_domain;
 	unsigned long flags;
@@ -484,7 +502,21 @@ static int sun50i_iommu_enable(struct sun50i_iommu *iommu)
 
 	spin_lock_irqsave(&iommu->iommu_lock, flags);
 
-	iommu_write(iommu, IOMMU_BYPASS_REG, 0);
+	if (owner) {
+		unsigned int master_id = owner->tlbid;
+		bool flag = owner->flag;
+		dev_info(owner->dev, "%s: tlbid: %d, flag: %d\n", __func__, master_id, flag ? 1 : 0);
+		if (flag)
+			iommu->bypass &= ~(master_id_bitmap[master_id]);
+		else
+			iommu->bypass |= master_id_bitmap[master_id];
+		iommu_write(iommu, IOMMU_BYPASS_REG, iommu->bypass);
+	}
+	else
+	{
+		dev_info(iommu->dev, "%s: no owner\n", __func__);
+		iommu_write(iommu, IOMMU_BYPASS_REG, 0);
+	}
 
 	iommu_write(iommu, IOMMU_TTB_REG, sun50i_domain->dt_dma);
 	iommu_write(iommu, IOMMU_TLB_PREFETCH_REG,
@@ -548,11 +580,24 @@ err_reset_assert:
 	return ret;
 }
 
-static void sun50i_iommu_disable(struct sun50i_iommu *iommu)
+static void sun50i_iommu_disable(struct sun50i_iommu *iommu, struct sunxi_iommu_owner *owner)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&iommu->iommu_lock, flags);
+
+	if (owner) {
+		unsigned int master_id = owner->tlbid;
+		bool flag = owner->flag;
+		dev_info(owner->dev, "%s: tlbid: %d, flag: %d\n", __func__, master_id, flag ? 1 : 0);
+		if (flag)
+			iommu->bypass &= ~(master_id_bitmap[master_id]);
+		else
+			iommu->bypass |= master_id_bitmap[master_id];
+		iommu_write(iommu, IOMMU_BYPASS_REG, iommu->bypass);
+	} else {
+		dev_info(iommu->dev, "%s: no owner\n", __func__);
+	}
 
 	iommu_write(iommu, IOMMU_ENABLE_REG, 0);
 	iommu_write(iommu, IOMMU_TTB_REG, 0);
@@ -762,7 +807,8 @@ static void sun50i_iommu_domain_free(struct iommu_domain *domain)
 }
 
 static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
-				      struct sun50i_iommu_domain *sun50i_domain)
+				      struct sun50i_iommu_domain *sun50i_domain,
+				      struct sunxi_iommu_owner *owner)
 {
 	iommu->domain = &sun50i_domain->domain;
 	sun50i_domain->iommu = iommu;
@@ -774,11 +820,12 @@ static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
 		return -ENOMEM;
 	}
 
-	return sun50i_iommu_enable(iommu);
+	return sun50i_iommu_enable(iommu, owner);
 }
 
 static void sun50i_iommu_detach_domain(struct sun50i_iommu *iommu,
-				       struct sun50i_iommu_domain *sun50i_domain)
+				       struct sun50i_iommu_domain *sun50i_domain,
+				       struct sunxi_iommu_owner *owner)
 {
 	unsigned int i;
 
@@ -802,7 +849,7 @@ static void sun50i_iommu_detach_domain(struct sun50i_iommu *iommu,
 	}
 
 
-	sun50i_iommu_disable(iommu);
+	sun50i_iommu_disable(iommu, owner);
 
 	dma_unmap_single(iommu->dev, virt_to_phys(sun50i_domain->dt),
 			 DT_SIZE, DMA_TO_DEVICE);
@@ -815,6 +862,7 @@ static int sun50i_iommu_identity_attach(struct iommu_domain *identity_domain,
 {
 	struct sun50i_iommu *iommu = dev_iommu_priv_get(dev);
 	struct sun50i_iommu_domain *sun50i_domain;
+	struct sunxi_iommu_owner *owner = dev->archdata.iommu;
 
 	dev_dbg(dev, "Detaching from IOMMU domain\n");
 
@@ -822,8 +870,16 @@ static int sun50i_iommu_identity_attach(struct iommu_domain *identity_domain,
 		return 0;
 
 	sun50i_domain = to_sun50i_domain(iommu->domain);
-	if (refcount_dec_and_test(&sun50i_domain->refcnt))
-		sun50i_iommu_detach_domain(iommu, sun50i_domain);
+	if (refcount_dec_and_test(&sun50i_domain->refcnt)) {
+		if (owner)
+			owner->flag = false;
+
+		sun50i_iommu_detach_domain(iommu, sun50i_domain, owner);
+
+		if (owner)
+			kfree(owner);
+		dev->archdata.iommu = NULL;
+	}
 	return 0;
 }
 
@@ -841,6 +897,7 @@ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
 {
 	struct sun50i_iommu_domain *sun50i_domain = to_sun50i_domain(domain);
 	struct sun50i_iommu *iommu;
+	struct sunxi_iommu_owner *owner = dev->archdata.iommu;
 
 	iommu = sun50i_iommu_from_dev(dev);
 	if (!iommu)
@@ -855,7 +912,7 @@ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
 
 	sun50i_iommu_identity_attach(&sun50i_iommu_identity_domain, dev);
 
-	sun50i_iommu_attach_domain(iommu, sun50i_domain);
+	sun50i_iommu_attach_domain(iommu, sun50i_domain, owner);
 
 	return 0;
 }
@@ -874,10 +931,26 @@ static struct iommu_device *sun50i_iommu_probe_device(struct device *dev)
 static int sun50i_iommu_of_xlate(struct device *dev,
 				 const struct of_phandle_args *args)
 {
+	struct sunxi_iommu_owner *owner = dev->archdata.iommu;
 	struct platform_device *iommu_pdev = of_find_device_by_node(args->np);
+	struct sunxi_iommu_dev *data;
 	unsigned id = args->args[0];
 
-	dev_iommu_priv_set(dev, platform_get_drvdata(iommu_pdev));
+	data = platform_get_drvdata(iommu_pdev);
+
+	if (!owner) {
+		dev_info(dev, "%s: tlbid: %d, args_count: %d\n", __func__, args->args[0], args->args_count);
+		owner = kzalloc(sizeof(*owner), GFP_KERNEL);
+		if (!owner)
+			return -ENOMEM;
+		owner->tlbid = args->args[0];
+		owner->flag = (args->args_count > 1) ? args->args[1] : 1;
+		owner->data = data;
+		owner->dev = dev;
+		dev->archdata.iommu = owner;
+	}
+
+	dev_iommu_priv_set(dev, data);
 
 	put_device(&iommu_pdev->dev);
 
@@ -1068,6 +1141,8 @@ static int sun50i_iommu_probe(struct platform_device *pdev)
 		ret = PTR_ERR(iommu->base);
 		goto err_free_cache;
 	}
+
+	iommu->bypass = DEFAULT_BYPASS_VALUE;
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
