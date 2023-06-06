@@ -149,6 +149,42 @@ static void iommu_write(struct sun50i_iommu *iommu, u32 offset, u32 value)
 	writel(value, iommu->base + offset);
 }
 
+#if !IS_ENABLED(CONFIG_SUNXI_IOMMU)
+static struct sun50i_iommu *global_iommu_dev;
+
+void sunxi_reset_device_iommu(unsigned int master_id)
+{
+	unsigned int regval;
+	struct sun50i_iommu *iommu = global_iommu_dev;
+
+	if (!iommu)
+		return;
+
+	regval = iommu_read(iommu, IOMMU_RESET_REG);
+	iommu_write(iommu, IOMMU_RESET_REG, regval & (~(1 << master_id)));
+	regval = iommu_read(iommu, IOMMU_RESET_REG);
+	if (!(regval & ((1 << master_id)))) {
+		iommu_write(iommu, IOMMU_RESET_REG, regval | ((1 << master_id)));
+	}
+}
+EXPORT_SYMBOL(sunxi_reset_device_iommu);
+
+void sunxi_enable_device_iommu(unsigned int master_id, bool flag)
+{
+	struct sun50i_iommu *iommu = global_iommu_dev;
+	unsigned long mflag;
+
+	spin_lock_irqsave(&iommu->iommu_lock, mflag);
+	if (flag)
+		iommu->bypass &= ~(master_id_bitmap[master_id]);
+	else
+		iommu->bypass |= master_id_bitmap[master_id];
+	iommu_write(iommu, IOMMU_BYPASS_REG, iommu->bypass);
+	spin_unlock_irqrestore(&iommu->iommu_lock, mflag);
+}
+EXPORT_SYMBOL(sunxi_enable_device_iommu);
+#endif
+
 /*
  * The Allwinner H6 IOMMU uses a 2-level page table.
  *
@@ -1016,6 +1052,9 @@ static int sun50i_iommu_probe(struct platform_device *pdev)
 	iommu->domain = &sun50i_iommu_identity_domain;
 	platform_set_drvdata(pdev, iommu);
 	iommu->dev = &pdev->dev;
+#if !IS_ENABLED(CONFIG_SUNXI_IOMMU)
+	global_iommu_dev = iommu;
+#endif
 
 	iommu->pt_pool = kmem_cache_create(dev_name(&pdev->dev),
 					   PT_SIZE, PT_SIZE,
@@ -1090,6 +1129,9 @@ static const struct of_device_id sun50i_iommu_dt[] = {
 	{ .compatible = "allwinner,sun20i-d1-iommu", .data = &sun20i_d1_iommu },
 	{ .compatible = "allwinner,sun50i-h6-iommu", .data = &sun50i_h6_iommu },
 	{ .compatible = "allwinner,sun50i-h616-iommu", .data = &sun50i_h6_iommu },
+#if !IS_ENABLED(CONFIG_SUNXI_IOMMU)
+	{ .compatible = "allwinner,sunxi-iommu", .data = &sun20i_d1_iommu },
+#endif
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, sun50i_iommu_dt);
