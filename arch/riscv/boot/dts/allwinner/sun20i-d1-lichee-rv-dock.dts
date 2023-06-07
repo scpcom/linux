@@ -166,6 +166,8 @@
 		reg = <0x0>;
 		color = <LED_COLOR_ID_RGB>;
 		function = LED_FUNCTION_STATUS;
+		allwinner,multi_intensity = <0 255 0>;
+		linux,default-trigger = "mmc0";
 	};
 };
 
