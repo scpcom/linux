@@ -504,6 +504,8 @@ static int sun50i_a100_ledc_probe(struct platform_device *pdev)
 	led = priv->leds;
 	device_for_each_child_node(dev, child) {
 		struct led_classdev *cdev;
+		u32 intensity_value[3];
+		int num_intensity, i;
 
 		/* The node was already validated above. */
 		fwnode_property_read_u32(child, "reg", &led->addr);
@@ -518,11 +520,23 @@ static int sun50i_a100_ledc_probe(struct platform_device *pdev)
 		led->mc_cdev.num_colors = ARRAY_SIZE(led->subled_info);
 		led->mc_cdev.subled_info = led->subled_info;
 
+		num_intensity = of_property_read_variable_u32_array(child,
+						       "allwinner,multi_intensity",
+						       intensity_value,
+						       ARRAY_SIZE(intensity_value), 0);
+
+		if (num_intensity == led->mc_cdev.num_colors)
+			for (i = 0; i < led->mc_cdev.num_colors; i++)
+				led->mc_cdev.subled_info[i].intensity = intensity_value[i];
+
 		cdev = &led->mc_cdev.led_cdev;
 		cdev->max_brightness = U8_MAX;
 		cdev->brightness_set = sun50i_a100_ledc_brightness_set;
 
 		init_data.fwnode = child;
+
+		fwnode_property_read_string(init_data.fwnode, "linux,default-trigger",
+					    &cdev->default_trigger);
 
 		ret = led_classdev_multicolor_register_ext(dev, &led->mc_cdev, &init_data);
 		if (ret) {
