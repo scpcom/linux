@@ -8,6 +8,7 @@
 /dts-v1/;
 #include <dt-bindings/leds/common.h>
 #include "rk3399-t.dtsi"
+#include "rk3399-vop-clk-set.dtsi"
 
 / {
 	model = "Radxa ROCK 4C+";
@@ -878,7 +879,7 @@
 &vopb {
 	status = "okay";
 	assigned-clocks = <&cru DCLK_VOP0_DIV>;
-	assigned-clock-parents = <&cru PLL_CPLL>;
+	assigned-clock-parents = <&cru PLL_VPLL>;
 };
 
 &vopb_mmu {
@@ -888,7 +889,7 @@
 &vopl {
 	status = "okay";
 	assigned-clocks = <&cru DCLK_VOP1_DIV>;
-	assigned-clock-parents = <&cru PLL_VPLL>;
+	assigned-clock-parents = <&cru PLL_CPLL>;
 };
 
 &vopl_mmu {
