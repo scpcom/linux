@@ -208,6 +208,18 @@
 	cpu-supply = <&vdd_cpu_b>;
 };
 
+&cpu_alert0 {
+	temperature = <85000>;
+};
+
+&cpu_alert1 {
+	temperature = <100000>;
+};
+
+&cpu_crit {
+	temperature = <105000>;
+};
+
 &display_subsystem {
 	status = "okay";
 
@@ -786,6 +798,7 @@
 	rockchip,hw-tshut-mode = <1>;
 	/* tshut polarity 0:LOW 1:HIGH */
 	rockchip,hw-tshut-polarity = <1>;
+	rockchip,hw-tshut-temp = <110000>;
 };
 
 &u2phy0 {
