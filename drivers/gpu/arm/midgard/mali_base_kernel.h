@@ -64,7 +64,7 @@ typedef struct base_mem_handle {
  * we decide to make the number of semaphores a configurable
  * option.
  */
-#define BASE_JD_ATOM_COUNT              256
+#define BASE_JD_ATOM_COUNT              512
 
 #define BASEP_JD_SEM_PER_WORD_LOG2      5
 #define BASEP_JD_SEM_PER_WORD           (1 << BASEP_JD_SEM_PER_WORD_LOG2)
@@ -831,10 +831,17 @@ enum kbase_jd_atom_state {
 	KBASE_JD_ATOM_STATE_COMPLETED
 };
 
-typedef u8 base_atom_id; /**< Type big enough to store an atom number in */
+typedef u16 base_atom_id; /**< Type big enough to store an atom number in */
 
 struct base_dependency {
 	base_atom_id  atom_id;               /**< An atom number */
+	base_jd_dep_type dependency_type;    /**< Dependency type */
+};
+
+typedef u8 base_atom_id_u8; /**< Type big enough to store an atom number in */
+
+struct base_dependency_u8 {
+	base_atom_id_u8  atom_id;               /**< An atom number */
 	base_jd_dep_type dependency_type;    /**< Dependency type */
 };
 
@@ -860,6 +867,21 @@ typedef struct base_jd_atom_v2 {
 	base_jd_core_req core_req;          /**< core requirements */
 } base_jd_atom_v2;
 
+typedef struct base_jd_atom_v2_u8 {
+	u64 jc;			    /**< job-chain GPU address */
+	struct base_jd_udata udata;		    /**< user data */
+	kbase_pointer extres_list;	    /**< list of external resources */
+	u16 nr_extres;			    /**< nr of external resources */
+	u16 compat_core_req;	            /**< core requirements which correspond to the legacy support for UK 10.2 */
+	struct base_dependency_u8 pre_dep[2];  /**< pre-dependencies, one need to use SETTER function to assign this field,
+	this is done in order to reduce possibility of improper assigment of a dependency field */
+	base_atom_id_u8 atom_number;	    /**< unique number to identify the atom */
+	base_jd_prio prio;                  /**< Atom priority. Refer to @ref base_jd_prio for more details */
+	u8 device_nr;			    /**< coregroup when BASE_JD_REQ_SPECIFIC_COHERENT_GROUP specified */
+	u8 padding[1];
+	base_jd_core_req core_req;          /**< core requirements */
+} base_jd_atom_v2_u8;
+
 #ifdef BASE_LEGACY_UK6_SUPPORT
 struct base_jd_atom_v2_uk6 {
 	u64 jc;			    /**< job-chain GPU address */
@@ -869,6 +891,19 @@ struct base_jd_atom_v2_uk6 {
 	u16 core_req;                       /**< core requirements */
 	base_atom_id pre_dep[2]; /**< pre-dependencies */
 	base_atom_id atom_number;	    /**< unique number to identify the atom */
+	base_jd_prio prio;		    /**< priority - smaller is higher priority */
+	u8 device_nr;			    /**< coregroup when BASE_JD_REQ_SPECIFIC_COHERENT_GROUP specified */
+	u8 padding[7];
+};
+
+struct base_jd_atom_v2_uk6_u8 {
+	u64 jc;			    /**< job-chain GPU address */
+	struct base_jd_udata udata;		    /**< user data */
+	kbase_pointer extres_list;	    /**< list of external resources */
+	u16 nr_extres;			    /**< nr of external resources */
+	u16 core_req;                       /**< core requirements */
+	base_atom_id_u8 pre_dep[2]; /**< pre-dependencies */
+	base_atom_id_u8 atom_number;	    /**< unique number to identify the atom */
 	base_jd_prio prio;		    /**< priority - smaller is higher priority */
 	u8 device_nr;			    /**< coregroup when BASE_JD_REQ_SPECIFIC_COHERENT_GROUP specified */
 	u8 padding[7];

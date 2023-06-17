@@ -1283,6 +1283,200 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 	return ret;
 }
 
+static int kbase_jd_submit_u8(struct kbase_context *kctx,
+		void __user *user_addr, u32 nr_atoms, u32 stride,
+		bool uk6_atom)
+{
+	struct kbase_jd_context *jctx = &kctx->jctx;
+	int err = 0;
+	int i;
+	bool need_to_try_schedule_context = false;
+	struct kbase_device *kbdev;
+	u32 latest_flush;
+
+	/*
+	 * kbase_jd_submit isn't expected to fail and so all errors with the
+	 * jobs are reported by immediately failing them (through event system)
+	 */
+	kbdev = kctx->kbdev;
+
+	beenthere(kctx, "%s", "Enter");
+
+	if (kbase_ctx_flag(kctx, KCTX_SUBMIT_DISABLED)) {
+		dev_err(kbdev->dev, "Attempt to submit to a context that has SUBMIT_DISABLED set on it");
+		return -EINVAL;
+	}
+
+	if (stride != sizeof(base_jd_atom_v2_u8)) {
+		dev_err(kbdev->dev, "Stride passed to job_submit doesn't match kernel");
+		return -EINVAL;
+	}
+
+	KBASE_TIMELINE_ATOMS_IN_FLIGHT(kctx, atomic_add_return(nr_atoms,
+				&kctx->timeline.jd_atoms_in_flight));
+
+	/* All atoms submitted in this call have the same flush ID */
+	latest_flush = kbase_backend_get_current_flush_id(kbdev);
+
+	for (i = 0; i < nr_atoms; i++) {
+		struct base_jd_atom_v2 user_atom;
+		struct kbase_jd_atom *katom;
+
+#ifdef BASE_LEGACY_UK6_SUPPORT
+		BUILD_BUG_ON(sizeof(struct base_jd_atom_v2_uk6_u8) !=
+				sizeof(base_jd_atom_v2_u8));
+
+		if (uk6_atom) {
+			struct base_jd_atom_v2_uk6_u8 user_atom_v6;
+			base_jd_dep_type dep_types[2] = {BASE_JD_DEP_TYPE_DATA, BASE_JD_DEP_TYPE_DATA};
+
+			if (copy_from_user(&user_atom_v6, user_addr,
+					sizeof(user_atom_v6))) {
+				err = -EINVAL;
+				KBASE_TIMELINE_ATOMS_IN_FLIGHT(kctx,
+					atomic_sub_return(
+					nr_atoms - i,
+					&kctx->timeline.jd_atoms_in_flight));
+				break;
+			}
+			/* Convert from UK6 atom format to UK7 format */
+			user_atom.jc = user_atom_v6.jc;
+			user_atom.udata = user_atom_v6.udata;
+			user_atom.extres_list = user_atom_v6.extres_list;
+			user_atom.nr_extres = user_atom_v6.nr_extres;
+			user_atom.core_req = (u32)(user_atom_v6.core_req & 0x7fff);
+
+			/* atom number 0 is used for no dependency atoms */
+			if (!user_atom_v6.pre_dep[0])
+				dep_types[0] = BASE_JD_DEP_TYPE_INVALID;
+
+			base_jd_atom_dep_set(&user_atom.pre_dep[0],
+					user_atom_v6.pre_dep[0],
+					dep_types[0]);
+
+			/* atom number 0 is used for no dependency atoms */
+			if (!user_atom_v6.pre_dep[1])
+				dep_types[1] = BASE_JD_DEP_TYPE_INVALID;
+
+			base_jd_atom_dep_set(&user_atom.pre_dep[1],
+					user_atom_v6.pre_dep[1],
+					dep_types[1]);
+
+			user_atom.atom_number = user_atom_v6.atom_number;
+			user_atom.prio = user_atom_v6.prio;
+			user_atom.device_nr = user_atom_v6.device_nr;
+		} else {
+#endif /* BASE_LEGACY_UK6_SUPPORT */
+			struct base_jd_atom_v2_u8 user_atom_u8;
+
+			if (copy_from_user(&user_atom_u8, user_addr,
+						sizeof(user_atom_u8)) != 0) {
+				err = -EINVAL;
+				KBASE_TIMELINE_ATOMS_IN_FLIGHT(kctx,
+					atomic_sub_return(nr_atoms - i,
+					&kctx->timeline.jd_atoms_in_flight));
+				break;
+			}
+			/* Convert from U16 atom format to U8 format */
+			user_atom.jc = user_atom_u8.jc;
+			user_atom.udata = user_atom_u8.udata;
+			user_atom.extres_list = user_atom_u8.extres_list;
+			user_atom.nr_extres = user_atom_u8.nr_extres;
+			user_atom.compat_core_req = user_atom_u8.compat_core_req;
+			user_atom.core_req = user_atom_u8.core_req;
+
+			user_atom.pre_dep[0].atom_id = user_atom_u8.pre_dep[0].atom_id;
+			user_atom.pre_dep[0].dependency_type = user_atom_u8.pre_dep[0].dependency_type;
+
+			user_atom.pre_dep[1].atom_id = user_atom_u8.pre_dep[1].atom_id;
+			user_atom.pre_dep[1].dependency_type = user_atom_u8.pre_dep[1].dependency_type;
+
+			user_atom.atom_number = user_atom_u8.atom_number;
+			user_atom.prio = user_atom_u8.prio;
+			user_atom.device_nr = user_atom_u8.device_nr;
+#ifdef BASE_LEGACY_UK6_SUPPORT
+		}
+#endif
+
+#ifdef BASE_LEGACY_UK10_2_SUPPORT
+		if (KBASE_API_VERSION(10, 3) > kctx->api_version)
+			user_atom.core_req = (u32)(user_atom.compat_core_req
+					      & 0x7fff);
+#endif /* BASE_LEGACY_UK10_2_SUPPORT */
+
+		user_addr = (void __user *)((uintptr_t) user_addr + stride);
+
+		mutex_lock(&jctx->lock);
+#ifndef compiletime_assert
+#define compiletime_assert_defined
+#define compiletime_assert(x, msg) do { switch (0) { case 0: case (x):; } } \
+while (false)
+#endif
+		compiletime_assert((1 << (8*sizeof(user_atom.atom_number))) >=
+					BASE_JD_ATOM_COUNT,
+			"BASE_JD_ATOM_COUNT and base_atom_id_u8 type out of sync");
+		compiletime_assert(sizeof(user_atom.pre_dep[0].atom_id) ==
+					sizeof(user_atom.atom_number),
+			"BASE_JD_ATOM_COUNT and base_atom_id_u8 type out of sync");
+#ifdef compiletime_assert_defined
+#undef compiletime_assert
+#undef compiletime_assert_defined
+#endif
+		if (user_atom.atom_number >= BASE_JD_ATOM_COUNT) {
+			err = -EINVAL;
+			break;
+		}
+		user_atom.atom_number =
+			array_index_nospec(user_atom.atom_number,
+					   BASE_JD_ATOM_COUNT);
+		katom = &jctx->atoms[user_atom.atom_number];
+
+		/* Record the flush ID for the cache flush optimisation */
+		katom->flush_id = latest_flush;
+
+		while (katom->status != KBASE_JD_ATOM_STATE_UNUSED) {
+			/* Atom number is already in use, wait for the atom to
+			 * complete
+			 */
+			mutex_unlock(&jctx->lock);
+
+			/* This thread will wait for the atom to complete. Due
+			 * to thread scheduling we are not sure that the other
+			 * thread that owns the atom will also schedule the
+			 * context, so we force the scheduler to be active and
+			 * hence eventually schedule this context at some point
+			 * later.
+			 */
+			kbase_js_sched_all(kbdev);
+
+			if (wait_event_killable(katom->completed,
+					katom->status ==
+					KBASE_JD_ATOM_STATE_UNUSED) != 0) {
+				/* We're being killed so the result code
+				 * doesn't really matter
+				 */
+				return 0;
+			}
+			mutex_lock(&jctx->lock);
+		}
+
+		need_to_try_schedule_context |=
+				       jd_submit_atom(kctx, &user_atom, katom);
+
+		/* Register a completed job as a disjoint event when the GPU is in a disjoint state
+		 * (ie. being reset or replaying jobs).
+		 */
+		kbase_disjoint_event_potential(kbdev);
+
+		mutex_unlock(&jctx->lock);
+	}
+
+	if (need_to_try_schedule_context)
+		kbase_js_sched_all(kbdev);
+
+	return err;
+}
+
 int kbase_jd_submit(struct kbase_context *kctx,
 		void __user *user_addr, u32 nr_atoms, u32 stride,
 		bool uk6_atom)
@@ -1293,6 +1487,9 @@ int kbase_jd_submit(struct kbase_context *kctx,
 	bool need_to_try_schedule_context = false;
 	struct kbase_device *kbdev;
 	u32 latest_flush;
+
+	if (stride == sizeof(base_jd_atom_v2_u8))
+		return kbase_jd_submit_u8(kctx, user_addr, nr_atoms, stride, uk6_atom);
 
 	/*
 	 * kbase_jd_submit isn't expected to fail and so all errors with the
