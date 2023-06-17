@@ -22,8 +22,16 @@
 
 #include <linux/compiler.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
 #ifdef CONFIG_ARM64
+/* __asmeq is not available on Kernel versions >= 4.20 */
+#ifndef __asmeq
+/*
+ * This is used to ensure the compiler did actually allocate the register we
+ * asked it for some inline assembly sequences.  Apparently we can't trust the
+ * compiler from one version to another so a bit of paranoia won't hurt.  This
+ * string is meant to be concatenated with the inline asm string and will
+ * cause compilation to stop on mismatch.  (for details, see gcc PR 15089)
+ */
 #define __asmeq(x, y)  ".ifnc " x "," y " ; .err ; .endif\n\t"
 #endif
 #endif

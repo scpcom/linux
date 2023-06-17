@@ -867,7 +867,7 @@ static int kbase_mem_copy_from_extres(struct kbase_context *kctx,
 			void *extres_page = dma_buf_kmap(dma_buf, i);
 #endif
 
-			if (extres_page) {
+			if (extres_page)
 				kbase_mem_copy_from_extres_page(kctx,
 						extres_page, pages,
 						buf_data->nr_pages,
@@ -875,13 +875,10 @@ static int kbase_mem_copy_from_extres(struct kbase_context *kctx,
 						offset, &to_copy);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-				kunmap(pg);
+			kunmap(pg);
 #else
-				dma_buf_kunmap(dma_buf, i, extres_page);
+			dma_buf_kunmap(dma_buf, i, extres_page);
 #endif
-				if (ret)
-					goto out_unlock;
-			}
 			if (target_page_nr >= buf_data->nr_pages)
 				break;
 		}

@@ -45,12 +45,16 @@
 #define dev_pm_opp_find_freq_ceil opp_find_freq_ceil
 #define dev_pm_opp_find_freq_floor opp_find_freq_floor
 #endif /* Linux >= 3.13 */
+#include <soc/rockchip/rockchip_opp_select.h>
+#include <soc/rockchip/rockchip_system_monitor.h>
+
+static struct devfreq_simple_ondemand_data ondemand_data;
 
 #ifdef CONFIG_ROCKCHIP_OPP
-static struct thermal_opp_device_data gpu_devdata = {
-	.type = THERMAL_OPP_TPYE_DEV,
-	.low_temp_adjust = rockchip_dev_low_temp_adjust,
-	.high_temp_adjust = rockchip_dev_high_temp_adjust,
+static struct monitor_dev_profile mali_mdevp = {
+	.type = MONITOR_TPYE_DEV,
+	.low_temp_adjust = rockchip_monitor_dev_low_temp_adjust,
+	.high_temp_adjust = rockchip_monitor_dev_high_temp_adjust,
 };
 #endif
 
@@ -99,15 +103,12 @@ kbase_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
 
 	freq = *target_freq;
 
-	rcu_read_lock();
 	opp = devfreq_recommended_opp(dev, &freq, flags);
 	if (IS_ERR(opp)) {
-		rcu_read_unlock();
 		dev_err(dev, "Failed to get opp (%ld)\n", PTR_ERR(opp));
 		return PTR_ERR(opp);
 	}
 	voltage = dev_pm_opp_get_voltage(opp);
-	rcu_read_unlock();
 
 	nominal_freq = freq;
 
@@ -212,28 +213,24 @@ static int kbase_devfreq_init_freq_table(struct kbase_device *kbdev,
 	unsigned long freq;
 	struct dev_pm_opp *opp;
 
-	rcu_read_lock();
 	count = dev_pm_opp_get_opp_count(kbdev->dev);
 	if (count < 0) {
-		rcu_read_unlock();
 		return count;
 	}
-	rcu_read_unlock();
 
 	dp->freq_table = kmalloc_array(count, sizeof(dp->freq_table[0]),
 				GFP_KERNEL);
 	if (!dp->freq_table)
 		return -ENOMEM;
 
-	rcu_read_lock();
 	for (i = 0, freq = ULONG_MAX; i < count; i++, freq--) {
 		opp = dev_pm_opp_find_freq_floor(kbdev->dev, &freq);
 		if (IS_ERR(opp))
 			break;
+		dev_pm_opp_put(opp);
 
 		dp->freq_table[i] = freq;
 	}
-	rcu_read_unlock();
 
 	if (count != i)
 		dev_warn(kbdev->dev, "Unable to enumerate all OPPs (%d!=%d\n",
@@ -334,7 +331,9 @@ static int kbase_devfreq_init_core_mask_table(struct kbase_device *kbdev)
 
 int kbase_devfreq_init(struct kbase_device *kbdev)
 {
+	struct device_node *np = kbdev->dev->of_node;
 	struct devfreq_dev_profile *dp;
+	struct dev_pm_opp *opp;
 	unsigned long opp_rate;
 	int err;
 
@@ -363,8 +362,13 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	if (err)
 		return err;
 
+	of_property_read_u32(np, "upthreshold",
+			     &ondemand_data.upthreshold);
+	of_property_read_u32(np, "downdifferential",
+			     &ondemand_data.downdifferential);
+
 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
-				"simple_ondemand", NULL);
+				"simple_ondemand", &ondemand_data);
 	if (IS_ERR(kbdev->devfreq)) {
 		kbase_devfreq_term_freq_table(kbdev);
 		return PTR_ERR(kbdev->devfreq);
@@ -382,21 +386,19 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	}
 
 	opp_rate = kbdev->current_freq;
-	rcu_read_lock();
-	devfreq_recommended_opp(kbdev->dev, &opp_rate, 0);
-	rcu_read_unlock();
+	opp = devfreq_recommended_opp(kbdev->dev, &opp_rate, 0);
+	if (!IS_ERR(opp))
+		dev_pm_opp_put(opp);
 	kbdev->devfreq->last_status.current_frequency = opp_rate;
 
 #ifdef CONFIG_ROCKCHIP_OPP
-	gpu_devdata.data = kbdev->devfreq;
-	kbdev->opp_info = rockchip_register_thermal_notifier(kbdev->dev,
-							     &gpu_devdata);
-	if (IS_ERR(kbdev->opp_info)) {
-		dev_dbg(kbdev->dev, "without thermal notifier\n");
-		kbdev->opp_info = NULL;
+	mali_mdevp.data = kbdev->devfreq;
+	kbdev->mdev_info = rockchip_system_monitor_register(kbdev->dev,
+							    &mali_mdevp);
+	if (IS_ERR(kbdev->mdev_info)) {
+		dev_dbg(kbdev->dev, "without system monitor\n");
+		kbdev->mdev_info = NULL;
 	}
-#else
-	 kbdev->opp_info = NULL;
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
@@ -445,7 +447,7 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	dev_dbg(kbdev->dev, "Term Mali devfreq\n");
 
 #ifdef CONFIG_ROCKCHIP_OPP
-	rockchip_unregister_thermal_notifier(kbdev->opp_info);
+	rockchip_system_monitor_unregister(kbdev->mdev_info);
 #endif
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
