@@ -3022,6 +3022,15 @@ static int disp_get_irq(struct device *dev, unsigned int index)
 	return ret;
 }
 
+static void __iomem *disp_of_iomap(struct device *dev, int index)
+{
+	resource_size_t size;
+	void __iomem *ret = devm_of_iomap(dev, dev->of_node, index, &size);
+	dev_warn(dev, "%s: index = %d, ret = %llx, size=%lld\n", __func__, index, (u64)ret, size);
+
+	return ret;
+}
+
 static u64 disp_dmamask = DMA_BIT_MASK(32);
 static int disp_probe(struct platform_device *pdev)
 {
@@ -3051,7 +3060,7 @@ static int disp_probe(struct platform_device *pdev)
 	/* de - [device(tcon-top)] - lcd0/1/2.. - dsi */
 	counter = 0;
 	g_disp_drv.reg_base[DISP_MOD_DE] =
-	    (uintptr_t __force) of_iomap(pdev->dev.of_node, counter);
+	    (uintptr_t __force) disp_of_iomap(dev, counter);
 	if (!g_disp_drv.reg_base[DISP_MOD_DE]) {
 		dev_err(&pdev->dev, "unable to map de registers\n");
 		ret = -EINVAL;
@@ -3061,7 +3070,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #if defined(CONFIG_INDEPENDENT_DE)
 	g_disp_drv.reg_base[DISP_MOD_DE1] =
-	    (uintptr_t __force) of_iomap(pdev->dev.of_node, counter);
+	    (uintptr_t __force) disp_of_iomap(dev, counter);
 	if (!g_disp_drv.reg_base[DISP_MOD_DE1]) {
 		dev_err(&pdev->dev, "unable to map de registers\n");
 		ret = -EINVAL;
@@ -3072,7 +3081,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
 	g_disp_drv.reg_base[DISP_MOD_DEVICE] =
-	    (uintptr_t __force) of_iomap(pdev->dev.of_node, counter);
+	    (uintptr_t __force) disp_of_iomap(dev, counter);
 	if (!g_disp_drv.reg_base[DISP_MOD_DEVICE]) {
 		dev_err(&pdev->dev,
 			"unable to map device common module registers\n");
@@ -3082,7 +3091,7 @@ static int disp_probe(struct platform_device *pdev)
 	counter++;
 #if defined(CONFIG_INDEPENDENT_DE)
 	g_disp_drv.reg_base[DISP_MOD_DEVICE1] =
-	    (uintptr_t __force) of_iomap(pdev->dev.of_node, counter);
+	    (uintptr_t __force) disp_of_iomap(dev, counter);
 	if (!g_disp_drv.reg_base[DISP_MOD_DEVICE1]) {
 		dev_err(&pdev->dev,
 			"unable to map device common module registers\n");
@@ -3095,7 +3104,7 @@ static int disp_probe(struct platform_device *pdev)
 
 	for (i = 0; i < DISP_DEVICE_NUM; i++) {
 		g_disp_drv.reg_base[DISP_MOD_LCD0 + i] =
-		    (uintptr_t __force) of_iomap(pdev->dev.of_node, counter);
+		    (uintptr_t __force) disp_of_iomap(dev, counter);
 		if (!g_disp_drv.reg_base[DISP_MOD_LCD0 + i]) {
 			dev_err(&pdev->dev,
 				"unable to map timing controller %d registers\n",
@@ -3109,7 +3118,7 @@ static int disp_probe(struct platform_device *pdev)
 #if defined(SUPPORT_DSI)
 	for (i = 0; i < DEVICE_DSI_NUM; ++i) {
 		g_disp_drv.reg_base[DISP_MOD_DSI0 + i] = (uintptr_t __force)
-			of_iomap(pdev->dev.of_node, counter);
+			disp_of_iomap(dev, counter);
 		if (!g_disp_drv.reg_base[DISP_MOD_DSI0 + i]) {
 			dev_err(&pdev->dev, "unable to map dsi registers\n");
 			ret = -EINVAL;
@@ -3121,7 +3130,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #if defined(SUPPORT_EINK)
 	g_disp_drv.reg_base[DISP_MOD_EINK] =
-		   (uintptr_t __force)of_iomap(pdev->dev.of_node, counter);
+		   (uintptr_t __force)disp_of_iomap(dev, counter);
 	if (!g_disp_drv.reg_base[DISP_MOD_EINK]) {
 		dev_err(&pdev->dev, "unable to map eink registers\n");
 		ret = -EINVAL;
