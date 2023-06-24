@@ -433,14 +433,16 @@ struct disp_irq_util {
 	u32 irq_no;
 	u32 irq_en;
 	struct disp_irq_info *irq_info[DISP_SCREEN_NUM + DISP_WB_NUM + DISP_SCREEN_NUM];
+	struct device *disp_dev;
 };
 
 static struct disp_irq_util s_irq_util;
 static DEFINE_SPINLOCK(s_irq_lock);
 
-s32 disp_init_irq_util(u32 irq_no)
+s32 disp_init_irq_util(struct device* dev, u32 irq_no)
 {
 	s_irq_util.irq_no = irq_no;
+	s_irq_util.disp_dev = dev;
 	return 0;
 }
 
@@ -487,8 +489,8 @@ s32 disp_register_irq(u32 id, struct disp_irq_info *irq_info)
 		s_irq_util.num++;
 		if ((s_irq_util.num > 0)
 			&& (s_irq_util.irq_en == 0)) {
-			disp_sys_register_irq(s_irq_util.irq_no, 0,
-				disp_irq_handler, NULL, 0, 0);
+			disp_sys_request_irq(s_irq_util.disp_dev, s_irq_util.irq_no, 0,
+				disp_irq_handler, NULL, 0, 0, "disp-util");
 			disp_sys_enable_irq(s_irq_util.irq_no);
 			s_irq_util.irq_en = 1;
 		}

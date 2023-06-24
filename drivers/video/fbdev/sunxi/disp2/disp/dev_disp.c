@@ -2339,6 +2339,7 @@ static s32 disp_init(struct platform_device *pdev)
 	para = &g_disp_drv.para;
 
 	memset(para, 0, sizeof(struct disp_bsp_init_para));
+	para->disp_dev = &pdev->dev;
 	for (i = 0; i < DISP_MOD_NUM; i++) {
 		para->reg_base[i] = g_disp_drv.reg_base[i];
 		para->irq_no[i] = g_disp_drv.irq_no[i];
@@ -3011,12 +3012,20 @@ static void sunxi_disp_match_add(struct device *dev)
 }
 #endif
 
+static int disp_get_irq(struct device *dev, unsigned int index)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	int ret = platform_get_irq(pdev, index);
+	dev_warn(dev, "%s: index = %d, ret = %d\n", __func__, index, ret);
+	if (ret < 0)
+		ret = 0;
+	return ret;
+}
+
 static u64 disp_dmamask = DMA_BIT_MASK(32);
 static int disp_probe(struct platform_device *pdev)
 {
-#ifndef MODULE
 	struct device *dev = &pdev->dev;
-#endif
 	int i;
 	int ret;
 	int counter = 0;
@@ -3128,7 +3137,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #ifdef DE_VERSION_V33X
 	g_disp_drv.irq_no[DISP_MOD_DE] =
-	    irq_of_parse_and_map(pdev->dev.of_node, counter);
+	    disp_get_irq(dev, counter);
 	if (!g_disp_drv.irq_no[DISP_MOD_DE]) {
 		dev_err(&pdev->dev, "irq_of_parse_and_map de irq fail\n");
 	}
@@ -3137,7 +3146,7 @@ static int disp_probe(struct platform_device *pdev)
 
 	for (i = 0; i < DISP_DEVICE_NUM; i++) {
 		g_disp_drv.irq_no[DISP_MOD_LCD0 + i] =
-		    irq_of_parse_and_map(pdev->dev.of_node, counter);
+		    disp_get_irq(dev, counter);
 		if (!g_disp_drv.irq_no[DISP_MOD_LCD0 + i])
 			dev_err(&pdev->dev,
 				"get irq %d fail for timing controller%d\n",
@@ -3147,8 +3156,7 @@ static int disp_probe(struct platform_device *pdev)
 	}
 #if defined(SUPPORT_DSI)
 	for (i = 0; i < DEVICE_DSI_NUM; ++i) {
-		g_disp_drv.irq_no[DISP_MOD_DSI0 + i] = irq_of_parse_and_map(
-						 pdev->dev.of_node, counter);
+		g_disp_drv.irq_no[DISP_MOD_DSI0 + i] = disp_get_irq(dev, counter);
 		if (!g_disp_drv.irq_no[DISP_MOD_DSI0 + i])
 			dev_err(&pdev->dev,
 				"irq_of_parse_and_map irq %d fail for dsi\n",
@@ -3159,7 +3167,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #if defined(SUPPORT_VDPO)
 	g_disp_drv.irq_no[DISP_MOD_VDPO] =
-	    irq_of_parse_and_map(pdev->dev.of_node, counter);
+	    disp_get_irq(dev, counter);
 	if (!g_disp_drv.irq_no[DISP_MOD_DSI0])
 		dev_err(&pdev->dev,
 			"irq_of_parse_and_map irq fail for vdpo\n");
@@ -3168,7 +3176,7 @@ static int disp_probe(struct platform_device *pdev)
 
 #if defined(SUPPORT_EINK)
 	g_disp_drv.irq_no[DISP_MOD_EINK] =
-	    irq_of_parse_and_map(pdev->dev.of_node, counter);
+	    disp_get_irq(dev, counter);
 	if (!g_disp_drv.irq_no[DISP_MOD_EINK])
 		dev_err(&pdev->dev,
 			"irq_of_parse_and_map eink irq %d fail for ee\n", i);

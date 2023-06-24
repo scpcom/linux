@@ -60,7 +60,7 @@ s32 bsp_disp_init(struct disp_bsp_init_para *para)
 #endif /*endif SUPPORT_EDP */
 
 #if defined (DE_VERSION_V33X)
-	disp_init_irq_util(para->irq_no[DISP_MOD_DE]);
+	disp_init_irq_util(para->disp_dev, para->irq_no[DISP_MOD_DE]);
 #endif
 
 #if defined(SUPPORT_VDPO)

@@ -37,6 +37,9 @@ void disp_sys_cache_flush(void *address, u32 length, u32 flags);
 
 int disp_sys_register_irq(u32 IrqNo, u32 Flags, void *Handler, void *pArg,
 			  u32 DataSize, u32 Prio);
+int disp_sys_request_irq(struct device* dev, u32 IrqNo, u32 Flags, void *Handler, void *pArg,
+			  u32 DataSize, u32 Prio,
+			  const char *name);
 void disp_sys_unregister_irq(u32 IrqNo, void *Handler, void *pArg);
 void disp_sys_disable_irq(u32 IrqNo);
 void disp_sys_enable_irq(u32 IrqNo);

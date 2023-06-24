@@ -71,6 +71,7 @@ struct disp_lcd_private_data {
 	struct work_struct reflush_work;
 	struct disp_lcd_esd_info esd_inf;
 	struct disp_device_config config;
+	struct device* disp_dev;
 };
 static spinlock_t lcd_data_lock;
 
@@ -1855,21 +1856,21 @@ static s32 disp_lcd_fake_enable(struct disp_device *lcd)
 	if ((lcdp->panel_info.lcd_if == LCD_IF_DSI) &&
 	    (lcdp->irq_no_dsi != 0)) {
 		if (lcdp->panel_info.lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) {
-			disp_sys_register_irq(lcdp->irq_no, 0,
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0,
 					      disp_lcd_event_proc, (void *)lcd,
-					      0, 0);
+					      0, 0, "lcd");
 			disp_sys_enable_irq(lcdp->irq_no);
 		} else {
-			disp_sys_register_irq(lcdp->irq_no_dsi, 0,
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no_dsi, 0,
 					      disp_lcd_event_proc, (void *)lcd,
-					      0, 0);
+					      0, 0, "dsi");
 			disp_sys_enable_irq(lcdp->irq_no_dsi);
 		}
 	} else
 #endif
 	{
-		disp_sys_register_irq(lcdp->irq_no, 0, disp_lcd_event_proc,
-				      (void *)lcd, 0, 0);
+		disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0, disp_lcd_event_proc,
+				      (void *)lcd, 0, 0, "lcd");
 		disp_sys_enable_irq(lcdp->irq_no);
 	}
 	spin_lock_irqsave(&lcd_data_lock, flags);
@@ -1966,8 +1967,8 @@ static s32 disp_lcd_enable(struct disp_device *lcd)
 	if (disp_lcd_is_enabled(lcd) == 1)
 		return 0;
 
-	disp_sys_register_irq(lcdp->irq_no, 0, disp_lcd_event_proc, (void *)lcd,
-			      0, 0);
+	disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0, disp_lcd_event_proc, (void *)lcd,
+			      0, 0, "lcd");
 	disp_sys_enable_irq(lcdp->irq_no);
 
 	spin_lock_irqsave(&lcd_data_lock, flags);
@@ -2099,19 +2100,19 @@ static s32 disp_lcd_enable(struct disp_device *lcd)
 	if ((lcdp->panel_info.lcd_if == LCD_IF_DSI)
 	    && (lcdp->irq_no_dsi != 0)) {
 		if (lcdp->panel_info.lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) {
-			disp_sys_register_irq(lcdp->irq_no, 0, disp_lcd_event_proc,
-					      (void *)lcd, 0, 0);
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0, disp_lcd_event_proc,
+					      (void *)lcd, 0, 0, "lcd");
 			disp_sys_enable_irq(lcdp->irq_no);
 		} else {
-			disp_sys_register_irq(lcdp->irq_no_dsi, 0, disp_lcd_event_proc,
-					      (void *)lcd, 0, 0);
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no_dsi, 0, disp_lcd_event_proc,
+					      (void *)lcd, 0, 0, "dsi");
 			disp_sys_enable_irq(lcdp->irq_no_dsi);
 		}
 	} else
 #endif
 	{
-		disp_sys_register_irq(lcdp->irq_no, 0, disp_lcd_event_proc,
-				      (void *)lcd, 0, 0);
+		disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0, disp_lcd_event_proc,
+				      (void *)lcd, 0, 0, "lcd");
 		disp_sys_enable_irq(lcdp->irq_no);
 	}
 	spin_lock_irqsave(&lcd_data_lock, flags);
@@ -2353,21 +2354,21 @@ static s32 disp_lcd_sw_enable(struct disp_device *lcd)
 	if ((lcdp->panel_info.lcd_if == LCD_IF_DSI) &&
 	    (lcdp->irq_no_dsi != 0)) {
 		if (lcdp->panel_info.lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) {
-			disp_sys_register_irq(lcdp->irq_no, 0,
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0,
 					      disp_lcd_event_proc, (void *)lcd,
-					      0, 0);
+					      0, 0, "lcd");
 			disp_sys_enable_irq(lcdp->irq_no);
 		} else {
-			disp_sys_register_irq(lcdp->irq_no_dsi, 0,
+			disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no_dsi, 0,
 					      disp_lcd_event_proc, (void *)lcd,
-					      0, 0);
+					      0, 0, "dsi");
 			disp_sys_enable_irq(lcdp->irq_no_dsi);
 		}
 	} else
 #endif
 	{
-		disp_sys_register_irq(lcdp->irq_no, 0, disp_lcd_event_proc,
-				      (void *)lcd, 0, 0);
+		disp_sys_request_irq(lcdp->disp_dev, lcdp->irq_no, 0, disp_lcd_event_proc,
+				      (void *)lcd, 0, 0, "lcd");
 		disp_sys_enable_irq(lcdp->irq_no);
 	}
 	disp_al_lcd_enable_irq(lcd->hwdev_index, LCD_IRQ_TCON0_VBLK,
@@ -3172,6 +3173,7 @@ s32 disp_init_lcd(struct disp_bsp_init_para *para)
 		lcd->hwdev_index = hwdev_index;
 #endif
 		lcd->type = DISP_OUTPUT_TYPE_LCD;
+		lcdp->disp_dev = para->disp_dev;
 		lcdp->irq_no = para->irq_no[DISP_MOD_LCD0 + lcd->hwdev_index];
 		lcdp->clk_tcon_lcd = para->clk_tcon[lcd->hwdev_index];
 		lcdp->clk_bus_tcon_lcd = para->clk_bus_tcon[lcd->hwdev_index];

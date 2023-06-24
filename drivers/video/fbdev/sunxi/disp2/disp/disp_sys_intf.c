@@ -109,10 +109,20 @@ void disp_sys_cache_flush(void *address, u32 length, u32 flags)
 int disp_sys_register_irq(u32 IrqNo, u32 Flags, void *Handler, void *pArg,
 			  u32 DataSize, u32 Prio)
 {
-	__inf("%s, irqNo=%d, Handler=0x%p, pArg=0x%p\n", __func__, IrqNo,
+	__wrn("%s, irqNo=%d, Handler=0x%p, pArg=0x%p\n", __func__, IrqNo,
 	      Handler, pArg);
 	return request_irq(IrqNo, (irq_handler_t) Handler, 0x0,
 			   "dispaly", pArg);
+}
+
+int disp_sys_request_irq(struct device* dev, u32 IrqNo, u32 Flags, void *Handler, void *pArg,
+			  u32 DataSize, u32 Prio,
+			  const char *name)
+{
+	__wrn("%s, irqNo=%d, Handler=0x%p, pArg=0x%p, name = %s\n", __func__, IrqNo,
+	      Handler, pArg, name);
+	return devm_request_irq(dev, IrqNo, (irq_handler_t) Handler, 0x0,
+			   name, pArg);
 }
 
 /*

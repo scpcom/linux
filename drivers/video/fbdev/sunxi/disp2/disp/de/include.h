@@ -949,6 +949,7 @@ struct disp_bsp_init_para {
 	s32 (*shadow_protect)(u32 sel, bool protect);
 	struct disp_bootloader_info boot_info;
 	struct disp_feat_init feat_init;
+	struct device *disp_dev;
 };
 
 typedef void (*LCD_FUNC) (unsigned int sel);

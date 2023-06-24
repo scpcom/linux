@@ -193,7 +193,7 @@ s32 disp_set_fb_base_on_depth(struct fb_address_transfer *fb);
 extern s32 disp_init_rotation_sw(struct disp_bsp_init_para *para);
 extern struct disp_rotation_sw *disp_get_rotation_sw(u32 disp);
 
-s32 disp_init_irq_util(u32 irq_no);
+s32 disp_init_irq_util(struct device* dev, u32 irq_no);
 s32 disp_register_irq(u32 id, struct disp_irq_info *irq_info);
 s32 disp_unregister_irq(u32 id, struct disp_irq_info *irq_info);
 
