@@ -1233,7 +1233,7 @@ static s32 disp_lcd_pwm_enable(struct disp_device *lcd)
 	}
 	if (lcdp->panel_info.lcd_pwm_used && !lcdp->pwm_info.dev) {
 		lcdp->pwm_info.dev =
-		    disp_sys_pwm_request(lcdp->panel_info.lcd_pwm_ch);
+		    disp_sys_pwm_request(lcdp->disp_dev, lcdp->panel_info.lcd_pwm_ch);
 	}
 
 	if (disp_lcd_is_used(lcd) && lcdp->pwm_info.dev) {
@@ -1884,7 +1884,7 @@ static s32 disp_lcd_fake_enable(struct disp_device *lcd)
 		DE_WRN("cal_real_frame_period fail:%d\n", ret);
 	if (lcdp->panel_info.lcd_pwm_used && !lcdp->pwm_info.dev)
 		lcdp->pwm_info.dev =
-			disp_sys_pwm_request(lcdp->panel_info.lcd_pwm_ch);
+			disp_sys_pwm_request(lcdp->disp_dev, lcdp->panel_info.lcd_pwm_ch);
 	disp_sys_pwm_config(lcdp->pwm_info.dev, lcdp->pwm_info.duty_ns,
 			    lcdp->pwm_info.period_ns);
 	disp_sys_pwm_set_polarity(lcdp->pwm_info.dev, lcdp->pwm_info.polarity);
@@ -2131,7 +2131,7 @@ static s32 disp_lcd_enable(struct disp_device *lcd)
 
 	if (lcdp->panel_info.lcd_pwm_used && !lcdp->pwm_info.dev)
 		lcdp->pwm_info.dev =
-			disp_sys_pwm_request(lcdp->panel_info.lcd_pwm_ch);
+			disp_sys_pwm_request(lcdp->disp_dev, lcdp->panel_info.lcd_pwm_ch);
 
 	disp_sys_pwm_config(lcdp->pwm_info.dev, lcdp->pwm_info.duty_ns,
 			    lcdp->pwm_info.period_ns);
@@ -2318,7 +2318,7 @@ static s32 disp_lcd_sw_enable(struct disp_device *lcd)
 	if (lcdp->panel_info.lcd_pwm_used) {
 		if (!lcdp->pwm_info.dev) {
 			lcdp->pwm_info.dev = disp_sys_pwm_request(
-				lcdp->panel_info.lcd_pwm_ch);
+				lcdp->disp_dev, lcdp->panel_info.lcd_pwm_ch);
 		}
 		if (lcdp->pwm_info.dev) {
 			disp_sys_pwm_config(lcdp->pwm_info.dev,
@@ -2915,7 +2915,7 @@ static s32 disp_lcd_init(struct disp_device *lcd, int lcd_index)
 		if (lcdp->panel_info.lcd_pwm_used) {
 			lcdp->pwm_info.channel = lcdp->panel_info.lcd_pwm_ch;
 			lcdp->pwm_info.polarity = lcdp->panel_info.lcd_pwm_pol;
-			lcdp->pwm_info.dev = disp_sys_pwm_request(
+			lcdp->pwm_info.dev = disp_sys_pwm_request(lcdp->disp_dev,
 								  lcdp->panel_info.lcd_pwm_ch);
 
 			if (lcdp->panel_info.lcd_pwm_freq != 0) {

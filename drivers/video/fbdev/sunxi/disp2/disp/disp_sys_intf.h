@@ -66,7 +66,7 @@ int disp_sys_power_disable(struct regulator *regulator);
 
 void *disp_sys_malloc(u32 size);
 
-uintptr_t disp_sys_pwm_request(u32 pwm_id);
+uintptr_t disp_sys_pwm_request(struct device *dev, u32 pwm_id);
 int disp_sys_pwm_free(uintptr_t p_handler);
 int disp_sys_pwm_enable(uintptr_t p_handler);
 int disp_sys_pwm_disable(uintptr_t p_handler);

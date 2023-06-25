@@ -438,14 +438,18 @@ int disp_sys_power_disable(struct regulator *regulator)
 }
 
 #if IS_ENABLED(CONFIG_PWM_SUNXI) || IS_ENABLED(CONFIG_PWM_SUNXI_NEW) ||              \
-	IS_ENABLED(CONFIG_PWM_SUNXI_GROUP)
-uintptr_t disp_sys_pwm_request(u32 pwm_id)
+	IS_ENABLED(CONFIG_PWM_SUNXI_GROUP) || IS_ENABLED(CONFIG_PWM_SUN8I_V536)
+uintptr_t disp_sys_pwm_request(struct device *dev, u32 pwm_id)
 {
 	uintptr_t ret = 0;
 
 	struct pwm_device *pwm_dev;
 
-	pwm_dev = pwm_request(pwm_id, "lcd");
+	pwm_dev = devm_pwm_get(dev, NULL);
+	if (IS_ERR(pwm_dev) && PTR_ERR(pwm_dev) != -EPROBE_DEFER) {
+		dev_err(dev, "unable to request PWM, trying legacy API\n");
+		pwm_dev = pwm_request(pwm_id, "lcd");
+	}
 
 	if ((pwm_dev == NULL) || IS_ERR(pwm_dev)) {
 		__wrn("disp_sys_pwm_request pwm %d fail! %ld\n", pwm_id,
@@ -549,7 +553,7 @@ int disp_sys_pwm_set_polarity(uintptr_t p_handler, int polarity)
 	return ret;
 }
 #else
-uintptr_t disp_sys_pwm_request(u32 pwm_id)
+uintptr_t disp_sys_pwm_request(struct device *dev, u32 pwm_id)
 {
 	uintptr_t ret = 0;
 
