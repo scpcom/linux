@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 // Copyright (C) 2022 Samuel Holland <samuel@sholland.org>
 
-#include "sun20i-d1-lichee-rv.dts"
+#include "sun20i-d1-lichee-rv-bsp.dts"
 
 / {
 	aliases {
@@ -147,6 +147,41 @@
 	phy-mode = "rmii";
 	phy-supply = <&reg_vcc_3v3>;
 	status = "okay";
+};
+
+&daudio2 {
+	mclk_div 	= <0x00>;
+	frametype 	= <0x00>;
+	tdm_config 	= <0x01>;
+	sign_extend 	= <0x00>;
+	tx_data_mode 	= <0x00>;
+	rx_data_mode 	= <0x00>;
+	msb_lsb_first 	= <0x00>;
+	pcm_lrck_period = <0x20>;
+	slot_width_select = <0x20>;
+	asrc_function_en  = <0x00>;
+	pinctrl-names   = "default", "sleep";
+	/*pinctrl-0       = <&daudio2_pins_a &daudio2_pins_b &daudio2_pins_c>;*/
+	/*pinctrl-1       = <&daudio2_pins_d>;*/
+	/* HDMI audio, no need pin */
+	pinctrl-0;
+	pinctrl-1;
+	pinctrl_used	= <0x0>;
+	daudio_type	= <0x1>;
+	status = "okay";
+};
+
+/* if HDMI audio is used, daudio2 should be enable. */
+&hdmiaudio {
+	status = "okay";
+};
+
+&sounddaudio2 {
+	status = "okay";
+	simple-audio-card,name = "sndhdmi";
+	daudio2_master: simple-audio-card,codec {
+		sound-dai = <&hdmiaudio>;
+	};
 };
 
 &mdio {
