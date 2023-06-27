@@ -1543,6 +1543,7 @@ static const struct snd_soc_component_driver sunxi_daudio_component = {
 	.num_controls	= ARRAY_SIZE(sunxi_daudio_controls),
 	.suspend = sunxi_daudio_suspend,
 	.resume = sunxi_daudio_resume,
+	.legacy_dai_naming	= 1,
 };
 
 static const struct of_device_id sunxi_daudio_of_match[] = {
