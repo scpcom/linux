@@ -46,19 +46,6 @@
 	/* PC1 is repurposed as BT_WAKE_AP */
 	/delete-node/ leds;
 
-/*
-	wifi_pwrseq: wifi-pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		clocks = <&ccu CLK_FANOUT1>;
-		clock-names = "ext_clock";
-		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; // PG12 //
-		assigned-clocks = <&ccu CLK_FANOUT1>;
-		assigned-clock-rates = <32768>;
-		pinctrl-0 = <&clk_pg11_pin>;
-		pinctrl-names = "default";
-	};
-*/
-
 	rfkill: rfkill@0 {
 		compatible    = "allwinner,sunxi-rfkill";
 		chip_en;
@@ -194,9 +181,6 @@
 
 &mmc1 {
 	bus-width = <4>;
-/*
-	mmc-pwrseq = <&wifi_pwrseq>;
-*/
 	no-sd;
 	cap-sdio-irq;
 	keep-power-in-suspend;

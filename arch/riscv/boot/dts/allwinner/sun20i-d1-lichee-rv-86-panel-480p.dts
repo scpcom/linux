@@ -7,38 +7,6 @@
 	model = "Sipeed Lichee RV 86 Panel (480p)";
 	compatible = "sipeed,lichee-rv-86-panel-480p", "sipeed,lichee-rv",
 		     "allwinner,sun20i-d1";
-
-/*
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		power-supply = <&reg_vcc>;
-		pwms = <&pwm 7 50000 0>;
-	};
-
-	spi {
-		compatible = "spi-gpio";
-		cs-gpios = <&pio 4 14 GPIO_ACTIVE_LOW>; // PE14 //
-		mosi-gpios = <&pio 4 12 GPIO_ACTIVE_HIGH>; // PE12 //
-		sck-gpios = <&pio 4 15 GPIO_ACTIVE_HIGH>; // PE15 //
-		num-chipselects = <1>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		panel@0 {
-			compatible = "sitronix,st7701s";
-			reg = <0>;
-			backlight = <&backlight>;
-			reset-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>; // PG13 //
-			spi-3wire;
-
-			port {
-				panel_in_tcon_lcd0: endpoint {
-					remote-endpoint = <&tcon_lcd0_out_panel>;
-				};
-			};
-		};
-	};
-*/
 };
 
 &disp {
@@ -208,12 +176,6 @@ pull up or pull down(default 0), driver level(default 1), data>
 	power_io_ctrl = <0>;
 };
 
-/*
-&de {
-	status = "okay";
-};
-*/
-
 &i2c2 {
 	pinctrl-0 = <&i2c2_pb0_pins>;
 	pinctrl-names = "default";
@@ -238,16 +200,3 @@ pull up or pull down(default 0), driver level(default 1), data>
 	pinctrl-names = "default";
 	status = "okay";
 };
-
-/*
-&tcon_lcd0 {
-	pinctrl-0 = <&lcd_rgb666_pins>;
-	pinctrl-names = "default";
-};
-
-&tcon_lcd0_out {
-	tcon_lcd0_out_panel: endpoint {
-		remote-endpoint = <&panel_in_tcon_lcd0>;
-	};
-};
-*/
