@@ -43,13 +43,6 @@
 		};
 	};
 
-/*
-	wifi_pwrseq: wifi-pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; // PG12 //
-	};
-*/
-
 	rfkill: rfkill@0 {
 		compatible    = "allwinner,sunxi-rfkill";
 		chip_en;
@@ -104,48 +97,6 @@
 		type_addr_eth  = <0x0>;
 		status         = "okay";
 	};
-
-/*
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		power-supply = <&reg_vcc>;
-		pwms = <&pwm 7 10000 0>;
-	};
-
-	panel {
-		compatible = "simple-panel";
-		backlight = <&backlight>;
-		power-supply = <&reg_vcc>;
-		reset-gpios = <&pio 6 13 GPIO_ACTIVE_LOW>; // PG13 //
-
-		bpc = <6>;
-		bus-format = <MEDIA_BUS_FMT_RGB666_1X18>;
-
-		// LCD size //
-		width-mm = <154>;
-		height-mm = <86>;
-
-		panel-timing {
-			clock-frequency = <51000000>;
-			hactive = <1024>;
-			vactive = <600>;
-			hfront-porch = <140>;
-			hsync-len = <20>;
-			hback-porch = <140>;
-			vfront-porch = <20>;
-			vsync-len = <3>;
-			vback-porch = <20>;
-			hsync-active = <0>;
-			vsync-active = <0>;
-		};
-
-		port {
-			panel_in_tcon_lcd0: endpoint {
-				remote-endpoint = <&tcon_lcd0_out_panel>;
-			};
-		};
-	};
-*/
 };
 
 &codec {
@@ -159,12 +110,6 @@
 		  "Speaker", "Internal Speaker";
 	status = "okay";
 };
-
-/*
-&de {
-	status = "okay";
-};
-*/
 
 &dmic {
 	pinctrl-0 = <&dmic_pb11_d0_pin>, <&dmic_pe17_clk_pin>;
@@ -406,9 +351,6 @@ pull up or pull down(default 0), driver level(default 1), data>
 
 &mmc1 {
 	bus-width = <4>;
-/*
-	mmc-pwrseq = <&wifi_pwrseq>;
-*/
 	no-sd;
 	cap-sdio-irq;
 	keep-power-in-suspend;
@@ -476,33 +418,11 @@ pull up or pull down(default 0), driver level(default 1), data>
 	status = "okay";
 };
 
-/*
-&tcon_lcd0 {
-	pinctrl-0 = <&lcd_rgb666_pins>;
-	pinctrl-names = "default";
-};
-
-&tcon_lcd0_out {
-	tcon_lcd0_out_panel: endpoint {
-		remote-endpoint = <&panel_in_tcon_lcd0>;
-	};
-};
-*/
-
 &uart1 {
 	uart-has-rtscts;
 	pinctrl-0 = <&uart1_pg6_pins>, <&uart1_pg8_rts_cts_pins>;
 	pinctrl-names = "default";
 	status = "okay";
-
-/*
-	bluetooth {
-		compatible = "realtek,rtl8723ds-bt";
-		device-wake-gpios = <&pio 6 15 GPIO_ACTIVE_HIGH>; // PG16 //
-		enable-gpios = <&pio 6 18 GPIO_ACTIVE_HIGH>; // PG18 //
-		host-wake-gpios = <&pio 6 17 GPIO_ACTIVE_HIGH>; // PG17 //
-	};
-*/
 };
 
 &usbphy {
