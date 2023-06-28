@@ -43,26 +43,6 @@
 		};
 	};
 
-/*
-	hdmi_connector: connector {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_connector_in: endpoint {
-				remote-endpoint = <&hdmi_out_connector>;
-			};
-		};
-	};
-*/
-
-/*
-	wifi_pwrseq: wifi-pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&pio 6 12 GPIO_ACTIVE_LOW>; // PG12 //
-	};
-*/
-
 	rfkill: rfkill@0 {
 		compatible    = "allwinner,sunxi-rfkill";
 		chip_en;
@@ -130,12 +110,6 @@
 		  "Speaker", "Internal Speaker";
 	status = "okay";
 };
-
-/*
-&de {
-	status = "okay";
-};
-*/
 
 &dmic {
 	pinctrl-0 = <&dmic_pb11_d0_pin>, <&dmic_pe17_clk_pin>;
@@ -357,22 +331,6 @@ pull up or pull down(default 0), driver level(default 1), data>
 	power_io_ctrl = <0>;
 };
 
-/*
-&hdmi {
-	status = "okay";
-};
-
-&hdmi_out {
-	hdmi_out_connector: endpoint {
-		remote-endpoint = <&hdmi_connector_in>;
-	};
-};
-
-&hdmi_phy {
-	status = "okay";
-};
-*/
-
 &ledc {
 	pinctrl-0 = <&ledc_pc0_pin>;
 	pinctrl-names = "default";
@@ -400,9 +358,6 @@ pull up or pull down(default 0), driver level(default 1), data>
 
 &mmc1 {
 	bus-width = <4>;
-/*
-	mmc-pwrseq = <&wifi_pwrseq>;
-*/
 	no-sd;
 	cap-sdio-irq;
 	keep-power-in-suspend;
@@ -469,15 +424,6 @@ pull up or pull down(default 0), driver level(default 1), data>
 	pinctrl-0 = <&uart1_pg6_pins>, <&uart1_pg8_rts_cts_pins>;
 	pinctrl-names = "default";
 	status = "okay";
-
-/*
-	bluetooth {
-		compatible = "realtek,rtl8723ds-bt";
-		device-wake-gpios = <&pio 6 15 GPIO_ACTIVE_HIGH>; // PG16 //
-		enable-gpios = <&pio 6 18 GPIO_ACTIVE_HIGH>; // PG18 //
-		host-wake-gpios = <&pio 6 17 GPIO_ACTIVE_HIGH>; // PG17 //
-	};
-*/
 };
 
 &usbphy {
