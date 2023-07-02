@@ -1,0 +1,46 @@
+/*
+ *
+ *  Copyright (C) 2007 Freescale Semiconductor, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+SECTIONS
+{
+	.class_dmem_sh : SUBALIGN(8) {
+		__class_dmem_sh = .;
+		*(SORT(.class_dmem_sh_*))
+	}
+
+	.class_pe_lmem_sh : SUBALIGN(8) {
+		__class_pe_lmem_sh = .;
+		*(SORT(.class_pe_lmem_sh_*))
+	}
+
+	.tmu_dmem_sh : SUBALIGN(8) {
+		__tmu_dmem_sh = .;
+		*(SORT(.tmu_dmem_sh_*))
+	}
+
+	.util_dmem_sh : SUBALIGN(8) {
+		__util_dmem_sh = .;
+		*(SORT(.util_dmem_sh_*))
+	}
+	
+	.util_ddr_sh : SUBALIGN(8) {
+		__util_ddr_sh = .;
+		*(SORT(.util_ddr_sh_*))
+	}
+}
