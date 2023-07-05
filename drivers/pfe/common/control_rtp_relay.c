@@ -1932,8 +1932,8 @@ BOOL rtp_relay_init(void)
 	slist_head_init(&rtpcall_list);
 
 #if defined(COMCERTO_2000)
-    for (i = 0; i < NUM_RTPFLOW_ENTRIES; i++)
-        dlist_head_init(&hw_flow_active_list[i]);
+	for (i = 0; i < NUM_RTPFLOW_ENTRIES; i++)
+		dlist_head_init(&hw_flow_active_list[i]);
 
 	dlist_head_init(&hw_flow_removal_list);
 
