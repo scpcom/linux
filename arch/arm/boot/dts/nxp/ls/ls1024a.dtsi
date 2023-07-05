@@ -462,32 +462,32 @@
 		};
 	};
 	/* Low speed SPI */
-	pinctrl_spi: spi {
-		spi {
+	pinctrl_spi_ls: spi_ls {
+		spi_ls {
 			groups = "spi_sclk_grp", "spi_rxd_grp", "spi_txd_grp";
 			function = "spi";
 		};
 	};
 	pinctrl_spi_ss0: spi_ss0 {
-		spi {
+		spi_ls {
 			groups = "spi_ss0_grp";
 			function = "spi";
 		};
 	};
 	pinctrl_spi_ss1: spi_ss1 {
-		spi {
+		spi_ls {
 			groups = "spi_ss1_grp";
 			function = "spi";
 		};
 	};
 	pinctrl_spi_ss2: spi_ss2 {
-		spi {
+		spi_ls {
 			groups = "spi_ss2_grp";
 			function = "spi";
 		};
 	};
 	pinctrl_spi_ss3: spi_ss3 {
-		spi {
+		spi_ls {
 			groups = "spi_ss3_grp";
 			function = "spi";
 		};
