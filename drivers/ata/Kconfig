@@ -102,6 +102,12 @@ config SATA_PMP
 	  This option adds support for SATA Port Multipliers
 	  (the SATA version of an ethernet hub, or SAS expander).
 
+config SATA_LS1024A_HARDRESET
+	bool "LS1024A SATA hardreset"
+	default n
+	help
+	  This option enables LS1024A SATA hardreset.
+
 if HAS_DMA
 
 comment "Controllers with non-SFF native interface"
