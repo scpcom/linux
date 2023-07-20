@@ -1614,6 +1614,13 @@ config AUTO_ZRELADDR
 	  This assumes the zImage being placed in the first 128MB from
 	  start of memory.
 
+config TEXT_ZRELADDR
+	bool "Static decompressed kernel image address"
+	help
+	  ZRELADDR is the physical address where the decompressed kernel
+	  image will be placed. If TEXT_ZRELADDR is selected, the address
+	  will be equal to TEXT_OFFSET.
+
 config EFI_STUB
 	bool
 

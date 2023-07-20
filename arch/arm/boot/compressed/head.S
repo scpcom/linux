@@ -258,6 +258,9 @@ not_angel:
 
 		.text
 
+#ifdef CONFIG_TEXT_ZRELADDR
+		ldr	r4, =TEXT_OFFSET
+#else
 #ifdef CONFIG_AUTO_ZRELADDR
 		/*
 		 * Find the start of physical memory.  As we are executing
@@ -312,6 +315,7 @@ not_angel:
 		add	r4, r0, #TEXT_OFFSET
 #else
 		ldr	r4, =zreladdr
+#endif
 #endif
 
 		/*
