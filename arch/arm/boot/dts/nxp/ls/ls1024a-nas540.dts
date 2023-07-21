@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
+/dts-v1/;
+#include "ls1024a-nas5xx.dtsi"
+
+/ {
+	model = "Zyxel NAS540";
+	compatible = "zyxel,nas540", "zyxel,nas5xx", "fsl,ls1024a";
+};
+
+&control {
+	drive-bays = <4>;
+};

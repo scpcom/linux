@@ -1,0 +1,3 @@
+// SPDX-License-Identifier: GPL-2.0
+/dts-v1/;
+#include "ls1024a-nas5xx.dtsi"
