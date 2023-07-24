@@ -87,7 +87,7 @@ int pe_request(struct pfe_ctrl *ctrl, int id,unsigned short cmd_type, unsigned l
 int pe_read(struct pfe_ctrl *ctrl, int id, u32 *dst, unsigned long src, int len, int clear_flag);
 int tmu_pe_request(struct pfe_ctrl *ctrl, int id, unsigned int tmu_cmd_bitmask);
 
-int pfe_ctrl_set_eth_state(int id, unsigned int state, unsigned char *mac_addr);
+int pfe_ctrl_set_eth_state(int id, unsigned int state, const unsigned char *mac_addr);
 int pfe_ctrl_set_lro(char enable);
 #ifdef CFG_PCAP
 int pfe_ctrl_set_pcap(char enable);

@@ -2184,7 +2184,11 @@ static int pfe_eth_set_mac_address(struct net_device *dev, void *addr)
 	if (!is_valid_ether_addr(sa->sa_data))
 		return -EADDRNOTAVAIL;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	memcpy(dev->dev_addr, sa->sa_data, ETH_ALEN);
+#else
+	dev_addr_mod(dev, 0, sa->sa_data, ETH_ALEN);
+#endif
 
 	gemac_set_laddrN(priv->EMAC_baseaddr, (MAC_ADDR *)dev->dev_addr, 1);
 
@@ -3062,7 +3066,11 @@ static int pfe_eth_init_one( struct pfe *pfe, int id )
 	}
 
 	/* Copy the station address into the dev structure, */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	memcpy(dev->dev_addr, einfo[id].mac_addr, ETH_ALEN);
+#else
+	dev_addr_mod(dev, 0, einfo[id].mac_addr, ETH_ALEN);
+#endif
 
 	err = dev_alloc_name(dev, einfo[id].name);
 

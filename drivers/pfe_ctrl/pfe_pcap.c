@@ -89,6 +89,7 @@ static const struct net_device_ops pcap_netdev_ops = {
 static struct net_device *pcap_register_capdev(char *dev_name)
 {
 	struct net_device *dev=NULL;
+	char dummy_dev_addr[6];
 
 	printk("%s:\n", __func__);
 
@@ -107,12 +108,17 @@ static struct net_device *pcap_register_capdev(char *dev_name)
 	dev->features = 0;
 	dev->netdev_ops = &pcap_netdev_ops;
 	/*TODO */
-	dev->dev_addr[0] = 0x0;
-	dev->dev_addr[1] = 0x21;
-	dev->dev_addr[2] = 0x32;
-	dev->dev_addr[3] = 0x43;
-	dev->dev_addr[4] = 0x54;
-	dev->dev_addr[5] = 0x65;
+	dummy_dev_addr[0] = 0x0;
+	dummy_dev_addr[1] = 0x21;
+	dummy_dev_addr[2] = 0x32;
+	dummy_dev_addr[3] = 0x43;
+	dummy_dev_addr[4] = 0x54;
+	dummy_dev_addr[5] = 0x65;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
+	memcpy(dev->dev_addr,  dummy_dev_addr, 6);
+#else
+	dev_addr_mod(dev, 0, dummy_dev_addr, 6);
+#endif
 
 	if(register_netdev(dev)) {
 		printk(KERN_ERR "%s: cannot register net device, aborting.\n", dev->name);

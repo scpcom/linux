@@ -460,7 +460,7 @@ int comcerto_fpp_register_event_cb(int (*event_cb)(u16, u16, u16*))
 EXPORT_SYMBOL(comcerto_fpp_register_event_cb);
 
 
-int pfe_ctrl_set_eth_state(int id, unsigned int state, unsigned char *mac_addr)
+int pfe_ctrl_set_eth_state(int id, unsigned int state, const unsigned char *mac_addr)
 {
 	unsigned char msg[20];
 	int rc;
