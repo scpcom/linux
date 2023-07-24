@@ -20,7 +20,7 @@
 #ifndef _PFE_PCAP_H_
 #define _PFE_PCAP_H_
 
-
+#include "pfe_platform.h"
 
 #define  COMCERTO_CAP_RX_DESC_NT       (1024)
 #define  COMCERTO_CAP_DFL_RATELIMIT     10000  //pps
