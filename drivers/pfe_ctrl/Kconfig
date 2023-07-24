@@ -5,7 +5,7 @@
 config PFE_CTRL
         tristate "MindSpeed pfe support"
         default m
-        ---help---
+        help
                 MindSpeed pfe kernel module
                 (copied from "MindSpeed_OpenWRT/sdk-comcerto-openwrt-c2k_nas_3.1-rc2/package/mindspeed/pfe_ctrl")
 
