@@ -1231,7 +1231,7 @@ static int vwd_wifi_if_send_pkt(struct sk_buff *skb)
 
 	/* Copy destination mac into cacheable memory */
 	if (!((unsigned long)skb->data & 0x3))
-		__memcpy8(dst_mac, skb->data);
+		pfe_memcpy8(dst_mac, skb->data);
 	else
 		memcpy(dst_mac, skb->data, 6);
 
@@ -1581,11 +1581,11 @@ static struct sk_buff *pfe_vwd_rx_page(struct vap_desc_s *vap, int qno, unsigned
 			/* We don't need the fragment if the whole packet */
 			/* has been copied in the first linear skb        */
 			if (length <= data_offset) {
-				__memcpy(skb->data, buf_addr + offset, length);
+				pfe_memcpy(skb->data, buf_addr + offset, length);
 				skb_put(skb, length);
 				free_page((unsigned long)buf_addr);
 			} else {
-				__memcpy(skb->data, buf_addr + offset, data_offset);
+				pfe_memcpy(skb->data, buf_addr + offset, data_offset);
 				skb_put(skb, data_offset);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset, length - data_offset);
@@ -1683,12 +1683,12 @@ static struct sk_buff *pfe_vwd_rx_skb(struct vap_desc_s *vap, int qno, unsigned 
 		}
 
 		/**
-		 *  __memcpy expects src and dst need to be same alignment. So make sure that
+		 *  pfe_memcpy expects src and dst need to be same alignment. So make sure that
 		 *  skb->data starts at same alignement as buf_addr + offset.
 		 */
 		skb_reserve(skb, offset);
 		if (length <= MAX_WIFI_HDR_SIZE) {
-			__memcpy(skb->data, buf_addr + offset, length);
+			pfe_memcpy(skb->data, buf_addr + offset, length);
 			skb_put(skb, length);
 #if defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)
 			dma_free_coherent(NULL, PFE_BUF_SIZE, buf_addr, 0);
@@ -1697,7 +1697,7 @@ static struct sk_buff *pfe_vwd_rx_skb(struct vap_desc_s *vap, int qno, unsigned 
 #endif
 		}
 		else {
-			__memcpy(skb->data, buf_addr + offset, MAX_WIFI_HDR_SIZE);
+			pfe_memcpy(skb->data, buf_addr + offset, MAX_WIFI_HDR_SIZE);
 			skb_put(skb, length);
 			skb->mspd_data = buf_addr;
 			skb->mspd_len = length - MAX_WIFI_HDR_SIZE;
@@ -1729,7 +1729,7 @@ static struct sk_buff *pfe_vwd_rx_skb(struct vap_desc_s *vap, int qno, unsigned 
 		/* Since, these packets are going to linux stack, 
                  * to avoid NCNB access overhead copy NCNB to CB buffer.
                  */
-		__memcpy(skb->data, buf_addr + offset, length);
+		pfe_memcpy(skb->data, buf_addr + offset, length);
 #if defined(CONFIG_COMCERTO_ZONE_DMA_NCNB)
 		kfree(buf_addr);
 #elif defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)

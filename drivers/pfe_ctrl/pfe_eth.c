@@ -2506,7 +2506,7 @@ static struct sk_buff *pfe_eth_rx_skb(struct net_device *dev, struct pfe_eth_pri
 #endif
 			skb_reserve(skb, offset);
 #if defined(CONFIG_COMCERTO_ZONE_DMA_NCNB) || defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)
-			__memcpy(skb->data, buf_addr + offset, length);
+			pfe_memcpy(skb->data, buf_addr + offset, length);
 			if (ipsec_hdr) {
 				sah_local = *(unsigned int *)&ipsec_hdr->sa_handle[0];
 			}
@@ -2593,7 +2593,7 @@ static struct sk_buff *pfe_eth_rx_skb(struct net_device *dev, struct pfe_eth_pri
 
 			skb_reserve(skb_frag, offset);
 #if defined(CONFIG_COMCERTO_ZONE_DMA_NCNB) || defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)
-			__memcpy(skb_frag->data, buf_addr + offset, length);
+			pfe_memcpy(skb_frag->data, buf_addr + offset, length);
 #if defined(CONFIG_COMCERTO_ZONE_DMA_NCNB)
 			kfree(buf_addr);
 #elif defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)
@@ -2701,11 +2701,11 @@ static struct sk_buff *pfe_eth_rx_page(struct net_device *dev, struct pfe_eth_pr
 			/* We don't need the fragment if the whole packet */
 			/* has been copied in the first linear skb        */
 			if (length <= data_offset) {
-				__memcpy(skb->data, buf_addr + offset, length);
+				pfe_memcpy(skb->data, buf_addr + offset, length);
 				skb_put(skb, length);
 				free_page((unsigned long)buf_addr);
 			} else {
-				__memcpy(skb->data, buf_addr + offset, data_offset);
+				pfe_memcpy(skb->data, buf_addr + offset, data_offset);
 				skb_put(skb, data_offset);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset, length - data_offset);

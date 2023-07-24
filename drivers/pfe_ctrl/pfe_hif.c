@@ -455,7 +455,7 @@ static int pfe_hif_rx_process(struct pfe_hif *hif, int budget)
 		/*TODO may need to implement rx process budget */
 		desc = hif->RxBase + rtc;
 
-		__memcpy12(&local_desc, desc);
+		pfe_memcpy12(&local_desc, desc);
 
 		/* ACK pending Rx interrupt */
 		if (local_desc.ctrl & BD_CTRL_DESC_EN) {
@@ -471,7 +471,7 @@ static int pfe_hif_rx_process(struct pfe_hif *hif, int budget)
 				}
 			}
 
-			__memcpy12(&local_desc, desc);
+			pfe_memcpy12(&local_desc, desc);
 
 			if (local_desc.ctrl & BD_CTRL_DESC_EN)
 				break;
@@ -495,7 +495,7 @@ static int pfe_hif_rx_process(struct pfe_hif *hif, int budget)
 		if (!hif->started) {
 			hif->started = 1;
 
-			__memcpy8(&hif_hdr, pkt_hdr);
+			pfe_memcpy8(&hif_hdr, pkt_hdr);
 
 			hif->qno = hif_hdr.hdr.qNo;
 			hif->client_id = hif_hdr.hdr.client_id;

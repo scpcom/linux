@@ -266,7 +266,7 @@ static inline int __hif_tx_avail(struct pfe_hif *hif)
 	return hif->TxAvail;
 }
 
-static inline void __memcpy8(void *dst, void *src)
+static inline void pfe_memcpy8(void *dst, void *src)
 {
 	asm volatile (	"ldm %1, {r9, r10}\n\t"
 			"stm %0, {r9, r10}\n\t"
@@ -276,7 +276,7 @@ static inline void __memcpy8(void *dst, void *src)
 		);
 }
 
-static inline void __memcpy12(void *dst, void *src)
+static inline void pfe_memcpy12(void *dst, void *src)
 {
 	asm volatile (	"ldm %1, {r8, r9, r10}\n\t"
 			"stm %0, {r8, r9, r10}\n\t"
@@ -286,7 +286,7 @@ static inline void __memcpy12(void *dst, void *src)
 		);
 }
 
-static inline void __memcpy16(void *dst, void *src)
+static inline void pfe_memcpy16(void *dst, void *src)
 {
 	asm volatile (	"ldm %1, {r7, r8, r9, r10}\n\t"
 			"stm %0, {r7, r8, r9, r10}\n\t"
@@ -296,8 +296,8 @@ static inline void __memcpy16(void *dst, void *src)
 		);
 }
 
-#define HIF_MEMCPY_BURSTSIZE 32                 /*__memcpy copy 32byte in a burst*/
-static inline void __memcpy(void *dst, void *src, unsigned int len)
+#define HIF_MEMCPY_BURSTSIZE 32                 /*pfe_memcpy copy 32byte in a burst*/
+static inline void pfe_memcpy(void *dst, void *src, unsigned int len)
 {
 	void *end = src + len;
 
