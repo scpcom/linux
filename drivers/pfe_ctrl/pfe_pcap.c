@@ -380,7 +380,11 @@ static int pcap_driver_init(struct pfe* pfe)
 
 	/* Initilize NAPI for Rx processing */
 	init_dummy_netdev(&priv->dummy_dev);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 	netif_napi_add(&priv->dummy_dev, &priv->low_napi, pfe_pcap_rx_poll, PCAP_RX_POLL_WEIGHT);
+#else
+	netif_napi_add_weight(&priv->dummy_dev, &priv->low_napi, pfe_pcap_rx_poll, PCAP_RX_POLL_WEIGHT);
+#endif
 	napi_enable(&priv->low_napi);
 
 	priv->pfe = pfe;

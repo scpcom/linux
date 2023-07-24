@@ -892,7 +892,11 @@ int pfe_hif_init(struct pfe *pfe)
 
 	/* Initilize NAPI for Rx processing */
 	init_dummy_netdev(&hif->dummy_dev);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 	netif_napi_add(&hif->dummy_dev, &hif->napi, pfe_hif_rx_poll, HIF_RX_POLL_WEIGHT);
+#else
+	netif_napi_add_weight(&hif->dummy_dev, &hif->napi, pfe_hif_rx_poll, HIF_RX_POLL_WEIGHT);
+#endif
 	napi_enable(&hif->napi);
 
 	spin_lock_init(&hif->tx_lock);

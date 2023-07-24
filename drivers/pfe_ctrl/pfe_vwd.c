@@ -2496,9 +2496,15 @@ static int pfe_vwd_vap_up(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap, s
 
 
 	/* Initilize NAPI for Rx processing */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 	netif_napi_add(vap->dev, &vap->low_napi, pfe_vwd_rx_low_poll, VWD_RX_POLL_WEIGHT);
 	netif_napi_add(vap->dev, &vap->high_napi, pfe_vwd_rx_high_poll, VWD_RX_POLL_WEIGHT);
 	netif_napi_add(vap->dev, &vap->lro_napi, pfe_vwd_lro_poll, VWD_RX_POLL_WEIGHT);
+#else
+	netif_napi_add_weight(vap->dev, &vap->low_napi, pfe_vwd_rx_low_poll, VWD_RX_POLL_WEIGHT);
+	netif_napi_add_weight(vap->dev, &vap->high_napi, pfe_vwd_rx_high_poll, VWD_RX_POLL_WEIGHT);
+	netif_napi_add_weight(vap->dev, &vap->lro_napi, pfe_vwd_lro_poll, VWD_RX_POLL_WEIGHT);
+#endif
 	napi_enable(&vap->high_napi);
 	napi_enable(&vap->low_napi);
 	napi_enable(&vap->lro_napi);

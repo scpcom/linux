@@ -3111,9 +3111,15 @@ static int pfe_eth_init_one( struct pfe *pfe, int id )
 		}
 	}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
 	netif_napi_add(dev, &priv->low_napi, pfe_eth_low_poll, HIF_RX_POLL_WEIGHT - 16);
 	netif_napi_add(dev, &priv->high_napi, pfe_eth_high_poll, HIF_RX_POLL_WEIGHT - 16);
 	netif_napi_add(dev, &priv->lro_napi, pfe_eth_lro_poll, HIF_RX_POLL_WEIGHT - 16);
+#else
+	netif_napi_add_weight(dev, &priv->low_napi, pfe_eth_low_poll, HIF_RX_POLL_WEIGHT - 16);
+	netif_napi_add_weight(dev, &priv->high_napi, pfe_eth_high_poll, HIF_RX_POLL_WEIGHT - 16);
+	netif_napi_add_weight(dev, &priv->lro_napi, pfe_eth_lro_poll, HIF_RX_POLL_WEIGHT - 16);
+#endif
 
 	/* Create all the sysfs files */
 	if(pfe_eth_sysfs_init(dev))
