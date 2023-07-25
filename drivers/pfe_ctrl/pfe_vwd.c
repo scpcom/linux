@@ -2302,7 +2302,11 @@ static int pfe_vwd_vap_xmit_local_packet(struct sk_buff *skb, struct net_device 
 out:
 	hif_tx_unlock(&pfe->hif);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
 	dev->trans_start = jiffies;
+#else
+	netif_trans_update(dev);
+#endif
 
 	// Recycle buffers if a socket's send buffer becomes half full or if the HIF client queue starts filling up
 	if (((count = (hif_lib_tx_pending(&vap->client, queuenum) - HIF_CL_TX_FLUSH_MARK)) > 0)

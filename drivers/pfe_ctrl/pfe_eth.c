@@ -2040,7 +2040,11 @@ static int pfe_eth_send_packet(struct sk_buff *skb, struct net_device *dev)
 
 	hif_tx_unlock(&pfe->hif);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
 	dev->trans_start = jiffies;
+#else
+	netif_trans_update(dev);
+#endif
 
 	pfe_eth_flush_txQ(priv, txQ_num, 1);
 
