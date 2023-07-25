@@ -452,7 +452,7 @@ static inline void ct_keepalive(PCtEntry pCtEntry)
 #endif
 
 #define CRCPOLY_BE 0x04c11db7
-static inline U32 crc32_be(U8 *data)
+static inline U32 pfe_crc32_be(U8 *data)
 {
 	int i, j;
 	U32 crc = 0xffffffff;
@@ -472,7 +472,7 @@ static __inline U32 HASH_CT(U32 Saddr, U32 Daddr, U32 Sport, U32 Dport, U16 Prot
 	U32 sum;
 
 	sum = Saddr ^ htonl(ntohs(Sport));
-	sum = crc32_be((u8 *)&sum);
+	sum = pfe_crc32_be((u8 *)&sum);
 
 	sum += ntohl(Daddr);
 	sum += Proto;

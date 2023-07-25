@@ -125,7 +125,7 @@ static __inline U32 HASH_CT6(U32 *Saddr, U32 *Daddr, U32 Sport, U32 Dport, U16 P
 	for (i = 0; i < 4; i++)
 		sum += ntohl(READ_UNALIGNED_INT(Saddr[i]));
 	sum = htonl(sum) ^ htonl(ntohs(Sport));
-	sum = crc32_be((u8 *)&sum);
+	sum = pfe_crc32_be((u8 *)&sum);
 
 	for (i = 0; i < 4; i++)
 		sum += ntohl(READ_UNALIGNED_INT(Daddr[i]));
