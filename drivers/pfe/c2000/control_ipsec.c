@@ -251,18 +251,18 @@ static void elp_start_device(IPSec_hw_context *sc)
 #if 0
 	/* TODO Need to check if these are exactly needed */
 	/* This is already done in barebox */
-	writel(CLKCORE_IPSEC_CLK_CNTRL, 0x3);
-	writel(CLKCORE_IPSEC_CLK_DIV_CNTRL, 0x2);
+	pfe_writel(CLKCORE_IPSEC_CLK_CNTRL, 0x3);
+	pfe_writel(CLKCORE_IPSEC_CLK_DIV_CNTRL, 0x2);
 #endif
 	/* Reset the IPSEC block at the time of initialization */
 	/* This is required when we stop and start the driver */
 
 	/* Put the IPSEC EAPE (AXI clock domain) device in reset state */
-	writel(readl(PFE_AXI_RESET) | IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
+	pfe_writel(pfe_readl(PFE_AXI_RESET) | IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
 	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 1);
 	mdelay(1);
 	/* Put the IPSEC EAPE devices in Out-Of-Reset state */
-	writel(readl(PFE_AXI_RESET) & ~IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
+	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
 	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 0);
 
 #ifdef CONTROL_IPSEC_DEBUG
@@ -314,9 +314,9 @@ static void elp_start_device(IPSec_hw_context *sc)
 #ifdef CONTROL_IPSEC_DEBUG
 		printk(KERN_INFO "addr: %x random: %x\n", &sc->ELP_REGS->espah_iv_rnd, j);
 #endif
-		writel(j, &sc->ELP_REGS->espah_iv_rnd);
+		pfe_writel(j, &sc->ELP_REGS->espah_iv_rnd);
 #ifdef CONTROL_IPSEC_DEBUG
-		printk(KERN_INFO "value :%x - %x\n", sc->ELP_REGS->espah_iv_rnd, readl(&sc->ELP_REGS->espah_iv_rnd));
+		printk(KERN_INFO "value :%x - %x\n", sc->ELP_REGS->espah_iv_rnd, pfe_readl(&sc->ELP_REGS->espah_iv_rnd));
 #endif
             }
         }
@@ -325,13 +325,13 @@ static void elp_start_device(IPSec_hw_context *sc)
 	// All the offsets are coded through ddt.
 	// Set hw offsets to 0
 	//sc->ELP_REGS->espah_out_offset =  0;
-	writel(0, &sc->ELP_REGS->espah_out_offset);
+	pfe_writel(0, &sc->ELP_REGS->espah_out_offset);
 	//sc->ELP_REGS->espah_in_offset =  0;
-	writel(0, &sc->ELP_REGS->espah_in_offset);
+	pfe_writel(0, &sc->ELP_REGS->espah_in_offset);
 	// Acknowledge all interrupts
 	//sc->ELP_REGS->espah_irq_stat  =  ESPAH_STAT_OUTBND_CMD|ESPAH_STAT_OUTBND_STAT|ESPAH_STAT_INBND_CMD|ESPAH_STAT_INBND_STAT;
 
-	writel(ESPAH_STAT_OUTBND_CMD|ESPAH_STAT_OUTBND_STAT|ESPAH_STAT_INBND_CMD|ESPAH_STAT_INBND_STAT, &sc->ELP_REGS->espah_irq_stat);
+	pfe_writel(ESPAH_STAT_OUTBND_CMD|ESPAH_STAT_OUTBND_STAT|ESPAH_STAT_INBND_CMD|ESPAH_STAT_INBND_STAT, &sc->ELP_REGS->espah_irq_stat);
 #if 0
 	HAL_clear_interrupt(IRQM_IPSEC_EPEA);
 #if	!defined(IPSEC_POLL) || (!IPSEC_POLL)

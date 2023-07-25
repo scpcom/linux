@@ -123,4 +123,7 @@ int pfe_del_timer(struct pfe_timer_list * ptimer);
 int pfe_del_timer_sync(struct pfe_timer_list *ptimer);
 int pfe_timer_pending(const struct pfe_timer_list *ptimer);
 
+#define pfe_readl(r) readl((void*)(r))
+#define pfe_writel(v,r) writel(v, (void*)(r))
+
 #endif /* _PFE_CTRL_H_ */
