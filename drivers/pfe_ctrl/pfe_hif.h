@@ -228,7 +228,7 @@ struct pfe_hif {
 	struct napi_struct	napi;
 	struct device *dev;
 
-#ifdef CONFIG_HOTPLUG_CPU
+#ifdef CONFIG_PFE_HOTPLUG_CPU
 	struct notifier_block   cpu_notify;
 #endif
 

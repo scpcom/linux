@@ -9,6 +9,13 @@ config PFE_CTRL
                 MindSpeed pfe kernel module
                 (copied from "MindSpeed_OpenWRT/sdk-comcerto-openwrt-c2k_nas_3.1-rc2/package/mindspeed/pfe_ctrl")
 
+config PFE_HOTPLUG_CPU
+	bool "pfe cpu hotplug"
+	default n
+	depends on PFE_CTRL && HOTPLUG_CPU
+	help
+		Enable pfe cpu hotplug
+
 config PFE_WIFI_OFFLOAD
 	bool "pfe wifi offload"
 	default n

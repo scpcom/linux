@@ -818,7 +818,7 @@ void hif_lib_update_credit(struct hif_client_s *client, unsigned int queue)
 }
 
 
-#ifdef CONFIG_HOTPLUG_CPU
+#ifdef CONFIG_PFE_HOTPLUG_CPU
 /**  pfe_hif_lib_cpu_notifier
  *
  * @param[in] nfb	cpu notifier control block.
@@ -886,7 +886,7 @@ int pfe_hif_lib_init(struct pfe *pfe)
 	pfe->hif.shm = &ghif_shm;
 	rc = pfe_hif_shm_init(pfe->hif.shm);
 
-#ifdef CONFIG_HOTPLUG_CPU
+#ifdef CONFIG_PFE_HOTPLUG_CPU
 	if (rc)
 		goto err_shm_init;
 
@@ -910,7 +910,7 @@ void pfe_hif_lib_exit(struct pfe *pfe)
 {
 	printk(KERN_INFO "%s\n", __func__);
 
-#ifdef CONFIG_HOTPLUG_CPU
+#ifdef CONFIG_PFE_HOTPLUG_CPU
 	unregister_cpu_notifier(&pfe->hif.cpu_notify);
 #endif
 	pfe_hif_shm_clean(pfe->hif.shm);
