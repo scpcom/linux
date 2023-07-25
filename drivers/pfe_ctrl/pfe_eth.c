@@ -995,18 +995,32 @@ static int pfe_eth_pause_rx_enabled(struct pfe_eth_priv_s *priv)
 static int pfe_eth_set_pauseparam(struct net_device *dev, struct ethtool_pauseparam *epause)
 {
 	struct pfe_eth_priv_s *priv = netdev_priv(dev);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+	__ETHTOOL_DECLARE_LINK_MODE_MASK(mask) = { 0, };
+
+	linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, mask);
+	linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, mask);
+#endif
 
 	if (epause->rx_pause)
 	{
 		gemac_enable_pause_rx(priv->EMAC_baseaddr);
 		if (priv->phydev)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 			priv->phydev->advertising |= ADVERTISED_Pause | ADVERTISED_Asym_Pause;
+#else
+			linkmode_or(priv->phydev->advertising, priv->phydev->advertising, mask);
+#endif
 	}
 	else
 	{
 		gemac_disable_pause_rx(priv->EMAC_baseaddr);
 		if (priv->phydev)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 			priv->phydev->advertising &= ~(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
+#else
+			linkmode_andnot(priv->phydev->advertising, priv->phydev->advertising, mask);
+#endif
 	}
 
 	return 0;
@@ -1393,6 +1407,9 @@ static int pfe_phy_init(struct net_device *dev)
 	char phy_id[MII_BUS_ID_SIZE + 3];
 	char bus_id[MII_BUS_ID_SIZE];
 	phy_interface_t interface;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+	__ETHTOOL_DECLARE_LINK_MODE_MASK(mask) = { 0, };
+#endif
 
 	priv->oldlink = 0;
 	priv->oldspeed = 0;
@@ -1422,11 +1439,26 @@ static int pfe_phy_init(struct net_device *dev)
 
 	priv->phydev = phydev;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 	phydev->supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
+#else
+	linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, mask);
+	linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, mask);
+
+	linkmode_or(phydev->supported, phydev->supported, mask);
+#endif
 	if (pfe_eth_pause_rx_enabled(priv))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 		phydev->advertising |= ADVERTISED_Pause | ADVERTISED_Asym_Pause;
+#else
+		linkmode_or(phydev->advertising, phydev->advertising, mask);
+#endif
 	else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 		phydev->advertising &= ~(ADVERTISED_Pause | ADVERTISED_Asym_Pause);
+#else
+		linkmode_andnot(phydev->advertising, phydev->advertising, mask);
+#endif
 
 	return 0;
 }
