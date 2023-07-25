@@ -809,6 +809,7 @@ int MC4_handle_MULTICAST(U16 *p, U16 Length)
 			break;
 		case ACTION_QUERY:
 			reset_action = 1;
+			fallthrough;
 		case ACTION_QUERY_CONT:
 			rc = MC4_Get_Next_Hash_Entry((MC4Command*)p, reset_action);
 			break;

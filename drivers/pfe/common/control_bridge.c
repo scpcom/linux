@@ -1087,7 +1087,7 @@ static int M_bridge_handle_l2flow(U16 *p, U16 Length)
 
 		case ACTION_QUERY:
 				reset_action = 1;
-			/* fallthrough */
+				fallthrough;
 		case ACTION_QUERY_CONT:
 				ackstatus = rx_Get_Next_Hash_L2FlowEntry(pcmd, reset_action);
 				break;

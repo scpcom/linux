@@ -1406,11 +1406,15 @@ void gemac_set_bus_width(void *base, int width)
 	u32 val = readl(base + EMAC_NETWORK_CONFIG);
 	switch(width)
 	{
+		/* break or fallthrough? */
 		case 32:
 			val = (val & ~EMAC_DATA_BUS_WIDTH_MASK) | EMAC_DATA_BUS_WIDTH_32;
+			fallthrough;
 		case 128:
 			val = (val & ~EMAC_DATA_BUS_WIDTH_MASK) | EMAC_DATA_BUS_WIDTH_128;
+			fallthrough;
 		case 64:
+			fallthrough;
 		default:
 			val = (val & ~EMAC_DATA_BUS_WIDTH_MASK) | EMAC_DATA_BUS_WIDTH_64;
 

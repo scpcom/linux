@@ -226,6 +226,8 @@ static U16 Vlan_handle_entry(U16 * p,U16 Length)
 			
 		case ACTION_QUERY:
 			reset_action = 1;
+
+			fallthrough;
 		case ACTION_QUERY_CONT:
 		{
 			PVlanCommand pVlan = (VlanCommand*)p;

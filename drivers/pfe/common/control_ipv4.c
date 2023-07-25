@@ -1499,6 +1499,7 @@ int IPv4_HandleIP_CONNTRACK(U16 *p, U16 Length)
 		case ACTION_QUERY:
 			reset_action = 1;
 
+			fallthrough;
 		case ACTION_QUERY_CONT:
 		{
 			int rc;
@@ -1599,7 +1600,7 @@ int IP_HandleIP_ROUTE_RESOLVE (U16 *p, U16 Length)
 		case ACTION_QUERY:
 			reset_action = 1;
 
-		/* fallthrough */
+			fallthrough;
 		case ACTION_QUERY_CONT:
 
 			pRtCmd = (PRtCommand)p;

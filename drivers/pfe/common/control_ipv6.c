@@ -556,6 +556,7 @@ int IPv6_handle_CONNTRACK(U16 *p, U16 Length)
 		case ACTION_QUERY:
 			reset_action = 1;
 
+			fallthrough;
 		case ACTION_QUERY_CONT:
 		{
 			PCtExCommandIPv6 pCt = (CtExCommandIPv6*)p;

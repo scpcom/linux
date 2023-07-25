@@ -590,6 +590,7 @@ static int M_ipsec_sa_set_cipher_key(PSAEntry sa, U16 key_alg, U16 key_bits, U8*
 		case SADB_X_EALG_AESCTR:
 			if (hw_sa_set_cipher_ALG_AESCTR(sa, key_bits,key,&algo) < 0)
 				return -1;
+			fallthrough;
 		case SADB_X_EALG_AESCBC:
 			if (key_bits == 128)
 				algo = ELP_CIPHER_AES128;
