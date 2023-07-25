@@ -284,7 +284,7 @@ typedef struct  pfe_eth_priv_s
 
 	int 			default_priority;
 	int 			tso_pe_copy;
-	struct timer_list	tx_timer;
+	struct pfe_timer_list	tx_timer;
 	struct pfe_eth_fast_timer fast_tx_timeout[EMAC_TXQ_CNT];
 	int 			cpu_id;
 

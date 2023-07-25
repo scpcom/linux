@@ -101,7 +101,7 @@ struct fppdiag_drv_dat
 
 struct pfe_diags
 {
-	struct timer_list pfe_diags_timer;
+	struct pfe_timer_list pfe_diags_timer;
 	struct fppdiag_drv_dat *fppdiag_drv_data;
 	struct pfe_diags_info class_diags_info;
 	struct pfe_diags_info util_diags_info;

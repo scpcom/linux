@@ -1596,8 +1596,8 @@ static int pfe_eth_open(struct net_device *dev)
 
 	pfe_ctrl_set_eth_state(priv->id, 1, dev->dev_addr);
 
-	priv->tx_timer.expires = jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000;
-	add_timer(&priv->tx_timer);
+	pfe_mod_timer(&priv->tx_timer, jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000);
+	pfe_add_timer(&priv->tx_timer);
 
 	return rc;
 
@@ -1620,7 +1620,7 @@ int pfe_eth_shutdown( struct net_device *dev, int wake)
 
 	netif_info(priv, ifdown, dev, "%s\n", __func__);
 
-	del_timer_sync(&priv->tx_timer);
+	pfe_del_timer_sync(&priv->tx_timer);
 
 	for(i = 0; i < emac_txq_cnt; i++)
 		hrtimer_cancel(&priv->fast_tx_timeout[i].timer);
@@ -2420,8 +2420,8 @@ void pfe_eth_tx_timeout(unsigned long data )
 
 	pfe_eth_flush_tx(priv, 0);
 
-	priv->tx_timer.expires = jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000;
-	add_timer(&priv->tx_timer);
+	pfe_mod_timer(&priv->tx_timer, jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000);
+	pfe_add_timer(&priv->tx_timer);
 }
 
 /** pfe_eth_fast_tx_timeout
@@ -3038,10 +3038,8 @@ static int pfe_eth_init_one( struct pfe *pfe, int id )
 	priv->high_tmuQ	=  priv->low_tmuQ + 1;	
 
 	spin_lock_init(&priv->lock);
-	priv->tx_timer.data = (unsigned long)priv;
-	priv->tx_timer.function = pfe_eth_tx_timeout;
-	priv->tx_timer.expires = jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000;
-	init_timer(&priv->tx_timer);
+	pfe_init_timer(&priv->tx_timer, pfe_eth_tx_timeout, (unsigned long)priv);
+	pfe_mod_timer(&priv->tx_timer,  jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000);
 	priv->cpu_id = -1;
 
 	pfe_eth_fast_tx_timeout_init(priv);

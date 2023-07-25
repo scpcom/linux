@@ -767,7 +767,7 @@ void pfe_diags_loop(unsigned long arg)
 			count--;
 		}
 	}
-	add_timer(&pfe->diags.pfe_diags_timer);
+	pfe_add_timer(&pfe->diags.pfe_diags_timer);
 }
 
 
@@ -833,10 +833,9 @@ int pfe_diags_init(struct pfe *pfe)
 	pfediag_enable_all(8);
 
 	//Start timer to dump diags periodically
-	init_timer(&pfe->diags.pfe_diags_timer);
-	pfe->diags.pfe_diags_timer.function = pfe_diags_loop;
-	pfe->diags.pfe_diags_timer.expires = jiffies + 2;
-	add_timer(&pfe->diags.pfe_diags_timer);
+	pfe_init_timer(&pfe->diags.pfe_diags_timer, pfe_diags_loop, 0);
+	pfe_mod_timer(&pfe->diags.pfe_diags_timer, jiffies + 2);
+	pfe_add_timer(&pfe->diags.pfe_diags_timer);
 	//timer_init(&pfe->diags.pfe_diags_timer, pfe_diags_loop);
 
 
@@ -850,7 +849,7 @@ err0:
 
 void pfe_diags_exit(struct pfe *pfe)
 {
-	del_timer(&pfe->diags.pfe_diags_timer);
+	pfe_del_timer(&pfe->diags.pfe_diags_timer);
 
 	/* Disable the memory allocated for the modules */
 	pfediag_disable_all();

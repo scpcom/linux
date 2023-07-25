@@ -1092,8 +1092,8 @@ void pfe_vwd_tx_timeout(unsigned long data )
 	}
 
 	if (priv->vap_count) {
-		priv->tx_timer.expires = jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000;
-		add_timer(&priv->tx_timer);
+		pfe_mod_timer(&priv->tx_timer, jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000);
+		pfe_add_timer(&priv->tx_timer);
 	}
 
 	spin_unlock_bh(&priv->vaplock);
@@ -2512,8 +2512,8 @@ static int pfe_vwd_vap_up(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap, s
 
 	if (!priv->vap_count) {
 		printk("%s: Tx recover Timer started...\n", __func__);
-		if (!timer_pending(&priv->tx_timer))
-			add_timer(&priv->tx_timer);
+		if (!pfe_timer_pending(&priv->tx_timer))
+			pfe_add_timer(&priv->tx_timer);
 	}
 	
 	priv->vap_count++;
@@ -2610,7 +2610,7 @@ static void pfe_vwd_vap_down(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap
 
 	if (!pfe->vwd.vap_count) {
 		printk("%s: Tx recover Timer stopped...\n", __func__);
-		del_timer(&pfe->vwd.tx_timer);
+		pfe_del_timer(&pfe->vwd.tx_timer);
 	}
 	
 	/* FIXME Assuming that vwd_ofld is NAS mode */
@@ -2916,7 +2916,7 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 	/*Stop Tx recovery timer and cleanup all vaps*/
 	if (priv->vap_count) {
 		printk("%s: Tx recover Timer stopped...\n", __func__);
-		del_timer_sync(&priv->tx_timer);
+		pfe_del_timer_sync(&priv->tx_timer);
 	}
 	
 	for (ii = 0; ii < MAX_VAP_SUPPORT; ii++)
@@ -3031,10 +3031,8 @@ int pfe_vwd_init(struct pfe *pfe)
 
 	priv->pfe = pfe;
 
-	priv->tx_timer.data = (unsigned long)priv;
-	priv->tx_timer.function = pfe_vwd_tx_timeout;
-	priv->tx_timer.expires = jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000;
-	init_timer(&priv->tx_timer);
+	pfe_init_timer(&priv->tx_timer, pfe_vwd_tx_timeout, (unsigned long)priv);
+	pfe_mod_timer(&priv->tx_timer, jiffies + ( COMCERTO_TX_RECOVERY_TIMEOUT_MS * HZ )/1000);
 
 	if( pfe_vwd_driver_init( priv ) )
 		goto err2;

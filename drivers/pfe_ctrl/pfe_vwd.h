@@ -118,7 +118,7 @@ struct pfe_vwd_priv_s {
 	struct vap_desc_s vaps[MAX_VAP_SUPPORT];
 	int vap_count;
 	spinlock_t vaplock;
-	struct timer_list tx_timer;
+	struct pfe_timer_list tx_timer;
 	struct tso_cb_s 	tso;
 
 #ifdef PFE_VWD_LRO_STATS

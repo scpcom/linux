@@ -108,4 +108,19 @@ struct fpp_msg {
         u16 *payload;
 };
 
+struct pfe_timer_list {
+	struct timer_list timer;
+	void (*function)(unsigned long);
+	unsigned long data;
+};
+
+typedef struct pfe_timer_list _timer;
+
+void pfe_init_timer(_timer *ptimer, void *pfunc, unsigned long cntx);
+int pfe_mod_timer(struct pfe_timer_list *ptimer, unsigned long expires);
+void pfe_add_timer(struct pfe_timer_list * ptimer);
+int pfe_del_timer(struct pfe_timer_list * ptimer);
+int pfe_del_timer_sync(struct pfe_timer_list *ptimer);
+int pfe_timer_pending(const struct pfe_timer_list *ptimer);
+
 #endif /* _PFE_CTRL_H_ */

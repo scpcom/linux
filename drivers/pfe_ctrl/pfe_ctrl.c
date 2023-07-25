@@ -23,6 +23,7 @@
 #include <linux/module.h>
 #include <linux/list.h>
 #include <linux/kthread.h>
+#include <linux/version.h>
 #else
 #include "platform.h"
 #endif
@@ -580,6 +581,61 @@ static int pfe_ctrl_timer(void *data)
 	printk(KERN_INFO "%s exiting\n", __func__);
 
 	return 0;
+}
+
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+static inline void timer_hdl(struct timer_list *in_timer)
+#else
+static inline void timer_hdl(unsigned long cntx)
+#endif
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+	_timer *ptimer = from_timer(ptimer, in_timer, timer);
+#else
+	_timer *ptimer = (_timer *)cntx;
+#endif
+	ptimer->function(ptimer->data);
+}
+
+void pfe_init_timer(_timer *ptimer, void *pfunc, unsigned long cntx)
+{
+	ptimer->function = pfunc;
+	ptimer->data = cntx;
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+	timer_setup(&ptimer->timer, timer_hdl, 0);
+#else
+	/* setup_timer(ptimer, pfunc,(u32)cntx);	 */
+	ptimer->timer.function = timer_hdl;
+	ptimer->timer.data = (unsigned long)ptimer;
+	init_timer(&ptimer->timer);
+#endif
+}
+
+int pfe_mod_timer(struct pfe_timer_list *ptimer, unsigned long expires)
+{
+	return mod_timer(&ptimer->timer, expires);
+}
+
+int pfe_del_timer(struct pfe_timer_list * ptimer)
+{
+	return del_timer(&ptimer->timer);
+}
+
+void pfe_add_timer(struct pfe_timer_list * ptimer)
+{
+	add_timer(&ptimer->timer);
+}
+
+int pfe_del_timer_sync(struct pfe_timer_list *ptimer)
+{
+	return del_timer_sync(&ptimer->timer);
+}
+
+int pfe_timer_pending(const struct pfe_timer_list *ptimer)
+{
+	return timer_pending(&ptimer->timer);
 }
 
 
