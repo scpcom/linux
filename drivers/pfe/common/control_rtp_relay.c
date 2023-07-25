@@ -922,8 +922,9 @@ static int RTP_query_stats_common(PRTCPQueryResponse pRTPRep, PRTCPStats pStats)
 		if((pStats->average_reception_period >= num_rx_valid) && (num_rx_valid))
 		{
 #if defined(COMCERTO_2000_CONTROL)
-			pRTPRep->average_reception_period = pStats->average_reception_period;
-			do_div(pRTPRep->average_reception_period, num_rx_valid); 		//expressed in us
+			U64 average_reception_period = pStats->average_reception_period;
+			do_div(average_reception_period, num_rx_valid); 		//expressed in us
+			pRTPRep->average_reception_period = average_reception_period;
 #else
 			pRTPRep->average_reception_period = pStats->average_reception_period / num_rx_valid; //expressed in us
 #endif
