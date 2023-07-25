@@ -245,7 +245,6 @@ typedef struct _tDMCommand {
 
 
 U16 M_ipsec_debug(U16 cmd_code, U16 cmd_len, U16 *pcmd);
-__inline  void read_random(unsigned char *p_result, unsigned int rlen);
 
 #if     defined(IPSEC_DEBUG) && (IPSEC_DEBUG)
 #       define IPSEC_DBG(x) do { x} while(0)
