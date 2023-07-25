@@ -1776,7 +1776,11 @@ static int pfe_eth_get_queuenum( struct pfe_eth_priv_s *priv, struct sk_buff *sk
 	/* Get the Fast Path queue number */
 	/* Use conntrack mark (if conntrack exists), then packet mark (if any), then fallback to default */
 #if defined(CONFIG_IP_NF_CONNTRACK_MARK) || defined(CONFIG_NF_CONNTRACK_MARK)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0))
 	if (skb->nfct) {
+#else
+	if (skb_nfct(skb)) {
+#endif
 		enum ip_conntrack_info cinfo;
 		struct nf_conn *ct;
 		ct = nf_ct_get(skb, &cinfo);
