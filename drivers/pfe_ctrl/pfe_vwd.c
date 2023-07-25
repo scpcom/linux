@@ -69,7 +69,14 @@ static int pfe_vwd_rx_low_poll(struct napi_struct *napi, int budget);
 static int pfe_vwd_rx_high_poll(struct napi_struct *napi, int budget);
 static void pfe_vwd_sysfs_exit(void);
 static void pfe_vwd_vap_down(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+static unsigned int pfe_vwd_nf_route_hook_fn(void *in_priv,
+                               struct sk_buff *skb,
+                               const struct nf_hook_state *state);
+static unsigned int pfe_vwd_nf_bridge_hook_fn(void *in_priv,
+                               struct sk_buff *skb,
+                               const struct nf_hook_state *state);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 static unsigned int pfe_vwd_nf_route_hook_fn(const struct nf_hook_ops *ops, struct sk_buff *skb,
 	       const struct nf_hook_state *state);
 static unsigned int pfe_vwd_nf_bridge_hook_fn(const struct nf_hook_ops *ops, struct sk_buff *skb,
@@ -566,6 +573,41 @@ static ssize_t pfe_vwd_show_route_hook_enable(struct device *dev, struct device_
 	return idx;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0))
+static int pfe_nf_register_hook(struct nf_hook_ops *reg)
+{
+	struct net *net, *last;
+	int ret;
+
+	for_each_net(net) {
+		ret = nf_register_net_hook(net, reg);
+		if (ret && ret != -ENOENT)
+			goto rollback;
+	}
+
+	return 0;
+rollback:
+	last = net;
+	for_each_net(net) {
+		if (net == last)
+			break;
+		nf_unregister_net_hook(net, reg);
+	}
+	return ret;
+}
+
+static void pfe_nf_unregister_hook(struct nf_hook_ops *reg)
+{
+	struct net *net;
+
+	for_each_net(net)
+		nf_unregister_net_hook(net, reg);
+}
+#else
+#define pfe_nf_register_hook nf_register_hook
+#define pfe_nf_unregister_hook nf_unregister_hook
+#endif
+
 /** pfe_vwd_set_route_hook_enable
  *
  */
@@ -583,12 +625,12 @@ static ssize_t pfe_vwd_set_route_hook_enable(struct device *dev, struct device_a
 
                 if (priv->fast_bridging_enable)
                 {
-                        nf_unregister_hook(&vwd_hook_bridge);
+                        pfe_nf_unregister_hook(&vwd_hook_bridge);
                         priv->fast_bridging_enable = 0;
                 }
 
-                nf_register_hook(&vwd_hook);
-                nf_register_hook(&vwd_hook_ipv6);
+                pfe_nf_register_hook(&vwd_hook);
+                pfe_nf_register_hook(&vwd_hook_ipv6);
 
 
         }
@@ -597,8 +639,8 @@ static ssize_t pfe_vwd_set_route_hook_enable(struct device *dev, struct device_a
                 printk("%s: Wifi fast routing disabled \n", __func__);
                 priv->fast_routing_enable = 0;
 
-                nf_unregister_hook(&vwd_hook);
-                nf_unregister_hook(&vwd_hook_ipv6);
+                pfe_nf_unregister_hook(&vwd_hook);
+                pfe_nf_unregister_hook(&vwd_hook_ipv6);
 
         }
 
@@ -634,19 +676,19 @@ static int pfe_vwd_set_bridge_hook_enable(struct device *dev, struct device_attr
 
                 if(priv->fast_routing_enable)
                 {
-                        nf_unregister_hook(&vwd_hook);
-                        nf_unregister_hook(&vwd_hook_ipv6);
+                        pfe_nf_unregister_hook(&vwd_hook);
+                        pfe_nf_unregister_hook(&vwd_hook_ipv6);
                         priv->fast_routing_enable = 0;
                 }
 
-                nf_register_hook(&vwd_hook_bridge);
+                pfe_nf_register_hook(&vwd_hook_bridge);
         }
         else if ( !user_val && priv->fast_bridging_enable )
         {
                 printk("%s: Wifi fast bridging disabled \n", __func__);
                 priv->fast_bridging_enable = 0;
 
-                nf_unregister_hook(&vwd_hook_bridge);
+                pfe_nf_unregister_hook(&vwd_hook_bridge);
         }
 
 	return count;
@@ -1277,7 +1319,11 @@ end:
 /** vwd_nf_bridge_hook_fn
  *
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+static unsigned int pfe_vwd_nf_bridge_hook_fn(void *in_priv,
+                               struct sk_buff *skb,
+                               const struct nf_hook_state *state)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 static unsigned int pfe_vwd_nf_bridge_hook_fn(const struct nf_hook_ops *ops, struct sk_buff *skb,
 	       const struct nf_hook_state *state)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0)
@@ -1321,7 +1367,11 @@ done:
 /** vwd_nf_route_hook_fn
  *
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+static unsigned int pfe_vwd_nf_route_hook_fn(void *in_priv,
+                               struct sk_buff *skb,
+                               const struct nf_hook_state *state)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 static unsigned int pfe_vwd_nf_route_hook_fn(const struct nf_hook_ops *ops, struct sk_buff *skb,
 	       const struct nf_hook_state *state)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0)
@@ -2853,8 +2903,8 @@ static int pfe_vwd_up(struct pfe_vwd_priv_s *priv )
 {
 	printk("%s: start\n", __func__);
 
-	nf_register_hook(&vwd_hook);
-	nf_register_hook(&vwd_hook_ipv6);
+	pfe_nf_register_hook(&vwd_hook);
+	pfe_nf_register_hook(&vwd_hook_ipv6);
 
 	if (pfe_vwd_sysfs_init(priv))
 		goto err0;
@@ -2887,8 +2937,8 @@ static int pfe_vwd_up(struct pfe_vwd_priv_s *priv )
 	return 0;
 
 err0:
-	nf_unregister_hook(&vwd_hook);
-	nf_unregister_hook(&vwd_hook_ipv6);
+	pfe_nf_unregister_hook(&vwd_hook);
+	pfe_nf_unregister_hook(&vwd_hook_ipv6);
 
 	return -1;
 }
@@ -2908,13 +2958,13 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 
 	if( priv->fast_bridging_enable )
 	{
-		nf_unregister_hook(&vwd_hook_bridge);
+		pfe_nf_unregister_hook(&vwd_hook_bridge);
 	}
 
 	if( priv->fast_routing_enable )
 	{
-		nf_unregister_hook(&vwd_hook);
-		nf_unregister_hook(&vwd_hook_ipv6);
+		pfe_nf_unregister_hook(&vwd_hook);
+		pfe_nf_unregister_hook(&vwd_hook_ipv6);
 	}
 
 	/*Stop Tx recovery timer and cleanup all vaps*/
