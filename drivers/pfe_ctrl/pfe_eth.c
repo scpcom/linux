@@ -2874,7 +2874,9 @@ static int pfe_eth_poll(struct pfe_eth_priv_s *priv, struct napi_struct *napi, u
 		priv->stats.rx_packets++;
 		priv->stats.rx_bytes += len;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0)
 		dev->last_rx = jiffies;
+#endif
 
 		work_done++;
 

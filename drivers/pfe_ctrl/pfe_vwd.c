@@ -1990,7 +1990,9 @@ static int pfe_vwd_rx_poll( struct vap_desc_s *vap, struct napi_struct *napi, in
 		}
 
 		skb->dev = dev;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0)
 		dev->last_rx = jiffies;
+#endif
 
 #ifdef PFE_VWD_LRO_STATS
 		priv->lro_len_counters[((u32)skb->len >> 11) & (LRO_LEN_COUNT_MAX - 1)]++;
