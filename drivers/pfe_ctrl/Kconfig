@@ -8,3 +8,10 @@ config PFE_CTRL
         ---help---
                 MindSpeed pfe kernel module
                 (copied from "MindSpeed_OpenWRT/sdk-comcerto-openwrt-c2k_nas_3.1-rc2/package/mindspeed/pfe_ctrl")
+
+config PFE_WIFI_OFFLOAD
+	bool "pfe wifi offload"
+	default n
+	depends on PFE_CTRL
+	help
+		Enable pfe wifi offload

@@ -38,6 +38,10 @@
 #include <linux/rculist.h>
 #include <../../../net/bridge/br_private.h>
 
+#ifndef CONFIG_PFE_WIFI_OFFLOAD
+#define original_dev_queue_xmit dev_queue_xmit
+#endif
+
 #if defined(CONFIG_INET_IPSEC_OFFLOAD) || defined(CONFIG_INET6_IPSEC_OFFLOAD)
 #include <net/xfrm.h>
 #endif
@@ -213,6 +217,7 @@ static int vwd_vap_device_event_notifier(struct notifier_block *unused,
 			break;
 
 		case NETDEV_DOWN:
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 			if (!wifi_dev->wifi_offload_dev)
 				goto done;
 
@@ -230,6 +235,7 @@ static int vwd_vap_device_event_notifier(struct notifier_block *unused,
 				if (!pfe_vwd_handle_vap(priv, &vap_cmd))
 					printk(KERN_INFO"%s : VAP name(%s) is DOWN Successfully\n", __func__, wifi_dev->name);
 			}
+#endif
 			break;
 
 	}
@@ -2504,7 +2510,9 @@ static int pfe_vwd_vap_up(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap, s
 
 	if (vwd_ofld) {
 		dev_get_by_index(&init_net, vap->dev->ifindex);
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 		wifi_dev->wifi_offload_dev = vap->dev;
+#endif
 		vap->wifi_ethtool_ops = wifi_dev->ethtool_ops;
 
 		if (!wifi_dev->ethtool_ops) {
@@ -2600,6 +2608,7 @@ static void pfe_vwd_vap_down(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap
 		clear_bit(__LINK_STATE_START, &vap->dev->state);
 		vap->dev->flags &= ~(IFF_UP);
 		if ((wifi_dev = dev_get_by_name(&init_net, vap->ifname))) {
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 			if (wifi_dev->wifi_offload_dev) {
 				wifi_dev->ethtool_ops = vap->wifi_ethtool_ops;
 				wifi_dev->wifi_offload_dev = NULL;
@@ -2607,6 +2616,7 @@ static void pfe_vwd_vap_down(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap
 				wifi_dev->features = vap->wifi_features;
 
 			}
+#endif
 
 			dev_put(wifi_dev);
 		}
@@ -2909,12 +2919,14 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 			wifi_dev = dev_get_by_name(&init_net, vap->ifname);
 
 			if (wifi_dev) {		
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 				if (wifi_dev->wifi_offload_dev) {
 					wifi_dev->ethtool_ops = vap->wifi_ethtool_ops;
 					wifi_dev->wifi_offload_dev = NULL;
 					wifi_dev->hw_features = vap->wifi_hw_features;
 					wifi_dev->features = vap->wifi_features;
 				}
+#endif
 				dev_put(wifi_dev);
 			}
 
