@@ -1216,7 +1216,12 @@ static int pfe_eth_mdio_init(struct pfe_eth_priv_s *priv, struct comcerto_mdio_p
 	if (!priv->mdc_div)
 		priv->mdc_div = 64;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
+	for (int i = 0; i < PHY_MAX_ADDR; i++)
+		bus->irq[i] = minfo->irq[i];
+#else
 	bus->irq = minfo->irq;
+#endif
 
 	bus->parent = priv->pfe->dev;
 
