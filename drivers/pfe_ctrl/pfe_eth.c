@@ -946,8 +946,15 @@ static void pfe_eth_set_msglevel(struct net_device *dev, uint32_t data)
  * pfe_eth_set_coalesce - Sets rx interrupt coalescing timer.
  *
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
+static int pfe_eth_set_coalesce(struct net_device *dev,
+				struct ethtool_coalesce *ec,
+				struct kernel_ethtool_coalesce *kec,
+				struct netlink_ext_ack *nea)
+#else
 static int pfe_eth_set_coalesce(struct net_device *dev,
                               struct ethtool_coalesce *ec)
+#endif
 {
 	if (ec->rx_coalesce_usecs > HIF_RX_COAL_MAX_USECS)
 		  return -EINVAL;
@@ -966,8 +973,15 @@ static int pfe_eth_set_coalesce(struct net_device *dev,
  * pfe_eth_get_coalesce - Gets rx interrupt coalescing timer value.
  *
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
+static int pfe_eth_get_coalesce(struct net_device *dev,
+				struct ethtool_coalesce *ec,
+				struct kernel_ethtool_coalesce *kec,
+				struct netlink_ext_ack *nea)
+#else
 static int pfe_eth_get_coalesce(struct net_device *dev,
                               struct ethtool_coalesce *ec)
+#endif
 {
 	int reg_val = readl(HIF_INT_COAL);
 
