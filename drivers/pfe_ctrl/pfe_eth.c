@@ -794,7 +794,11 @@ static void pfe_eth_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *
  *
  */
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 static int pfe_eth_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+#else
+static int pfe_eth_set_link_ksettings(struct net_device *dev, const struct ethtool_link_ksettings *cmd)
+#endif
 {
 	struct pfe_eth_priv_s *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
@@ -802,7 +806,11 @@ static int pfe_eth_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 	if (NULL == phydev)
 		return -ENODEV;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 	return phy_ethtool_sset(phydev, cmd);
+#else
+	return phy_ethtool_ksettings_set(phydev, cmd);
+#endif
 }
 
 
@@ -810,7 +818,11 @@ static int pfe_eth_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
  * pfe_eth_getsettings - Return the current settings in the ethtool_cmd structure.
  *
  */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 static int pfe_eth_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+#else
+static int pfe_eth_get_link_ksettings(struct net_device *dev, struct ethtool_link_ksettings *cmd)
+#endif
 {
 	struct pfe_eth_priv_s *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
@@ -818,7 +830,12 @@ static int pfe_eth_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 	if (NULL == phydev)
 		return -ENODEV;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 	return phy_ethtool_gset(phydev, cmd);
+#else
+	phy_ethtool_ksettings_get(phydev, cmd);
+	return 0;
+#endif
 }
 
 /**
@@ -1010,8 +1027,13 @@ static void pfe_eth_get_pauseparam(struct net_device *dev, struct ethtool_pausep
 
 
 struct ethtool_ops pfe_ethtool_ops = {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 	.get_settings = pfe_eth_get_settings,
 	.set_settings = pfe_eth_set_settings,
+#else
+	.get_link_ksettings = pfe_eth_get_link_ksettings,
+	.set_link_ksettings = pfe_eth_set_link_ksettings,
+#endif
 	.get_drvinfo = pfe_eth_get_drvinfo,
 	.get_regs_len = pfe_eth_gemac_reglen,
 	.get_regs = pfe_eth_gemac_get_regs,
