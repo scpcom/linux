@@ -18,14 +18,17 @@
  */
 
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
 
 #include <mach/hardware.h>
-#include <mach/comcerto-2000/clk-rst.h>
+#include "pfe_platform.h"
 
 #include "pfe_mod.h"
+
+static u64 comcerto_pfe_dma_mask = DMA_BIT_MASK(32);
 
 /**
  * pfe_platform_probe -
@@ -47,6 +50,10 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, pfe);
+
+	pdev->dev.dma_mask		= &comcerto_pfe_dma_mask;
+	pdev->dev.coherent_dma_mask	= DMA_BIT_MASK(32);
+	pdev->dev.platform_data = (void *)of_device_get_match_data(&pdev->dev);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ddr");
 	if (!r) {
@@ -147,7 +154,7 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 
 	/* Get the system clock */
-	clk_axi = clk_get(NULL,"axi");
+	clk_axi = clk_get(&pdev->dev, "axi");
 	if (IS_ERR(clk_axi)) {
 		printk(KERN_INFO "clk_get call failed\n");
 		rc = -ENXIO;
@@ -314,18 +321,79 @@ static const struct dev_pm_ops pfe_platform_pm_ops = {
 
 #endif
 
+static struct comcerto_pfe_platform_data comcerto_pfe_pdata = {
+	.comcerto_eth_pdata[0] = {
+		.name = GEM0_ITF_NAME,
+		.device_flags = CONFIG_COMCERTO_GEMAC,
+		.mii_config = CONFIG_COMCERTO_USE_RGMII,
+		.gemac_mode = GEMAC_SW_CONF | GEMAC_SW_FULL_DUPLEX | GEMAC_SW_SPEED_1G,
+		.phy_flags = GEMAC_PHY_RGMII_ADD_DELAY,
+		.bus_id = 0,
+		.phy_id = 4,
+		.gem_id = 0,
+		.mac_addr = (u8[])GEM0_MAC,
+	},
+
+	.comcerto_eth_pdata[1] = {
+		.name = GEM1_ITF_NAME,
+		.device_flags = CONFIG_COMCERTO_GEMAC,
+		.mii_config = CONFIG_COMCERTO_USE_RGMII,
+		.gemac_mode = GEMAC_SW_CONF | GEMAC_SW_FULL_DUPLEX | GEMAC_SW_SPEED_1G,
+		.phy_flags = GEMAC_PHY_RGMII_ADD_DELAY,
+		.bus_id = 0,
+		.phy_id = 6,
+		.gem_id = 1,
+		.mac_addr = (u8[])GEM1_MAC,
+	},
+#if 0
+	.comcerto_eth_pdata[2] = {
+		.name = GEM2_ITF_NAME,
+		.device_flags = CONFIG_COMCERTO_GEMAC,
+		.mii_config = CONFIG_COMCERTO_USE_RGMII,
+		.gemac_mode = GEMAC_SW_CONF | GEMAC_SW_FULL_DUPLEX | GEMAC_SW_SPEED_1G,
+		.phy_flags = GEMAC_NO_PHY,
+		.gem_id = 2,
+		.mac_addr = (u8[])GEM2_MAC,
+	},
+#endif
+	/**
+	 * There is a single mdio bus coming out of C2K.  And that's the one
+	 * connected to GEM0. All PHY's, switchs will be connected to the same
+	 * bus using different addresses. Typically .bus_id is always 0, only
+	 * .phy_id will change in the different comcerto_eth_pdata[] structures above.
+	 */
+	.comcerto_mdio_pdata[0] = {
+		.enabled = 1,
+		.phy_mask = 0xFFFFFFAF,
+		.mdc_div = 96,
+		.irq = {
+			[4] = PHY_POLL,
+			[6] = PHY_POLL,
+		},
+	},
+};
+
+static const struct of_device_id of_pfe_platform_match[] = {
+	{ .compatible = "fsl,ls1024a-pfe-ctrl", .data = &comcerto_pfe_pdata },
+	{},
+};
+
 static struct platform_driver pfe_platform_driver = {
 	.probe = pfe_platform_probe,
 	.remove = pfe_platform_remove,
 	.driver = {
 		.name = "pfe",
+		.of_match_table = of_pfe_platform_match,
 #ifdef CONFIG_PM
 		.pm = &pfe_platform_pm_ops,
 #endif
 	},
 };
 
+#ifdef CONFIG_OF
+module_platform_driver(pfe_platform_driver);
 
+#else
 static int __init pfe_module_init(void)
 {
 	printk(KERN_INFO "%s\n", __func__);
@@ -341,6 +409,7 @@ static void __exit pfe_module_exit(void)
 	printk(KERN_INFO "%s\n", __func__);
 }
 
-MODULE_LICENSE("GPL");
 module_init(pfe_module_init);
 module_exit(pfe_module_exit);
+#endif
+MODULE_LICENSE("GPL");

@@ -3107,7 +3107,7 @@ static int pfe_eth_init_one( struct pfe *pfe, int id )
 	priv->id = einfo[id].gem_id;
 	priv->pfe = pfe;
 	/* get gemac tx clock */
-	priv->gemtx_clk = clk_get(NULL, "gemtx");
+	priv->gemtx_clk = clk_get(pfe->dev, "gemtx");
 
 	if (IS_ERR(priv->gemtx_clk)) {
 		printk(KERN_ERR "%s: Unable to get the clock for gemac %d\n", __func__, priv->id);
