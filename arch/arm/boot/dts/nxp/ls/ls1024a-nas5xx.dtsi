@@ -73,7 +73,7 @@
 	};
 
 	keys {
-		compatible = "gpio-keys";
+		compatible = "zyxel,nas-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		autorepeat;
