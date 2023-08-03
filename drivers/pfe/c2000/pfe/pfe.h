@@ -19,8 +19,6 @@
 #ifndef _PFE_H_
 #define _PFE_H_
 
-#include <asm/system_info.h>
-
 #define CLASS_DMEM_BASE_ADDR(i)	(0x00000000 | ((i) << 20))
 #define CLASS_IMEM_BASE_ADDR(i)	(0x00000000 | ((i) << 20)) /* Only valid for mem access register interface */
 #define CLASS_DMEM_SIZE		0x00002000
@@ -64,6 +62,7 @@ extern unsigned int ddr_size;
 #if defined(COMCERTO_2000_CONTROL)
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#include <asm/system_info.h>
 /*This is copied from arch/arm/include/asm/system_info.h */
 extern unsigned int system_rev;
 #endif
