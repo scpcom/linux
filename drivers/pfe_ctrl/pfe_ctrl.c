@@ -125,7 +125,8 @@ int pe_sync_stop(struct pfe_ctrl *ctrl, int pe_mask)
 {
 	struct pe_sync_mailbox *mbox;
 	int pe_stopped = 0;
-	unsigned long end = jiffies + 2;
+	//unsigned long end = jiffies + 2;
+	unsigned long end = jiffies + 5;//Adjust the time before timeout by the advice from Bill Su
 	int i;
 
 	for (i = 0; i < MAX_PE; i++)
