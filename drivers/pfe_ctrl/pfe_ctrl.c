@@ -625,7 +625,8 @@ int pfe_del_timer(struct pfe_timer_list * ptimer)
 
 void pfe_add_timer(struct pfe_timer_list * ptimer)
 {
-	add_timer(&ptimer->timer);
+	if (!timer_pending(&ptimer->timer))
+		add_timer(&ptimer->timer);
 }
 
 int pfe_del_timer_sync(struct pfe_timer_list *ptimer)
