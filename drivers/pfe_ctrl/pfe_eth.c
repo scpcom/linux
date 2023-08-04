@@ -1055,6 +1055,9 @@ static void pfe_eth_get_pauseparam(struct net_device *dev, struct ethtool_pausep
 
 
 struct ethtool_ops pfe_ethtool_ops = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+	.supported_coalesce_params = ETHTOOL_COALESCE_USECS,
+#endif
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
 	.get_settings = pfe_eth_get_settings,
 	.set_settings = pfe_eth_set_settings,
