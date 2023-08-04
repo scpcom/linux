@@ -92,8 +92,10 @@ static unsigned int pfe_vwd_nf_bridge_hook_fn( unsigned int hook, struct sk_buff
 static int pfe_vwd_handle_vap( struct pfe_vwd_priv_s *vwd, struct vap_cmd_s *cmd );
 static int pfe_vwd_event_handler(void *data, int event, int qno);
 static void pfe_vwd_vap_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *drvinfo);
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 extern int comcerto_wifi_rx_fastpath_register(int (*hdlr)(struct sk_buff *skb));
 extern void comcerto_wifi_rx_fastpath_unregister(void);
+#endif
 
 extern unsigned int page_mode;
 #if defined(CONFIG_INET_IPSEC_OFFLOAD) || defined(CONFIG_INET6_IPSEC_OFFLOAD)
@@ -1214,6 +1216,7 @@ out:
 	return;
 }
 
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 /*
  * vwd_wifi_if_send_pkt
  */
@@ -1268,6 +1271,7 @@ static int vwd_wifi_if_send_pkt(struct sk_buff *skb)
 end:
 	return -1;
 }
+#endif
 
 
 /** vwd_nf_bridge_hook_fn
@@ -2849,7 +2853,9 @@ static int pfe_vwd_up(struct pfe_vwd_priv_s *priv )
 	priv->fast_bridging_enable = 0;
 	priv->fast_routing_enable = 1;
 
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 	comcerto_wifi_rx_fastpath_register(vwd_wifi_if_send_pkt);
+#endif
 
 	if (vwd_ofld == PFE_VWD_NAS_MODE) {
 		register_netdevice_notifier(&vwd_vap_notifier);
@@ -2886,7 +2892,9 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 
 	printk(KERN_INFO "%s: %s\n", priv->name, __func__);
 
+#ifdef CONFIG_PFE_WIFI_OFFLOAD
 	comcerto_wifi_rx_fastpath_unregister();
+#endif
 
 	if( priv->fast_bridging_enable )
 	{
