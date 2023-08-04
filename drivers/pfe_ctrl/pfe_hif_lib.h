@@ -20,6 +20,8 @@
 #ifndef _PFE_HIF_LIB_H_
 #define _PFE_HIF_LIB_H_
 
+#include <linux/version.h>
+
 #include "pfe_hif.h"
 
 #ifdef HIF_LIB_DEBUG
@@ -217,5 +219,9 @@ static inline int hif_lib_tx_pending(struct hif_client_s *client, unsigned int q
 #define hif_lib_tx_credit_avail(pfe, id, qno) pfe->tmu_credit.tx_credit[id][qno]
 #define hif_lib_tx_credit_max(pfe, id, qno) pfe->tmu_credit.tx_credit_max[id][qno]
 #define hif_lib_tx_credit_use(pfe, id, qno, credit) do {if (tx_qos) {pfe->tmu_credit.tx_credit[id][qno]-= credit; pfe->tmu_credit.tx_packets[id][qno]+=credit;}} while (0)
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
+#define build_skb(buf_addr, b) alloc_skb_header(PFE_BUF_SIZE, buf_addr, GFP_ATOMIC)
+#endif
 
 #endif /* _PFE_HIF_LIB_H_ */
