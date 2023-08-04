@@ -261,6 +261,25 @@ config MTD_NAND_VF610_NFC
 	  correction is supported. Hardware ECC is only enabled through
 	  device tree.
 
+config MTD_NAND_LS1024A
+	tristate "Support for NAND on Freescale LS1024A"
+	depends on ARCH_LS1024A
+	help
+	  Enables support for NAND flash controller on the Freescale LS1024A
+          SoC.
+
+config NAND_LS1024A_ECC_8_HW_BCH
+	bool
+	depends on MTD_NAND_LS1024A
+	default n
+	prompt "LS1024A ECC-8 syndrome calculation using BCH"
+
+config NAND_LS1024A_ECC_24_HW_BCH
+	bool
+	depends on MTD_NAND_LS1024A
+	default y
+	prompt "LS1024A ECC-24 syndrome calculation using BCH"
+
 config MTD_NAND_MXC
 	tristate "Freescale MXC NAND controller"
 	depends on ARCH_MXC || COMPILE_TEST
