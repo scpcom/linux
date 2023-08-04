@@ -130,6 +130,15 @@ static int pfe_platform_probe(struct platform_device *pdev)
 
         printk(KERN_INFO "ipsec: baseaddr :%x --- %x\n",  (u32)pfe->ipsec_phys_baseaddr,  (u32)pfe->ipsec_baseaddr);
 
+#ifndef CONFIG_OF
+	pfe->hif_irq = platform_get_irq_byname(pdev, "hif");
+	if (pfe->hif_irq < 0) {
+		printk(KERN_INFO "platform_get_irq_byname(hif) failed\n");
+		rc = pfe->hif_irq;
+		goto err_hif_irq;
+	}
+#endif
+
 	pfe->dev = &pdev->dev;
 
 	/* FIXME this needs to be done at the BSP level with proper locking */
@@ -157,6 +166,9 @@ static int pfe_platform_probe(struct platform_device *pdev)
 err_probe:
 	clk_put(clk_axi);
 err_clk:
+#ifndef CONFIG_OF
+err_hif_irq:
+#endif
         iounmap(pfe->ipsec_baseaddr);
 err_ipsec:
 	iounmap(pfe->iram_baseaddr);

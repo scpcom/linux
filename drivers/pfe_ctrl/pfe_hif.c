@@ -28,6 +28,7 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 
+#include <linux/of.h>
 #include <linux/of_irq.h>
 
 #include <asm/io.h>
@@ -38,6 +39,10 @@
 
 
 #include "pfe_mod.h"
+
+#ifndef IRQF_DISABLED
+#define IRQF_DISABLED 0
+#endif
 
 #define HIF_INT_MASK	(HIF_INT | HIF_RXPKT_INT)
 
@@ -903,6 +908,7 @@ int pfe_hif_init(struct pfe *pfe)
 	gpi_enable(HGPI_BASE_ADDR);
 
 #ifdef __KERNEL__
+#ifdef CONFIG_OF
 	{
 	struct of_phandle_args oirq;
 	oirq.np = of_find_node_by_name(NULL, "interrupt-controller");
@@ -915,7 +921,8 @@ int pfe_hif_init(struct pfe *pfe)
 	hif->irq = irq_create_of_mapping(&oirq);
 	pr_err("HIF irq: %d\n", hif->irq);
 	}
-	err = request_irq(hif->irq, hif_isr, 0, "pfe_hif", hif);
+#endif
+	err = request_irq(hif->irq, hif_isr, IRQF_DISABLED, "pfe_hif", hif);
 	if (err) {
 		printk(KERN_ERR "%s: failed to get the hif IRQ = %d\n",  __func__, hif->irq);
 		goto err1;
