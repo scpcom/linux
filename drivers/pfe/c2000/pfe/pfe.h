@@ -19,6 +19,21 @@
 #ifndef _PFE_H_
 #define _PFE_H_
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
+#define PFE_AXI_RESET APB_VADDR(AXI_RESET_1)
+#else
+#define PFE_AXI_RESET AXI_RESET_1
+#endif
+
+#ifndef PFE_SYS_AXI_RESET_BIT
+#define PFE_SYS_AXI_RESET_BIT		(1<<3)
+#endif
+#ifndef IPSEC_EAPE_AXI_RESET_BIT
+#define IPSEC_EAPE_AXI_RESET_BIT	(1<<1)
+#endif
+
 #define CLASS_DMEM_BASE_ADDR(i)	(0x00000000 | ((i) << 20))
 #define CLASS_IMEM_BASE_ADDR(i)	(0x00000000 | ((i) << 20)) /* Only valid for mem access register interface */
 #define CLASS_DMEM_SIZE		0x00002000
@@ -60,7 +75,6 @@ extern unsigned long ddr_phys_base_addr;
 extern unsigned int ddr_size;
 
 #if defined(COMCERTO_2000_CONTROL)
-#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
 #include <asm/system_info.h>
 /*This is copied from arch/arm/include/asm/system_info.h */

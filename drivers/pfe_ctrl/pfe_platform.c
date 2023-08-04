@@ -133,9 +133,9 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	pfe->dev = &pdev->dev;
 
 	/* FIXME this needs to be done at the BSP level with proper locking */
-	writel(readl(APB_VADDR(AXI_RESET_1)) | (1 << 3), APB_VADDR(AXI_RESET_1));
+	writel(readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 	mdelay(1);
-	writel(readl(APB_VADDR(AXI_RESET_1)) & ~(1 << 3), APB_VADDR(AXI_RESET_1));
+	writel(readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 
 	/* Get the system clock */
 	clk_axi = clk_get(NULL,"axi");
@@ -194,7 +194,7 @@ static int pfe_platform_remove(struct platform_device *pdev)
 	rc = pfe_remove(pfe);
 
 	/* FIXME this needs to be done at the BSP level with proper locking */
-	writel(readl(APB_VADDR(AXI_RESET_1)) | (1 << 3), APB_VADDR(AXI_RESET_1));
+	writel(readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 
 	clk_put(pfe->ctrl.clk_axi);
 	iounmap(pfe->ipsec_baseaddr);
@@ -245,7 +245,7 @@ static int pfe_platform_suspend(struct device *dev)
 		util_disable();
 #endif
 		pfe_hw_exit(pfe);
-		c2000_block_reset(COMPONENT_PFE_SYS, 1);
+		writel(readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 		clk_disable(pfe->hfe_clock);
 	}
 
@@ -262,9 +262,9 @@ static int pfe_platform_resume(struct device *dev)
 
 	if (!pfe->wake) {
 		/* Sequence follows VLSI recommendation (bug 71927) */
-		c2000_block_reset(COMPONENT_PFE_SYS, 1);
+		writel(readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 		mdelay(1);
-		c2000_block_reset(COMPONENT_PFE_SYS, 0);
+		writel(readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 		clk_enable(pfe->hfe_clock);
 
 		pfe_hw_init(pfe, 1);

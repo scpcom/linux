@@ -257,13 +257,12 @@ static void elp_start_device(IPSec_hw_context *sc)
 	/* Reset the IPSEC block at the time of initialization */
 	/* This is required when we stop and start the driver */
 
-#define IPSEC_EAPE_AXI_RESET_BIT	(1<<1)
 	/* Put the IPSEC EAPE (AXI clock domain) device in reset state */
-	writel(readl(APB_VADDR(AXI_RESET_1)) | IPSEC_EAPE_AXI_RESET_BIT, APB_VADDR(AXI_RESET_1));
+	writel(readl(PFE_AXI_RESET) | IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
 	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 1);
 	mdelay(1);
 	/* Put the IPSEC EAPE devices in Out-Of-Reset state */
-	writel(readl(APB_VADDR(AXI_RESET_1)) & ~IPSEC_EAPE_AXI_RESET_BIT, APB_VADDR(AXI_RESET_1));
+	writel(readl(PFE_AXI_RESET) & ~IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
 	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 0);
 
 #ifdef CONTROL_IPSEC_DEBUG
