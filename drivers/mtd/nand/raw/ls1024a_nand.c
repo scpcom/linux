@@ -937,6 +937,8 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	int err = 0;
 	struct mtd_part_parser_data ppdata = {};
 	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
+	static const char *part_probe_types[]
+		= { "cmdlinepart", "RedBoot", "ofpart", NULL };
 
 	/* Allocate memory for info structure */
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
@@ -1202,7 +1204,8 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	/* Link the info stucture with platform_device */
 	platform_set_drvdata(pdev, info);
 
-	err = mtd_device_parse_register(mtd, NULL, &ppdata, NULL, 0);
+	mtd_set_of_node(mtd, pdev->dev.of_node);
+	err = mtd_device_parse_register(mtd, part_probe_types, &ppdata, NULL, 0);
 	if (err) {
 		mtd_device_unregister(mtd);
 		goto out_ior;
