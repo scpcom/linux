@@ -421,6 +421,16 @@
 			snps,usb3_lpm_capable;
 			status = "disabled";
 		};
+
+		nand0: nand@c8300000 {
+			compatible = "fsl,ls1024a-nand";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0xc8300000 0x2000
+			       0xCFFF0000 0x2c>;
+			//ce-gpios = <&gpio 28 GPIO_ACTIVE_HIGH>;
+			//br-gpios = <&gpio 29 GPIO_ACTIVE_HIGH>;
+		};
 	};
 };
 
