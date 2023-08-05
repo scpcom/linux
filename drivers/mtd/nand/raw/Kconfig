@@ -280,6 +280,13 @@ config NAND_LS1024A_ECC_24_HW_BCH
 	default y
 	prompt "LS1024A ECC-24 syndrome calculation using BCH"
 
+config NAND_LS1024A_ECC_HYBRID
+	bool
+	depends on MTD_NAND_LS1024A
+	select BCH
+	default n
+	prompt "LS1024A ECC hybrid calculation using BCH"
+
 config MTD_NAND_MXC
 	tristate "Freescale MXC NAND controller"
 	depends on ARCH_MXC || COMPILE_TEST

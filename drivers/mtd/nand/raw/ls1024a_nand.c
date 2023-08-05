@@ -735,9 +735,11 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 }
 
 
+#ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
 static void comcerto_hybrid_hwctl (struct mtd_info *mtd, int mode) {
 	if (mode == NAND_ECC_READ) comcerto_enable_hw_ecc(mtd, mode);
 }
+#endif
 
 #if 0
 static void comcerto_fake_hwctl (struct mtd_info *mtd, int mode) {
@@ -757,6 +759,7 @@ static void comcerto_fake_hwctl (struct mtd_info *mtd, int mode) {
  *   onto every calculated ECC code. (Linux does this to ensure that an empty
  *   page has a valid ECC code).
  *   */
+#ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
 static int comcerto_bch_calculate_ecc (struct mtd_info *mtd, const uint8_t *dat,
 		uint8_t *ecc_code) {
 	struct nand_chip *chip = mtd->priv;
@@ -773,6 +776,7 @@ static int comcerto_bch_calculate_ecc (struct mtd_info *mtd, const uint8_t *dat,
 	}
 	return 0;
 }
+#endif
 
 /* We currently don't need comcerto_bch_correct_ecc() because we are using a
  * hybrid approach where we use the HW ECC engine when we read from NAND. We
@@ -999,6 +1003,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		goto out_ior;
 	}
 
+#ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
 	if (1 && chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
 		/* We use a hybrid approach here where we use the ECC hardware
 		 * in the read path to correct ECC errors on read. For writing,
@@ -1080,7 +1085,9 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		chip->badblock_pattern = &c2000_badblock_pattern;
 		chip->bbt_options |= NAND_BBT_USE_FLASH;
 
-	} else if (chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
+	} else
+#endif
+	if (chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
 		chip->ecc.hwctl = comcerto_enable_hw_ecc;
 		chip->ecc.write_page = comcerto_nand_write_page_hwecc;
 		chip->ecc.read_page = comcerto_nand_read_page_hwecc;
