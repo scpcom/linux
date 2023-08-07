@@ -21,6 +21,7 @@
 #include "module_ipsec.h"
 #include "system.h"
 
+#include <linux/reset.h>
 #include <mach/hardware.h>
 
 /*
@@ -239,9 +240,43 @@ static U32 ipsec_init_pe(U32 memaddr, struct elp_packet_engine *ppe)
 }
 
 
+static int ipsec_eape_reset(void)
+{
+#ifdef CONFIG_OF
+	int rc;
+	struct reset_control *rst_ipsec = devm_reset_control_get_exclusive(pfe->dev, "ipsec");
+
+	if (IS_ERR(rst_ipsec)) {
+		rc = PTR_ERR(rst_ipsec);
+		dev_err(pfe->dev, "Failed to get pfe reset control: %d\n", rc);
+		return rc;
+	}
+
+	pfe->ctrl.rst_ipsec = rst_ipsec;
+
+	reset_control_assert(pfe->ctrl.rst_ipsec);
+	mdelay(1);
+	rc = reset_control_deassert(pfe->ctrl.rst_ipsec);
+	if (rc) {
+		dev_err(pfe->dev, "Failed to put pfe out of reset: %d\n", rc);
+		return rc;
+	}
+
+#else
+	/* Put the IPSEC EAPE (AXI clock domain) device in reset state */
+	pfe_writel(pfe_readl(PFE_AXI_RESET) | IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
+	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 1);
+	mdelay(1);
+	/* Put the IPSEC EAPE devices in Out-Of-Reset state */
+	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
+	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 0);
+#endif
+
+	return 0;
+}
+
 static void elp_start_device(IPSec_hw_context *sc)
 {
-
 #if 0
 	// enable ipsec clocks in case ACP power management disabled them.
 	*(volatile U32 *)CLKCORE_CLK_PWR_DWN &= ~(IPSEC_AHBCLK_PD | IPSEC2_AHBCLK_PD | IPSEC_CORECLK_PD);
@@ -257,13 +292,7 @@ static void elp_start_device(IPSec_hw_context *sc)
 	/* Reset the IPSEC block at the time of initialization */
 	/* This is required when we stop and start the driver */
 
-	/* Put the IPSEC EAPE (AXI clock domain) device in reset state */
-	pfe_writel(pfe_readl(PFE_AXI_RESET) | IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
-	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 1);
-	mdelay(1);
-	/* Put the IPSEC EAPE devices in Out-Of-Reset state */
-	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~IPSEC_EAPE_AXI_RESET_BIT, PFE_AXI_RESET);
-	// c2000_block_reset(COMPONENT_AXI_IPSEC_EAPE, 0);
+	ipsec_eape_reset();
 
 #ifdef CONTROL_IPSEC_DEBUG
 	printk(KERN_INFO "%s --- Started \n", __func__);

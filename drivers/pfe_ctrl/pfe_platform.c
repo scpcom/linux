@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 
 #include <mach/hardware.h>
 #include "pfe_platform.h"
@@ -40,6 +41,9 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	struct resource *r;
 	int rc;
 	struct clk *clk_axi;
+#ifdef CONFIG_OF
+	struct reset_control *rst_axi;
+#endif
 
 	printk(KERN_INFO "%s\n", __func__);
 
@@ -148,10 +152,28 @@ static int pfe_platform_probe(struct platform_device *pdev)
 
 	pfe->dev = &pdev->dev;
 
+#ifdef CONFIG_OF
+	rst_axi = devm_reset_control_get_exclusive(&pdev->dev, "axi");
+	if (IS_ERR(rst_axi)) {
+		dev_err(&pdev->dev, "Failed to get pfe reset control\n");
+		return PTR_ERR(rst_axi);
+	}
+
+	pfe->ctrl.rst_axi = rst_axi;
+	reset_control_assert(pfe->ctrl.rst_axi);
+	mdelay(1);
+	rc = reset_control_deassert(pfe->ctrl.rst_axi);
+	if (rc) {
+		dev_err(&pdev->dev, "Failed to put pfe out of reset\n");
+		return rc;
+	}
+
+#else
 	/* FIXME this needs to be done at the BSP level with proper locking */
 	pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 	mdelay(1);
 	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+#endif
 
 	/* Get the system clock */
 	clk_axi = clk_get(&pdev->dev, "axi");
@@ -212,8 +234,12 @@ static int pfe_platform_remove(struct platform_device *pdev)
 
 	rc = pfe_remove(pfe);
 
+#ifdef CONFIG_OF
+	reset_control_assert(pfe->ctrl.rst_axi);
+#else
 	/* FIXME this needs to be done at the BSP level with proper locking */
 	pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+#endif
 
 	clk_put(pfe->ctrl.clk_axi);
 	iounmap(pfe->ipsec_baseaddr);
@@ -264,7 +290,11 @@ static int pfe_platform_suspend(struct device *dev)
 		util_disable();
 #endif
 		pfe_hw_exit(pfe);
+#ifdef CONFIG_OF
+		reset_control_assert(pfe->ctrl.rst_axi);
+#else
 		pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+#endif
 		clk_disable(pfe->hfe_clock);
 	}
 
@@ -281,9 +311,15 @@ static int pfe_platform_resume(struct device *dev)
 
 	if (!pfe->wake) {
 		/* Sequence follows VLSI recommendation (bug 71927) */
+#ifdef CONFIG_OF
+		reset_control_assert(pfe->ctrl.rst_axi);
+		mdelay(1);
+		reset_control_deassert(pfe->ctrl.rst_axi);
+#else
 		pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 		mdelay(1);
 		pfe_writel(pfe_readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+#endif
 		clk_enable(pfe->hfe_clock);
 
 		pfe_hw_init(pfe, 1);

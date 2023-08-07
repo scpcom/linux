@@ -21,6 +21,7 @@
 
 #include <linux/version.h>
 
+#ifndef CONFIG_OF
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 #define PFE_AXI_RESET APB_VADDR(AXI_RESET_1)
 #else
@@ -32,6 +33,7 @@
 #endif
 #ifndef IPSEC_EAPE_AXI_RESET_BIT
 #define IPSEC_EAPE_AXI_RESET_BIT	(1<<1)
+#endif
 #endif
 
 #define CLASS_DMEM_BASE_ADDR(i)	(0x00000000 | ((i) << 20))

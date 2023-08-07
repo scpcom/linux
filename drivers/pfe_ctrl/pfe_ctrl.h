@@ -69,6 +69,10 @@ struct pfe_ctrl {
 	unsigned long util_ddr_sh;
 	struct clk *clk_axi;
 	unsigned int sys_clk;			// AXI clock value, in KHz
+#ifdef CONFIG_OF
+	struct reset_control *rst_axi;
+	struct reset_control *rst_ipsec;
+#endif
 	void *ipsec_lmem_baseaddr;
 	unsigned long ipsec_lmem_phys_baseaddr;
 	
