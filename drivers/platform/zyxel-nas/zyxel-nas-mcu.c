@@ -20,34 +20,53 @@
 #include <linux/proc_fs.h>
 
 struct nas_mcu {
-	struct gpio_desc *reset_gpio;
+	struct gpio_descs *gpios;
+	s32 resb_index;
+	s32 wdt_index;
 	u32 active_delay_ms;
 	u32 wait_delay_ms;
 	struct proc_dir_entry *wdt_proc;
 };
 struct nas_mcu *nas_mcu;
 
+struct gpio_desc *nas_mcu_wdt_get_gpiod(s32 index)
+{
+        if (IS_ERR(nas_mcu->gpios))
+                return ERR_CAST(nas_mcu->gpios);
+
+	if (index < 0)
+		return ERR_PTR(-EINVAL);
+
+	if (index < nas_mcu->gpios->ndescs)
+		return nas_mcu->gpios->desc[index];
+	else
+		return ERR_PTR(-EINVAL);
+}
+
 static int nas_mcu_wdt_get(void)
 {
-	if (IS_ERR(nas_mcu->reset_gpio)) {
-		return PTR_ERR(nas_mcu->reset_gpio);
+	struct gpio_desc *wdt_gpio = nas_mcu_wdt_get_gpiod(nas_mcu->wdt_index);
+
+	if (IS_ERR(wdt_gpio)) {
+		return PTR_ERR(wdt_gpio);
 	}
 
-	return gpiod_get_value(nas_mcu->reset_gpio);
+	return gpiod_get_value(wdt_gpio);
 }
 
 static int nas_mcu_wdt_set(unsigned int value)
 {
-	if (IS_ERR(nas_mcu->reset_gpio)) {
-		return PTR_ERR(nas_mcu->reset_gpio);
+	struct gpio_desc *wdt_gpio = nas_mcu_wdt_get_gpiod(nas_mcu->wdt_index);
+
+	if (IS_ERR(wdt_gpio)) {
+		return PTR_ERR(wdt_gpio);
 	}
 
 	/* drive it active, also inactive->active edge */
-	gpiod_direction_output(nas_mcu->reset_gpio, 1);
 	mdelay(nas_mcu->active_delay_ms);
 
 	/* drive it active, also inactive->active edge */
-	gpiod_set_value(nas_mcu->reset_gpio, value);
+	gpiod_set_value(wdt_gpio, value);
 
 	/* give it some time */
 	mdelay(nas_mcu->wait_delay_ms);
@@ -113,17 +132,36 @@ static const struct proc_ops nas_mcu_wdt_fops = {
 
 static int nas_mcu_probe(struct platform_device *pdev)
 {
+	int i;
+
 	nas_mcu = devm_kzalloc(&pdev->dev, sizeof(*nas_mcu),
 			GFP_KERNEL);
 	if (!nas_mcu)
 		return -ENOMEM;
 
-	nas_mcu->reset_gpio = devm_gpiod_get(&pdev->dev, NULL, GPIOD_ASIS);
-	if (IS_ERR(nas_mcu->reset_gpio)) {
-		dev_err(&pdev->dev, "Could not get reset GPIO\n");
-		return PTR_ERR(nas_mcu->reset_gpio);
+	nas_mcu->gpios = devm_gpiod_get_array(&pdev->dev, NULL, GPIOD_ASIS);
+	if (IS_ERR(nas_mcu->gpios)) {
+		dev_err(&pdev->dev, "error getting mcu GPIOs\n");
+		return PTR_ERR(nas_mcu->gpios);
 	}
 
+	if (nas_mcu->gpios->ndescs < 1)
+		return -EINVAL;
+
+	for (i = 0; i < nas_mcu->gpios->ndescs; i++) {
+		struct gpio_desc *gpiod = nas_mcu->gpios->desc[i];
+		int ret, state;
+
+		state = gpiod_get_value_cansleep(gpiod);
+		if (state < 0)
+			return state;
+
+		ret = gpiod_direction_output(gpiod, state);
+		if (ret < 0)
+			return ret;
+	}
+
+	nas_mcu->wdt_index = nas_mcu->gpios->ndescs-1;
 	nas_mcu->active_delay_ms = 100;
 	nas_mcu->wait_delay_ms = 3000;
 
@@ -133,6 +171,16 @@ static int nas_mcu_probe(struct platform_device *pdev)
 			&nas_mcu->wait_delay_ms);
 
 	platform_set_drvdata(pdev, nas_mcu);
+
+	if (nas_mcu->gpios->ndescs > 4) {
+		struct gpio_desc *resb_gpio;
+		// set CPU_P_RES(GPIO 37) to MCU normal mode(1)
+		nas_mcu->resb_index = 2;
+		resb_gpio = nas_mcu_wdt_get_gpiod(nas_mcu->resb_index);
+		gpiod_set_value(resb_gpio, 1);
+	} else {
+		nas_mcu->resb_index = -1;
+	}
 
 	nas_mcu->wdt_proc = proc_create_data("mcu_wdt", 0644, NULL, &nas_mcu_wdt_fops, NULL);
 
