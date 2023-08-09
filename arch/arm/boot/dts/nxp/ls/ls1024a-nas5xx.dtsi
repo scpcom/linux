@@ -126,7 +126,12 @@
 
 	nas-mcu {
 		compatible = "zyxel,nas-mcu";
-		gpios = <&gpio 39 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio 35 GPIO_ACTIVE_HIGH>,
+			<&gpio 36 GPIO_ACTIVE_HIGH>,
+			<&gpio 37 GPIO_ACTIVE_HIGH>,
+			<&gpio 38 GPIO_ACTIVE_HIGH>,
+			<&gpio 39 GPIO_ACTIVE_HIGH>;
+		gpio-names = "sdata", "sclk", "resb", "bi", "wdt";
 	};
 };
 
