@@ -108,44 +108,55 @@
 		compatible = "gpio-leds";
 		hdd1-green {
 			gpios = <&gpio 48 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd1-act";
 		};
 		hdd1-red {
 			gpios = <&gpio 49 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd1-err";
 		};
 		hdd2-green {
 			gpios = <&gpio 50 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd2-act";
 		};
 		hdd2-red {
 			gpios = <&gpio 51 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd2-err";
 		};
 		hdd3-green {
 			gpios = <&gpio 52 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd3-act";
 		};
 		hdd3-red {
 			gpios = <&gpio 53 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd3-err";
 		};
 		hdd4-green {
 			gpios = <&gpio 54 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd4-act";
 		};
 		hdd4-red {
 			gpios = <&gpio 55 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "hdd4-err";
 		};
 		sys-green {
 			function = LED_FUNCTION_STATUS;
 			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 56 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "heartbeat";
+			linux,default-trigger = "sys-act";
 		};
 		sys-red {
 			function = LED_FUNCTION_STATUS;
 			color = <LED_COLOR_ID_RED>;
 			gpios = <&gpio 57 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "sys-err";
 		};
 		copy-green {
 			gpios = <&gpio 58 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "copy-act";
 		};
 		copy-red {
 			gpios = <&gpio 59 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "copy-err";
 		};
 	};
 
