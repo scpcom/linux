@@ -1,0 +1,1002 @@
+/*
+ * Zyxel NAS Control Driver
+ *
+ * Copyright (C) 2023 scpcom
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Based on the zyxel gpio driver.
+ */
+#include <linux/reboot.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/cdev.h>
+#include <linux/delay.h>
+#include <linux/platform_device.h>
+#include <linux/gpio/consumer.h>
+#include <linux/of_platform.h>
+#include <linux/module.h>
+#include <linux/proc_fs.h>
+#include <linux/regmap.h>
+#include <linux/version.h>
+#include <linux/mfd/syscon.h>
+
+#include "zyxel-nas-ctrl.h"
+
+/* pwm reg offsets */
+#define REGMAP_PWM_CLOCK_DIVIDER_CONTROL	0x00
+#define REGMAP_PWM_CURRENT_EVENT		0x04
+#define REGMAP_PWM4_ENABLE_MAX			0x28
+#define REGMAP_PWM4_LOW_DUTY_CYCLE		0x2C
+#define REGMAP_PWM5_ENABLE_MAX			0x30
+#define REGMAP_PWM5_LOW_DUTY_CYCLE		0x34
+
+/* gpio reg offsets */
+#define REGMAP_GPIO_PIN_SELECT_REG		0x58
+#define REGMAP_GPIO_PIN_SELECT_REG1		0x5C
+#define REGMAP_GPIO_MISC_PIN_SELECT		0x60
+#define REGMAP_GPIO_63_32_PIN_SELECT		0xDC
+
+/** 0 ~ 31 bit **/
+#define GPIO_LOW_PIN_SELECT_0			REGMAP_GPIO_PIN_SELECT_REG
+#define GPIO_LOW_PIN_SELECT_1			REGMAP_GPIO_PIN_SELECT_REG1
+#define GPIO_LOW_PIN_SELECT(gpio_bit)		((gpio_bit > 15) ? GPIO_LOW_PIN_SELECT_1 : GPIO_LOW_PIN_SELECT_0)
+
+/** 32 ~ 63 bit **/
+#define GPIO_HIGH_PIN_SELECT_0			REGMAP_GPIO_63_32_PIN_SELECT
+#define GPIO_HIGH_PIN_SELECT_1			REGMAP_GPIO_MISC_PIN_SELECT
+#define GPIO_HIGH_PIN_SELECT(gpio_bit)		((gpio_bit > 59) ? GPIO_HIGH_PIN_SELECT_1 : GPIO_HIGH_PIN_SELECT_0)
+
+#define GPIO_PIN_SELECT(gpio_bit)	((gpio_bit > 31) ? GPIO_HIGH_PIN_SELECT(gpio_bit) : GPIO_LOW_PIN_SELECT(gpio_bit))
+
+#define GPIO_BIT_SET_OFFSET(gpio_bit) ((gpio_bit > 31) ? ((gpio_bit - 32) & 0x1f) : gpio_bit)
+
+/** define gpio offset **/
+#define FAN_PWM_REG_OFFSET		12
+#define BUZ_PWM_REG_OFFSET		13
+
+#define BUZ_PWM_CLOCK_DIVIDER_CONTROL	REGMAP_PWM_CLOCK_DIVIDER_CONTROL
+#define BUZ_PWM_LOW_DUTY_CYCLE		REGMAP_PWM5_LOW_DUTY_CYCLE
+#define BUZ_PWM_ENABLE_MAX		REGMAP_PWM5_ENABLE_MAX
+#define BUZ_PWM_CDC_MASK		((0x1 << 0) | (0x1 << 31))
+#define BUZ_PWM_LDC_MASK		(0xB000)
+#define BUZ_PWM_ENM_MASK		(0x10000 | (0x1 << 31))
+
+#define FAN_PWM_CLOCK_DIVIDER_CONTROL	REGMAP_PWM_CLOCK_DIVIDER_CONTROL
+#define FAN_PWM_LOW_DUTY_CYCLE		REGMAP_PWM4_LOW_DUTY_CYCLE
+#define FAN_PWM_ENABLE_MAX		REGMAP_PWM4_ENABLE_MAX
+#define FAN_PWM_CDC_MASK		((0x1 << 0) | (0x1 << 31))
+#define FAN_PWM_LDC_MASK		(1500)
+#define FAN_PWM_ENM_MASK		(5000 | (0x1 << 31))
+
+
+/** define the buzzer settings **/
+#define BEEP_DURATION   1000
+
+#define BZ_TIMER_PERIOD (HZ/2)
+#define RING_FOREVER 1
+#define RING_BRIEF 0
+
+#define TIME_BITS       5
+#define FREQ_BITS       4
+#define STATE_BITS      2
+
+#define TIME_MASK       (0x1F << (FREQ_BITS + STATE_BITS))
+#define FREQ_MASK       (0xF << STATE_BITS)
+#define STATE_MASK      0x3
+
+#define GET_TIME(addr)  ((addr & TIME_MASK) >> (FREQ_BITS + STATE_BITS))
+#define GET_FREQ(addr)  ((addr & FREQ_MASK) >> STATE_BITS)
+#define GET_STATE(addr) (addr & STATE_MASK)
+
+typedef enum {
+	BUZ_OFF = 0,            /* turn off buzzer */
+	BUZ_ON,
+	BUZ_KILL,               /* kill buzzer daemon, equaling to BUZ_OFF*/
+	BUZ_FOREVER             /* keep buzzing */
+} buz_cmd_t;
+
+
+/* define the cmd numbers for ioctl used */
+#define BTNCPY_IOC_SET_NUM		_IO(BTNCPY_IOC_MAGIC, 1)
+#define LED_SET_CTL_IOC_NUM     _IO(BTNCPY_IOC_MAGIC, 2)
+#define BUZ_SET_CTL_IOC_NUM 	_IO(BTNCPY_IOC_MAGIC, 4)
+#define BUTTON_TEST_IN_IOC_NUM  _IO(BTNCPY_IOC_MAGIC, 9)
+#define BUTTON_TEST_OUT_IOC_NUM _IO(BTNCPY_IOC_MAGIC, 10)
+
+/* data structure for passing HDD state */
+typedef struct _hdd_ioctl {
+	unsigned int port;  /* HDD_PORT_NUM  */
+	unsigned int state; /* ON, OFF */
+} hdd_ioctl;
+
+#define HDD_SET_CTL_IOC_NUM     _IOW(BTNCPY_IOC_MAGIC, 21, hdd_ioctl)
+
+
+struct nas_ctrl {
+	struct regmap *gpioregs;
+	struct regmap *pwmregs;
+	struct gpio_descs *gpios;
+
+	u32 wait_delay_ms;
+
+	struct proc_dir_entry *htp_proc;
+	struct proc_dir_entry *hdd1_detect_proc;
+	struct proc_dir_entry *hdd2_detect_proc;
+	struct proc_dir_entry *hdd3_detect_proc;
+	struct proc_dir_entry *hdd4_detect_proc;
+	struct proc_dir_entry *pwren_usb_proc;
+
+	struct nas_ctrl_timer_list bz_timer;
+	short bz_time;
+	short bz_timer_status;
+	short bz_type;
+};
+
+struct nas_ctrl_cdev {
+	dev_t dev;
+	unsigned int major;
+	int nr_devs;
+	struct cdev *cdev;
+};
+
+static struct nas_ctrl_cdev nas_chrdev = {
+	dev: 0,
+	major: 253,
+	nr_devs: 1,
+	cdev: NULL,
+};
+
+static struct nas_ctrl *nas_ctrl = NULL;
+
+static struct gpio_desc *nas_ctrl_get_gpiod(s32 index)
+{
+        if (IS_ERR(nas_ctrl->gpios))
+                return ERR_CAST(nas_ctrl->gpios);
+
+	if (index < 0)
+		return ERR_PTR(-EINVAL);
+
+	if (index < nas_ctrl->gpios->ndescs)
+		return nas_ctrl->gpios->desc[index];
+	else
+		return ERR_PTR(-EINVAL);
+}
+
+static int nas_ctrl_detect_hdd(unsigned int port)
+{
+	int need_sleep = 0;
+	struct gpio_desc *det_gpiod = nas_ctrl->gpios->desc[port-1];
+	struct gpio_desc *ctl_gpiod = nas_ctrl->gpios->desc[port-1+5];
+
+	if (gpiod_get_value(det_gpiod))	// HDx inserted
+	{
+		printk(KERN_WARNING "\033[033mEnable HD%d ...\033[0m\n", port);
+		gpiod_set_value(ctl_gpiod, 1);	// enable HDx
+		//turn_on_led(LED_HDDx, GREEN);	// set HDx LED
+		need_sleep = 1;
+	}
+
+	return need_sleep;
+}
+
+
+static inline void gpio_update_bits(unsigned int reg, unsigned int mask, unsigned int val)
+{
+	regmap_update_bits(nas_ctrl->gpioregs, reg, mask, val);
+}
+
+static inline unsigned int pwm_readl(unsigned int reg)
+{
+	unsigned int val;
+	regmap_read(nas_ctrl->pwmregs, reg, &val);
+	return val;
+}
+
+static inline void pwm_writel(unsigned int val, unsigned int reg)
+{
+	regmap_write(nas_ctrl->pwmregs, reg, val);
+}
+
+/* set pin "gpio_bit" to PWM mode */
+static void set_pwm_pinmode(int gpio_bit)
+{
+	unsigned long reg, mask;
+
+	reg = GPIO_PIN_SELECT(gpio_bit);
+	if (gpio_bit > 31) {
+		return;
+	} else {
+		mask = 0x3 << GPIO_BIT_SET_OFFSET(gpio_bit*2);
+		gpio_update_bits(reg, mask, (0x1 << GPIO_BIT_SET_OFFSET(gpio_bit*2)));
+	}
+}
+
+static void nas_ctrl_init_buzzer_pin(void)
+{
+	unsigned long reg;
+
+	/* Select Pin for PWM (27:26 '01' - PWM[5]) */
+	set_pwm_pinmode(BUZ_PWM_REG_OFFSET);
+
+	/* Enable the Clock Divider and set the value to 1 */
+	reg = BUZ_PWM_CLOCK_DIVIDER_CONTROL;
+	pwm_writel((pwm_readl(reg) | BUZ_PWM_CDC_MASK), reg);
+
+	/* Enable PWM #5 timer and set the max value (0x10000) of PWM #5 */
+	reg = BUZ_PWM_ENABLE_MAX;
+	pwm_writel((pwm_readl(reg) | BUZ_PWM_ENM_MASK), reg);
+}
+
+static void nas_ctrl_init_fan_pin(void)
+{
+	unsigned long reg;
+
+	/* Select Pin for PWM (25:24 '01' - PWM[4]) */
+	set_pwm_pinmode(FAN_PWM_REG_OFFSET);
+
+	/* Enable the Clock Divider and set the value to 1 */
+	reg = FAN_PWM_CLOCK_DIVIDER_CONTROL;
+	pwm_writel((pwm_readl(reg) | FAN_PWM_CDC_MASK), reg);
+
+	/* Enable PWM #4 timer and set the max value (5000) of PWM #4 */
+	reg = FAN_PWM_ENABLE_MAX;
+	pwm_writel((pwm_readl(reg) | FAN_PWM_ENM_MASK), reg);
+}
+
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+static inline void _timer_hdl(struct timer_list *in_timer)
+#else
+static inline void _timer_hdl(unsigned long cntx)
+#endif
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+	struct nas_ctrl_timer_list *ptimer = from_timer(ptimer, in_timer, timer);
+#else
+	struct nas_ctrl_timer_list *ptimer = (_timer *)cntx;
+#endif
+	ptimer->function(ptimer->data);
+}
+
+void nas_ctrl_init_timer(struct nas_ctrl_timer_list *ptimer, void *pfunc, unsigned long cntx)
+{
+	ptimer->function = pfunc;
+	ptimer->data = cntx;
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+	timer_setup(&ptimer->timer, _timer_hdl, 0);
+#else
+	/* setup_timer(ptimer, pfunc,(u32)cntx);	 */
+	ptimer->timer.function = _timer_hdl;
+	ptimer->timer.data = (unsigned long)ptimer;
+	init_timer(&ptimer->timer);
+#endif
+}
+
+int nas_ctrl_mod_timer(struct nas_ctrl_timer_list *ptimer, unsigned long expires)
+{
+	return mod_timer(&ptimer->timer, expires);
+}
+
+int nas_ctrl_del_timer(struct nas_ctrl_timer_list * ptimer)
+{
+	return del_timer(&ptimer->timer);
+}
+
+int nas_ctrl_del_timer_sync(struct nas_ctrl_timer_list *ptimer)
+{
+	return del_timer_sync(&ptimer->timer);
+}
+
+int nas_ctrl_timer_pending(const struct nas_ctrl_timer_list *ptimer)
+{
+	return timer_pending(&ptimer->timer);
+}
+
+int run_usermode_cmd(const char *cmd)
+{
+	char **argv;
+	static char *envp[] = {
+		"HOME=/",
+		"PATH=/sbin:/bin:/usr/sbin:/usr/bin",
+		NULL
+	};
+	int ret;
+	argv = argv_split(GFP_KERNEL, cmd, NULL);
+	if (argv) {
+		ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+		argv_free(argv);
+	} else {
+		ret = -ENOMEM;
+	}
+
+	return ret;
+}
+
+
+static void buzzer_timer_func(unsigned long in_data)
+{
+	unsigned long reg = BUZ_PWM_LOW_DUTY_CYCLE;
+
+	if (nas_ctrl->bz_time != 0)    /* continue the timer */
+	{
+		int i;
+		for(i = 0 ; i < BEEP_DURATION ; i++)
+		{
+			pwm_writel(pwm_readl(reg) ^ BUZ_PWM_LDC_MASK, reg);
+			udelay(500);
+		}
+
+		pwm_writel(pwm_readl(reg) & ~BUZ_PWM_LDC_MASK, reg);
+		nas_ctrl_mod_timer(&nas_ctrl->bz_timer, jiffies + BZ_TIMER_PERIOD);
+	}
+	--nas_ctrl->bz_time;
+}
+
+void Beep(void)
+{
+	int i;
+	unsigned long reg = BUZ_PWM_LOW_DUTY_CYCLE;
+
+	for(i = 0 ; i < BEEP_DURATION ; i++)
+	{
+		pwm_writel(pwm_readl(reg) ^ BUZ_PWM_LDC_MASK, reg);
+		udelay(500);
+	}
+
+	pwm_writel(pwm_readl(reg) & ~BUZ_PWM_LDC_MASK, reg);
+}
+
+void Beep_Beep(int duty_high, int duty_low)
+{
+	// Duty cycle unit : ms
+	int i;
+	unsigned long reg = BUZ_PWM_LOW_DUTY_CYCLE;
+
+	for(i = 0 ; i < BEEP_DURATION ; i++){
+		pwm_writel(pwm_readl(reg) ^ BUZ_PWM_LDC_MASK, reg);
+		udelay(duty_high);
+	}
+
+	for(i = 0 ; i < BEEP_DURATION ; i++){
+		pwm_writel(pwm_readl(reg) & ~BUZ_PWM_LDC_MASK, reg);
+		udelay(duty_low);
+	}
+}
+
+static void set_buzzer(unsigned long bz_data)
+{
+	unsigned short time, status;
+	unsigned long reg = BUZ_PWM_LOW_DUTY_CYCLE;
+
+	time = GET_TIME(bz_data);
+	status = GET_STATE(bz_data);
+
+	printk(KERN_ERR"bz time = %x\n", time);
+	printk(KERN_ERR"bz status = %x\n", status);
+	printk(KERN_ERR"bz_timer_status = %x\n", nas_ctrl->bz_timer_status);
+
+	// Turn off bz first
+	if (nas_ctrl->bz_timer_status == TIMER_RUNNING)
+	{
+		if (nas_ctrl->bz_type == RING_FOREVER && status == BUZ_ON)
+		{
+			//printk(KERN_ERR"Buzzer Forever Already On \n");
+			return;
+		}
+		nas_ctrl->bz_timer_status = TIMER_SLEEPING;
+
+		/* Disable buzzer first */
+		pwm_writel(pwm_readl(reg) & ~BUZ_PWM_LDC_MASK, reg);
+		nas_ctrl_del_timer_sync(&nas_ctrl->bz_timer);
+		nas_ctrl->bz_type = RING_BRIEF;
+		//printk(KERN_ERR"Closed Buzzer, bz_type = %d\n", bz_type);
+	}
+
+	if (status == BUZ_ON || status == BUZ_FOREVER)
+	{
+		// set bz time
+		nas_ctrl->bz_timer_status = TIMER_RUNNING;
+		if (time >= 32 || status == BUZ_FOREVER) time = -1;
+		if (time == 0) time = 1;
+		nas_ctrl->bz_time = time;
+		printk(KERN_ERR"start buzzer\n");
+		nas_ctrl->bz_timer.function = buzzer_timer_func;
+		nas_ctrl_mod_timer(&nas_ctrl->bz_timer, jiffies + BZ_TIMER_PERIOD);
+		if (status == BUZ_FOREVER){
+			nas_ctrl->bz_type = RING_FOREVER;
+			//printk(KERN_ERR"Buzzer Forever, bz_type = %d\n", bz_type);
+		}
+	}
+}
+
+
+static int set_led_config(unsigned long led_data)
+{
+	return 0;
+}
+
+
+static int hdd_power_set(struct _hdd_ioctl *hdd_data)
+{
+	unsigned int port = hdd_data->port;
+	unsigned int state = hdd_data->state;
+	struct gpio_desc *ctl_gpio;
+
+	if (port > 4)
+		return -EINVAL;
+
+	ctl_gpio = nas_ctrl_get_gpiod(port-1+5);
+
+	/* HDD Power On */
+	if (state == 1)
+		gpiod_set_value(ctl_gpio, 1);
+	else
+		gpiod_set_value(ctl_gpio, 0);
+
+	return 0;
+}
+
+
+static void nas_ctrl_set_init_timer(void)
+{
+	// init bz timer
+	nas_ctrl->bz_timer_status = TIMER_SLEEPING;
+	nas_ctrl->bz_type = RING_BRIEF;
+	nas_ctrl_init_timer(&nas_ctrl->bz_timer, buzzer_timer_func, 0);
+}
+
+static int gpio_open(struct inode *inode , struct file* filp)
+{
+	return 0;
+}
+
+static int gpio_release(struct inode *inode , struct file *filp)
+{
+	return 0;
+}
+
+static ssize_t gpio_read(struct file *file, char *buf, size_t count, loff_t *ptr)
+{
+	printk(KERN_INFO "Read system call is no useful\n");
+	return 0;
+}
+
+static ssize_t gpio_write(struct file * file, const char *buf, size_t count, loff_t * ppos)
+{
+	printk(KERN_INFO "Write system call is no useful\n");
+	return 0;
+}
+
+static long gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	unsigned long ret = 0;
+	struct _hdd_ioctl hdd_data;
+
+	if (!nas_ctrl)
+		return -ENOTTY;
+
+	/* implement a lock scheme by myself */
+	/* get the inode ==> file->f_dentry->d_inode */
+	switch (cmd) {
+#ifdef CONFIG_ZYXEL_BTNCPY_PID
+		case BTNCPY_IOC_SET_NUM:
+			if(!capable(CAP_SYS_ADMIN)) return -EPERM;
+			btncpy_pid = arg;
+			break;
+#endif
+#ifdef CONFIG_ZYXEL_BUTTON_TEST
+		case BUTTON_TEST_IN_IOC_NUM:
+			btncpy_pid = arg >> 3;
+			atomic_set(&button_test_enable, 1);
+			atomic_set(&button_test_num, arg & 0x7);
+			break;
+		case BUTTON_TEST_OUT_IOC_NUM:
+			atomic_set(&button_test_enable, 0);
+			atomic_set(&button_test_num, BUTTON_NUM);
+			break;
+#endif
+		case BUZ_SET_CTL_IOC_NUM:
+			set_buzzer(arg);
+			break;
+		case LED_SET_CTL_IOC_NUM:       // Just set leds, no check.
+			ret = set_led_config(arg);
+			if(ret < 0)
+				return ret;
+			break;
+		case HDD_SET_CTL_IOC_NUM:
+			if (!copy_from_user(&hdd_data, (void __user *) arg, sizeof(struct _hdd_ioctl)))
+				hdd_power_set(&hdd_data);
+			break;
+
+		default :
+#ifdef CONFIG_ZYXEL_MCU_BURNING
+			return nas_mcu_ioctl(file, cmd, arg);
+#else
+			return -ENOTTY;
+#endif
+	}
+
+	return 0;
+}
+
+struct file_operations gpio_fops =
+{
+	owner:              THIS_MODULE,
+	read:               gpio_read,
+	write:              gpio_write,
+	unlocked_ioctl:     gpio_ioctl,
+	open:               gpio_open,
+	release:            gpio_release,
+};
+
+
+static ssize_t htp_status_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+	struct gpio_desc *det_gpio = nas_ctrl_get_gpiod(4);
+
+	if (IS_ERR(det_gpio)) {
+		return PTR_ERR(det_gpio);
+	}
+
+	if (gpiod_get_value(det_gpio)) {
+		len = sprintf(tmpbuf, "1\n");
+	} else {
+		len = sprintf(tmpbuf, "0\n");
+	}
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static ssize_t htp_status_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops htp_status_fops = {
+	.proc_read = htp_status_read_fun,
+	.proc_write = htp_status_write_fun,
+};
+
+static ssize_t hdd1_status_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+	struct gpio_desc *det_gpio = nas_ctrl_get_gpiod(0);
+
+	if (IS_ERR(det_gpio)) {
+		return PTR_ERR(det_gpio);
+	}
+
+	if (gpiod_get_value(det_gpio)) {
+		len = sprintf(tmpbuf, "1\n");
+	} else {
+		len = sprintf(tmpbuf, "0\n");
+	}
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static ssize_t hdd1_status_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops hdd1_status_fops = {
+	.proc_read = hdd1_status_read_fun,
+	.proc_write = hdd1_status_write_fun,
+};
+
+static ssize_t hdd2_status_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+	struct gpio_desc *det_gpio = nas_ctrl_get_gpiod(1);
+
+	if (IS_ERR(det_gpio)) {
+		return PTR_ERR(det_gpio);
+	}
+
+	if (gpiod_get_value(det_gpio)) {
+		len = sprintf(tmpbuf, "1\n");
+	} else {
+		len = sprintf(tmpbuf, "0\n");
+	}
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static ssize_t hdd2_status_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops hdd2_status_fops = {
+	.proc_read = hdd2_status_read_fun,
+	.proc_write = hdd2_status_write_fun,
+};
+
+static ssize_t hdd3_status_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+	struct gpio_desc *det_gpio = nas_ctrl_get_gpiod(2);
+
+	if (IS_ERR(det_gpio)) {
+		return PTR_ERR(det_gpio);
+	}
+
+	if (gpiod_get_value(det_gpio)) {
+		len = sprintf(tmpbuf, "1\n");
+	} else {
+		len = sprintf(tmpbuf, "0\n");
+	}
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static ssize_t hdd3_status_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops hdd3_status_fops = {
+	.proc_read = hdd3_status_read_fun,
+	.proc_write = hdd3_status_write_fun,
+};
+
+static ssize_t hdd4_status_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+	struct gpio_desc *det_gpio = nas_ctrl_get_gpiod(3);
+
+	if (IS_ERR(det_gpio)) {
+		return PTR_ERR(det_gpio);
+	}
+
+	if (gpiod_get_value(det_gpio)) {
+		len = sprintf(tmpbuf, "1\n");
+	} else {
+		len = sprintf(tmpbuf, "0\n");
+	}
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static ssize_t hdd4_status_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops hdd4_status_fops = {
+	.proc_read = hdd4_status_read_fun,
+	.proc_write = hdd4_status_write_fun,
+};
+
+static ssize_t pwren_usb_read_fun(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static ssize_t pwren_usb_write_fun(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	char tmpbuf[64];
+	struct gpio_desc *ctl_gpio = nas_ctrl_get_gpiod(9);
+
+	if (IS_ERR(ctl_gpio)) {
+		return PTR_ERR(ctl_gpio);
+	}
+
+	if (buff && !copy_from_user(tmpbuf, buff, count))
+	{
+		tmpbuf[count-1] = '\0';
+		if ( tmpbuf[0] == '1' )
+		{
+			// enable usb
+			gpiod_set_value(ctl_gpio, 1);
+			printk(KERN_NOTICE " \033[033mUSB is enabled!\033[0m\n");
+		}
+		else
+		{
+			// disable usb
+			gpiod_set_value(ctl_gpio, 0);
+			printk(KERN_NOTICE "\033[033mUSB is disabled!\033[0m\n");
+		}
+
+	}
+
+	return count;
+}
+
+static const struct proc_ops pwren_usb_fops = {
+	.proc_read = pwren_usb_read_fun,
+	.proc_write = pwren_usb_write_fun,
+};
+
+static int nas_ctrl_register_chrdev(void)
+{
+	int ret;
+
+	if (nas_chrdev.dev)
+		return 0;
+
+	/* create /dev/gpio for ioctl using */
+	ret = __register_chrdev(nas_chrdev.major, 0, nas_chrdev.nr_devs, "gpio", &gpio_fops);
+	if (ret >= 0) {
+		nas_chrdev.dev = MKDEV(nas_chrdev.major, 0);
+		return ret;
+	}
+
+	ret = alloc_chrdev_region(&nas_chrdev.dev, 0, nas_chrdev.nr_devs, "gpio");
+	if (ret < 0)
+		return ret;
+	printk(KERN_ERR"gpio_dev = %x\n", nas_chrdev.dev);
+
+	nas_chrdev.cdev = cdev_alloc();
+	if (!nas_chrdev.cdev) {
+		ret = -ENOMEM;
+		goto out2;
+	}
+
+	nas_chrdev.cdev->ops = &gpio_fops;
+	nas_chrdev.cdev->owner = THIS_MODULE;
+	kobject_set_name(&nas_chrdev.cdev->kobj, "%s", "gpio");
+
+	ret = cdev_add(nas_chrdev.cdev, nas_chrdev.dev, 1);
+	if (ret) {
+		goto out;
+		printk(KERN_INFO "Error adding device\n");
+	}
+
+	return ret;
+out:
+	kobject_put(&nas_chrdev.cdev->kobj);
+out2:
+	unregister_chrdev_region(nas_chrdev.dev, nas_chrdev.nr_devs);
+	return ret;
+}
+
+
+static int nas_ctrl_probe(struct platform_device *pdev)
+{
+	int i, need_sleep = 0, ret;
+	struct gpio_desc *usb_ctl_gpiod;
+
+	nas_ctrl = devm_kzalloc(&pdev->dev, sizeof(*nas_ctrl),
+			GFP_KERNEL);
+	if (!nas_ctrl)
+		return -ENOMEM;
+
+	nas_ctrl->gpioregs =
+		syscon_regmap_lookup_by_compatible("fsl,ls1024a-gpio");
+	if (IS_ERR(nas_ctrl->gpioregs)) {
+		dev_err(&pdev->dev, "failed to get GPIO registers: %ld\n",
+		        PTR_ERR(nas_ctrl->gpioregs));
+		ret = PTR_ERR(nas_ctrl->gpioregs);
+		goto err;
+	}
+
+	nas_ctrl->pwmregs =
+		syscon_regmap_lookup_by_compatible("fsl,ls1024a-pwm");
+	if (IS_ERR(nas_ctrl->pwmregs)) {
+		dev_err(&pdev->dev, "failed to get GPIO registers: %ld\n",
+		        PTR_ERR(nas_ctrl->pwmregs));
+		ret = PTR_ERR(nas_ctrl->pwmregs);
+		goto err;
+	}
+
+	nas_ctrl->gpios = devm_gpiod_get_array(&pdev->dev, NULL, GPIOD_ASIS);
+	if (IS_ERR(nas_ctrl->gpios)) {
+		dev_err(&pdev->dev, "error getting control GPIOs\n");
+		ret = PTR_ERR(nas_ctrl->gpios);
+		goto err;
+	}
+
+	if (nas_ctrl->gpios->ndescs < 10) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < 5; i++) {
+		struct gpio_desc *gpiod = nas_ctrl->gpios->desc[i];
+		int ret;
+
+		ret = gpiod_direction_input(gpiod);
+		if (ret < 0)
+			goto err;
+	}
+
+	for (i = 5; i < nas_ctrl->gpios->ndescs; i++) {
+		struct gpio_desc *gpiod = nas_ctrl->gpios->desc[i];
+		int ret, state;
+
+		state = gpiod_get_value_cansleep(gpiod);
+		if (state < 0) {
+			ret = state;
+			goto err;
+		}
+
+		ret = gpiod_direction_output(gpiod, state);
+		if (ret < 0)
+			goto err;
+	}
+
+	nas_ctrl->wait_delay_ms = 6000;
+
+	of_property_read_u32(pdev->dev.of_node, "wait-delay",
+			&nas_ctrl->wait_delay_ms);
+
+	platform_set_drvdata(pdev, nas_ctrl);
+
+	need_sleep |= nas_ctrl_detect_hdd(1);
+	need_sleep |= nas_ctrl_detect_hdd(3);
+
+	if (need_sleep)
+	{
+		msleep(nas_ctrl->wait_delay_ms);
+		need_sleep = 0;
+	}
+
+	need_sleep |= nas_ctrl_detect_hdd(2);
+	need_sleep |= nas_ctrl_detect_hdd(4);
+
+	if (need_sleep)
+	{
+		msleep(nas_ctrl->wait_delay_ms);
+		need_sleep = 0;
+	}
+
+	// enable USB
+	printk(KERN_WARNING "\033[033mEnable USB ...\033[0m\n");
+	usb_ctl_gpiod = nas_ctrl->gpios->desc[9];
+	gpiod_set_value(usb_ctl_gpiod, 1);
+
+	nas_ctrl_init_buzzer_pin();
+	nas_ctrl_init_fan_pin();
+	nas_ctrl_set_init_timer();
+	pwm_writel(FAN_PWM_LDC_MASK, FAN_PWM_LOW_DUTY_CYCLE);
+
+	/* create /dev/gpio for ioctl using */
+	ret = nas_ctrl_register_chrdev();
+	if (ret < 0)
+	{
+		printk(KERN_ERR"%s: failed to allocate char dev region\n", __FILE__);
+		goto err;
+	}
+
+	/* create /proc/htp_pin */
+	nas_ctrl->htp_proc = proc_create_data("htp_pin", 0644, NULL, &htp_status_fops, NULL);
+	nas_ctrl->hdd1_detect_proc = proc_create_data("hdd1_detect", 0644, NULL, &hdd1_status_fops, NULL);
+	nas_ctrl->hdd2_detect_proc = proc_create_data("hdd2_detect", 0644, NULL, &hdd2_status_fops, NULL);
+	nas_ctrl->hdd3_detect_proc = proc_create_data("hdd3_detect", 0644, NULL, &hdd3_status_fops, NULL);
+	nas_ctrl->hdd4_detect_proc = proc_create_data("hdd4_detect", 0644, NULL, &hdd4_status_fops, NULL);
+	nas_ctrl->pwren_usb_proc = proc_create_data("enable_usb", 0644, NULL, &pwren_usb_fops, NULL);
+
+	return 0;
+err:
+	nas_ctrl = NULL;
+	return ret;
+}
+
+static int nas_ctrl_remove(struct platform_device *pdev)
+{
+	remove_proc_entry("htp_pin", NULL);
+	remove_proc_entry("hdd1_detect", NULL);
+	remove_proc_entry("hdd2_detect", NULL);
+	remove_proc_entry("hdd3_detect", NULL);
+	remove_proc_entry("hdd4_detect", NULL);
+	remove_proc_entry("enable_usb", NULL);
+
+	unregister_chrdev_region(nas_chrdev.dev, nas_chrdev.nr_devs);
+
+	return 0;
+}
+
+static const struct of_device_id of_nas_ctrl_match[] = {
+	{ .compatible = "zyxel,nas-control", },
+	{},
+};
+
+static struct platform_driver nas_ctrl_driver = {
+	.probe = nas_ctrl_probe,
+	.remove = nas_ctrl_remove,
+	.driver = {
+		.name = "nas-control",
+		.of_match_table = of_nas_ctrl_match,
+	},
+};
+
+module_platform_driver(nas_ctrl_driver);
+
+static int __init nas_ctrl_gpiodev_init(void)
+{
+	int ret = 0;
+	struct device_node *node;
+
+	node = of_find_compatible_node(NULL, NULL, "zyxel,nas-control");
+	if (!node)
+		return 0;
+
+	ret = __register_chrdev(nas_chrdev.major, 0, nas_chrdev.nr_devs, "gpio", &gpio_fops);
+	if (ret < 0)
+		return ret;
+
+	nas_chrdev.dev = MKDEV(nas_chrdev.major, 0);
+	printk(KERN_ERR"gpio_dev = %x\n", nas_chrdev.dev);
+
+	return ret;
+}
+arch_initcall(nas_ctrl_gpiodev_init);
+
+MODULE_AUTHOR("scpcom <scpcom@gmx.de>");
+MODULE_DESCRIPTION("Zyxel NAS Control driver");
+MODULE_LICENSE("GPL");
