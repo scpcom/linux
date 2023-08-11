@@ -47,6 +47,22 @@
 		};
 	};
 
+	control: control {
+		compatible = "zyxel,nas-control";
+		gpios = <&gpio 0 GPIO_ACTIVE_LOW>,
+			<&gpio 1 GPIO_ACTIVE_LOW>,
+			<&gpio 2 GPIO_ACTIVE_LOW>,
+			<&gpio 3 GPIO_ACTIVE_LOW>,
+			<&gpio 7 GPIO_ACTIVE_HIGH>,
+			<&gpio 8 GPIO_ACTIVE_HIGH>,
+			<&gpio 9 GPIO_ACTIVE_HIGH>,
+			<&gpio 10 GPIO_ACTIVE_HIGH>,
+			<&gpio 11 GPIO_ACTIVE_HIGH>,
+			<&gpio 14 GPIO_ACTIVE_HIGH>;
+		gpio-names = "hdd1-detect", "hdd2-detect", "hdd3-detect", "hdd4-detect", "htp-detect",
+			     "hdd1-control", "hdd2-control", "hdd3-control", "hdd4-control", "usb-control";
+	};
+
 	keys {
 		compatible = "gpio-keys";
 		#address-cells = <1>;
@@ -167,10 +183,9 @@
 };
 
 &uart0 {
-	status = "okay";
+	status = "disabled";
 
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart0>;
+	/* uart0 pins are used for hdd control */
 };
 &uart1 {
 	status = "okay";
