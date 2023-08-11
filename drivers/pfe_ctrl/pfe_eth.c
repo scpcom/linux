@@ -45,8 +45,6 @@
 #include <asm/irq.h>
 #include <asm/delay.h>
 
-#include <mach/hardware.h>
-
 #if defined(CONFIG_NF_CONNTRACK_MARK)
 #include <net/netfilter/nf_conntrack.h>
 #endif

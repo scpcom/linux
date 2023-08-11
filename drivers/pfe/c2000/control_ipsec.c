@@ -22,7 +22,6 @@
 #include "system.h"
 
 #include <linux/reset.h>
-#include <mach/hardware.h>
 
 /*
  * Allocation control mask for SAs. One word describes 32 SAs

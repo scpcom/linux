@@ -22,7 +22,6 @@
 
 #include <linux/device.h>
 #include <linux/elf.h>
-#include <mach/hardware.h>
 
 struct pfe;
 

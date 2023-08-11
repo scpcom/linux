@@ -42,7 +42,6 @@
 #include <linux/timer.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-#include <mach/hardware.h>
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,19,0)
 #include <mach/debug.h>
 #include <mach/memory.h>

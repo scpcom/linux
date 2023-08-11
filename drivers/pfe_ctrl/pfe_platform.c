@@ -24,7 +24,6 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 
-#include <mach/hardware.h>
 #include "pfe_platform.h"
 
 #include "pfe_mod.h"
