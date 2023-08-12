@@ -7,6 +7,15 @@ config ZYXEL_NAS_CONTROL
 
 	  Say Y if you have a Zyxel NAS.
 
+config ZYXEL_NAS_PWMS
+	bool "Zyxel NAS pwms driver"
+	depends on ZYXEL_NAS_CONTROL
+	default y
+	help
+	  This driver supports controlling the pwms on Zyxel NAS devices.
+
+	  Say Y if you have a Zyxel NAS.
+
 config ZYXEL_NAS_MCU
 	bool "Zyxel MCU driver"
 	depends on OF_GPIO && (PLAT_ORION || ARCH_LS1024A)

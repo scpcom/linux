@@ -29,7 +29,13 @@ int nas_ctrl_del_timer_sync(struct nas_ctrl_timer_list *ptimer);
 int nas_ctrl_timer_pending(const struct nas_ctrl_timer_list *ptimer);
 int run_usermode_cmd(const char *cmd);
 
+#ifdef CONFIG_ZYXEL_NAS_PWMS
+void set_buzzer(unsigned long bz_data);
 void Beep(void);
 void Beep_Beep(int duty_high, int duty_low);
+#else
+static inline void Beep(void) {}
+static inline void Beep_Beep(int duty_high, int duty_low) {}
+#endif
 
 #endif
