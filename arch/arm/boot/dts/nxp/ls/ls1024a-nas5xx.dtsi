@@ -61,6 +61,7 @@
 			<&gpio 14 GPIO_ACTIVE_HIGH>;
 		gpio-names = "hdd1-detect", "hdd2-detect", "hdd3-detect", "hdd4-detect", "htp-detect",
 			     "hdd1-control", "hdd2-control", "hdd3-control", "hdd4-control", "usb-control";
+		//pwms = <&pwm 4 5000 0>, <&pwm 5 65536 0>;
 	};
 
 	keys {
@@ -235,6 +236,11 @@
 
 &pcie0 {
 	status = "okay";
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm4>, <&pinctrl_pwm5>;
 };
 
 &sata {
