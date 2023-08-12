@@ -498,5 +498,17 @@
 			function = "spi";
 		};
 	};
+	pinctrl_pwm4: pwm4 {
+		pwm4 {
+			groups = "gpio12_grp";
+			function = "pwm";
+		};
+	};
+	pinctrl_pwm5: pwm5 {
+		pwm5 {
+			groups = "gpio13_grp";
+			function = "pwm";
+		};
+	};
 };
 
