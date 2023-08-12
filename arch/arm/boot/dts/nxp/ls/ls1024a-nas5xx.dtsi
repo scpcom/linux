@@ -63,6 +63,10 @@
 			     "hdd1-control", "hdd2-control", "hdd3-control", "hdd4-control", "usb-control";
 	};
 
+	ledtriggers {
+		compatible = "zyxel,nas-leds";
+	};
+
 	pwmset {
 		compatible = "zyxel,nas-pwms";
 		//pwms = <&pwm 4 5000 0>, <&pwm 5 65536 0>;
