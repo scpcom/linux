@@ -33,30 +33,6 @@
 #define REGMAP_PWM5_ENABLE_MAX			0x30
 #define REGMAP_PWM5_LOW_DUTY_CYCLE		0x34
 
-/* gpio reg offsets */
-#define REGMAP_GPIO_PIN_SELECT_REG		0x58
-#define REGMAP_GPIO_PIN_SELECT_REG1		0x5C
-#define REGMAP_GPIO_MISC_PIN_SELECT		0x60
-#define REGMAP_GPIO_63_32_PIN_SELECT		0xDC
-
-/** 0 ~ 31 bit **/
-#define GPIO_LOW_PIN_SELECT_0			REGMAP_GPIO_PIN_SELECT_REG
-#define GPIO_LOW_PIN_SELECT_1			REGMAP_GPIO_PIN_SELECT_REG1
-#define GPIO_LOW_PIN_SELECT(gpio_bit)		((gpio_bit > 15) ? GPIO_LOW_PIN_SELECT_1 : GPIO_LOW_PIN_SELECT_0)
-
-/** 32 ~ 63 bit **/
-#define GPIO_HIGH_PIN_SELECT_0			REGMAP_GPIO_63_32_PIN_SELECT
-#define GPIO_HIGH_PIN_SELECT_1			REGMAP_GPIO_MISC_PIN_SELECT
-#define GPIO_HIGH_PIN_SELECT(gpio_bit)		((gpio_bit > 59) ? GPIO_HIGH_PIN_SELECT_1 : GPIO_HIGH_PIN_SELECT_0)
-
-#define GPIO_PIN_SELECT(gpio_bit)	((gpio_bit > 31) ? GPIO_HIGH_PIN_SELECT(gpio_bit) : GPIO_LOW_PIN_SELECT(gpio_bit))
-
-#define GPIO_BIT_SET_OFFSET(gpio_bit) ((gpio_bit > 31) ? ((gpio_bit - 32) & 0x1f) : gpio_bit)
-
-/** define gpio offset **/
-#define FAN_PWM_REG_OFFSET		12
-#define BUZ_PWM_REG_OFFSET		13
-
 #define BUZ_PWM_CLOCK_DIVIDER_CONTROL	REGMAP_PWM_CLOCK_DIVIDER_CONTROL
 #define BUZ_PWM_LOW_DUTY_CYCLE		REGMAP_PWM5_LOW_DUTY_CYCLE
 #define BUZ_PWM_ENABLE_MAX		REGMAP_PWM5_ENABLE_MAX
@@ -116,7 +92,6 @@ typedef struct _hdd_ioctl {
 
 
 struct nas_ctrl {
-	struct regmap *gpioregs;
 	struct regmap *pwmregs;
 	struct gpio_descs *gpios;
 
@@ -183,11 +158,6 @@ static int nas_ctrl_detect_hdd(unsigned int port)
 }
 
 
-static inline void gpio_update_bits(unsigned int reg, unsigned int mask, unsigned int val)
-{
-	regmap_update_bits(nas_ctrl->gpioregs, reg, mask, val);
-}
-
 static inline unsigned int pwm_readl(unsigned int reg)
 {
 	unsigned int val;
@@ -200,26 +170,12 @@ static inline void pwm_writel(unsigned int val, unsigned int reg)
 	regmap_write(nas_ctrl->pwmregs, reg, val);
 }
 
-/* set pin "gpio_bit" to PWM mode */
-static void set_pwm_pinmode(int gpio_bit)
-{
-	unsigned long reg, mask;
-
-	reg = GPIO_PIN_SELECT(gpio_bit);
-	if (gpio_bit > 31) {
-		return;
-	} else {
-		mask = 0x3 << GPIO_BIT_SET_OFFSET(gpio_bit*2);
-		gpio_update_bits(reg, mask, (0x1 << GPIO_BIT_SET_OFFSET(gpio_bit*2)));
-	}
-}
-
 static void nas_ctrl_init_buzzer_pin(void)
 {
 	unsigned long reg;
 
 	/* Select Pin for PWM (27:26 '01' - PWM[5]) */
-	set_pwm_pinmode(BUZ_PWM_REG_OFFSET);
+	// done by pinctrl
 
 	/* Enable the Clock Divider and set the value to 1 */
 	reg = BUZ_PWM_CLOCK_DIVIDER_CONTROL;
@@ -235,7 +191,7 @@ static void nas_ctrl_init_fan_pin(void)
 	unsigned long reg;
 
 	/* Select Pin for PWM (25:24 '01' - PWM[4]) */
-	set_pwm_pinmode(FAN_PWM_REG_OFFSET);
+	// done by pinctrl
 
 	/* Enable the Clock Divider and set the value to 1 */
 	reg = FAN_PWM_CLOCK_DIVIDER_CONTROL;
@@ -835,15 +791,6 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 			GFP_KERNEL);
 	if (!nas_ctrl)
 		return -ENOMEM;
-
-	nas_ctrl->gpioregs =
-		syscon_regmap_lookup_by_compatible("fsl,ls1024a-gpio");
-	if (IS_ERR(nas_ctrl->gpioregs)) {
-		dev_err(&pdev->dev, "failed to get GPIO registers: %ld\n",
-		        PTR_ERR(nas_ctrl->gpioregs));
-		ret = PTR_ERR(nas_ctrl->gpioregs);
-		goto err;
-	}
 
 	nas_ctrl->pwmregs =
 		syscon_regmap_lookup_by_compatible("fsl,ls1024a-pwm");
