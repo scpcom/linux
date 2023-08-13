@@ -225,21 +225,18 @@ static long gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	/* implement a lock scheme by myself */
 	/* get the inode ==> file->f_dentry->d_inode */
 	switch (cmd) {
-#ifdef CONFIG_ZYXEL_BTNCPY_PID
+#ifdef CONFIG_ZYXEL_NAS_KEYS
 		case BTNCPY_IOC_SET_NUM:
-			if(!capable(CAP_SYS_ADMIN)) return -EPERM;
-			btncpy_pid = arg;
+			if (!capable(CAP_SYS_ADMIN)) return -EPERM;
+			set_btncpy_pid(arg);
 			break;
-#endif
-#ifdef CONFIG_ZYXEL_BUTTON_TEST
 		case BUTTON_TEST_IN_IOC_NUM:
-			btncpy_pid = arg >> 3;
-			atomic_set(&button_test_enable, 1);
-			atomic_set(&button_test_num, arg & 0x7);
+			if (!capable(CAP_SYS_ADMIN)) return -EPERM;
+			set_button_test(arg, 1);
 			break;
 		case BUTTON_TEST_OUT_IOC_NUM:
-			atomic_set(&button_test_enable, 0);
-			atomic_set(&button_test_num, BUTTON_NUM);
+			if (!capable(CAP_SYS_ADMIN)) return -EPERM;
+			set_button_test(arg, 0);
 			break;
 #endif
 #ifdef CONFIG_ZYXEL_NAS_PWMS

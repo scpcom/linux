@@ -30,6 +30,11 @@ int nas_ctrl_del_timer_sync(struct nas_ctrl_timer_list *ptimer);
 int nas_ctrl_timer_pending(const struct nas_ctrl_timer_list *ptimer);
 int run_usermode_cmd(const char *cmd);
 
+#ifdef CONFIG_ZYXEL_NAS_KEYS
+void set_btncpy_pid(unsigned long arg);
+void set_button_test(unsigned long arg, bool in);
+#endif
+
 enum LED_ID {
 	LED_HDD1 = 0,
 	LED_HDD2,

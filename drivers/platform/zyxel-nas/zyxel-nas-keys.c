@@ -337,6 +337,25 @@ static void set_init_keys_timer(void)
 	}
 }
 
+void set_btncpy_pid(unsigned long arg)
+{
+	btncpy_pid = arg;
+}
+
+void set_button_test(unsigned long arg, bool in)
+{
+	if (in)
+	{
+		btncpy_pid = arg >> 3;
+		atomic_set(&button_test_enable, 1);
+		atomic_set(&button_test_num, arg & 0x7);
+	}
+	else
+	{
+		atomic_set(&button_test_enable, 0);
+		atomic_set(&button_test_num, BUTTON_NUM);
+	}
+}
 
 static int init_gpiod_input(struct gpio_desc *gpiod, char* name)
 {
