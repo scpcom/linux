@@ -194,6 +194,12 @@ void set_buzzer(unsigned long bz_data)
 	time = GET_TIME(bz_data);
 	status = GET_STATE(bz_data);
 
+	if (nas_pwms->bz_timer_status == TIMER_OFFLINE)
+	{
+		nas_ctrl_init_timer(&nas_pwms->bz_timer, buzzer_timer_func, 0);
+		nas_pwms->bz_timer_status = TIMER_SLEEPING;
+	}
+
 	printk(KERN_ERR"bz time = %x\n", time);
 	printk(KERN_ERR"bz status = %x\n", status);
 	printk(KERN_ERR"bz_timer_status = %x\n", nas_pwms->bz_timer_status);
@@ -236,9 +242,8 @@ void set_buzzer(unsigned long bz_data)
 static void nas_pwms_set_init_timer(void)
 {
 	// init bz timer
-	nas_pwms->bz_timer_status = TIMER_SLEEPING;
+	nas_pwms->bz_timer_status = TIMER_OFFLINE;
 	nas_pwms->bz_type = RING_BRIEF;
-	nas_ctrl_init_timer(&nas_pwms->bz_timer, buzzer_timer_func, 0);
 }
 
 static int nas_pwms_probe(struct platform_device *pdev)

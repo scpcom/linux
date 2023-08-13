@@ -311,11 +311,15 @@ static void led_blink_start(unsigned int id, unsigned int color, unsigned int st
 	short led_color;
 
 	if (led_set[id].presence == 0) return;
-	if (led_set[id].timer_state == TIMER_OFFLINE) return;
 //	if ((state != LED_BLINK_SLOW) && (state != LED_BLINK_FAST) && (state != LED_BLINK_VERYSLOW)) return;
 	if (expire_period[state] == 0) return;
 
 	spin_lock(&(led_set[id].lock));
+
+	if (led_set[id].timer_state == TIMER_OFFLINE) {
+		nas_ctrl_init_timer(&led_set[id].timer, led_timer_handler, (unsigned long)&led_set[id]);
+		led_set[id].timer_state = TIMER_SLEEPING;
+	}
 
 	if (led_set[id].timer_state == TIMER_RUNNING) {
 		/* Maybe there is already a timer running, restart one. */
@@ -487,11 +491,6 @@ static void init_led_triggers(void)
 #endif
 
 
-struct nas_leds_priv {
-	u32 wait_delay_ms;
-};
-struct nas_leds_priv *nas_leds;
-
 static void nas_leds_set_init_timer(void)
 {
 	int i;
@@ -500,18 +499,12 @@ static void nas_leds_set_init_timer(void)
 	for (i = 0; i < LED_TOTAL; i++) {
 		if (led_set[i].presence == 0) continue;
 
-		nas_ctrl_init_timer(&led_set[i].timer, led_timer_handler, (unsigned long)&led_set[i]);
-		led_set[i].timer_state = TIMER_SLEEPING;
+		led_set[i].timer_state = TIMER_OFFLINE;
 	}
 }
 
 static int nas_leds_probe(struct platform_device *pdev)
 {
-	nas_leds = devm_kzalloc(&pdev->dev, sizeof(*nas_leds),
-			GFP_KERNEL);
-	if (!nas_leds)
-		return -ENOMEM;
-
 	nas_leds_set_init_timer();
 
 	return 0;
