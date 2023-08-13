@@ -733,6 +733,13 @@ int ahci_platform_init_host(struct platform_device *pdev,
 		if (ap->flags & ATA_FLAG_EM)
 			ap->em_message_type = hpriv->em_msg_type;
 
+		if (of_device_is_compatible(dev->of_node, "fsl,ls1024a-sata")) {
+			dev_info(dev, "Optimized PFE/SATA DDR interaction\n");
+			/* Optimized PFE/SATA DDR interaction,
+			limit read burst size of SATA controller */
+			writel(0x41, ahci_port_base(ap) + 0x70);
+		}
+
 		/* disabled/not-implemented port */
 		if (!(hpriv->port_map & (1 << i)))
 			ap->ops = &ata_dummy_port_ops;
