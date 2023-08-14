@@ -7,6 +7,15 @@ config ZYXEL_NAS_CONTROL
 
 	  Say Y if you have a Zyxel NAS.
 
+config ZYXEL_NAS_LEDS
+	bool "Zyxel NAS LEDs driver"
+	depends on ZYXEL_NAS_CONTROL
+	default y
+	help
+	  This driver supports controlling the LEDs on Zyxel NAS devices.
+
+	  Say Y if you have a Zyxel NAS.
+
 config ZYXEL_NAS_PWMS
 	bool "Zyxel NAS pwms driver"
 	depends on ZYXEL_NAS_CONTROL

@@ -13,6 +13,7 @@
 
 #define JIFFIES_1_SEC       (HZ)        /* 1 second */
 
+#define TIMER_OFFLINE   0x2
 #define TIMER_RUNNING   0x1
 #define TIMER_SLEEPING  0x0
 
@@ -28,6 +29,38 @@ int nas_ctrl_del_timer(struct nas_ctrl_timer_list * ptimer);
 int nas_ctrl_del_timer_sync(struct nas_ctrl_timer_list *ptimer);
 int nas_ctrl_timer_pending(const struct nas_ctrl_timer_list *ptimer);
 int run_usermode_cmd(const char *cmd);
+
+enum LED_ID {
+	LED_HDD1 = 0,
+	LED_HDD2,
+	LED_HDD3,
+	LED_HDD4,
+	LED_SYS,
+	LED_COPY,
+	LED_TOTAL,
+};
+
+#define RED 	    (1<<0)
+#define GREEN       (2<<0)
+#define ORANGE      (RED | GREEN)
+#define NO_COLOR	0
+
+#ifdef CONFIG_ZYXEL_NAS_LEDS
+int set_led_config(unsigned long led_data);
+void turn_on_led(unsigned int id, unsigned int color);
+void turn_off_led(unsigned int id);
+void turn_off_led_all(unsigned int id);
+void reverse_on_off_led(unsigned int id, unsigned int color);
+void led_all_colors_off(void);
+void led_all_red_on(void);
+#else
+static inline void turn_on_led(unsigned int id, unsigned int color) {}
+static inline void turn_off_led(unsigned int id) {}
+static inline void turn_off_led_all(unsigned int id) {}
+static inline void reverse_on_off_led(unsigned int id, unsigned int color) {}
+static inline void led_all_colors_off(void) {}
+static inline void led_all_red_on(void) {}
+#endif
 
 #ifdef CONFIG_ZYXEL_NAS_PWMS
 void set_buzzer(unsigned long bz_data);

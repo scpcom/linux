@@ -91,7 +91,7 @@ static int nas_ctrl_detect_hdd(unsigned int port)
 	{
 		printk(KERN_WARNING "\033[033mEnable HD%d ...\033[0m\n", port);
 		gpiod_set_value(ctl_gpiod, 1);	// enable HDx
-		//turn_on_led(LED_HDDx, GREEN);	// set HDx LED
+		turn_on_led(port-1, GREEN);	// set HDx LED
 		need_sleep = 1;
 	}
 
@@ -169,12 +169,6 @@ int run_usermode_cmd(const char *cmd)
 }
 
 
-static int set_led_config(unsigned long led_data)
-{
-	return 0;
-}
-
-
 static int hdd_power_set(struct _hdd_ioctl *hdd_data)
 {
 	unsigned int port = hdd_data->port;
@@ -220,7 +214,9 @@ static ssize_t gpio_write(struct file * file, const char *buf, size_t count, lof
 
 static long gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+#ifdef CONFIG_ZYXEL_NAS_LEDS
 	unsigned long ret = 0;
+#endif
 	struct _hdd_ioctl hdd_data;
 
 	if (!nas_ctrl)
@@ -251,11 +247,13 @@ static long gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			set_buzzer(arg);
 			break;
 #endif
+#ifdef CONFIG_ZYXEL_NAS_LEDS
 		case LED_SET_CTL_IOC_NUM:       // Just set leds, no check.
 			ret = set_led_config(arg);
-			if(ret < 0)
+			if (ret < 0)
 				return ret;
 			break;
+#endif
 		case HDD_SET_CTL_IOC_NUM:
 			if (!copy_from_user(&hdd_data, (void __user *) arg, sizeof(struct _hdd_ioctl)))
 				hdd_power_set(&hdd_data);
@@ -627,6 +625,12 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 			&nas_ctrl->wait_delay_ms);
 
 	platform_set_drvdata(pdev, nas_ctrl);
+
+	// turn off all LEDS
+	led_all_colors_off();
+
+	// turn on sys led (it seems that the kernel timer doesn't work here!? only turn on SYS LED now)
+	turn_on_led(LED_SYS, GREEN);
 
 	need_sleep |= nas_ctrl_detect_hdd(1);
 	need_sleep |= nas_ctrl_detect_hdd(3);
