@@ -42,6 +42,7 @@ struct nas_ctrl {
 	struct gpio_descs *gpios;
 
 	u32 wait_delay_ms;
+	u32 drive_bays;
 
 	struct proc_dir_entry *htp_proc;
 	struct proc_dir_entry *hdd1_detect_proc;
@@ -49,6 +50,8 @@ struct nas_ctrl {
 	struct proc_dir_entry *hdd3_detect_proc;
 	struct proc_dir_entry *hdd4_detect_proc;
 	struct proc_dir_entry *pwren_usb_proc;
+	struct proc_dir_entry *drive_bays_proc_root;
+	struct proc_dir_entry *drive_bays_count_proc;
 };
 
 struct nas_ctrl_cdev {
@@ -66,6 +69,32 @@ static struct nas_ctrl_cdev nas_chrdev = {
 };
 
 static struct nas_ctrl *nas_ctrl = NULL;
+
+static int cmdline_drive_bays = 0;
+
+static int __init nas_ctrl_drive_bays_setup(char *str)
+{
+	if (get_option(&str, &cmdline_drive_bays) != 1)
+		return 1;
+
+	if (cmdline_drive_bays < 1)
+		cmdline_drive_bays = 2;
+	if (cmdline_drive_bays > MAX_HD_NUM)
+		cmdline_drive_bays = MAX_HD_NUM;
+
+	pr_debug("cmdline drive_bays: %u\n", cmdline_drive_bays);
+
+	return 1;
+}
+__setup("drive_bays=", nas_ctrl_drive_bays_setup);
+
+u32 nas_ctrl_get_drive_bays_count(void)
+{
+	if (nas_ctrl)
+		return nas_ctrl->drive_bays;
+	else
+		return cmdline_drive_bays;
+}
 
 static struct gpio_desc *nas_ctrl_get_gpiod(s32 index)
 {
@@ -86,6 +115,9 @@ static int nas_ctrl_detect_hdd(unsigned int port)
 	int need_sleep = 0;
 	struct gpio_desc *det_gpiod = nas_ctrl->gpios->desc[port-1];
 	struct gpio_desc *ctl_gpiod = nas_ctrl->gpios->desc[port-1+5];
+
+	if (port > nas_ctrl->drive_bays)
+		return 0;
 
 	if (gpiod_get_value(det_gpiod))	// HDx inserted
 	{
@@ -526,6 +558,38 @@ static const struct proc_ops pwren_usb_fops = {
 	.proc_write = pwren_usb_write_fun,
 };
 
+static int drive_bays_count_read_func(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+
+	len = sprintf(tmpbuf, "%i\n", nas_ctrl_get_drive_bays_count());
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static int drive_bays_count_write_func(struct file *file, const char __user *buff,
+		size_t count, loff_t *pos)
+{
+	/* do nothing */
+	return 0;
+}
+
+static const struct proc_ops drive_bays_count_ops = {
+	proc_read: drive_bays_count_read_func,
+	proc_write: drive_bays_count_write_func
+};
+
 static int nas_ctrl_register_chrdev(void)
 {
 	int ret;
@@ -621,6 +685,16 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "wait-delay",
 			&nas_ctrl->wait_delay_ms);
 
+	nas_ctrl->drive_bays = MAX_HD_NUM;
+
+	of_property_read_u32(pdev->dev.of_node, "drive-bays",
+			&nas_ctrl->drive_bays);
+
+	if (cmdline_drive_bays > 0)
+		nas_ctrl->drive_bays = cmdline_drive_bays;
+
+	pr_debug("drive_bays: %u\n", nas_ctrl->drive_bays);
+
 	platform_set_drvdata(pdev, nas_ctrl);
 
 	// turn off all LEDS
@@ -668,6 +742,12 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 	nas_ctrl->hdd4_detect_proc = proc_create_data("hdd4_detect", 0644, NULL, &hdd4_status_fops, NULL);
 	nas_ctrl->pwren_usb_proc = proc_create_data("enable_usb", 0644, NULL, &pwren_usb_fops, NULL);
 
+	nas_ctrl->drive_bays_proc_root = proc_mkdir("drive_bays", NULL);
+	if (nas_ctrl->drive_bays_proc_root != NULL)
+	{
+		nas_ctrl->drive_bays_count_proc = proc_create_data("count", 0644, nas_ctrl->drive_bays_proc_root, &drive_bays_count_ops, NULL);
+	}
+
 	return 0;
 err:
 	nas_ctrl = NULL;
@@ -682,6 +762,8 @@ static int nas_ctrl_remove(struct platform_device *pdev)
 	remove_proc_entry("hdd3_detect", NULL);
 	remove_proc_entry("hdd4_detect", NULL);
 	remove_proc_entry("enable_usb", NULL);
+	remove_proc_entry("count", nas_ctrl->drive_bays_proc_root);
+	proc_remove(nas_ctrl->drive_bays_proc_root);
 
 	unregister_chrdev_region(nas_chrdev.dev, nas_chrdev.nr_devs);
 
