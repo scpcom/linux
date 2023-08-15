@@ -439,6 +439,121 @@ static void led_timer_handler(unsigned long data)
 	spin_unlock(&(_led_set->lock));
 }
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+static void hdd_led_blinking_timer(unsigned long in_data)
+{
+	struct nas_led_set *_led_set = (struct nas_led_set*) in_data;
+	int led_num = _led_set->id;
+
+	int index = 0;
+	switch(led_num)
+	{
+		case LED_HDD1:
+			index = 0;
+			break;
+		case LED_HDD2:
+			index = 1;
+			break;
+		case LED_HDD3:
+			index = 2;
+			break;
+		case LED_HDD4:
+			index = 3;
+			break;
+		default:
+			break;
+	}
+
+
+	if(atomic_read(&sata_badblock_idf[index]) == 1) {
+		atomic_set(&sata_hd_accessing[index], 0);
+		atomic_set(&sata_hd_stop[index], 1);
+	}
+
+	if(atomic_read(&sata_hd_accessing[index]) != 0) {
+		atomic_set(&sata_hd_stop[index], 0);
+		reverse_on_off_led(led_num, GREEN);
+		nas_ctrl_mod_timer(&_led_set->timer, jiffies + (HZ)/(4+atomic_read(&sata_hd_accessing[index])));
+		atomic_set(&sata_hd_accessing[index], 0);
+	} else {
+		if (atomic_read(&sata_hd_stop[index]) == 0) {
+			turn_off_led_all(led_num);
+			turn_on_led(led_num, GREEN);
+			atomic_set(&sata_hd_stop[index], 1);
+		}
+		nas_ctrl_mod_timer(&_led_set->timer, jiffies + (HZ >> 3));
+	}
+}
+
+int get_hdd_led_num(int index)
+{
+	int led_num = 0;
+	switch(index)
+	{
+		case 0:
+			led_num = LED_HDD1;
+			break;
+		case 1:
+			led_num = LED_HDD2;
+			break;
+		case 2:
+			led_num = LED_HDD3;
+			break;
+		case 3:
+			led_num = LED_HDD4;
+			break;
+		default:
+			break;
+	}
+	return led_num;
+}
+
+static void init_hdd_led_timer(int index)
+{
+	int i = get_hdd_led_num(index);
+
+	if (led_set[i].timer_state == TIMER_OFFLINE)
+	{
+		nas_ctrl_init_timer(&led_set[i].timer, hdd_led_blinking_timer, (unsigned long)&led_set[i]);
+		led_set[i].timer_state = TIMER_SLEEPING;
+	}
+	nas_ctrl_mod_timer(&led_set[i].timer, jiffies + (HZ >> 2));
+	led_set[i].timer_state = TIMER_RUNNING;
+}
+
+int init_hdd_led_control()
+{
+	int i;
+
+	if (!hdd_workqueue)
+		hdd_workqueue = create_singlethread_workqueue("harddrive_hdd");
+	if (!hdd_workqueue) {
+		destroy_workqueue(hdd_workqueue);
+		printk("Error, init disk I/O badblock handler error\n");
+		return -ENOMEM;
+	}
+
+	/* for STG540 init sata led control */
+	for(i = 0 ; i < nas_ctrl_get_drive_bays_count(); i++) {
+		atomic_set(&sata_hd_accessing[i], 0);
+		atomic_set(&sata_hd_stop[i], 1);
+		atomic_set(&sata_badblock_idf[i], 0);
+
+		init_hdd_led_timer(i);
+	}
+
+	/* init sata detect error parameter */
+	atomic_set(&sata_device_num, -1);
+
+	return 0;
+}
+
+void exit_hdd_led_control()
+{
+	destroy_workqueue(hdd_workqueue);
+}
+#endif
+
 int set_led_config(unsigned long led_data)
 {
 	unsigned long led_index, color, state;

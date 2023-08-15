@@ -34,6 +34,14 @@ config ZYXEL_NAS_PWMS
 
 	  Say Y if you have a Zyxel NAS.
 
+config ZYXEL_HDD_EXTENSIONS
+	bool "Zyxel HDD extensions"
+	default n
+	depends on SCSI=y && BLK_DEV_SD=y
+	depends on ZYXEL_NAS_LEDS
+	help
+	  This option enables support for Zyxel HDD LEDs and disk status.
+
 config ZYXEL_NAS_MCU
 	bool "Zyxel MCU driver"
 	depends on OF_GPIO && (PLAT_ORION || ARCH_LS1024A)

@@ -37,6 +37,10 @@
 
 #include <trace/events/scsi.h>
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+#include "../platform/zyxel-nas/zyxel-nas-ctrl.h"
+#endif
+
 #include "scsi_debugfs.h"
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -800,6 +804,44 @@ static bool scsi_cmd_runtime_exceeced(struct scsi_cmnd *cmd)
 	return false;
 }
 
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+static int scsi_get_hdd_index(struct scsi_cmnd *cmd)
+{
+	int ret = -1;
+
+	if (strcmp(dev_name(&cmd->device->sdev_gendev), "0:0:0:0") == 0) {
+		ret = 0;
+	} else if (strcmp(dev_name(&cmd->device->sdev_gendev), "1:0:0:0") == 0) {
+		ret = 1;
+	} else if (strcmp(dev_name(&cmd->device->sdev_gendev), "2:0:0:0") == 0) {
+		ret = 2;
+	} else if (strcmp(dev_name(&cmd->device->sdev_gendev), "3:0:0:0") == 0) {
+		ret = 3;
+	}
+
+	if (nas_ctrl_get_drive_bays_count() > ret)
+		return ret;
+	else
+		return -1;
+}
+
+static int scsi_led_access(struct scsi_cmnd *cmd)
+{
+	int index = scsi_get_hdd_index(cmd);
+
+	/* LED Control For STG540 */
+	if (index >= 0) {
+		if (atomic_read(&sata_badblock_idf[index]) == 0) {
+			atomic_inc(&sata_hd_accessing[index]);
+		}
+	}
+
+	return 0;
+}
+#endif
+
+
 /*
  * When ALUA transition state is returned, reprep the cmd to
  * use the ALUA handler's transition timeout. Delay the reprep
@@ -819,6 +861,9 @@ static void scsi_io_completion_action(struct scsi_cmnd *cmd, int result)
 	bool sense_valid;
 	bool sense_current = true;      /* false implies "deferred sense" */
 	blk_status_t blk_stat;
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	int hdd_port_num = scsi_get_hdd_index(cmd);
+#endif
 
 	sense_valid = scsi_command_normalize_sense(cmd, &sshdr);
 	if (sense_valid)
@@ -950,6 +995,21 @@ static void scsi_io_completion_action(struct scsi_cmnd *cmd, int result)
 			static DEFINE_RATELIMIT_STATE(_rs,
 					DEFAULT_RATELIMIT_INTERVAL,
 					DEFAULT_RATELIMIT_BURST);
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+			/* for STG540 SATA error */
+			/* //To match svn #45283, close the led red on when the disk detected badblock, to match disk status display on GUI
+			if (hdd_port_num >= 0) {
+			{
+				int hdd_led_num = get_hdd_led_num(hdd_port_num);
+				atomic_set(&sata_badblock_idf[hdd_port_num], 1);
+				turn_off_led_all(hdd_led_num);
+				turn_on_led(hdd_led_num, RED);
+			}
+			*/
+			/* for hdd error hander (send zylog and show fail on gui)*/
+			start_hdd_error_handler(hdd_port_num+1);
+#endif
 
 			if (unlikely(scsi_logging_level))
 				level =
@@ -1309,6 +1369,9 @@ static blk_status_t scsi_setup_scsi_cmnd(struct scsi_device *sdev,
 	 */
 	if (req->bio) {
 		blk_status_t ret = scsi_alloc_sgtables(cmd);
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+		scsi_led_access(cmd);
+#endif
 		if (unlikely(ret != BLK_STS_OK))
 			return ret;
 	} else {
@@ -1724,6 +1787,9 @@ static blk_status_t scsi_prepare_cmd(struct request *req)
 	/* Usually overridden by the ULP */
 	cmd->allowed = 0;
 	memset(cmd->cmnd, 0, sizeof(cmd->cmnd));
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	scsi_led_access(cmd);
+#endif
 	return scsi_cmd_to_driver(cmd)->init_command(cmd);
 }
 

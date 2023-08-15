@@ -50,6 +50,13 @@ struct nas_ctrl {
 	struct proc_dir_entry *hdd3_detect_proc;
 	struct proc_dir_entry *hdd4_detect_proc;
 	struct proc_dir_entry *pwren_usb_proc;
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	struct proc_dir_entry *disk_io_err_proc_root;
+	struct proc_dir_entry *disk1_io_err_proc;
+	struct proc_dir_entry *disk2_io_err_proc;
+	struct proc_dir_entry *disk3_io_err_proc;
+	struct proc_dir_entry *disk4_io_err_proc;
+#endif
 	struct proc_dir_entry *drive_bays_proc_root;
 	struct proc_dir_entry *drive_bays_count_proc;
 };
@@ -69,6 +76,19 @@ static struct nas_ctrl_cdev nas_chrdev = {
 };
 
 static struct nas_ctrl *nas_ctrl = NULL;
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+atomic_t sata_hd_accessing[MAX_HD_NUM];
+atomic_t sata_hd_stop[MAX_HD_NUM];
+atomic_t sata_badblock_idf[MAX_HD_NUM];
+
+atomic_t disk_io_err[MAX_HD_NUM];
+atomic_t sata_device_num;
+
+struct workqueue_struct *hdd_workqueue = NULL;
+static void hdd_error_handler(struct work_struct *in);
+static DECLARE_WORK(HDD_ERR_DETECT, hdd_error_handler);
+#endif
 
 static int cmdline_drive_bays = 0;
 
@@ -558,6 +578,129 @@ static const struct proc_ops pwren_usb_fops = {
 	.proc_write = pwren_usb_write_fun,
 };
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+/* read file operations */
+static int disk_io_err_read_proc_func(int index, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	int len;
+	char tmpbuf[64];
+
+	len = sprintf(tmpbuf,"%d\n", atomic_read(&disk_io_err[index]));
+
+	if (*pos != 0)
+		len = 0;
+	if (!buff)
+		return len;
+	if (copy_to_user(buff, tmpbuf, len))
+		len = 0;
+	else
+		*pos += len;
+
+	return len;
+}
+
+static int disk1_io_err_read_proc_func(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_read_proc_func(0, buff, count, pos);
+}
+
+static int disk2_io_err_read_proc_func(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_read_proc_func(1, buff, count, pos);
+}
+
+static int disk3_io_err_read_proc_func(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_read_proc_func(2, buff, count, pos);
+}
+
+static int disk4_io_err_read_proc_func(struct file *file, char __user *buff,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_read_proc_func(3, buff, count, pos);
+}
+
+/* write file operations */
+static int disk_io_err_write_proc_func(int index, const char __user *buf,
+		size_t count, loff_t *pos)
+{
+	char num[10];
+	int err_num;
+
+	/* no data be written */
+	if (!count) {
+		printk("count is 0\n");
+		return 0;
+	}
+
+	/* Input size is too large to write our buffer(num) */
+	if (count > (sizeof(num) - 1)) {
+		printk("input is too large\n");
+		return -EINVAL;
+	}
+
+	if (copy_from_user(num, buf, count)) {
+		printk("copy from user failed\n");
+		return -EFAULT;
+	}
+
+	err_num = num[0] - '0';
+	if (err_num == 0)
+		atomic_set(&disk_io_err[index], DISK_NO_ERR);
+	else
+		atomic_set(&disk_io_err[index], DISK_ERR);
+	return count;
+}
+
+static int disk1_io_err_write_proc_func(struct file *file, const char __user *buf,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_write_proc_func(0, buf, count, pos);
+}
+
+static int disk2_io_err_write_proc_func(struct file *file, const char __user *buf,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_write_proc_func(1, buf, count, pos);
+}
+
+static int disk3_io_err_write_proc_func(struct file *file, const char __user *buf,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_write_proc_func(2, buf, count, pos);
+}
+
+static int disk4_io_err_write_proc_func(struct file *file, const char __user *buf,
+		size_t count, loff_t *pos)
+{
+	return disk_io_err_write_proc_func(3, buf, count, pos);
+}
+
+static const struct proc_ops disk1_io_err_proc_ops = {
+	proc_read: disk1_io_err_read_proc_func,
+	proc_write: disk1_io_err_write_proc_func
+};
+
+static const struct proc_ops disk2_io_err_proc_ops = {
+	proc_read: disk2_io_err_read_proc_func,
+	proc_write: disk2_io_err_write_proc_func
+};
+
+static const struct proc_ops disk3_io_err_proc_ops = {
+	proc_read: disk3_io_err_read_proc_func,
+	proc_write: disk3_io_err_write_proc_func
+};
+
+static const struct proc_ops disk4_io_err_proc_ops = {
+	proc_read: disk4_io_err_read_proc_func,
+	proc_write: disk4_io_err_write_proc_func
+};
+#endif
+
 static int drive_bays_count_read_func(struct file *file, char __user *buff,
 		size_t count, loff_t *pos)
 {
@@ -589,6 +732,41 @@ static const struct proc_ops drive_bays_count_ops = {
 	proc_read: drive_bays_count_read_func,
 	proc_write: drive_bays_count_write_func
 };
+
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+static void hdd_error_handler(struct work_struct *in)
+{
+	int ret;
+	char diskx[10];
+	char cmdPath[] = "/usr/local/disk_error_hander.sh";
+	char cmdLine[64];
+	int diskid = atomic_read(&sata_device_num);
+
+	sprintf(diskx, "Disk%d", diskid);
+	sprintf(cmdLine, "/bin/sh %s %s", cmdPath, diskx);
+
+	if ((diskid < 1) || (diskid > MAX_HD_NUM))
+		return;
+
+	if ( atomic_read(&disk_io_err[diskid-1]) != DISK_ERR )
+	{
+		ret = run_usermode_cmd(cmdLine);
+		atomic_set(&disk_io_err[diskid-1], DISK_ERR);
+	}
+}
+
+void start_hdd_error_handler(int port)
+{
+	if (!hdd_workqueue)
+		return;
+
+	/* for hdd error hander (send zylog and show fail on gui)*/
+	atomic_set(&sata_device_num, port);
+	queue_work(hdd_workqueue, &HDD_ERR_DETECT);
+}
+#endif
+
 
 static int nas_ctrl_register_chrdev(void)
 {
@@ -745,6 +923,21 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 	nas_ctrl->hdd4_detect_proc = proc_create_data("hdd4_detect", 0644, NULL, &hdd4_status_fops, NULL);
 	nas_ctrl->pwren_usb_proc = proc_create_data("enable_usb", 0644, NULL, &pwren_usb_fops, NULL);
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	for(i = 0 ; i < MAX_HD_NUM; i++)
+	{
+		atomic_set(&disk_io_err[i], DISK_NO_ERR);
+	}
+	nas_ctrl->disk_io_err_proc_root = proc_mkdir("disk_err_detect", NULL);
+	if (nas_ctrl->disk_io_err_proc_root != NULL)
+	{
+		nas_ctrl->disk1_io_err_proc = proc_create_data("disk1_err", 0644, nas_ctrl->disk_io_err_proc_root, &disk1_io_err_proc_ops, NULL);
+		nas_ctrl->disk2_io_err_proc = proc_create_data("disk2_err", 0644, nas_ctrl->disk_io_err_proc_root, &disk2_io_err_proc_ops, NULL);
+		nas_ctrl->disk3_io_err_proc = proc_create_data("disk3_err", 0644, nas_ctrl->disk_io_err_proc_root, &disk3_io_err_proc_ops, NULL);
+		nas_ctrl->disk4_io_err_proc = proc_create_data("disk4_err", 0644, nas_ctrl->disk_io_err_proc_root, &disk4_io_err_proc_ops, NULL);
+	}
+#endif
+
 	nas_ctrl->drive_bays_proc_root = proc_mkdir("drive_bays", NULL);
 	if (nas_ctrl->drive_bays_proc_root != NULL)
 	{
@@ -765,6 +958,15 @@ static int nas_ctrl_remove(struct platform_device *pdev)
 	remove_proc_entry("hdd3_detect", NULL);
 	remove_proc_entry("hdd4_detect", NULL);
 	remove_proc_entry("enable_usb", NULL);
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	remove_proc_entry("disk1_err", nas_ctrl->disk_io_err_proc_root);
+	remove_proc_entry("disk2_err", nas_ctrl->disk_io_err_proc_root);
+	remove_proc_entry("disk3_err", nas_ctrl->disk_io_err_proc_root);
+	remove_proc_entry("disk4_err", nas_ctrl->disk_io_err_proc_root);
+	proc_remove(nas_ctrl->disk_io_err_proc_root);
+#endif
+
 	remove_proc_entry("count", nas_ctrl->drive_bays_proc_root);
 	proc_remove(nas_ctrl->drive_bays_proc_root);
 

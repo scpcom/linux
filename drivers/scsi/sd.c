@@ -71,6 +71,10 @@
 #include <scsi/scsicam.h>
 #include <scsi/scsi_common.h>
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+#include "../platform/zyxel-nas/zyxel-nas-ctrl.h"
+#endif
+
 #include "sd.h"
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -3919,6 +3923,20 @@ static int sd_probe(struct device *dev)
 	int index;
 	int error;
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	/* STG540 INIT SATA LED */
+	int hdd_port_num = sdp->host->host_no;
+	int hdd_led_num = get_hdd_led_num(hdd_port_num);
+
+	if (nas_ctrl_get_drive_bays_count() > hdd_port_num)
+	{
+		turn_off_led_all(hdd_led_num);
+		turn_on_led(hdd_led_num, GREEN);
+		atomic_set(&sata_badblock_idf[hdd_port_num], 0);
+		atomic_set(&disk_io_err[hdd_port_num], DISK_NO_ERR);
+	}
+#endif
+
 	scsi_autopm_get_device(sdp);
 	error = -ENODEV;
 	if (sdp->type != TYPE_DISK &&
@@ -4064,6 +4082,21 @@ static int sd_probe(struct device *dev)
 static int sd_remove(struct device *dev)
 {
 	struct scsi_disk *sdkp = dev_get_drvdata(dev);
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	//STG540
+	struct scsi_device *sdp = to_scsi_device(dev);
+	int hdd_port_num = sdp->host->host_no;
+	int hdd_led_num = get_hdd_led_num(hdd_port_num);
+
+	if (nas_ctrl_get_drive_bays_count() > hdd_port_num)
+	{
+		turn_off_led_all(hdd_led_num);
+		turn_on_led(hdd_led_num, RED);
+		atomic_set(&sata_badblock_idf[hdd_port_num], 1);
+		atomic_set(&disk_io_err[hdd_port_num], DISK_NO_ERR);
+	}
+#endif
 
 	scsi_autopm_get_device(sdkp->device);
 
@@ -4358,6 +4391,12 @@ static int __init init_sd(void)
 
 	SCSI_LOG_HLQUEUE(3, printk("init_sd: sd driver entry point\n"));
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	err = init_hdd_led_control();
+	if (err < 0)
+		return err;
+#endif
+
 	for (i = 0; i < SD_MAJORS; i++) {
 		if (__register_blkdev(sd_major(i), "sd", sd_default_probe))
 			continue;
@@ -4412,6 +4451,10 @@ static void __exit exit_sd(void)
 
 	for (i = 0; i < SD_MAJORS; i++)
 		unregister_blkdev(sd_major(i), "sd");
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+	exit_hdd_led_control();
+#endif
 }
 
 module_init(init_sd);

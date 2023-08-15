@@ -32,7 +32,25 @@ int run_usermode_cmd(const char *cmd);
 
 #define MAX_HD_NUM      4
 
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+extern atomic_t sata_hd_accessing[MAX_HD_NUM];
+extern atomic_t sata_hd_stop[MAX_HD_NUM];
+extern atomic_t sata_badblock_idf[MAX_HD_NUM];
+
+extern atomic_t disk_io_err[MAX_HD_NUM];
+extern atomic_t sata_device_num;
+#endif
+
 u32 nas_ctrl_get_drive_bays_count(void);
+
+#ifdef CONFIG_ZYXEL_HDD_EXTENSIONS
+extern struct workqueue_struct *hdd_workqueue;
+/*for hdd error*/
+#define DISK_NO_ERR	0
+#define DISK_ERR	1
+
+void start_hdd_error_handler(int port);
+#endif
 
 #ifdef CONFIG_ZYXEL_NAS_KEYS
 void set_btncpy_pid(unsigned long arg);
@@ -62,6 +80,9 @@ void turn_off_led_all(unsigned int id);
 void reverse_on_off_led(unsigned int id, unsigned int color);
 void led_all_colors_off(void);
 void led_all_red_on(void);
+int get_hdd_led_num(int index);
+int init_hdd_led_control(void);
+void exit_hdd_led_control(void);
 #else
 static inline void turn_on_led(unsigned int id, unsigned int color) {}
 static inline void turn_off_led(unsigned int id) {}
@@ -69,6 +90,9 @@ static inline void turn_off_led_all(unsigned int id) {}
 static inline void reverse_on_off_led(unsigned int id, unsigned int color) {}
 static inline void led_all_colors_off(void) {}
 static inline void led_all_red_on(void) {}
+static inline int get_hdd_led_num(int index) { return 0; }
+static inline int init_hdd_led_control(void) { return 0; }
+static inline void exit_hdd_led_control(void) {}
 #endif
 
 #ifdef CONFIG_ZYXEL_NAS_PWMS
