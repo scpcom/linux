@@ -42,7 +42,7 @@
 
 /* XXX_CLK_CNTRL register */
 #define CNTRL_CLOCK_DOMAIN_ENABLE	BIT(0)
-#define CNTRL_CLOCK_SOURCE_MASK		0x07
+#define CNTRL_CLOCK_SOURCE_MASK		(BIT(1) | BIT(2))
 #define CNTRL_CLOCK_SOURCE_SHIFT	1
 
 /* XXX_CLK_DIV_CNTRL register */
@@ -232,7 +232,10 @@ static const struct ls1024a_clkgen_info clkgens_info[] = {
 		LS1024A_CLK_TDM_NTG, "tdm_ntg",
 		parents_all_plls, ARRAY_SIZE(parents_all_plls),
 		0x140, 4, DIV_BYPASS_0,
-		125000000, 0 /* FIXME: find the actual max rate */
+		750000000, 0
+		/* Stock firmware clocking at 750MHz, driver default is 500MHz.
+		 * pll parent must be set to the same as gemtx.
+		 */
 	},
 	{
 		LS1024A_CLK_TSU_NTG, "tsu_ntg",
@@ -567,6 +570,19 @@ static struct clk_hw *ls1024a_pll3_register(const char *name,
 }
 
 /* === Device clock generator === */
+
+static u8 ls1024a_clkgen_map_get_parent(struct regmap *map, unsigned int base)
+{
+	unsigned int val;
+
+	regmap_read(map, base, &val);
+	return (val & CNTRL_CLOCK_SOURCE_MASK) >> CNTRL_CLOCK_SOURCE_SHIFT;
+}
+
+static void ls1024a_clkgen_map_set_parent(struct regmap *map, unsigned int base, u8 parent)
+{
+	regmap_update_bits(map, base, CNTRL_CLOCK_SOURCE_MASK, parent << CNTRL_CLOCK_SOURCE_SHIFT);
+}
 
 static int ls1024a_clkgen_enable(struct clk_hw *hw)
 {
@@ -966,11 +982,31 @@ static void register_clkgens(struct device_node *np, struct regmap *map)
 {
 	unsigned int i;
 	void __iomem *bug_base;
+	const struct ls1024a_clkgen_info *gemtx_info = NULL;
+	const struct ls1024a_clkgen_info *tdm_ntg_info = NULL;
 
 	bug_base = map_bypass_bug_iram(np);
 	if (!bug_base) {
 		pr_crit("failed to map bypass bug workaround region");
 		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(clkgens_info); i++) {
+		const struct ls1024a_clkgen_info *info = &clkgens_info[i];
+		if (info->idx == LS1024A_CLK_GEM_TX)
+			gemtx_info = info;
+		else if (info->idx == LS1024A_CLK_TDM_NTG)
+			tdm_ntg_info = info;
+	}
+
+	if (gemtx_info && tdm_ntg_info) {
+		int pll_no;
+
+		/* Set the NTG ref clock to PLL src (gemtx PLL source)
+		 * Currently it is not set from barebox, set here.
+		 */
+		pll_no = ls1024a_clkgen_map_get_parent(map, gemtx_info->base);
+		ls1024a_clkgen_map_set_parent(map, tdm_ntg_info->base, pll_no);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(clkgens_info); i++) {
