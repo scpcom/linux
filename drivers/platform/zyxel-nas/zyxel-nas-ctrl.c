@@ -639,6 +639,9 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 	int i, need_sleep = 0, ret;
 	struct gpio_desc *usb_ctl_gpiod;
 
+	if (nas_ctrl)
+		return -ENODEV;
+
 	nas_ctrl = devm_kzalloc(&pdev->dev, sizeof(*nas_ctrl),
 			GFP_KERNEL);
 	if (!nas_ctrl)
@@ -680,7 +683,7 @@ static int nas_ctrl_probe(struct platform_device *pdev)
 			goto err;
 	}
 
-	nas_ctrl->wait_delay_ms = 6000;
+	nas_ctrl->wait_delay_ms = 8000;
 
 	of_property_read_u32(pdev->dev.of_node, "wait-delay",
 			&nas_ctrl->wait_delay_ms);
@@ -785,6 +788,8 @@ static struct platform_driver nas_ctrl_driver = {
 };
 
 module_platform_driver(nas_ctrl_driver);
+
+subsys_initcall(nas_ctrl_driver_init);
 
 static int __init nas_ctrl_gpiodev_init(void)
 {
