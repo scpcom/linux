@@ -208,19 +208,19 @@ static const struct ls1024a_clkgen_info clkgens_info[] = {
 		LS1024A_CLK_PFE, "pfe",
 		parents_all_plls, ARRAY_SIZE(parents_all_plls),
 		0x100, 4, DIV_BYPASS_IRAM,
-		500000000, 0
+		500000000, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_CRYPTO, "ipsec",
 		parents_all_plls, ARRAY_SIZE(parents_all_plls),
 		0x110, 4, DIV_BYPASS_IRAM,
-		300000000, 0
+		300000000, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_DECT, "dect",
 		parents_all_plls, ARRAY_SIZE(parents_all_plls),
 		0x120, 4, DIV_BYPASS_IRAM,
-		250000000, 0
+		250000000, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_GEM_TX, "gemtx",
@@ -232,7 +232,7 @@ static const struct ls1024a_clkgen_info clkgens_info[] = {
 		LS1024A_CLK_TDM_NTG, "tdm_ntg",
 		parents_all_plls, ARRAY_SIZE(parents_all_plls),
 		0x140, 4, DIV_BYPASS_0,
-		750000000, 0
+		750000000, CLK_IGNORE_UNUSED
 		/* Stock firmware clocking at 750MHz, driver default is 500MHz.
 		 * pll parent must be set to the same as gemtx.
 		 */
@@ -306,7 +306,7 @@ static const struct ls1024a_gate_info gates_info[] = {
 	},
 	{
 		LS1024A_CLK_IPSEC_EAPE, "ipsec_eape", "axi",
-		AXI_CLK_CNTRL1, 1, 0
+		AXI_CLK_CNTRL1, 1, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_IPSEC_SPACC, "ipsec_spacc", "axi",
@@ -314,11 +314,11 @@ static const struct ls1024a_gate_info gates_info[] = {
 	},
 	{
 		LS1024A_CLK_PFE_SYS, "pfe_sys", "axi",
-		AXI_CLK_CNTRL1, 3, 0
+		AXI_CLK_CNTRL1, 3, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_TDM, "tdm", "axi",
-		AXI_CLK_CNTRL1, 4, 0
+		AXI_CLK_CNTRL1, 4, CLK_IGNORE_UNUSED
 	},
 	{
 		LS1024A_CLK_I2CSPI, "i2cspi", "axi",
@@ -451,7 +451,7 @@ static struct clk_hw *ls1024a_pll_register(const char *name,
 
 	initdata.name = name;
 	initdata.ops = &ls1024a_pll_clk_ops;
-	initdata.flags = 0;
+	initdata.flags = CLK_IGNORE_UNUSED;
 	initdata.parent_names = &parent_name;
 	initdata.num_parents = 1;
 	pll->map = map;
