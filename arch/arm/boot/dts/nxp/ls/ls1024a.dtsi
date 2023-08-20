@@ -123,6 +123,14 @@
 			#size-cells = <1>;
 			ranges = <0 0x83000000 0x10000>;
 
+			host_utilpe: host_utilpe@2400 {
+				reg = <0x2400 0x100>;
+			};
+
+			scratchpad_cpu_context_loc_dbg: scratchpad_cpu_context_loc_dbg@2570 {
+				reg = <0x2570 0x80>;
+			};
+
 			clk_bypass_bug: clk_bypass_bug@fc00 {
 				reg = <0xfc00 0x400>;
 			};
