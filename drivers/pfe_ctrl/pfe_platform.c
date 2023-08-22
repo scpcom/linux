@@ -18,6 +18,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -29,6 +30,27 @@
 #include "pfe_mod.h"
 
 static u64 comcerto_pfe_dma_mask = DMA_BIT_MASK(32);
+
+#ifdef CONFIG_OF
+static struct resource *pfe_get_linked_resource(struct device_node *np, const char *name, struct resource *rp)
+{
+	struct device_node *iram_node;
+	int ret;
+
+	iram_node = of_parse_phandle(np, name, 0);
+	if (!iram_node)
+		return NULL;
+
+	ret = of_address_to_resource(np, 0, rp);
+
+	of_node_put(iram_node);
+
+	if (ret < 0)
+		return NULL;
+
+	return rp;
+}
+#endif
 
 /**
  * pfe_platform_probe -
@@ -42,6 +64,7 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	struct clk *clk_axi;
 #ifdef CONFIG_OF
 	struct reset_control *rst_axi;
+	struct resource res;
 #endif
 
 	printk(KERN_INFO "%s\n", __func__);
@@ -105,7 +128,11 @@ static int pfe_platform_probe(struct platform_device *pdev)
 		goto err_apb;
 	}
 
+#ifdef CONFIG_OF
+	r = pfe_get_linked_resource(pdev->dev.of_node, "fsl,ls1024a-pfe-iram", &res);
+#else
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, "iram");
+#endif
 	if (!r) {
 		printk(KERN_INFO "platform_get_resource_byname(iram) failed\n");
 		rc = -ENXIO;
