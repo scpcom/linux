@@ -193,13 +193,12 @@
 	};
 };
 
-&serdes0 {
-	fsl,pcie-use-external-clk;
+&serdes1 {
+	fsl,sata-txlev = <15>;
 };
 
-&serdes1 {
-	fsl,pcie-use-external-clk;
-	fsl,sata-txlev = <9>;
+&serdes2 {
+	fsl,sata-txlev = <15>;
 };
 
 &uart0 {
@@ -254,6 +253,7 @@
 };
 
 &pcie0 {
+	max-link-speed = <1>;
 	status = "okay";
 };
 
