@@ -18,6 +18,7 @@
  */
 
 #ifdef __KERNEL__
+#include <linux/highmem.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
