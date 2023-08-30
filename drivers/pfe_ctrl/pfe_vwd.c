@@ -69,6 +69,7 @@ static int pfe_vwd_rx_low_poll(struct napi_struct *napi, int budget);
 static int pfe_vwd_rx_high_poll(struct napi_struct *napi, int budget);
 static void pfe_vwd_sysfs_exit(void);
 static void pfe_vwd_vap_down(struct pfe_vwd_priv_s *priv, struct vap_desc_s *vap);
+#ifdef CONFIG_NETFILTER
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
 static unsigned int pfe_vwd_nf_route_hook_fn(void *in_priv,
                                struct sk_buff *skb,
@@ -96,6 +97,7 @@ static unsigned int pfe_vwd_nf_bridge_hook_fn( unsigned int hook, struct sk_buff
 		const struct net_device *in, const struct net_device *out,
 		int (*okfn)(struct sk_buff *));
 #endif
+#endif
 static int pfe_vwd_handle_vap( struct pfe_vwd_priv_s *vwd, struct vap_cmd_s *cmd );
 static int pfe_vwd_event_handler(void *data, int event, int qno);
 static void pfe_vwd_vap_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *drvinfo);
@@ -114,6 +116,7 @@ struct ethtool_ops pfe_vwd_vap_ethtool_ops = {
 	.get_drvinfo = pfe_vwd_vap_get_drvinfo,
 };
 
+#ifdef CONFIG_NETFILTER
 /* IPV4 route hook , recieve the packet and forward to VWD driver*/
 static struct nf_hook_ops vwd_hook = {
 	.hook = pfe_vwd_nf_route_hook_fn,
@@ -137,6 +140,7 @@ static struct nf_hook_ops vwd_hook_bridge = {
 	.hooknum = NF_BR_PRE_ROUTING,
 	.priority = NF_BR_PRI_FIRST,
 };
+#endif
 
 struct pfe_vwd_priv_s glbl_pfe_vwd_priv;
 
@@ -573,6 +577,7 @@ static ssize_t pfe_vwd_show_route_hook_enable(struct device *dev, struct device_
 	return idx;
 }
 
+#ifdef CONFIG_NETFILTER
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0))
 static int pfe_nf_register_hook(struct nf_hook_ops *reg)
 {
@@ -607,17 +612,21 @@ static void pfe_nf_unregister_hook(struct nf_hook_ops *reg)
 #define pfe_nf_register_hook nf_register_hook
 #define pfe_nf_unregister_hook nf_unregister_hook
 #endif
+#endif
 
 /** pfe_vwd_set_route_hook_enable
  *
  */
 static ssize_t pfe_vwd_set_route_hook_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+#ifdef CONFIG_NETFILTER
 	struct pfe_vwd_priv_s *priv = &pfe->vwd;
+#endif
         unsigned int user_val = 0;
 
         sscanf(buf, "%d", &user_val);
 
+#ifdef CONFIG_NETFILTER
         if (user_val && !priv->fast_routing_enable)
         {
                 printk("%s: Wifi fast routing enabled \n", __func__);
@@ -643,6 +652,7 @@ static ssize_t pfe_vwd_set_route_hook_enable(struct device *dev, struct device_a
                 pfe_nf_unregister_hook(&vwd_hook_ipv6);
 
         }
+#endif
 
 	return count;
 }
@@ -664,11 +674,14 @@ static int pfe_vwd_show_bridge_hook_enable(struct device *dev, struct device_att
  */
 static int pfe_vwd_set_bridge_hook_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+#ifdef CONFIG_NETFILTER
 	struct pfe_vwd_priv_s *priv = &pfe->vwd;
+#endif
 	unsigned int user_val = 0;
 
         sscanf(buf, "%d", &user_val);
 
+#ifdef CONFIG_NETFILTER
 	if ( user_val && !priv->fast_bridging_enable )
         {
                 printk("%s: Wifi fast bridging enabled \n", __func__);
@@ -690,6 +703,7 @@ static int pfe_vwd_set_bridge_hook_enable(struct device *dev, struct device_attr
 
                 pfe_nf_unregister_hook(&vwd_hook_bridge);
         }
+#endif
 
 	return count;
 }
@@ -938,6 +952,7 @@ static ssize_t pfe_vwd_set_tso_stats(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_NETFILTER
 /** pfe_vwd_classify_packet
  *
  */
@@ -1071,6 +1086,7 @@ done:
 	return rc;
 
 }
+#endif
 
 /** pfe_vwd_flush_txQ
  *
@@ -1141,6 +1157,7 @@ void pfe_vwd_tx_timeout(unsigned long data )
 	spin_unlock_bh(&priv->vaplock);
 }
 
+#if defined(CONFIG_NETFILTER) || defined(CONFIG_PFE_WIFI_OFFLOAD)
 /** pfe_vwd_send_packet
  *
  */
@@ -1257,6 +1274,7 @@ out:
 
 	return;
 }
+#endif
 
 #ifdef CONFIG_PFE_WIFI_OFFLOAD
 /*
@@ -1316,6 +1334,7 @@ end:
 #endif
 
 
+#ifdef CONFIG_NETFILTER
 /** vwd_nf_bridge_hook_fn
  *
  */
@@ -1410,6 +1429,7 @@ done:
 	return NF_ACCEPT;
 
 }
+#endif
 
 static DEVICE_ATTR(vwd_debug_stats, 0444, pfe_vwd_show_dump_stats, NULL);
 static DEVICE_ATTR(vwd_fast_path_enable, 0644, pfe_vwd_show_fast_path_enable, pfe_vwd_set_fast_path_enable);
@@ -2905,15 +2925,21 @@ static int pfe_vwd_up(struct pfe_vwd_priv_s *priv )
 {
 	printk("%s: start\n", __func__);
 
+#ifdef CONFIG_NETFILTER
 	pfe_nf_register_hook(&vwd_hook);
 	pfe_nf_register_hook(&vwd_hook_ipv6);
+#endif
 
 	if (pfe_vwd_sysfs_init(priv))
 		goto err0;
 
 	priv->fast_path_enable = 0;
 	priv->fast_bridging_enable = 0;
+#ifdef CONFIG_NETFILTER
 	priv->fast_routing_enable = 1;
+#else
+	priv->fast_routing_enable = 0;
+#endif
 
 #ifdef CONFIG_PFE_WIFI_OFFLOAD
 	comcerto_wifi_rx_fastpath_register(vwd_wifi_if_send_pkt);
@@ -2939,8 +2965,10 @@ static int pfe_vwd_up(struct pfe_vwd_priv_s *priv )
 	return 0;
 
 err0:
+#ifdef CONFIG_NETFILTER
 	pfe_nf_unregister_hook(&vwd_hook);
 	pfe_nf_unregister_hook(&vwd_hook_ipv6);
+#endif
 
 	return -1;
 }
@@ -2958,6 +2986,7 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 	comcerto_wifi_rx_fastpath_unregister();
 #endif
 
+#ifdef CONFIG_NETFILTER
 	if( priv->fast_bridging_enable )
 	{
 		pfe_nf_unregister_hook(&vwd_hook_bridge);
@@ -2968,6 +2997,7 @@ static int pfe_vwd_down( struct pfe_vwd_priv_s *priv )
 		pfe_nf_unregister_hook(&vwd_hook);
 		pfe_nf_unregister_hook(&vwd_hook_ipv6);
 	}
+#endif
 
 	/*Stop Tx recovery timer and cleanup all vaps*/
 	if (priv->vap_count) {
