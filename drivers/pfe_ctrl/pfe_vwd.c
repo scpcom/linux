@@ -505,7 +505,7 @@ static ssize_t pfe_vwd_show_dump_stats(struct device *dev, struct device_attribu
 		len += sprintf(buf + len, "	CPU Affinity   : %d \n", vap->cpu_id);
 		len += sprintf(buf + len, "	Direct Rx path : %s \n", vap->direct_rx_path ? "ON":"OFF");
 		len += sprintf(buf + len, "	Direct Tx path : %s \n", vap->direct_tx_path ? "ON":"OFF");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
 		len += sprintf(buf + len, "	Dev features   : VAP: %llx WiFi: %llx \n\n", vap->dev->features, vap->wifi_dev ? vap->wifi_dev->features:0);
 #else
 		len += sprintf(buf + len, "	Dev features   : VAP: %x WiFi: %x \n\n", vap->dev->features, vap->wifi_dev ? vap->wifi_dev->features:0);
@@ -1637,7 +1637,7 @@ static struct sk_buff *pfe_vwd_rx_page(struct vap_desc_s *vap, int qno, unsigned
 			} else {
 				pfe_memcpy(skb->data, buf_addr + offset, data_offset);
 				skb_put(skb, data_offset);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset, length - data_offset);
 #else
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset);
@@ -1661,7 +1661,7 @@ static struct sk_buff *pfe_vwd_rx_page(struct vap_desc_s *vap, int qno, unsigned
 
 			p = virt_to_page(buf_addr);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
 			skb_add_rx_frag(skb, skb_shinfo(skb)->nr_frags, p, page_offset + offset, length, length);
 #else
 			skb_add_rx_frag(skb, skb_shinfo(skb)->nr_frags, p, page_offset + offset, length);

@@ -77,7 +77,7 @@ extern unsigned long ddr_phys_base_addr;
 extern unsigned int ddr_size;
 
 #if defined(COMCERTO_2000_CONTROL)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
 #include <asm/system_info.h>
 /*This is copied from arch/arm/include/asm/system_info.h */
 extern unsigned int system_rev;

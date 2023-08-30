@@ -792,7 +792,7 @@ static void pfe_eth_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *
  *
  */
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 static int pfe_eth_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 #else
 static int pfe_eth_set_link_ksettings(struct net_device *dev, const struct ethtool_link_ksettings *cmd)
@@ -804,7 +804,7 @@ static int pfe_eth_set_link_ksettings(struct net_device *dev, const struct ethto
 	if (NULL == phydev)
 		return -ENODEV;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 	return phy_ethtool_sset(phydev, cmd);
 #else
 	return phy_ethtool_ksettings_set(phydev, cmd);
@@ -816,7 +816,7 @@ static int pfe_eth_set_link_ksettings(struct net_device *dev, const struct ethto
  * pfe_eth_getsettings - Return the current settings in the ethtool_cmd structure.
  *
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 static int pfe_eth_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 #else
 static int pfe_eth_get_link_ksettings(struct net_device *dev, struct ethtool_link_ksettings *cmd)
@@ -828,7 +828,7 @@ static int pfe_eth_get_link_ksettings(struct net_device *dev, struct ethtool_lin
 	if (NULL == phydev)
 		return -ENODEV;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 	return phy_ethtool_gset(phydev, cmd);
 #else
 	phy_ethtool_ksettings_get(phydev, cmd);
@@ -1056,7 +1056,7 @@ struct ethtool_ops pfe_ethtool_ops = {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
 	.supported_coalesce_params = ETHTOOL_COALESCE_USECS,
 #endif
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 	.get_settings = pfe_eth_get_settings,
 	.set_settings = pfe_eth_set_settings,
 #else
@@ -2451,7 +2451,7 @@ static void pfe_eth_set_multi(struct net_device *dev)
 
 /** pfe_eth_set_features
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
 static int pfe_eth_set_features(struct net_device *dev, netdev_features_t features)
 #else
 static int pfe_eth_set_features(struct net_device *dev, u32 features)
@@ -2478,7 +2478,7 @@ static int pfe_eth_set_features(struct net_device *dev, u32 features)
 
 /** pfe_eth_fix_features
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
 static netdev_features_t pfe_eth_fix_features(struct net_device *dev, netdev_features_t features)
 #else
 static unsigned int pfe_eth_fix_features(struct net_device *dev,u32 features)
@@ -2800,7 +2800,7 @@ static struct sk_buff *pfe_eth_rx_page(struct net_device *dev, struct pfe_eth_pr
 			} else {
 				pfe_memcpy(skb->data, buf_addr + offset, data_offset);
 				skb_put(skb, data_offset);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset, length - data_offset);
 #else
 				skb_add_rx_frag(skb, 0, p, page_offset + offset + data_offset, length - data_offset);
@@ -2858,7 +2858,7 @@ static struct sk_buff *pfe_eth_rx_page(struct net_device *dev, struct pfe_eth_pr
 
 			p = virt_to_page(buf_addr);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
 			skb_add_rx_frag(tskb, skb_shinfo(tskb)->nr_frags, p, page_offset + offset, length, length);
 #else
 			skb_add_rx_frag(tskb, skb_shinfo(tskb)->nr_frags, p, page_offset + offset, length);
