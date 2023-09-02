@@ -2143,6 +2143,11 @@ static int pfe_eth_send_packet(struct sk_buff *skb, struct net_device *dev)
 static u16 pfe_eth_select_queue(struct net_device *dev,
 						    struct sk_buff *skb,
 						    struct net_device *sb_dev)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0)
+static u16 pfe_eth_select_queue(struct net_device *dev,
+						    struct sk_buff *skb,
+						    struct net_device *sb_dev,
+						    select_queue_fallback_t fallback)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
 static u16 pfe_eth_select_queue( struct net_device *dev, struct sk_buff *skb,
 		void *accel_priv, select_queue_fallback_t fallback)
