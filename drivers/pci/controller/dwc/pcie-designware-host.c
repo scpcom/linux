@@ -165,7 +165,26 @@ static void dw_pci_bottom_ack(struct irq_data *d)
 	res = ctrl * MSI_REG_CTRL_BLOCK_SIZE;
 	bit = d->hwirq % MAX_MSI_IRQS_PER_CTRL;
 
+	/* On the Freescale LS1024A (formerly Mindspeed
+	 * Comcerto 2000) SoC, it appears to be
+	 * necessary for the interrupt to be masked
+	 * while we clear it. We found this workaround
+	 * in the source code provided by Mindspeed.
+	 * They added the following comment:
+	 *
+	 * FIXME : WA for bz69520
+	 * To avoid race condition during avk the interrupt disabling interrupt before
+	 * Ack and enabling after Ack.
+	 */
+#ifdef CONFIG_PCIE_DW_MSI_MASK_ACK
+	dw_pci_bottom_mask(d);
+#endif
+
 	dw_pcie_writel_dbi(pci, PCIE_MSI_INTR0_STATUS + res, BIT(bit));
+
+#ifdef CONFIG_PCIE_DW_MSI_MASK_ACK
+	dw_pci_bottom_unmask(d);
+#endif
 }
 
 static struct irq_chip dw_pci_msi_bottom_irq_chip = {

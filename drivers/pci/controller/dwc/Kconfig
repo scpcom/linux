@@ -14,6 +14,9 @@ config PCIE_DW_EP
 	bool
 	select PCIE_DW
 
+config PCIE_DW_MSI_MASK_ACK
+	bool
+
 config PCIE_AL
 	bool "Amazon Annapurna Labs PCIe controller"
 	depends on OF && (ARM64 || COMPILE_TEST)
@@ -127,6 +130,7 @@ config PCIE_LS1024A
 	depends on OF && (ARCH_LS1024A || COMPILE_TEST)
 	depends on PCI_MSI
 	select PCIE_DW_HOST
+	select PCIE_DW_MSI_MASK_ACK
 	help
 	  Say Y here if you want PCIe controller support on the LS1024A SoC.
 
