@@ -20,12 +20,13 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
+#include <linux/mtd/rawnand.h>
 #include <linux/bch.h>
 #include <linux/bitrev.h>
 #include <asm/io.h>
 #include <linux/delay.h>
+#include <linux/nmi.h>
 #include <linux/ratelimit.h>
 #include <linux/platform_device.h>
 #if 0
@@ -143,16 +144,32 @@ struct comcerto_bch_control {
 	unsigned int         *errloc;
 };
 
+#define MTD_MAX_OOBFREE_ENTRIES_LARGE	32
+#define MTD_MAX_ECCPOS_ENTRIES_LARGE	640
+/*
+ * Internal ECC layout control structure.
+ * nand_ecclayout should be expandable in the future simply by the above macros.
+ *
+ * This structure is now deprecated, you should use struct comcerto_nand_ecclayout_ops
+ * to describe your OOB layout.
+ */
+struct comcerto_nand_ecclayout {
+	__u32 eccbytes;
+	__u32 eccpos[MTD_MAX_ECCPOS_ENTRIES_LARGE];
+	struct nand_oobfree oobfree[MTD_MAX_OOBFREE_ENTRIES_LARGE];
+};
+
 /*
  * MTD structure for Comcerto board
  */
 struct comcerto_nand_info {
+	struct platform_device *pdev;
 	struct nand_chip	chip;
-	struct mtd_info		mtd;
 	struct gpio_desc	*ce_gpio;
 	struct gpio_desc	*br_gpio;
 	uint8_t			*bit_reversed;
 	struct comcerto_bch_control	cbc;
+	struct comcerto_nand_ecclayout *mtd_ecclayout;
 };
 
 static inline
@@ -174,7 +191,7 @@ uint32_t COMCERTO_NAND_CLE = 0x00000400;
 /*
  * spare area layout for BCH ECC bytes calculated over 512-Bytes ECC block size
  */
-static struct nand_ecclayout comcerto_ecc_info_512_bch = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_512_bch = {
 	.eccbytes = 42,
 	.eccpos = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
 		  11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -188,7 +205,7 @@ static struct nand_ecclayout comcerto_ecc_info_512_bch = {
 /*
  * spare area layout for BCH ECC bytes calculated over 1024-Bytes ECC block size
  */
-static struct nand_ecclayout comcerto_ecc_info_1024_bch = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_1024_bch = {
 	.eccbytes = 42,
 	.eccpos = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
 		  11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -204,7 +221,7 @@ static struct nand_ecclayout comcerto_ecc_info_1024_bch = {
 /*
  * spare area layout for BCH ECC bytes calculated over 512-Bytes ECC block size
  */
-static struct nand_ecclayout comcerto_ecc_info_512_bch = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_512_bch = {
 	.eccbytes = 14,
 	.eccpos = {0, 1, 2, 3, 4, 5, 6,
 		   7, 8, 9, 10, 11, 12, 13},
@@ -216,7 +233,7 @@ static struct nand_ecclayout comcerto_ecc_info_512_bch = {
 /*
  * spare area layout for BCH ECC bytes calculated over 1024-Bytes ECC block size
  */
-static struct nand_ecclayout comcerto_ecc_info_1024_bch = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_1024_bch = {
 	.eccbytes = 14,
 	.eccpos = {0, 1, 2, 3, 4, 5, 6,
 		   7, 8, 9, 10, 11, 12, 13},
@@ -231,7 +248,7 @@ static struct nand_ecclayout comcerto_ecc_info_1024_bch = {
  * spare area layout for Hamming ECC bytes calculated over 512-Bytes ECC block
  * size
  */
-static struct nand_ecclayout comcerto_ecc_info_512_hamm = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_512_hamm = {
 	.eccbytes = 4,
 	.eccpos = {0, 1, 2, 3},
 	.oobfree = {
@@ -243,7 +260,7 @@ static struct nand_ecclayout comcerto_ecc_info_512_hamm = {
  * spare area layout for Hamming ECC bytes calculated over 1024-Bytes ECC block
  * size
  */
-static struct nand_ecclayout comcerto_ecc_info_1024_hamm = {
+static struct comcerto_nand_ecclayout comcerto_ecc_info_1024_hamm = {
 	.eccbytes = 4,
 	.eccpos = {0, 1, 2, 3},
 	.oobfree = {
@@ -290,6 +307,129 @@ static struct nand_bbt_descr c2000_badblock_pattern = {
 	.pattern = scan_ff_pattern
 };
 #endif
+
+/**
+ * comcerto_ecclayout_ecc - Default ooblayout_ecc iterator implementation
+ * @mtd: MTD device structure
+ * @section: ECC section. Depending on the layout you may have all the ECC
+ *	     bytes stored in a single contiguous section, or one section
+ *	     per ECC chunk (and sometime several sections for a single ECC
+ *	     ECC chunk)
+ * @oobecc: OOB region struct filled with the appropriate ECC position
+ *	    information
+ *
+ * This function is just a wrapper around the mtd_ecclayout field and is
+ * here to ease the transition to the mtd_ooblayout_ops approach.
+ * All it does is convert the layout->eccpos information into proper oob
+ * region definitions.
+ *
+ * Returns zero on success, a negative error code otherwise.
+ */
+static int comcerto_ecclayout_ecc(struct mtd_info *mtd, int section,
+			     struct mtd_oob_region *oobecc)
+{
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
+	int eccbyte = 0, cursection = 0, length = 0, eccpos = 0;
+
+	if (!info->mtd_ecclayout)
+		return -ENOTSUPP;
+
+	/*
+	 * This logic allows us to reuse the ->ecclayout information and
+	 * expose them as ECC regions (as done for the OOB free regions).
+	 *
+	 * TODO: this should be dropped as soon as we get rid of the
+	 * ->ecclayout field.
+	 */
+	for (eccbyte = 0; eccbyte < info->mtd_ecclayout->eccbytes; eccbyte++) {
+		eccpos = info->mtd_ecclayout->eccpos[eccbyte];
+
+		if (eccbyte < info->mtd_ecclayout->eccbytes - 1) {
+			int neccpos = info->mtd_ecclayout->eccpos[eccbyte + 1];
+
+			if (eccpos + 1 == neccpos) {
+				length++;
+				continue;
+			}
+		}
+
+		if (section == cursection)
+			break;
+
+		length = 0;
+		cursection++;
+	}
+
+	if (cursection != section || eccbyte >= info->mtd_ecclayout->eccbytes)
+		return -ERANGE;
+
+	oobecc->length = length + 1;
+	oobecc->offset = eccpos - length;
+
+	return 0;
+}
+
+/**
+ * comcerto_ecclayout_ecc - Default ooblayout_free iterator implementation
+ * @mtd: MTD device structure
+ * @section: Free section. Depending on the layout you may have all the free
+ *	     bytes stored in a single contiguous section, or one section
+ *	     per ECC chunk (and sometime several sections for a single ECC
+ *	     ECC chunk)
+ * @oobfree: OOB region struct filled with the appropriate free position
+ *	     information
+ *
+ * This function is just a wrapper around the mtd_ecclayout field and is
+ * here to ease the transition to the mtd_ooblayout_ops approach.
+ * All it does is convert the layout->oobfree information into proper oob
+ * region definitions.
+ *
+ * Returns zero on success, a negative error code otherwise.
+ */
+static int comcerto_ecclayout_free(struct mtd_info *mtd, int section,
+			      struct mtd_oob_region *oobfree)
+{
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
+	struct comcerto_nand_ecclayout *layout = info->mtd_ecclayout;
+
+	if (!layout)
+		return -ENOTSUPP;
+
+	if (section >= MTD_MAX_OOBFREE_ENTRIES_LARGE ||
+	    !layout->oobfree[section].length)
+		return -ERANGE;
+
+	oobfree->offset = layout->oobfree[section].offset;
+	oobfree->length = layout->oobfree[section].length;
+
+	return 0;
+}
+
+static const struct mtd_ooblayout_ops comcerto_ecclayout_wrapper_ops = {
+	.ecc = comcerto_ecclayout_ecc,
+	.free = comcerto_ecclayout_free,
+};
+
+/**
+ * comcerto_set_ecclayout - Attach an ecclayout to an MTD device
+ * @mtd: MTD device structure
+ * @ecclayout: The ecclayout to attach to the device
+ *
+ * Returns zero on success, a negative error code otherwise.
+ */
+static void comcerto_set_ecclayout(struct mtd_info *mtd, struct comcerto_nand_ecclayout *ecclayout)
+{
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
+
+	if (!mtd || !ecclayout)
+		return;
+
+	info->mtd_ecclayout = ecclayout;
+	mtd_set_ooblayout(mtd, &comcerto_ecclayout_wrapper_ops);
+}
 
 /** Disable/Enable shifting of data to parity module
  *
@@ -564,7 +704,7 @@ out:
  */
 static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 					struct nand_chip *chip,
-					const uint8_t *buf, int oob_required)
+					const uint8_t *buf, int oob_required, int page)
 {
 	int i, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
@@ -692,9 +832,8 @@ static int comcerto_bch_correct_ecc (struct mtd_info *mtd, uint8_t *dat, uint8_t
  * @param[in] buf	data buffer
  *
  */
-#if 0
 static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
-		struct nand_chip *chip, uint8_t *buf, int page)
+		struct nand_chip *chip, uint8_t *buf, int oob_required, int page)
 {
 	struct nand_chip *nand_device = mtd->priv;
 	int i, eccsize = nand_device->ecc.size;
@@ -718,13 +857,17 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 			mtd->ecc_stats.failed++;
 			pr_err("ECC correction failed for page 0x%08x\n", page);
 		} else {
+#ifdef CONFIG_NAND_LS1024A_ECC_SUBPAGE_STATS
 			int idx = eccsteps;
 			if (idx >= MTD_ECC_STAT_SUBPAGES) {
 				idx = MTD_ECC_STAT_SUBPAGES - 1;
 			}
+#endif
 
 			mtd->ecc_stats.corrected += stat;
+#ifdef CONFIG_NAND_LS1024A_ECC_SUBPAGE_STATS
 			mtd->ecc_subpage_stats.subpage_corrected[idx] += stat;
+#endif
 		}
 
 		if (chip->ecc.postpad) {
@@ -739,7 +882,6 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 
 	return 0;
 }
-#endif
 
 /*********************************************************************
  * NAND Hardware functions
@@ -790,14 +932,16 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	struct resource *res;
 	int err = 0;
 	struct mtd_part_parser_data ppdata = {};
+	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
 
 	/* Allocate memory for info structure */
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
 
-	mtd = &info->mtd;
 	chip = &info->chip;
+	mtd = nand_to_mtd(chip);
+	mtd->dev.parent = &pdev->dev;
 	mtd->owner = THIS_MODULE;
 
 	/* Link the private data with the MTD structure */
@@ -870,7 +1014,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		chip->ecc.correct = comcerto_correct_ecc;
 		dev_info(&pdev->dev, "Using hybrid hw/sw ECC\n");
 		chip->ecc.size =  1024;
-		chip->ecc.layout = &comcerto_ecc_info_1024_bch;
+		chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 		chip->ecc.strength = 24;
 		chip->ecc.prepad = 0;
 		chip->ecc.postpad = 14;
@@ -939,7 +1083,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	} else if (chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
 		chip->ecc.hwctl = comcerto_enable_hw_ecc;
 		chip->ecc.write_page = comcerto_nand_write_page_hwecc;
-		// chip->ecc.read_page = comcerto_nand_read_page_hwecc;
+		chip->ecc.read_page = comcerto_nand_read_page_hwecc;
 		chip->ecc.calculate = comcerto_calculate_ecc;
 		chip->ecc.correct = comcerto_correct_ecc;
 		pr_info("hw_syndrome correction %d.\n", mtd->writesize);
@@ -948,19 +1092,20 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		case 512:
 			chip->ecc.size = mtd->writesize;
 #if defined (CONFIG_NAND_LS1024A_ECC_24_HW_BCH)
-			chip->ecc.layout = &comcerto_ecc_info_512_bch;
+			chip_ecc_layout = &comcerto_ecc_info_512_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
-			chip->ecc.layout = &comcerto_ecc_info_512_bch;
+			chip_ecc_layout = &comcerto_ecc_info_512_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 2;
 #else
-			chip->ecc.layout = &comcerto_ecc_info_512_hamm;
+			chip->ecc.algo = NAND_ECC_ALGO_HAMMING;
+			chip_ecc_layout = &comcerto_ecc_info_512_hamm;
 			chip->ecc.bytes = 4;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 2;
@@ -969,19 +1114,20 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		case 1024:
 			chip->ecc.size = mtd->writesize;
 #ifdef CONFIG_NAND_LS1024A_ECC_24_HW_BCH
-			chip->ecc.layout = &comcerto_ecc_info_1024_bch;
+			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
-			chip->ecc.layout = &comcerto_ecc_info_1024_bch;
+			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 18;
 #else
-			chip->ecc.layout = &comcerto_ecc_info_1024_hamm;
+			chip->ecc.algo = NAND_ECC_ALGO_HAMMING;
+			chip_ecc_layout = &comcerto_ecc_info_1024_hamm;
 			chip->ecc.bytes = 4;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 18;
@@ -991,19 +1137,20 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 			pr_err("Using default values for hw ecc\n");
 			chip->ecc.size =  1024;
 #ifdef CONFIG_NAND_LS1024A_ECC_24_HW_BCH
-			chip->ecc.layout = &comcerto_ecc_info_1024_bch;
+			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
-			chip->ecc.layout = &comcerto_ecc_info_1024_bch;
+			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 18;
 #else
-			chip->ecc.layout = &comcerto_ecc_info_1024_hamm;
+			chip->ecc.algo = NAND_ECC_ALGO_HAMMING;
+			chip_ecc_layout = &comcerto_ecc_info_1024_hamm;
 			chip->ecc.bytes = 4;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 18;
@@ -1028,11 +1175,13 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 		chip->ecc.size =  1024;
 		chip->ecc.strength = 24;
 		chip->ecc.bytes = 42;
-		chip->ecc.mode = NAND_ECC_SOFT_BCH;
+		chip->ecc.algo = NAND_ECC_BCH;
 	}
 
 
 	chip->options |= NAND_NO_SUBPAGE_WRITE;
+
+	comcerto_set_ecclayout(mtd, chip_ecc_layout);
 
 	if(nand_scan_tail(mtd)) {
 		pr_err("nand_scan_tail returned error\n");
@@ -1046,10 +1195,9 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	/* Link the info stucture with platform_device */
 	platform_set_drvdata(pdev, info);
 
-	ppdata.of_node = pdev->dev.of_node;
 	err = mtd_device_parse_register(mtd, NULL, &ppdata, NULL, 0);
 	if (err) {
-		nand_release(mtd);
+		mtd_device_unregister(mtd);
 		goto out_ior;
 	}
 
@@ -1059,6 +1207,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	devm_iounmap(&pdev->dev, ecc_base_addr);
       out_iorc:
 	devm_iounmap(&pdev->dev, chip->IO_ADDR_R);
+	nand_cleanup(chip);
       out_info:
 	devm_kfree(&pdev->dev, info);
       out:
@@ -1077,11 +1226,12 @@ static int comcerto_nand_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	/* Release resources, unregister device */
-	nand_release(&info->mtd);
+	mtd_device_unregister(nand_to_mtd(&info->chip));
 
 	/*Deregister virtual address */
 	iounmap(info->chip.IO_ADDR_R);
 	iounmap(ecc_base_addr);
+	nand_cleanup(&info->chip);
 	return 0;
 }
 
