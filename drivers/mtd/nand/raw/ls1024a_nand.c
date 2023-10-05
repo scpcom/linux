@@ -488,7 +488,7 @@ static int comcerto_calculate_ecc(struct mtd_info *mtd,
 {
 	struct nand_chip *nand_device = mtd->priv;
 	int ecc_bytes = nand_device->ecc.bytes;
-	uint8_t *ecc_calc = nand_device->buffers->ecccalc;
+	uint8_t *ecc_calc = nand_device->ecc.calc_buf;
 	unsigned long timeo;
 
 	comcerto_ecc_shift(ECC_SHIFT_DISABLE);
@@ -844,7 +844,7 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 	int eccbytes = nand_device->ecc.bytes;
 	int eccsteps = nand_device->ecc.steps;
 	uint8_t *p = buf;
-	uint8_t *ecc_code = nand_device->buffers->ecccode;
+	uint8_t *ecc_code = nand_device->ecc.code_buf;
 	int ecc_bytes = nand_device->ecc.bytes;
 	int stat;
 	uint8_t *oob = nand_device->oob_poi;
