@@ -905,9 +905,9 @@ void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
 		return;
 
 	 if (ctrl & NAND_CLE)
-		 writeb(cmd, chip->IO_ADDR_W + COMCERTO_NAND_CLE);
+		 writeb(cmd, chip->legacy.IO_ADDR_W + COMCERTO_NAND_CLE);
 	 else if (ctrl & NAND_ALE)
-		writeb(cmd, chip->IO_ADDR_W + COMCERTO_NAND_ALE);
+		writeb(cmd, chip->legacy.IO_ADDR_W + COMCERTO_NAND_ALE);
 	 else
 		return;
 
@@ -1172,11 +1172,11 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 
 	/*Map physical address of nand into virtual space */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	chip->IO_ADDR_R = devm_ioremap_resource(&pdev->dev, res);
+	chip->legacy.IO_ADDR_R = devm_ioremap_resource(&pdev->dev, res);
 
-	if (IS_ERR(chip->IO_ADDR_R)) {
+	if (IS_ERR(chip->legacy.IO_ADDR_R)) {
 		pr_err("LS1024A NAND: cannot map nand memory\n");
-		err = PTR_ERR(chip->IO_ADDR_R);
+		err = PTR_ERR(chip->legacy.IO_ADDR_R);
 		goto out_info;
 	}
 
@@ -1184,12 +1184,12 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	ecc_base_addr = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(ecc_base_addr)) {
 		pr_err("LS1024A NAND: cannot map ecc config\n");
-		err = PTR_ERR(chip->IO_ADDR_R);
+		err = PTR_ERR(chip->legacy.IO_ADDR_R);
 		goto out_iorc;
 	}
 
 	/* This is the same address to read and write */
-	chip->IO_ADDR_W = chip->IO_ADDR_R;
+	chip->legacy.IO_ADDR_W = chip->legacy.IO_ADDR_R;
 
 	/* Set address of hardware control function */
 	chip->cmd_ctrl = comcerto_nand_hwcontrol;
@@ -1227,7 +1227,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
       out_ior:
 	devm_iounmap(&pdev->dev, ecc_base_addr);
       out_iorc:
-	devm_iounmap(&pdev->dev, chip->IO_ADDR_R);
+	devm_iounmap(&pdev->dev, chip->legacy.IO_ADDR_R);
 	nand_cleanup(chip);
       out_info:
 	devm_kfree(&pdev->dev, info);
@@ -1250,7 +1250,7 @@ static int comcerto_nand_remove(struct platform_device *pdev)
 	mtd_device_unregister(nand_to_mtd(&info->chip));
 
 	/*Deregister virtual address */
-	iounmap(info->chip.IO_ADDR_R);
+	iounmap(info->chip.legacy.IO_ADDR_R);
 	iounmap(ecc_base_addr);
 	nand_cleanup(&info->chip);
 	return 0;
