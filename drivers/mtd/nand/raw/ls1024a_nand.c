@@ -1192,7 +1192,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	chip->legacy.IO_ADDR_W = chip->legacy.IO_ADDR_R;
 
 	/* Set address of hardware control function */
-	chip->cmd_ctrl = comcerto_nand_hwcontrol;
+	chip->legacy.cmd_ctrl = comcerto_nand_hwcontrol;
 	chip->dev_ready = comcerto_nand_ready;
 	chip->ecc.mode = NAND_ECC_HW_SYNDROME;
 
