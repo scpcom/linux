@@ -927,86 +927,15 @@ int comcerto_nand_ready(struct mtd_info *mtd)
 	return gpiod_get_value(info->br_gpio);
 }
 
-/*********************************************************************
- * NAND Probe
- *
- *********************************************************************/
-static int comcerto_nand_probe(struct platform_device *pdev)
+static int comcerto_nand_attach_chip(struct nand_chip *chip)
 {
-	struct comcerto_nand_info *info;
-	struct mtd_info *mtd;
-	struct nand_chip *chip;
-	struct resource *res;
+	struct mtd_info *mtd = nand_to_mtd(chip);
+#ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
+	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
+	struct platform_device *pdev = info->pdev;
 	int err = 0;
-	struct mtd_part_parser_data ppdata = {};
-	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
-	static const char *part_probe_types[]
-		= { "cmdlinepart", "RedBoot", "ofpart", NULL };
-
-	/* Allocate memory for info structure */
-	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
-	if (!info)
-		return -ENOMEM;
-
-	chip = &info->chip;
-	mtd = nand_to_mtd(chip);
-	mtd->dev.parent = &pdev->dev;
-	mtd->owner = THIS_MODULE;
-
-	/* Link the private data with the MTD structure */
-	mtd->priv = &info->chip;
-
-	info->ce_gpio = devm_gpiod_get(&pdev->dev, "ce",
-			GPIOD_FLAGS_BIT_DIR_SET | GPIOD_FLAGS_BIT_DIR_OUT);
-	if (IS_ERR(info->ce_gpio)) {
-		dev_err(&pdev->dev, "Failed to get CE GPIO.\n");
-		goto out_info;
-	}
-	info->br_gpio = devm_gpiod_get(&pdev->dev, "br",
-			GPIOD_FLAGS_BIT_DIR_SET);
-	if (IS_ERR(info->br_gpio)) {
-		dev_err(&pdev->dev, "Failed to get BR GPIO.\n");
-		goto out_info;
-	}
-
-	/*Map physical address of nand into virtual space */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	chip->IO_ADDR_R = devm_ioremap_resource(&pdev->dev, res);
-
-	if (IS_ERR(chip->IO_ADDR_R)) {
-		pr_err("LS1024A NAND: cannot map nand memory\n");
-		err = PTR_ERR(chip->IO_ADDR_R);
-		goto out_info;
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	ecc_base_addr = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(ecc_base_addr)) {
-		pr_err("LS1024A NAND: cannot map ecc config\n");
-		err = PTR_ERR(chip->IO_ADDR_R);
-		goto out_iorc;
-	}
-
-	/* This is the same address to read and write */
-	chip->IO_ADDR_W = chip->IO_ADDR_R;
-
-	/* Set address of hardware control function */
-	chip->cmd_ctrl = comcerto_nand_hwcontrol;
-	chip->dev_ready = comcerto_nand_ready;
-	chip->ecc.mode = NAND_ECC_HW_SYNDROME;
-//	chip->ecc.mode = NAND_ECC_SOFT_BCH;
-
-#if defined(CONFIG_C2K_ASIC) && defined(CONFIG_NAND_TYPE_SLC)
-	chip->options = NAND_BUSWIDTH_16;
-#else
-	chip->options = 0;
 #endif
-
-	/* Scan to find existence of the device */
-	if (nand_scan_ident(mtd, 1, NULL)) {
-		err = -ENXIO;
-		goto out_ior;
-	}
+	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
 
 #ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
 	if (1 && chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
@@ -1195,8 +1124,94 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 
 	comcerto_set_ecclayout(mtd, chip_ecc_layout);
 
-	if(nand_scan_tail(mtd)) {
-		pr_err("nand_scan_tail returned error\n");
+	return 0;
+#ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
+out_ior:
+	return err;
+#endif
+}
+
+static const struct nand_controller_ops comcerto_nand_controller_ops = {
+	.attach_chip = comcerto_nand_attach_chip,
+};
+
+/*********************************************************************
+ * NAND Probe
+ *
+ *********************************************************************/
+static int comcerto_nand_probe(struct platform_device *pdev)
+{
+	struct comcerto_nand_info *info;
+	struct mtd_info *mtd;
+	struct nand_chip *chip;
+	struct resource *res;
+	int err = 0;
+	struct mtd_part_parser_data ppdata = {};
+	static const char *part_probe_types[]
+		= { "cmdlinepart", "RedBoot", "ofpart", NULL };
+
+	/* Allocate memory for info structure */
+	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
+
+	info->pdev = pdev;
+	chip = &info->chip;
+	mtd = nand_to_mtd(chip);
+	mtd->dev.parent = &pdev->dev;
+	mtd->owner = THIS_MODULE;
+
+	/* Link the private data with the MTD structure */
+	mtd->priv = &info->chip;
+
+	info->ce_gpio = devm_gpiod_get(&pdev->dev, "ce",
+			GPIOD_FLAGS_BIT_DIR_SET | GPIOD_FLAGS_BIT_DIR_OUT);
+	if (IS_ERR(info->ce_gpio)) {
+		dev_err(&pdev->dev, "Failed to get CE GPIO.\n");
+		goto out_info;
+	}
+	info->br_gpio = devm_gpiod_get(&pdev->dev, "br",
+			GPIOD_FLAGS_BIT_DIR_SET);
+	if (IS_ERR(info->br_gpio)) {
+		dev_err(&pdev->dev, "Failed to get BR GPIO.\n");
+		goto out_info;
+	}
+
+	/*Map physical address of nand into virtual space */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	chip->IO_ADDR_R = devm_ioremap_resource(&pdev->dev, res);
+
+	if (IS_ERR(chip->IO_ADDR_R)) {
+		pr_err("LS1024A NAND: cannot map nand memory\n");
+		err = PTR_ERR(chip->IO_ADDR_R);
+		goto out_info;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	ecc_base_addr = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(ecc_base_addr)) {
+		pr_err("LS1024A NAND: cannot map ecc config\n");
+		err = PTR_ERR(chip->IO_ADDR_R);
+		goto out_iorc;
+	}
+
+	/* This is the same address to read and write */
+	chip->IO_ADDR_W = chip->IO_ADDR_R;
+
+	/* Set address of hardware control function */
+	chip->cmd_ctrl = comcerto_nand_hwcontrol;
+	chip->dev_ready = comcerto_nand_ready;
+	chip->ecc.mode = NAND_ECC_HW_SYNDROME;
+
+#if defined(CONFIG_C2K_ASIC) && defined(CONFIG_NAND_TYPE_SLC)
+	chip->options = NAND_BUSWIDTH_16;
+#else
+	chip->options = 0;
+#endif
+
+	/* Scan to find existence of the device */
+	info->chip.dummy_controller.ops = &comcerto_nand_controller_ops;
+	if (nand_scan(chip, 1)) {
 		err = -ENXIO;
 		goto out_ior;
 	}
