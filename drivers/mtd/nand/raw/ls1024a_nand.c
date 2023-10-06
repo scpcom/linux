@@ -447,9 +447,8 @@ static void comcerto_ecc_shift(uint8_t en_dis_shift)
  * @param[in] mode	Select between BCH and Hamming
  *
  */
-static void comcerto_enable_hw_ecc(struct mtd_info *mtd, int mode)
+static void comcerto_enable_hw_ecc(struct nand_chip *nand_device, int mode)
 {
-	struct nand_chip *nand_device = (struct nand_chip *)(mtd->priv);
 	uint32_t ecc_gen_cfg_val = 0;
 
 	if (mode == NAND_ECC_READSYN) return;
@@ -716,7 +715,7 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
-		chip->ecc.hwctl(mtd, NAND_ECC_WRITE);
+		chip->ecc.hwctl(chip, NAND_ECC_WRITE);
 		chip->write_buf(mtd, p, eccsize);
 
 		chip->ecc.calculate(mtd, p, oob);
@@ -738,13 +737,13 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 
 
 #ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
-static void comcerto_hybrid_hwctl (struct mtd_info *mtd, int mode) {
-	if (mode == NAND_ECC_READ) comcerto_enable_hw_ecc(mtd, mode);
+static void comcerto_hybrid_hwctl (struct nand_chip* chip, int mode) {
+	if (mode == NAND_ECC_READ) comcerto_enable_hw_ecc(chip, mode);
 }
 #endif
 
 #if 0
-static void comcerto_fake_hwctl (struct mtd_info *mtd, int mode) {
+static void comcerto_fake_hwctl (struct nand_chip* chip, int mode) {
 }
 #endif
 
@@ -855,7 +854,7 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 
 	for (; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
-		chip->ecc.hwctl(mtd, NAND_ECC_READ);
+		chip->ecc.hwctl(chip, NAND_ECC_READ);
 		chip->read_buf(mtd, p, eccsize);
 		chip->read_buf(mtd, ecc_code, ecc_bytes);
 
