@@ -893,9 +893,8 @@ static int comcerto_nand_read_page_hwecc(struct nand_chip *chip,
 /*
  *	hardware specific access to control-lines
 */
-void comcerto_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
+void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
 {
-	struct nand_chip *chip = mtd->priv;
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 
 	if (ctrl & NAND_CTRL_CHANGE) {
