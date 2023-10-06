@@ -512,7 +512,7 @@ static int comcerto_calculate_ecc(struct nand_chip *nand_device,
 	/* Even though we do a dummy write to NAND flash, actual ECC bytes are
 	 * written to the ECC location in the flash. The contents of ecc_calc
 	 * are irrelevant. The ECC engine overwrites it with real ECC data. */
-	nand_device->write_buf(mtd, ecc_calc, ecc_bytes);
+	nand_device->write_buf(nand_device, ecc_calc, ecc_bytes);
 
 	comcerto_ecc_shift(ECC_SHIFT_DISABLE);
 	writel_relaxed(ECC_PARITY_OUT_DISABLE, ecc_base_addr + ECC_PRTY_OUT_SEL_CFG);
@@ -714,13 +714,13 @@ static int comcerto_nand_write_page_hwecc(struct nand_chip *chip,
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
 		chip->ecc.hwctl(chip, NAND_ECC_WRITE);
-		chip->write_buf(mtd, p, eccsize);
+		chip->write_buf(chip, p, eccsize);
 
 		chip->ecc.calculate(chip, p, oob);
 		oob += eccbytes;
 
 		if (chip->ecc.postpad) {
-			chip->write_buf(mtd, oob, chip->ecc.postpad);
+			chip->write_buf(chip, oob, chip->ecc.postpad);
 			oob += chip->ecc.postpad;
 		}
 	}
@@ -728,7 +728,7 @@ static int comcerto_nand_write_page_hwecc(struct nand_chip *chip,
 	/* Calculate remaining oob bytes */
 	i = mtd->oobsize - (oob - chip->oob_poi);
 	if (i)
-		chip->write_buf(mtd, oob, i);
+		chip->write_buf(chip, oob, i);
 
 	return nand_prog_page_end_op(chip);
 }
