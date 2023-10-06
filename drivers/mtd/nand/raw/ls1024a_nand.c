@@ -712,6 +712,8 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 	const uint8_t *p = buf;
 	uint8_t *oob = chip->oob_poi;
 
+	nand_prog_page_begin_op(chip, page, 0, NULL, 0);
+
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
 		chip->ecc.hwctl(mtd, NAND_ECC_WRITE);
@@ -731,7 +733,7 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 	if (i)
 		chip->write_buf(mtd, oob, i);
 
-	return 0;
+	return nand_prog_page_end_op(chip);
 }
 
 
@@ -849,6 +851,7 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 	int stat;
 	uint8_t *oob = nand_device->oob_poi;
 
+	nand_read_page_op(chip, page, 0, NULL, 0);
 
 	for (; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
