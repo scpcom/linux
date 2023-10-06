@@ -1203,7 +1203,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 #endif
 
 	/* Scan to find existence of the device */
-	info->chip.dummy_controller.ops = &comcerto_nand_controller_ops;
+	info->chip.legacy.dummy_controller.ops = &comcerto_nand_controller_ops;
 	if (nand_scan(chip, 1)) {
 		err = -ENXIO;
 		goto out_ior;
