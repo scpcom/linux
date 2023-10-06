@@ -833,18 +833,18 @@ static int comcerto_bch_correct_ecc (struct nand_chip *chip, uint8_t *dat, uint8
  * @param[in] buf	data buffer
  *
  */
-static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
-		struct nand_chip *chip, uint8_t *buf, int oob_required, int page)
+static int comcerto_nand_read_page_hwecc(struct nand_chip *chip,
+		uint8_t *buf, int oob_required, int page)
 {
-	struct nand_chip *nand_device = mtd->priv;
-	int i, eccsize = nand_device->ecc.size;
-	int eccbytes = nand_device->ecc.bytes;
-	int eccsteps = nand_device->ecc.steps;
+	struct mtd_info *mtd = nand_to_mtd(chip);
+	int i, eccsize = chip->ecc.size;
+	int eccbytes = chip->ecc.bytes;
+	int eccsteps = chip->ecc.steps;
 	uint8_t *p = buf;
-	uint8_t *ecc_code = nand_device->ecc.code_buf;
-	int ecc_bytes = nand_device->ecc.bytes;
+	uint8_t *ecc_code = chip->ecc.code_buf;
+	int ecc_bytes = chip->ecc.bytes;
 	int stat;
-	uint8_t *oob = nand_device->oob_poi;
+	uint8_t *oob = chip->oob_poi;
 
 	nand_read_page_op(chip, page, 0, NULL, 0);
 
