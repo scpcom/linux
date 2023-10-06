@@ -1193,7 +1193,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 
 	/* Set address of hardware control function */
 	chip->legacy.cmd_ctrl = comcerto_nand_hwcontrol;
-	chip->dev_ready = comcerto_nand_ready;
+	chip->legacy.dev_ready = comcerto_nand_ready;
 	chip->ecc.mode = NAND_ECC_HW_SYNDROME;
 
 #if defined(CONFIG_C2K_ASIC) && defined(CONFIG_NAND_TYPE_SLC)
