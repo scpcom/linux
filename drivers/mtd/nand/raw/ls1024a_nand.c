@@ -851,8 +851,8 @@ static int comcerto_nand_read_page_hwecc(struct nand_chip *chip,
 	for (; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 
 		chip->ecc.hwctl(chip, NAND_ECC_READ);
-		chip->read_buf(mtd, p, eccsize);
-		chip->read_buf(mtd, ecc_code, ecc_bytes);
+		chip->read_buf(chip, p, eccsize);
+		chip->read_buf(chip, ecc_code, ecc_bytes);
 
 		stat = chip->ecc.correct(chip, p, oob, NULL);
 		if (stat < 0) {
@@ -873,14 +873,14 @@ static int comcerto_nand_read_page_hwecc(struct nand_chip *chip,
 		}
 
 		if (chip->ecc.postpad) {
-			chip->read_buf(mtd, oob, chip->ecc.postpad);
+			chip->read_buf(chip, oob, chip->ecc.postpad);
 			oob += chip->ecc.postpad;
 		}
 	}
 	/* Calculate remaining oob bytes */
 	i = mtd->oobsize - (oob - chip->oob_poi);
 	if (i)
-		chip->read_buf(mtd, oob, i);
+		chip->read_buf(chip, oob, i);
 
 	return 0;
 }
