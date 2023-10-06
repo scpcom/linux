@@ -528,10 +528,9 @@ static int comcerto_calculate_ecc(struct nand_chip *nand_device,
  * @param[in] calc_ecc	ECC calculated over the raw data
  *
  */
-static int comcerto_correct_ecc(struct mtd_info *mtd, uint8_t *dat,
+static int comcerto_correct_ecc(struct nand_chip* nand_device, uint8_t *dat,
 		uint8_t *read_ecc, uint8_t *calc_ecc)
 {
-	struct nand_chip *nand_device = mtd->priv;
 	int num_zero_bits = 0;
 	int empty = 0;
 #if defined (CONFIG_NAND_LS1024A_ECC_8_HW_BCH) || defined (CONFIG_NAND_LS1024A_ECC_24_HW_BCH)
@@ -786,9 +785,8 @@ static int comcerto_bch_calculate_ecc (struct nand_chip *chip, const uint8_t *da
  * be found in the LS1024A. It calculates the ECC code a little different from
  * nand_bch_correct_data() (nand_bch.c)
  * */
-static int comcerto_bch_correct_ecc (struct mtd_info *mtd, uint8_t *dat, uint8_t *read_ecc,
+static int comcerto_bch_correct_ecc (struct nand_chip *chip, uint8_t *dat, uint8_t *read_ecc,
 		uint8_t *dummy) {
-	struct nand_chip *chip = mtd->priv;
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 	int num_zero_bits = 0;
 	int i, count;
@@ -856,7 +854,7 @@ static int comcerto_nand_read_page_hwecc(struct mtd_info *mtd,
 		chip->read_buf(mtd, p, eccsize);
 		chip->read_buf(mtd, ecc_code, ecc_bytes);
 
-		stat = chip->ecc.correct(mtd, p, oob, NULL);
+		stat = chip->ecc.correct(chip, p, oob, NULL);
 		if (stat < 0) {
 			mtd->ecc_stats.failed++;
 			pr_err("ECC correction failed for page 0x%08x\n", page);
