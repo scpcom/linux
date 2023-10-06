@@ -913,9 +913,8 @@ void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
 
 }
 
-int comcerto_nand_ready(struct mtd_info *mtd)
+int comcerto_nand_ready(struct nand_chip *chip)
 {
-	struct nand_chip *chip = mtd->priv;
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 
 	return gpiod_get_value(info->br_gpio);
