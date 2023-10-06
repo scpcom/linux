@@ -699,10 +699,10 @@ out:
  * @param[in] buf	data buffer
  *
  */
-static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
-					struct nand_chip *chip,
+static int comcerto_nand_write_page_hwecc(struct nand_chip *chip,
 					const uint8_t *buf, int oob_required, int page)
 {
+	struct mtd_info *mtd = nand_to_mtd(chip);
 	int i, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccsteps = chip->ecc.steps;
