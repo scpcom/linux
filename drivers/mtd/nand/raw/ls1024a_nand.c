@@ -481,11 +481,10 @@ static void comcerto_enable_hw_ecc(struct nand_chip *nand_device, int mode)
  * @param[in] ecc_code	buffer for ECC
  *
  */
-static int comcerto_calculate_ecc(struct mtd_info *mtd,
+static int comcerto_calculate_ecc(struct nand_chip *nand_device,
 				  const uint8_t *dat,
 				  uint8_t *ecc_code)
 {
-	struct nand_chip *nand_device = mtd->priv;
 	int ecc_bytes = nand_device->ecc.bytes;
 	uint8_t *ecc_calc = nand_device->ecc.calc_buf;
 	unsigned long timeo;
@@ -718,7 +717,7 @@ static int comcerto_nand_write_page_hwecc(struct mtd_info *mtd,
 		chip->ecc.hwctl(chip, NAND_ECC_WRITE);
 		chip->write_buf(mtd, p, eccsize);
 
-		chip->ecc.calculate(mtd, p, oob);
+		chip->ecc.calculate(chip, p, oob);
 		oob += eccbytes;
 
 		if (chip->ecc.postpad) {
@@ -761,9 +760,8 @@ static void comcerto_fake_hwctl (struct nand_chip* chip, int mode) {
  *   page has a valid ECC code).
  *   */
 #ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
-static int comcerto_bch_calculate_ecc (struct mtd_info *mtd, const uint8_t *dat,
+static int comcerto_bch_calculate_ecc (struct nand_chip *chip, const uint8_t *dat,
 		uint8_t *ecc_code) {
-	struct nand_chip *chip = mtd->priv;
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 	int i;
 
