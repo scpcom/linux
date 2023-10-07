@@ -928,10 +928,11 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 	struct platform_device *pdev = info->pdev;
 	int err = 0;
 #endif
+	bool is_ecc_hw_syndrome = (chip->ecc.mode == NAND_ECC_HW);
 	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
 
 #ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
-	if (1 && chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
+	if (1 && is_ecc_hw_syndrome) {
 		/* We use a hybrid approach here where we use the ECC hardware
 		 * in the read path to correct ECC errors on read. For writing,
 		 * we calculate the ECC code in software. The reason for this
@@ -1014,7 +1015,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 
 	} else
 #endif
-	if (chip->ecc.mode == NAND_ECC_HW_SYNDROME) {
+	if (is_ecc_hw_syndrome) {
 		chip->ecc.hwctl = comcerto_enable_hw_ecc;
 		chip->ecc.write_page = comcerto_nand_write_page_hwecc;
 		chip->ecc.read_page = comcerto_nand_read_page_hwecc;
@@ -1194,7 +1195,8 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	/* Set address of hardware control function */
 	chip->legacy.cmd_ctrl = comcerto_nand_hwcontrol;
 	chip->legacy.dev_ready = comcerto_nand_ready;
-	chip->ecc.mode = NAND_ECC_HW_SYNDROME;
+	chip->ecc.mode = NAND_ECC_HW;
+	chip->ecc.placement = NAND_ECC_PLACEMENT_INTERLEAVED;
 
 #if defined(CONFIG_C2K_ASIC) && defined(CONFIG_NAND_TYPE_SLC)
 	chip->options = NAND_BUSWIDTH_16;
