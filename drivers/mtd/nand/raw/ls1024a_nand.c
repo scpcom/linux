@@ -928,7 +928,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 	struct platform_device *pdev = info->pdev;
 	int err = 0;
 #endif
-	bool is_ecc_hw_syndrome = (chip->ecc.mode == NAND_ECC_HW);
+	bool is_ecc_hw_syndrome = (chip->ecc.engine_type == NAND_ECC_ENGINE_TYPE_ON_HOST);
 	struct comcerto_nand_ecclayout *chip_ecc_layout = NULL;
 
 #ifdef CONFIG_NAND_LS1024A_ECC_HYBRID
@@ -1202,7 +1202,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
 	/* Set address of hardware control function */
 	chip->legacy.cmd_ctrl = comcerto_nand_hwcontrol;
 	chip->legacy.dev_ready = comcerto_nand_ready;
-	chip->ecc.mode = NAND_ECC_HW;
+	chip->ecc.engine_type = NAND_ECC_ENGINE_TYPE_ON_HOST;
 	chip->ecc.placement = NAND_ECC_PLACEMENT_INTERLEAVED;
 
 #if defined(CONFIG_C2K_ASIC) && defined(CONFIG_NAND_TYPE_SLC)
