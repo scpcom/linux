@@ -947,6 +947,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		chip->ecc.correct = comcerto_correct_ecc;
 		dev_info(&pdev->dev, "Using hybrid hw/sw ECC\n");
 		chip->ecc.size =  1024;
+		chip->ecc.algo = NAND_ECC_ALGO_BCH;
 		chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 		chip->ecc.strength = 24;
 		chip->ecc.prepad = 0;
@@ -1027,12 +1028,14 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		case 512:
 			chip->ecc.size = mtd->writesize;
 #if defined (CONFIG_NAND_LS1024A_ECC_24_HW_BCH)
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_512_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_512_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
@@ -1049,12 +1052,14 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		case 1024:
 			chip->ecc.size = mtd->writesize;
 #ifdef CONFIG_NAND_LS1024A_ECC_24_HW_BCH
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
@@ -1072,12 +1077,14 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 			pr_err("Using default values for hw ecc\n");
 			chip->ecc.size =  1024;
 #ifdef CONFIG_NAND_LS1024A_ECC_24_HW_BCH
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 42;
 			chip->ecc.strength = 24;
 			chip->ecc.prepad = 0;
 			chip->ecc.postpad = 14;
 #elif defined(CONFIG_NAND_LS1024A_ECC_8_HW_BCH)
+			chip->ecc.algo = NAND_ECC_ALGO_BCH;
 			chip_ecc_layout = &comcerto_ecc_info_1024_bch;
 			chip->ecc.bytes = 14;
 			chip->ecc.strength = 8;
@@ -1110,7 +1117,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		chip->ecc.size =  1024;
 		chip->ecc.strength = 24;
 		chip->ecc.bytes = 42;
-		chip->ecc.algo = NAND_ECC_BCH;
+		chip->ecc.algo = NAND_ECC_ALGO_BCH;
 	}
 
 
