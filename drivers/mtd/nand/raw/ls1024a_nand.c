@@ -306,6 +306,12 @@ static struct nand_bbt_descr c2000_badblock_pattern = {
 	.len = 1,
 	.pattern = scan_ff_pattern
 };
+#else /* Hamming */
+static struct nand_bbt_descr c2000_badblock_pattern = {
+	.offs = 4,
+	.len = 1,
+	.pattern = scan_ff_pattern
+};
 #endif
 
 /**
@@ -533,8 +539,8 @@ static int comcerto_correct_ecc(struct nand_chip* nand_device, uint8_t *dat,
 {
 	int num_zero_bits = 0;
 	int empty = 0;
-#if defined (CONFIG_NAND_LS1024A_ECC_8_HW_BCH) || defined (CONFIG_NAND_LS1024A_ECC_24_HW_BCH)
 	uint8_t err_count = 0;
+#if defined (CONFIG_NAND_LS1024A_ECC_8_HW_BCH) || defined (CONFIG_NAND_LS1024A_ECC_24_HW_BCH)
 	uint32_t err_corr_data_prev;
 #endif
 	uint32_t err_corr_data;
