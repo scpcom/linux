@@ -768,7 +768,7 @@ static int comcerto_bch_calculate_ecc (struct nand_chip *chip, const uint8_t *da
 		info->bit_reversed[i] = bitrev8(dat[i]);
 	}
 	memset(ecc_code, 0, chip->ecc.bytes);
-	encode_bch(info->cbc.bch, info->bit_reversed, chip->ecc.size, ecc_code);
+	bch_encode(info->cbc.bch, info->bit_reversed, chip->ecc.size, ecc_code);
 	for (i=0;i<chip->ecc.bytes;i++) {
 		ecc_code[i] = bitrev8(ecc_code[i]);
 	}
@@ -808,7 +808,7 @@ static int comcerto_bch_correct_ecc (struct nand_chip *chip, uint8_t *dat, uint8
 	for (i=0;i<chip->ecc.bytes;i++) {
 		read_ecc[i] = bitrev8(read_ecc[i]);
 	}
-	count = decode_bch(info->cbc.bch, info->bit_reversed, chip->ecc.size, read_ecc, NULL,
+	count = bch_decode(info->cbc.bch, info->bit_reversed, chip->ecc.size, read_ecc, NULL,
 			NULL, info->cbc.errloc);
 	if (count > 0) {
 		for (i = 0; i < count; i++) {
@@ -971,7 +971,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		/* The LS1024A HW ECC engine (seemingly licensed from Cyclic
 		 * Design) uses 0x4443 as the primitive polynomial for BCH
 		 * (Linux uses 0x402b by default). */
-		info->cbc.bch = init_bch(m, t, 0x4443);
+		info->cbc.bch = bch_init(m, t, 0x4443, false);
 		if (!info->cbc.bch) {
 			err = -EINVAL;
 			goto out_ior;
@@ -981,7 +981,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		if (info->cbc.bch->ecc_bytes != chip->ecc.bytes) {
 			dev_warn(&pdev->dev, "invalid eccbytes %u, should be %u\n",
 					chip->ecc.bytes, info->cbc.bch->ecc_bytes);
-			free_bch(info->cbc.bch);
+			bch_free(info->cbc.bch);
 			err = -EINVAL;
 			goto out_ior;
 		}
@@ -989,7 +989,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 		/* sanity checks */
 		if (8*(chip->ecc.size+chip->ecc.bytes) >= (1 << m)) {
 			dev_warn(&pdev->dev, "eccsize %u is too large\n", chip->ecc.size);
-			free_bch(info->cbc.bch);
+			bch_free(info->cbc.bch);
 			err = -EINVAL;
 			goto out_ior;
 		}
@@ -997,7 +997,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 #if 0
 		info->cbc.errloc = devm_kmalloc(&pdev->dev, t*sizeof(*info->cbc.errloc), GFP_KERNEL);
 		if (!info->cbc.errloc) {
-			free_bch(info->cbc.bch);
+			bch_free(info->cbc.bch);
 			err = -ENOMEM;
 			goto out_ior;
 		}
@@ -1005,7 +1005,7 @@ static int comcerto_nand_attach_chip(struct nand_chip *chip)
 
 		info->bit_reversed = devm_kzalloc(&pdev->dev, chip->ecc.size, GFP_KERNEL);
 		if (!info->bit_reversed) {
-			free_bch(info->cbc.bch);
+			bch_free(info->cbc.bch);
 			err = -ENOMEM;
 			goto out_ior;
 		}
