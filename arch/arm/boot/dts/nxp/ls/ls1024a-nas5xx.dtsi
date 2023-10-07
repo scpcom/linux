@@ -188,7 +188,8 @@
 	};
 
 	ds1340: rtc@68 {
-		compatible = "dallas,ds1340";
+		/* compatible = "dallas,ds1340"; */
+		compatible = "zyxel,rtc";
 		reg = <0x68>;
 	};
 };
