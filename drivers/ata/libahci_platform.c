@@ -25,6 +25,10 @@
 #include <linux/reset.h>
 #include "ahci.h"
 
+#ifdef CONFIG_ARCH_LS1024A
+#include <mach/ls1024a-pmu.h>
+#endif
+
 static void ahci_host_stop(struct ata_host *host);
 
 struct ata_port_operations ahci_platform_ops = {
@@ -897,6 +901,11 @@ int ahci_platform_suspend(struct device *dev)
 	struct ahci_host_priv *hpriv = host->private_data;
 	int rc;
 
+#ifdef CONFIG_ARCH_LS1024A
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_SATA_IRQ))
+		return 0;
+#endif
+
 	rc = ahci_platform_suspend_host(dev);
 	if (rc)
 		return rc;
@@ -922,6 +931,11 @@ int ahci_platform_resume(struct device *dev)
 	struct ata_host *host = dev_get_drvdata(dev);
 	struct ahci_host_priv *hpriv = host->private_data;
 	int rc;
+
+#ifdef CONFIG_ARCH_LS1024A
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_SATA_IRQ))
+		return 0;
+#endif
 
 	rc = ahci_platform_enable_resources(hpriv);
 	if (rc)
