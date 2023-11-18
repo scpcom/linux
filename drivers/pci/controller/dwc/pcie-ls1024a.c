@@ -287,11 +287,11 @@ static irqreturn_t ls1024a_pcie_intc_handler(int irq, void *arg)
 
 	reg = PCIEx_INTR_STS(pcie->port_idx);
 	regmap_read(pcie->app_regs, reg, &status);
-	/* Acknowledge interrupts */
-	regmap_write(pcie->app_regs, reg, status);
 
 	if (status & PCIE_INTR_MSI) {
 		BUG_ON(!IS_ENABLED(CONFIG_PCI_MSI));
+		regmap_write(pcie->app_regs, reg, PCIE_INTR_MSI);
+		status &= ~(PCIE_INTR_MSI);
 		virq = irq_find_mapping(pcie->irq_domain,
 				LS1024A_PCIE_INTC_MSI);
 		if (virq)
@@ -299,29 +299,46 @@ static irqreturn_t ls1024a_pcie_intc_handler(int irq, void *arg)
 	}
 	if (status & intx_mask) {
 		if ((status & PCIE_INTR_INTA_ASSERT) != 0) {
+			regmap_write(pcie->app_regs, reg, PCIE_INTR_INTA_ASSERT);
+			status &= ~(PCIE_INTR_INTA_ASSERT);
 			virq = irq_find_mapping(pcie->irq_domain,
 					LS1024A_PCIE_INTC_INTA);
 			if (virq)
 				generic_handle_irq(virq);
+			status &= ~(PCIE_INTR_INTA_DEASSERT);
 		}
 		if ((status & PCIE_INTR_INTB_ASSERT) != 0) {
+			regmap_write(pcie->app_regs, reg, PCIE_INTR_INTB_ASSERT);
+			status &= ~(PCIE_INTR_INTB_ASSERT);
 			virq = irq_find_mapping(pcie->irq_domain,
 					LS1024A_PCIE_INTC_INTB);
 			if (virq)
 				generic_handle_irq(virq);
+			status &= ~(PCIE_INTR_INTB_DEASSERT);
 		}
 		if ((status & PCIE_INTR_INTC_ASSERT) != 0) {
+			regmap_write(pcie->app_regs, reg, PCIE_INTR_INTC_ASSERT);
+			status &= ~(PCIE_INTR_INTC_ASSERT);
 			virq = irq_find_mapping(pcie->irq_domain,
 					LS1024A_PCIE_INTC_INTC);
 			if (virq)
 				generic_handle_irq(virq);
+			status &= ~(PCIE_INTR_INTC_DEASSERT);
 		}
 		if ((status & PCIE_INTR_INTD_ASSERT) != 0) {
+			regmap_write(pcie->app_regs, reg, PCIE_INTR_INTD_ASSERT);
+			status &= ~(PCIE_INTR_INTD_ASSERT);
 			virq = irq_find_mapping(pcie->irq_domain,
 					LS1024A_PCIE_INTC_INTD);
 			if (virq)
 				generic_handle_irq(virq);
+			status &= ~(PCIE_INTR_INTD_DEASSERT);
 		}
+	}
+
+	if (status) {
+		/* Acknowledge interrupts */
+		regmap_write(pcie->app_regs, reg, status);
 	}
 
 	return IRQ_HANDLED;
@@ -386,6 +403,11 @@ static int ls1024a_pcie_init_irq(struct ls1024a_pcie *pcie,
 		dev_err(dev, "failed to request irq %d\n", pp->irq);
 		return ret;
 	}
+
+	regmap_write_bits(pcie->app_regs,
+			PCIEx_INTR_EN(pcie->port_idx),
+			PCIE_INTR_AER | PCIE_INTR_PME |
+			PCIE_INTR_HP | PCIE_INTR_LINK_AUTO_BW, 0);
 
 	return 0;
 }
