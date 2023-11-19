@@ -54,6 +54,7 @@ static struct msi_domain_info dw_pcie_msi_domain_info = {
 	.chip	= &dw_pcie_msi_irq_chip,
 };
 
+#ifndef CONFIG_PCIE_DW_MSI_MASK_ACK
 /* MSI int handler */
 irqreturn_t dw_handle_msi_irq(struct dw_pcie_rp *pp)
 {
@@ -85,6 +86,48 @@ irqreturn_t dw_handle_msi_irq(struct dw_pcie_rp *pp)
 
 	return ret;
 }
+#else
+/* MSI int handler
+ */
+irqreturn_t dw_handle_msi_irq(struct dw_pcie_rp *pp)
+{
+	unsigned long val, mask;
+	unsigned int pos, mask0;
+	irqreturn_t ret = IRQ_NONE;
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+
+	val = dw_pcie_readl_dbi(pci, PCIE_MSI_INTR0_STATUS);
+
+continue_handle:
+
+	pos = 0;
+
+	while (val) {
+		ret = IRQ_HANDLED;
+		mask0 = 1 << pos;
+
+		if (val & mask0) {
+			/* FIXME : WA for bz69520
+			 * To avoid race condition during avk the interrupt disabling interrupt before
+			 * Ack and enabling after Ack.
+			 */
+			mask = dw_pcie_readl_dbi(pci, PCIE_MSI_INTR0_ENABLE);
+			dw_pcie_writel_dbi(pci, PCIE_MSI_INTR0_ENABLE, mask & ~mask0);
+			dw_pcie_writel_dbi(pci, PCIE_MSI_INTR0_STATUS, mask0);
+			dw_pcie_writel_dbi(pci, PCIE_MSI_INTR0_ENABLE, mask);
+			generic_handle_domain_irq(pp->irq_domain, pos);
+			val = val & ~mask0;
+		}
+		pos++;
+	}
+
+	val = dw_pcie_readl_dbi(pci, PCIE_MSI_INTR0_STATUS);
+	if(val)
+		goto continue_handle;
+
+	return ret;
+}
+#endif
 
 /* Chained MSI interrupt service routine */
 static void dw_chained_msi_isr(struct irq_desc *desc)
@@ -157,6 +200,7 @@ static void dw_pci_bottom_unmask(struct irq_data *d)
 
 static void dw_pci_bottom_ack(struct irq_data *d)
 {
+#ifndef CONFIG_PCIE_DW_MSI_MASK_ACK
 	struct dw_pcie_rp *pp  = irq_data_get_irq_chip_data(d);
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	unsigned int res, bit, ctrl;
@@ -165,25 +209,7 @@ static void dw_pci_bottom_ack(struct irq_data *d)
 	res = ctrl * MSI_REG_CTRL_BLOCK_SIZE;
 	bit = d->hwirq % MAX_MSI_IRQS_PER_CTRL;
 
-	/* On the Freescale LS1024A (formerly Mindspeed
-	 * Comcerto 2000) SoC, it appears to be
-	 * necessary for the interrupt to be masked
-	 * while we clear it. We found this workaround
-	 * in the source code provided by Mindspeed.
-	 * They added the following comment:
-	 *
-	 * FIXME : WA for bz69520
-	 * To avoid race condition during avk the interrupt disabling interrupt before
-	 * Ack and enabling after Ack.
-	 */
-#ifdef CONFIG_PCIE_DW_MSI_MASK_ACK
-	dw_pci_bottom_mask(d);
-#endif
-
 	dw_pcie_writel_dbi(pci, PCIE_MSI_INTR0_STATUS + res, BIT(bit));
-
-#ifdef CONFIG_PCIE_DW_MSI_MASK_ACK
-	dw_pci_bottom_unmask(d);
 #endif
 }
 
