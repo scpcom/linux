@@ -186,19 +186,6 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	}
 
 	pfe->ctrl.rst_axi = rst_axi;
-	reset_control_assert(pfe->ctrl.rst_axi);
-	mdelay(1);
-	rc = reset_control_deassert(pfe->ctrl.rst_axi);
-	if (rc) {
-		dev_err(&pdev->dev, "Failed to put pfe out of reset\n");
-		return rc;
-	}
-
-#else
-	/* FIXME this needs to be done at the BSP level with proper locking */
-	pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
-	mdelay(1);
-	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 #endif
 
 	/* Get the system clock */
@@ -208,6 +195,35 @@ static int pfe_platform_probe(struct platform_device *pdev)
 		rc = -ENXIO;
 		goto err_clk;
 	}
+
+	/* HFE core clock */
+	pfe->hfe_clock = clk_get(&pdev->dev, "hfe_core");
+	if (IS_ERR(pfe->hfe_clock)) {
+		printk(KERN_INFO "clk_get call failed\n");
+		rc = -ENXIO;
+		goto err_hfe_clock;
+	}
+
+	rc = clk_prepare_enable(pfe->hfe_clock);
+	if (rc < 0)
+		goto err_hfe_clock;
+
+	clk_disable(pfe->hfe_clock);
+#ifdef CONFIG_OF
+	reset_control_assert(pfe->ctrl.rst_axi);
+	mdelay(1);
+	rc = reset_control_deassert(pfe->ctrl.rst_axi);
+	if (rc) {
+		dev_err(&pdev->dev, "Failed to put pfe out of reset\n");
+		return rc;
+	}
+#else
+	/* FIXME this needs to be done at the BSP level with proper locking */
+	pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+	mdelay(1);
+	pfe_writel(pfe_readl(PFE_AXI_RESET) & ~PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
+#endif
+	clk_enable(pfe->hfe_clock);
 
 	pfe->ctrl.clk_axi = clk_axi;
 	pfe->ctrl.sys_clk = clk_get_rate(clk_axi) / 1000;  // save sys_clk value as KHz
@@ -219,6 +235,8 @@ static int pfe_platform_probe(struct platform_device *pdev)
 	return 0;
 
 err_probe:
+	clk_put(pfe->hfe_clock);
+err_hfe_clock:
 	clk_put(clk_axi);
 err_clk:
 #ifndef CONFIG_OF
@@ -266,6 +284,8 @@ static int pfe_platform_remove(struct platform_device *pdev)
 	/* FIXME this needs to be done at the BSP level with proper locking */
 	pfe_writel(pfe_readl(PFE_AXI_RESET) | PFE_SYS_AXI_RESET_BIT, PFE_AXI_RESET);
 #endif
+	clk_disable(pfe->hfe_clock);
+	clk_put(pfe->hfe_clock);
 
 	clk_put(pfe->ctrl.clk_axi);
 	iounmap(pfe->ipsec_baseaddr);
