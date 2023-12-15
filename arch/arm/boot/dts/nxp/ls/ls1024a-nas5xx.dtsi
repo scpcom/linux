@@ -57,8 +57,9 @@
 			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "hif";
 			clocks = <&clkcore LS1024A_CLK_PFE_SYS>,
-				 <&clkcore LS1024A_CLK_GEM_TX>;
-			clock-names = "axi", "gemtx";
+				 <&clkcore LS1024A_CLK_GEM_TX>,
+				 <&clkcore LS1024A_CLK_PFE>;
+			clock-names = "axi", "gemtx", "hfe_core";
 			resets = <&clkreset LS1024A_AXI_PFE_SYS_RST>,
 			         <&clkreset LS1024A_AXI_IPSEC_EAPE_RST>;
 			reset-names = "axi", "ipsec";
