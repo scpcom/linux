@@ -17,6 +17,8 @@
 #include <linux/reset.h>
 #include <linux/resource.h>
 
+#include <mach/ls1024a-pmu.h>
+
 #include "pcie-designware.h"
 
 struct ls1024a_pcie {
@@ -30,6 +32,8 @@ struct ls1024a_pcie {
 	struct irq_domain *irq_domain;
 	unsigned int port_idx;
 };
+
+#define PCI_CAP_PM 0x40
 
 #define PCIEx_CFGx(port, reg)	(((port) * 0x20) + ((reg) * 0x4))
 #define PCIEx_STSx(port, reg)	(0x40 + ((port) * 0xc) + ((reg) * 0x4))
@@ -552,6 +556,87 @@ fail_reset:
 	return ret;
 }
 
+static int ls1024a_pcie_suspend(struct device *dev)
+{
+	struct ls1024a_pcie *pcie = dev_get_drvdata(dev);
+	struct dw_pcie *pci = pcie->pci;
+	u32 val, i;
+
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe0_IRQ) ||
+	    ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe1_IRQ))
+		return 0;
+
+	/* Enable PME to root Port */
+	val = dw_pcie_readl_dbi(pci, (PCI_CAP_PM + PCI_PM_CTRL));
+	val |= PCI_PM_CTRL_STATE_MASK;
+	dw_pcie_writel_dbi(pci, (PCI_CAP_PM + PCI_PM_CTRL), val);
+
+	/* Required PM Delay */
+	for (i = 0 ; i < 40 ; i++)
+		udelay(500);
+
+	return 0;
+}
+
+static int ls1024a_pcie_resume(struct device *dev)
+{
+	struct ls1024a_pcie *pcie = dev_get_drvdata(dev);
+	struct dw_pcie *pci = pcie->pci;
+	u32 val, i;
+
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe0_IRQ) ||
+	    ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe1_IRQ))
+		return 0;
+
+	/* Put In D0 State */
+	val = dw_pcie_readl_dbi(pci, (PCI_CAP_PM + PCI_PM_CTRL));
+	val &= ~PCI_PM_CTRL_STATE_MASK;
+	dw_pcie_writel_dbi(pci, (PCI_CAP_PM + PCI_PM_CTRL), val);
+
+	/* Required PM Delay */
+	for (i = 0 ; i < 40 ; i++)
+		udelay(500);
+
+	return 0;
+}
+
+static int ls1024a_pcie_suspend_noirq(struct device *dev)
+{
+	struct ls1024a_pcie *pcie = dev_get_drvdata(dev);
+
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe0_IRQ) ||
+	    ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe1_IRQ))
+		return 0;
+
+	ls1024a_pcie_disable_phy(pcie);
+
+	return 0;
+}
+
+static int ls1024a_pcie_resume_noirq(struct device *dev)
+{
+	struct ls1024a_pcie *pcie = dev_get_drvdata(dev);
+	int ret;
+
+	if (ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe0_IRQ) ||
+	    ls1024a_pm_bitmask_handled(LS1024A_PMU_PCIe1_IRQ))
+		return 0;
+
+	ret = ls1024a_pcie_enable_phy(pcie);
+	if (ret) {
+		dev_err(dev, "failed to enable phy\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops ls1024a_pcie_pm_ops = {
+	SYSTEM_SLEEP_PM_OPS(ls1024a_pcie_suspend, ls1024a_pcie_resume)
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(ls1024a_pcie_suspend_noirq,
+				  ls1024a_pcie_resume_noirq)
+};
+
 static const struct of_device_id ls1024a_pcie_of_match[] = {
 	{ .compatible = "fsl,ls1024a-pcie", },
 	{},
@@ -563,6 +648,7 @@ static struct platform_driver ls1024a_pcie_driver = {
 		.name	= "ls1024a-pcie",
 		.of_match_table = of_match_ptr(ls1024a_pcie_of_match),
 		.suppress_bind_attrs = true,
+		.pm	= &ls1024a_pcie_pm_ops,
 	},
 };
 builtin_platform_driver(ls1024a_pcie_driver);

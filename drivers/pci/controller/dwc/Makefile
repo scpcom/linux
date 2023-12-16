@@ -1,4 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0
+
+ifeq ($(CONFIG_ARCH_LS1024A),y)
+EXTRA_CFLAGS += -I$(srctree)/arch/arm/mach-ls1024a/include
+endif
+
 obj-$(CONFIG_PCIE_DW) += pcie-designware.o
 obj-$(CONFIG_PCIE_DW_HOST) += pcie-designware-host.o
 obj-$(CONFIG_PCIE_DW_EP) += pcie-designware-ep.o
