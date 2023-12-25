@@ -56,6 +56,18 @@ static int ahci_probe(struct platform_device *pdev)
 	if (rc)
 		return rc;
 
+#ifdef CONFIG_ARCH_LS1024A
+	if (device_is_compatible(dev, "fsl,ls1024a-sata")) {
+		struct clk *sata_oob_clk = ahci_platform_find_clk(hpriv, "oob");
+		struct clk *sata_pmu_clk = ahci_platform_find_clk(hpriv, "pmu");
+
+		/* Set the SATA PMU clock to 30 MHZ and OOB clock to 125MHZ */
+		dev_info(dev, "Set the SATA PMU clock to 30 MHZ and OOB clock to 125MHZ\n");
+		clk_set_rate(sata_oob_clk,125000000);
+		clk_set_rate(sata_pmu_clk,30000000);
+	}
+#endif
+
 	if (device_is_compatible(dev, "hisilicon,hisi-ahci"))
 		hpriv->flags |= AHCI_HFLAG_NO_FBS | AHCI_HFLAG_NO_NCQ;
 
