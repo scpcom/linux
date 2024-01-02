@@ -1599,11 +1599,21 @@ int ahci_do_hardreset(struct ata_link *link, unsigned int *class,
 	struct ata_port *ap = link->ap;
 	struct ahci_port_priv *pp = ap->private_data;
 	struct ahci_host_priv *hpriv = ap->host->private_data;
+#ifdef CONFIG_SATA_LS1024A_HARDRESET
+	void __iomem *port_mmio = ahci_port_base(link->ap);
+#endif
 	u8 *d2h_fis = pp->rx_fis + RX_FIS_D2H_REG;
 	struct ata_taskfile tf;
 	int rc;
+#ifdef CONFIG_SATA_LS1024A_HARDRESET
+	u32 save_cmd, tmp;
+#endif
 
 	hpriv->stop_engine(ap);
+
+#ifdef CONFIG_SATA_LS1024A_HARDRESET
+	save_cmd = readl(port_mmio + PORT_CMD);
+#endif
 
 	/* clear D2H reception area to properly wait for D2H FIS */
 	ata_tf_init(link->device, &tf);
@@ -1614,6 +1624,13 @@ int ahci_do_hardreset(struct ata_link *link, unsigned int *class,
 
 	rc = sata_link_hardreset(link, timing, deadline, online,
 				 ahci_check_ready);
+
+#ifdef CONFIG_SATA_LS1024A_HARDRESET
+	/* Revert the saved cmd value, if not match with original */
+	tmp = readl(port_mmio + PORT_CMD);
+	if (tmp != save_cmd)
+		writel(save_cmd, port_mmio + PORT_CMD);
+#endif
 
 	hpriv->start_engine(ap);
 
