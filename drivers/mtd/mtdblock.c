@@ -261,9 +261,11 @@ static int mtdblock_open(struct mtd_blktrans_dev *mbd)
 		return 0;
 	}
 
+#ifdef CONFIG_MTD_ADVERTISE_UBI
 	if (mtd_type_is_nand(mbd->mtd))
 		pr_warn_ratelimited("%s: MTD device '%s' is NAND, please consider using UBI block devices instead.\n",
 			mbd->tr->name, mbd->mtd->name);
+#endif
 
 	/* OK, it's not open. Create cache info for it */
 	mtdblk->count = 1;
