@@ -24,6 +24,8 @@
 #define GPIO_DEVICE_ID		0x50
 #define C2K_REVISION_SHIFT	24
 
+#define GPIO_FABRIC_CTRL	0x6c
+
 /* Registers in PHY stat region */
 #define SDx_PHY_STS(n)		(0x2c + 0x10 * (n))
 #define SD_STS_CMU_OK		BIT(14)
@@ -90,6 +92,7 @@ struct ls1024a_serdes_phys {
 	struct regmap			*gpioregs;
 	bool				intclk_24mhz;
 	bool				soc_is_rev1;
+	bool				sata_moved_to_ddrc2;
 	struct ls1024a_serdes_instance	inst[3];
 };
 
@@ -97,6 +100,13 @@ static int ls1024a_serdes_phy_init(struct phy *phy)
 {
 	int ret;
 	struct ls1024a_serdes_instance *inst = phy_get_drvdata(phy);
+	struct ls1024a_serdes_phys *phys = dev_get_drvdata(inst->dev);
+	if ((inst->cfg.mode == PHY_MODE_SATA) && !phys->sata_moved_to_ddrc2) {
+		/* Move SATA controller to DDRC2 port */
+		dev_info(phy->dev.parent, "Move SATA controller to DDRC2 port\n");
+		regmap_write_bits(phys->gpioregs, GPIO_FABRIC_CTRL, 0x2, 0x2);
+		phys->sata_moved_to_ddrc2 = true;
+	}
 	ret = reset_control_assert(inst->reset);
 	if (ret) {
 		dev_err(&phy->dev, "reset failed (%d)\n", ret);
@@ -652,6 +662,8 @@ static int ls1024a_serdes_phy_probe(struct platform_device *pdev)
 		        PTR_ERR(phys->regs));
 		return PTR_ERR(phys->regs);
 	}
+
+	phys->sata_moved_to_ddrc2 = false;
 
 	instantiated = 0;
 	for (i = 0; i < 3; i++) {
