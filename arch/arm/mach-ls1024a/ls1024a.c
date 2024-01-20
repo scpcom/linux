@@ -89,7 +89,7 @@ void ls1024a_pm_bitmask_store(unsigned int bitmask_value)
 static void __init ls1024a_init_machine(void)
 {
 	/* Default value for the bit mask */
-	unsigned int default_host_utilpe_shared_bitmask = ~(USB2p0_IRQ|WOL_IRQ);
+	unsigned int default_host_utilpe_shared_bitmask = ~(LS1024A_PMU_USB2p0_IRQ|LS1024A_PMU_WOL_IRQ);
 
 	ls1024a_set_system_info();
 
