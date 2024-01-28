@@ -438,9 +438,9 @@ int parse_gpio_nodes(struct platform_device *pdev, struct device_node *np)
 		 * Acquire gpiod from DT with uninitialized label, which
 		 * will be updated later.
 		 */
-		gpio_dat->gpiod = devm_fwnode_get_gpiod_from_child(dev, NULL, child,
-							     GPIOD_ASIS,
-							     NULL);
+		gpio_dat->gpiod = devm_fwnode_gpiod_get(dev, child, NULL,
+							GPIOD_ASIS,
+							NULL);
 		if (IS_ERR(gpio_dat->gpiod)) {
 			ret = PTR_ERR(gpio_dat->gpiod);
 			fwnode_handle_put(child);
