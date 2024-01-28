@@ -24,7 +24,6 @@ struct ls1024a_wdt {
 	struct watchdog_device wdt;
 	struct clk *clk;
 	unsigned long clk_rate; /* Cached value */
-	struct reset_control *rst;
 	struct regmap *regs;
 	struct regmap *clkcore;
 };
@@ -229,22 +228,10 @@ static int ls1024a_wdt_probe(struct platform_device *pdev)
 		return PTR_ERR(priv->clkcore);
 	}
 
-	priv->rst = devm_reset_control_get_shared(dev->parent, NULL);
-	if (IS_ERR(priv->rst)) {
-		dev_err(dev, "Failed to get watchdog reset control\n");
-		return PTR_ERR(priv->rst);
-	}
-
 	priv->clk = devm_clk_get(dev->parent, NULL);
 	if (IS_ERR(priv->clk)) {
 		dev_err(dev, "Failed to get watchdog clock\n");
 		return PTR_ERR(priv->clk);
-	}
-
-	res = reset_control_deassert(priv->rst);
-	if (res) {
-		dev_err(dev, "Failed to put watchdog out of reset\n");
-		return res;
 	}
 
 	res = clk_prepare_enable(priv->clk);
@@ -292,7 +279,6 @@ static int ls1024a_wdt_remove(struct platform_device *pdev)
 {
 	struct ls1024a_wdt *priv = platform_get_drvdata(pdev);
 	clk_disable_unprepare(priv->clk);
-	reset_control_assert(priv->rst);
 	return 0;
 }
 
