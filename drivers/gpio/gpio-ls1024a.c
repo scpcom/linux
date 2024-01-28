@@ -169,7 +169,7 @@ static int ls1024a_gpio_probe(struct platform_device *pdev)
 	chip->chip.base = 0;
 	chip->chip.ngpio = 64;
 	chip->chip.can_sleep = false;
-	chip->chip.of_node = pdev->dev.of_node;
+	chip->chip.fwnode = of_node_to_fwnode(pdev->dev.of_node);
 
 	res = devm_gpiochip_add_data(&pdev->dev, &chip->chip, chip);
 	if (res)
