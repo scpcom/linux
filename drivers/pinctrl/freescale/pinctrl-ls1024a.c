@@ -12,6 +12,7 @@
 #include <linux/pinctrl/pinmux.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/seq_file.h>
 #include "../core.h"
 #include "../pinctrl-utils.h"
 
