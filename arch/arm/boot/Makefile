@@ -59,6 +59,9 @@ $(obj)/compressed/vmlinux: $(obj)/Image FORCE
 $(obj)/zImage:	$(obj)/compressed/vmlinux FORCE
 	$(call if_changed,objcopy)
 
+$(obj)/dts/ls10%.dtb: $(obj)/dts/nxp/ls/ls10%.dtb
+	cat $< > $@
+
 $(obj)/zImage-dtb.%:	$(obj)/dts/%.dtb $(obj)/zImage
 	cat $(obj)/zImage $< > $@
 
