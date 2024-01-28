@@ -125,7 +125,7 @@ config PCI_LAYERSCAPE_EP
 config PCIE_LS1024A
 	bool "Freescale LS1024A PCIe controller"
 	depends on OF && (ARCH_LS1024A || COMPILE_TEST)
-	depends on PCI_MSI_IRQ_DOMAIN
+	depends on PCI_MSI
 	select PCIE_DW_HOST
 	help
 	  Say Y here if you want PCIe controller support on the LS1024A SoC.
