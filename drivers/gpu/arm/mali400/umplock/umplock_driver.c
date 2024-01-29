@@ -10,6 +10,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/version.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/cdev.h>
@@ -547,7 +548,11 @@ int umplock_device_initialize(void)
 
 		err = cdev_add(&umplock_device.cdev, umplock_dev, 1);
 		if (0 == err) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 			umplock_device.umplock_class = class_create(THIS_MODULE, umplock_dev_name);
+#else
+			umplock_device.umplock_class = class_create(umplock_dev_name);
+#endif
 			if (IS_ERR(umplock_device.umplock_class)) {
 				err = PTR_ERR(umplock_device.umplock_class);
 			} else {

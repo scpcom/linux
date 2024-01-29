@@ -195,7 +195,11 @@ int ump_kernel_device_initialize(void)
 		if (0 == err) {
 
 #if UMP_LICENSE_IS_GPL
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 			ump_device.ump_class = class_create(THIS_MODULE, ump_dev_name);
+#else
+			ump_device.ump_class = class_create(ump_dev_name);
+#endif
 			if (IS_ERR(ump_device.ump_class)) {
 				err = PTR_ERR(ump_device.ump_class);
 			} else {
