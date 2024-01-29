@@ -572,8 +572,9 @@ void kbase_zone_cache_clear(struct kbase_mem_phy_alloc *alloc)
 static void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc)
 {
 	struct kbase_context *kctx = alloc->imported.kctx;
-	struct kbase_mem_zone_cache_entry *zone_cache;
 	int __maybe_unused new_page_count;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
+	struct kbase_mem_zone_cache_entry *zone_cache;
 	int err;
 
 	/* Attempt to build a zone cache of tracking */
@@ -581,13 +582,8 @@ static void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc)
 	if (err == 0) {
 		/* Bulk update all the zones */
 		list_for_each_entry(zone_cache, &alloc->zone_cache, zone_node) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
-			zone_page_state_add(zone_cache->count << PAGE_SHIFT,
-					zone_cache->zone, NR_SLAB_RECLAIMABLE_B);
-#else
 			zone_page_state_add(zone_cache->count,
 					zone_cache->zone, NR_SLAB_RECLAIMABLE);
-#endif
 		}
 	} else {
 		/* Fall-back to page by page updates */
@@ -600,13 +596,10 @@ static void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc)
 			p = phys_to_page(as_phys_addr_t(alloc->pages[i]));
 			zone = page_zone(p);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
-			zone_page_state_add(1 << PAGE_SHIFT, zone, NR_SLAB_RECLAIMABLE_B);
-#else
 			zone_page_state_add(1, zone, NR_SLAB_RECLAIMABLE);
-#endif
 		}
 	}
+#endif
 
 	kbase_process_page_usage_dec(kctx, alloc->nents);
 	new_page_count = kbase_atomic_sub_pages(alloc->nents,
@@ -626,9 +619,11 @@ static
 void kbase_mem_evictable_unmark_reclaim(struct kbase_mem_phy_alloc *alloc)
 {
 	struct kbase_context *kctx = alloc->imported.kctx;
-	struct kbase_mem_zone_cache_entry *zone_cache;
 	int __maybe_unused new_page_count;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
+	struct kbase_mem_zone_cache_entry *zone_cache;
 	int err;
+#endif
 
 	new_page_count = kbase_atomic_add_pages(alloc->nents,
 						&kctx->used_pages);
@@ -639,18 +634,14 @@ void kbase_mem_evictable_unmark_reclaim(struct kbase_mem_phy_alloc *alloc)
 	 * then remove it from the reclaimable accounting. */
 	kbase_process_page_usage_inc(kctx, alloc->nents);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
 	/* Attempt to build a zone cache of tracking */
 	err = kbase_zone_cache_build(alloc);
 	if (err == 0) {
 		/* Bulk update all the zones */
 		list_for_each_entry(zone_cache, &alloc->zone_cache, zone_node) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
-			zone_page_state_add(-(zone_cache->count << PAGE_SHIFT),
-					zone_cache->zone, NR_SLAB_RECLAIMABLE_B);
-#else
 			zone_page_state_add(-zone_cache->count,
 					zone_cache->zone, NR_SLAB_RECLAIMABLE);
-#endif
 		}
 	} else {
 		/* Fall-back to page by page updates */
@@ -662,13 +653,10 @@ void kbase_mem_evictable_unmark_reclaim(struct kbase_mem_phy_alloc *alloc)
 
 			p = phys_to_page(as_phys_addr_t(alloc->pages[i]));
 			zone = page_zone(p);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
-			zone_page_state_add(-(1 << PAGE_SHIFT), zone, NR_SLAB_RECLAIMABLE_B);
-#else
 			zone_page_state_add(-1, zone, NR_SLAB_RECLAIMABLE);
-#endif
 		}
 	}
+#endif
 
 	KBASE_TLSTREAM_AUX_PAGESALLOC(
 			kctx->id,
