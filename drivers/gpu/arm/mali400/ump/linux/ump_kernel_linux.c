@@ -513,11 +513,19 @@ static int ump_file_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	if (!(vma->vm_flags & VM_SHARED)) {
 		args.is_cached = 1;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+		vm_flags_set(vma, VM_SHARED | VM_MAYSHARE);
+#else
 		vma->vm_flags = vma->vm_flags | VM_SHARED | VM_MAYSHARE  ;
+#endif
 		DBG_MSG(3, ("UMP Map function: Forcing the CPU to use cache\n"));
 	}
 	/* By setting this flag, during a process fork; the child process will not have the parent UMP mappings */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	vm_flags_set(vma, VM_DONTCOPY);
+#else
 	vma->vm_flags |= VM_DONTCOPY;
+#endif
 
 	DBG_MSG(4, ("UMP vma->flags: %x\n", vma->vm_flags));
 
