@@ -1913,7 +1913,9 @@ static int kbase_cpu_mmap(struct kbase_va_region *reg, struct vm_area_struct *vm
 	 * See MIDBASE-1057
 	 */
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	vm_flags_set(vma, VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	vma->vm_flags |= VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO;
 #else
 	vma->vm_flags |= VM_DONTCOPY | VM_DONTEXPAND | VM_RESERVED | VM_IO;
@@ -1939,7 +1941,11 @@ static int kbase_cpu_mmap(struct kbase_va_region *reg, struct vm_area_struct *vm
 		u64 start_off = vma->vm_pgoff - reg->start_pfn +
 			(aligned_offset>>PAGE_SHIFT);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+		vm_flags_set(vma, VM_PFNMAP);
+#else
 		vma->vm_flags |= VM_PFNMAP;
+#endif
 		for (i = 0; i < nr_pages; i++) {
 			unsigned long pfn = PFN_DOWN(page_array[i + start_off]);
 
@@ -1952,7 +1958,11 @@ static int kbase_cpu_mmap(struct kbase_va_region *reg, struct vm_area_struct *vm
 	} else {
 		WARN_ON(aligned_offset);
 		/* MIXEDMAP so we can vfree the kaddr early and not track it after map time */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+		vm_flags_set(vma, VM_MIXEDMAP);
+#else
 		vma->vm_flags |= VM_MIXEDMAP;
+#endif
 		/* vmalloc remaping is easy... */
 		err = remap_vmalloc_range(vma, kaddr, 0);
 		WARN_ON(err);
@@ -2045,7 +2055,11 @@ static int kbase_trace_buffer_mmap(struct kbase_context *kctx, struct vm_area_st
 	*reg = new_reg;
 
 	/* map read only, noexec */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	vm_flags_clear(vma, VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
+#else
 	vma->vm_flags &= ~(VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
+#endif
 	/* the rest of the flags is added by the cpu_mmap handler */
 
 	dev_dbg(kctx->kbdev->dev, "%s done\n", __func__);
@@ -2215,7 +2229,14 @@ int kbase_mmap(struct file *file, struct vm_area_struct *vma)
 	dev_dbg(dev, "kbase_mmap\n");
 
 	/* strip away corresponding VM_MAY% flags to the VM_% flags requested */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	if (!(vma->vm_flags & VM_READ))
+		vm_flags_clear(vma, VM_MAYREAD);
+	if (!(vma->vm_flags & VM_WRITE))
+		vm_flags_clear(vma, VM_MAYWRITE);
+#else
 	vma->vm_flags &= ~((vma->vm_flags & (VM_READ | VM_WRITE)) << 4);
+#endif
 
 	if (0 == nr_pages) {
 		err = -EINVAL;
@@ -2601,8 +2622,14 @@ static int kbase_tracking_page_setup(struct kbase_context *kctx, struct vm_area_
 	spin_unlock(&kctx->mm_update_lock);
 
 	/* no real access */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	vm_flags_clear(vma, VM_READ | VM_MAYREAD | VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
+#else
 	vma->vm_flags &= ~(VM_READ | VM_MAYREAD | VM_WRITE | VM_MAYWRITE | VM_EXEC | VM_MAYEXEC);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+	vm_flags_set(vma, VM_DONTCOPY | VM_DONTEXPAND | VM_DONTDUMP | VM_IO);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0))
 	vma->vm_flags |= VM_DONTCOPY | VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
 #else
 	vma->vm_flags |= VM_DONTCOPY | VM_DONTEXPAND | VM_RESERVED | VM_IO;
