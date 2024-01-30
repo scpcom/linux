@@ -17,13 +17,13 @@ struct vf_dev {
 	struct clk *cpu_clk;
 } vf_dev;
 
-static ssize_t volt_show(struct class *class, struct class_attribute *attr,
+static ssize_t volt_show(const struct class *class, const struct class_attribute *attr,
 			 char *buf)
 {
 	return sprintf(buf, "%d\n", regulator_get_voltage(vf_dev.cpu_reg));
 }
 
-static ssize_t volt_store(struct class *class, struct class_attribute *attr,
+static ssize_t volt_store(const struct class *class, const struct class_attribute *attr,
 			  const char *buf, size_t count)
 {
 	int volt;
@@ -39,13 +39,13 @@ static ssize_t volt_store(struct class *class, struct class_attribute *attr,
 }
 static CLASS_ATTR_RW(volt);
 
-static ssize_t freq_show(struct class *class, struct class_attribute *attr,
+static ssize_t freq_show(const struct class *class, const struct class_attribute *attr,
 			 char *buf)
 {
 	return sprintf(buf, "%lu\n", clk_get_rate(vf_dev.cpu_clk));
 }
 
-static ssize_t freq_store(struct class *class, struct class_attribute *attr,
+static ssize_t freq_store(const struct class *class, const struct class_attribute *attr,
 			  const char *buf, size_t count)
 {
 	int freq;
