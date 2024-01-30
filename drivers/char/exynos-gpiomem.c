@@ -197,7 +197,7 @@ static int exynos_gpiomem_probe(struct platform_device *pdev)
 	}
 
 	/* Create sysfs entries */
-	exynos_gpiomem_class = class_create(THIS_MODULE, DEVICE_NAME);
+	exynos_gpiomem_class = class_create(DEVICE_NAME);
 	err = IS_ERR(exynos_gpiomem_class);
 	if (err)
 		goto failed_class_create;
