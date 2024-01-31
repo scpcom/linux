@@ -118,8 +118,8 @@ struct miscdevice soc_info_device = {
 	.fops  = &soc_info_ops,
 };
 
-static ssize_t sys_info_show(struct class *class,
-			     struct class_attribute *attr, char *buf)
+static ssize_t sys_info_show(const struct class *class,
+			     const struct class_attribute *attr, char *buf)
 {
 	int i;
 	int databuf[4] = {0};
@@ -184,8 +184,8 @@ static ssize_t sys_info_show(struct class *class,
 	return size;
 }
 
-static ssize_t key_info_show(struct class *class,
-			     struct class_attribute *attr, char *buf)
+static ssize_t key_info_show(const struct class *class,
+			     const struct class_attribute *attr, char *buf)
 {
 	s32 i;
 	u32 *key_data = NULL;
@@ -211,7 +211,7 @@ static ssize_t key_info_show(struct class *class,
 	return size;
 }
 
-static ssize_t key_info_store(struct class *class, struct class_attribute *attr,
+static ssize_t key_info_store(const struct class *class, const struct class_attribute *attr,
 		const char *buf, size_t count)
 {
 	if (count >= SUNXI_KEY_NAME_LEN)
@@ -229,7 +229,6 @@ static struct class_attribute info_class_attrs[] = {
 
 static struct class info_class = {
 	.name           = "sunxi_info",
-	.owner          = THIS_MODULE,
 };
 
 static int __init sunxi_sys_info_init(void)
