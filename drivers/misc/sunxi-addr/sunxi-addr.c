@@ -41,16 +41,16 @@
 #define IS_TYPE_INVALID(x)  ((x < TYPE_ANY) || (x > TYPE_RAND))
 
 #define ADDR_CLASS_ATTR_ADD(name) \
-static ssize_t addr_##name##_show(struct class *class, \
-		struct class_attribute *attr, char *buffer) \
+static ssize_t addr_##name##_show(const struct class *class, \
+		const struct class_attribute *attr, char *buffer) \
 { \
 	char addr[ADDR_STR_LEN]; \
 	if (IS_TYPE_INVALID(get_addr_by_name(ADDR_FMT_STR, addr, #name))) \
 		return 0; \
 	return sprintf(buffer, "%.17s\n", addr); \
 } \
-static ssize_t addr_##name##_store(struct class *class, \
-		struct class_attribute *attr, \
+static ssize_t addr_##name##_store(const struct class *class, \
+		const struct class_attribute *attr, \
 		const char *buffer, size_t count) \
 { \
 	if (count != ADDR_STR_LEN) { \
@@ -305,8 +305,8 @@ static int addr_init(struct platform_device *pdev)
 	return 0;
 }
 
-static ssize_t summary_show(struct class *class,
-				struct class_attribute *attr, char *buffer)
+static ssize_t summary_show(const struct class *class,
+				const struct class_attribute *attr, char *buffer)
 {
 	int i = 0, ret = 0;
 
@@ -337,7 +337,6 @@ ATTRIBUTE_GROUPS(addr_class);
 
 static struct class addr_class = {
 	.name = "addr_mgt",
-	.owner = THIS_MODULE,
 	.class_groups = addr_class_groups,
 };
 
