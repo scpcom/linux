@@ -12,6 +12,7 @@
 #include <linux/log2.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/overflow.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -247,22 +248,14 @@ static inline void vop_cfg_done(struct vop *vop)
 	VOP_REG_SET(vop, common, cfg_done, 1);
 }
 
-static bool has_rb_swapped(uint32_t version, uint32_t format)
+static bool has_rb_swapped(uint32_t format)
 {
 	switch (format) {
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_ABGR8888:
+	case DRM_FORMAT_BGR888:
 	case DRM_FORMAT_BGR565:
 		return true;
-	/*
-	 * full framework (IP version 3.x) only need rb swapped for RGB888 and
-	 * little framework (IP version 2.x) only need rb swapped for BGR888,
-	 * check for 3.x to also only rb swap BGR888 for unknown vop version
-	 */
-	case DRM_FORMAT_RGB888:
-		return VOP_MAJOR(version) == 3;
-	case DRM_FORMAT_BGR888:
-		return VOP_MAJOR(version) != 3;
 	default:
 		return false;
 	}
@@ -323,10 +316,13 @@ static int vop_convert_afbc_format(uint32_t format)
 	case DRM_FORMAT_RGB565:
 	case DRM_FORMAT_BGR565:
 		return AFBC_FMT_RGB565;
+	/* either of the below should not be reachable */
 	default:
-		DRM_DEBUG_KMS("unsupported AFBC format[%08x]\n", format);
+		DRM_WARN_ONCE("unsupported AFBC format[%08x]\n", format);
 		return -EINVAL;
 	}
+
+	return -EINVAL;
 }
 
 static uint16_t scl_vop_cal_scale(enum scale_mode mode, uint32_t src,
@@ -721,12 +717,12 @@ static void vop_crtc_atomic_disable(struct drm_crtc *crtc,
 	if (crtc->state->self_refresh_active)
 		rockchip_drm_set_win_enabled(crtc, false);
 
-	if (crtc->state->self_refresh_active)
-		goto out;
-
 	mutex_lock(&vop->vop_lock);
 
 	drm_crtc_vblank_off(crtc);
+
+	if (crtc->state->self_refresh_active)
+		goto out;
 
 	/*
 	 * Vop standby will take effect at end of current frame,
@@ -761,9 +757,9 @@ static void vop_crtc_atomic_disable(struct drm_crtc *crtc,
 	vop_core_clks_disable(vop);
 	pm_runtime_put(vop->dev);
 
+out:
 	mutex_unlock(&vop->vop_lock);
 
-out:
 	if (crtc->state->event && !crtc->state->active) {
 		spin_lock_irq(&crtc->dev->event_lock);
 		drm_crtc_send_vblank_event(crtc, crtc->state->event);
@@ -840,12 +836,12 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 	 * need align with 2 pixel.
 	 */
 	if (fb->format->is_yuv && ((new_plane_state->src.x1 >> 16) % 2)) {
-		DRM_DEBUG_KMS("Invalid Source: Yuv format not support odd xpos\n");
+		DRM_ERROR("Invalid Source: Yuv format not support odd xpos\n");
 		return -EINVAL;
 	}
 
 	if (fb->format->is_yuv && new_plane_state->rotation & DRM_MODE_REFLECT_Y) {
-		DRM_DEBUG_KMS("Invalid Source: Yuv format does not support this rotation\n");
+		DRM_ERROR("Invalid Source: Yuv format does not support this rotation\n");
 		return -EINVAL;
 	}
 
@@ -853,7 +849,7 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 		struct vop *vop = to_vop(crtc);
 
 		if (!vop->data->afbc) {
-			DRM_DEBUG_KMS("vop does not support AFBC\n");
+			DRM_ERROR("vop does not support AFBC\n");
 			return -EINVAL;
 		}
 
@@ -862,16 +858,15 @@ static int vop_plane_atomic_check(struct drm_plane *plane,
 			return ret;
 
 		if (new_plane_state->src.x1 || new_plane_state->src.y1) {
-			DRM_DEBUG_KMS("AFBC does not support offset display, " \
-				      "xpos=%d, ypos=%d, offset=%d\n",
-				      new_plane_state->src.x1, new_plane_state->src.y1,
-				      fb->offsets[0]);
+			DRM_ERROR("AFBC does not support offset display, xpos=%d, ypos=%d, offset=%d\n",
+				  new_plane_state->src.x1,
+				  new_plane_state->src.y1, fb->offsets[0]);
 			return -EINVAL;
 		}
 
 		if (new_plane_state->rotation && new_plane_state->rotation != DRM_MODE_ROTATE_0) {
-			DRM_DEBUG_KMS("No rotation support in AFBC, rotation=%d\n",
-				      new_plane_state->rotation);
+			DRM_ERROR("No rotation support in AFBC, rotation=%d\n",
+				  new_plane_state->rotation);
 			return -EINVAL;
 		}
 	}
@@ -1021,7 +1016,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	VOP_WIN_SET(vop, win, dsp_info, dsp_info);
 	VOP_WIN_SET(vop, win, dsp_st, dsp_st);
 
-	rb_swap = has_rb_swapped(vop->data->version, fb->format->format);
+	rb_swap = has_rb_swapped(fb->format->format);
 	VOP_WIN_SET(vop, win, rb_swap, rb_swap);
 
 	/*
@@ -1177,17 +1172,6 @@ static void vop_crtc_disable_vblank(struct drm_crtc *crtc)
 	VOP_INTR_SET_TYPE(vop, enable, FS_INTR, 0);
 
 	spin_unlock_irqrestore(&vop->irq_lock, flags);
-}
-
-static enum drm_mode_status vop_crtc_mode_valid(struct drm_crtc *crtc,
-						const struct drm_display_mode *mode)
-{
-	struct vop *vop = to_vop(crtc);
-
-	if (vop->data->max_output.width && mode->hdisplay > vop->data->max_output.width)
-		return MODE_BAD_HVALUE;
-
-	return MODE_OK;
 }
 
 static bool vop_crtc_mode_fixup(struct drm_crtc *crtc,
@@ -1601,7 +1585,6 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 }
 
 static const struct drm_crtc_helper_funcs vop_crtc_helper_funcs = {
-	.mode_valid = vop_crtc_mode_valid,
 	.mode_fixup = vop_crtc_mode_fixup,
 	.atomic_check = vop_crtc_atomic_check,
 	.atomic_begin = vop_crtc_atomic_begin,
@@ -1622,8 +1605,7 @@ static struct drm_crtc_state *vop_crtc_duplicate_state(struct drm_crtc *crtc)
 	if (WARN_ON(!crtc->state))
 		return NULL;
 
-	rockchip_state = kmemdup(to_rockchip_crtc_state(crtc->state),
-				 sizeof(*rockchip_state), GFP_KERNEL);
+	rockchip_state = kzalloc(sizeof(*rockchip_state), GFP_KERNEL);
 	if (!rockchip_state)
 		return NULL;
 
@@ -1648,10 +1630,7 @@ static void vop_crtc_reset(struct drm_crtc *crtc)
 	if (crtc->state)
 		vop_crtc_destroy_state(crtc, crtc->state);
 
-	if (crtc_state)
-		__drm_atomic_helper_crtc_reset(crtc, &crtc_state->base);
-	else
-		__drm_atomic_helper_crtc_reset(crtc, NULL);
+	__drm_atomic_helper_crtc_reset(crtc, &crtc_state->base);
 }
 
 #ifdef CONFIG_DRM_ANALOGIX_DP
@@ -2242,7 +2221,7 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 		goto err_disable_pm_runtime;
 
 	if (vop->data->feature & VOP_FEATURE_INTERNAL_RGB) {
-		vop->rgb = rockchip_rgb_init(dev, &vop->crtc, vop->drm_dev, 0);
+		vop->rgb = rockchip_rgb_init(dev, &vop->crtc, vop->drm_dev);
 		if (IS_ERR(vop->rgb)) {
 			ret = PTR_ERR(vop->rgb);
 			goto err_disable_pm_runtime;
