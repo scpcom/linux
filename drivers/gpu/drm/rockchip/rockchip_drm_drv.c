@@ -488,7 +488,7 @@ static int rockchip_drm_create_properties(struct drm_device *dev)
 	private->bg_prop = drm_property_create_range(dev, 0, "BACKGROUND", 0, UINT_MAX);
 	private->line_flag_prop = drm_property_create_range(dev, 0, "LINE_FLAG1", 0, UINT_MAX);
 
-	return drm_mode_create_tv_properties(dev, 0, NULL);
+	return drm_mode_create_tv_properties_legacy(dev, 0, NULL);
 }
 
 static void rockchip_attach_connector_property(struct drm_device *drm)
