@@ -45,8 +45,10 @@
 #define dev_pm_opp_find_freq_ceil opp_find_freq_ceil
 #define dev_pm_opp_find_freq_floor opp_find_freq_floor
 #endif /* Linux >= 3.13 */
+#ifdef CONFIG_ROCKCHIP_OPP
 #include <soc/rockchip/rockchip_opp_select.h>
 #include <soc/rockchip/rockchip_system_monitor.h>
+#endif
 
 static struct devfreq_simple_ondemand_data ondemand_data;
 
