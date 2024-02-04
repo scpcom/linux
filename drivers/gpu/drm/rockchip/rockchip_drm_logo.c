@@ -223,7 +223,7 @@ static int init_loader_memory(struct drm_device *drm_dev)
 
 	if (private->domain) {
 		ret = iommu_map(private->domain, start, start, ALIGN(size, pg_size),
-				IOMMU_WRITE | IOMMU_READ);
+				IOMMU_WRITE | IOMMU_READ, GFP_KERNEL);
 		if (ret) {
 			dev_err(drm_dev->dev, "failed to create 1v1 mapping\n");
 			goto err_free_logo;
@@ -254,7 +254,7 @@ static int init_loader_memory(struct drm_device *drm_dev)
 	private->cubic_lut_kvaddr = phys_to_virt(start);
 	if (private->domain) {
 		ret = iommu_map(private->domain, start, start, ALIGN(size, pg_size),
-				IOMMU_WRITE | IOMMU_READ);
+				IOMMU_WRITE | IOMMU_READ, GFP_KERNEL);
 		if (ret) {
 			dev_err(drm_dev->dev, "failed to create 1v1 mapping for cubic lut\n");
 			goto err_free_logo;
