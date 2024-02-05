@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * ALSA SoC Audio Layer - Rockchip I2S/TDM Controller driver
+ * sound/soc/rockchip/rockchip_i2s_tdm.h
+ *
+ * ALSA SoC Audio Layer - Rockchip I2S_TDM Controller driver
  *
  * Copyright (c) 2018 Rockchip Electronics Co. Ltd.
  * Author: Sugar Zhang <sugar.zhang@rock-chips.com>
  *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #ifndef _ROCKCHIP_I2S_TDM_H
@@ -20,7 +24,7 @@
 #define I2S_TXCR_RCNT_SHIFT	17
 #define I2S_TXCR_RCNT_MASK	(0x3f << I2S_TXCR_RCNT_SHIFT)
 #define I2S_TXCR_CSR_SHIFT	15
-#define I2S_TXCR_CSR(x)		((x) << I2S_TXCR_CSR_SHIFT)
+#define I2S_TXCR_CSR(x)		(x << I2S_TXCR_CSR_SHIFT)
 #define I2S_TXCR_CSR_MASK	(3 << I2S_TXCR_CSR_SHIFT)
 #define I2S_TXCR_HWT		BIT(14)
 #define I2S_TXCR_SJM_SHIFT	12
@@ -35,7 +39,7 @@
 #define I2S_TXCR_IBM_RSJM	(2 << I2S_TXCR_IBM_SHIFT)
 #define I2S_TXCR_IBM_MASK	(3 << I2S_TXCR_IBM_SHIFT)
 #define I2S_TXCR_PBM_SHIFT	7
-#define I2S_TXCR_PBM_MODE(x)	((x) << I2S_TXCR_PBM_SHIFT)
+#define I2S_TXCR_PBM_MODE(x)	(x << I2S_TXCR_PBM_SHIFT)
 #define I2S_TXCR_PBM_MASK	(3 << I2S_TXCR_PBM_SHIFT)
 #define I2S_TXCR_TFS_SHIFT	5
 #define I2S_TXCR_TFS_I2S	(0 << I2S_TXCR_TFS_SHIFT)
@@ -44,7 +48,7 @@
 #define I2S_TXCR_TFS_TDM_I2S	(3 << I2S_TXCR_TFS_SHIFT)
 #define I2S_TXCR_TFS_MASK	(3 << I2S_TXCR_TFS_SHIFT)
 #define I2S_TXCR_VDW_SHIFT	0
-#define I2S_TXCR_VDW(x)		(((x) - 1) << I2S_TXCR_VDW_SHIFT)
+#define I2S_TXCR_VDW(x)		((x - 1) << I2S_TXCR_VDW_SHIFT)
 #define I2S_TXCR_VDW_MASK	(0x1f << I2S_TXCR_VDW_SHIFT)
 
 /*
@@ -55,7 +59,7 @@
 #define I2S_RXCR_PATH_MASK(x)	(0x3 << I2S_RXCR_PATH_SHIFT(x))
 #define I2S_RXCR_PATH(x, v)	((v) << I2S_RXCR_PATH_SHIFT(x))
 #define I2S_RXCR_CSR_SHIFT	15
-#define I2S_RXCR_CSR(x)		((x) << I2S_RXCR_CSR_SHIFT)
+#define I2S_RXCR_CSR(x)		(x << I2S_RXCR_CSR_SHIFT)
 #define I2S_RXCR_CSR_MASK	(3 << I2S_RXCR_CSR_SHIFT)
 #define I2S_RXCR_HWT		BIT(14)
 #define I2S_RXCR_SJM_SHIFT	12
@@ -70,7 +74,7 @@
 #define I2S_RXCR_IBM_RSJM	(2 << I2S_RXCR_IBM_SHIFT)
 #define I2S_RXCR_IBM_MASK	(3 << I2S_RXCR_IBM_SHIFT)
 #define I2S_RXCR_PBM_SHIFT	7
-#define I2S_RXCR_PBM_MODE(x)	((x) << I2S_RXCR_PBM_SHIFT)
+#define I2S_RXCR_PBM_MODE(x)	(x << I2S_RXCR_PBM_SHIFT)
 #define I2S_RXCR_PBM_MASK	(3 << I2S_RXCR_PBM_SHIFT)
 #define I2S_RXCR_TFS_SHIFT	5
 #define I2S_RXCR_TFS_I2S	(0 << I2S_RXCR_TFS_SHIFT)
@@ -79,7 +83,7 @@
 #define I2S_RXCR_TFS_TDM_I2S	(3 << I2S_RXCR_TFS_SHIFT)
 #define I2S_RXCR_TFS_MASK	(3 << I2S_RXCR_TFS_SHIFT)
 #define I2S_RXCR_VDW_SHIFT	0
-#define I2S_RXCR_VDW(x)		(((x) - 1) << I2S_RXCR_VDW_SHIFT)
+#define I2S_RXCR_VDW(x)		((x - 1) << I2S_RXCR_VDW_SHIFT)
 #define I2S_RXCR_VDW_MASK	(0x1f << I2S_RXCR_VDW_SHIFT)
 
 /*
@@ -87,7 +91,7 @@
  * clock generation register
  */
 #define I2S_CKR_TRCM_SHIFT	28
-#define I2S_CKR_TRCM(x)	((x) << I2S_CKR_TRCM_SHIFT)
+#define I2S_CKR_TRCM(x)	(x << I2S_CKR_TRCM_SHIFT)
 #define I2S_CKR_TRCM_TXRX	(0 << I2S_CKR_TRCM_SHIFT)
 #define I2S_CKR_TRCM_TXONLY	(1 << I2S_CKR_TRCM_SHIFT)
 #define I2S_CKR_TRCM_RXONLY	(2 << I2S_CKR_TRCM_SHIFT)
@@ -109,13 +113,13 @@
 #define I2S_CKR_TLP_INVERTED	(1 << I2S_CKR_TLP_SHIFT)
 #define I2S_CKR_TLP_MASK	(1 << I2S_CKR_TLP_SHIFT)
 #define I2S_CKR_MDIV_SHIFT	16
-#define I2S_CKR_MDIV(x)		(((x) - 1) << I2S_CKR_MDIV_SHIFT)
+#define I2S_CKR_MDIV(x)		((x - 1) << I2S_CKR_MDIV_SHIFT)
 #define I2S_CKR_MDIV_MASK	(0xff << I2S_CKR_MDIV_SHIFT)
 #define I2S_CKR_RSD_SHIFT	8
-#define I2S_CKR_RSD(x)		(((x) - 1) << I2S_CKR_RSD_SHIFT)
+#define I2S_CKR_RSD(x)		((x - 1) << I2S_CKR_RSD_SHIFT)
 #define I2S_CKR_RSD_MASK	(0xff << I2S_CKR_RSD_SHIFT)
 #define I2S_CKR_TSD_SHIFT	0
-#define I2S_CKR_TSD(x)		(((x) - 1) << I2S_CKR_TSD_SHIFT)
+#define I2S_CKR_TSD(x)		((x - 1) << I2S_CKR_TSD_SHIFT)
 #define I2S_CKR_TSD_MASK	(0xff << I2S_CKR_TSD_SHIFT)
 
 /*
@@ -141,7 +145,7 @@
 #define I2S_DMACR_RDE_DISABLE	(0 << I2S_DMACR_RDE_SHIFT)
 #define I2S_DMACR_RDE_ENABLE	(1 << I2S_DMACR_RDE_SHIFT)
 #define I2S_DMACR_RDL_SHIFT	16
-#define I2S_DMACR_RDL(x)	(((x) - 1) << I2S_DMACR_RDL_SHIFT)
+#define I2S_DMACR_RDL(x)	((x - 1) << I2S_DMACR_RDL_SHIFT)
 #define I2S_DMACR_RDL_MASK	(0x1f << I2S_DMACR_RDL_SHIFT)
 #define I2S_DMACR_TDE_SHIFT	8
 #define I2S_DMACR_TDE_DISABLE	(0 << I2S_DMACR_TDE_SHIFT)
@@ -155,7 +159,7 @@
  * interrupt control register
  */
 #define I2S_INTCR_RFT_SHIFT	20
-#define I2S_INTCR_RFT(x)	(((x) - 1) << I2S_INTCR_RFT_SHIFT)
+#define I2S_INTCR_RFT(x)	((x - 1) << I2S_INTCR_RFT_SHIFT)
 #define I2S_INTCR_RXOIC		BIT(18)
 #define I2S_INTCR_RXOIE_SHIFT	17
 #define I2S_INTCR_RXOIE_DISABLE	(0 << I2S_INTCR_RXOIE_SHIFT)
@@ -164,7 +168,7 @@
 #define I2S_INTCR_RXFIE_DISABLE	(0 << I2S_INTCR_RXFIE_SHIFT)
 #define I2S_INTCR_RXFIE_ENABLE	(1 << I2S_INTCR_RXFIE_SHIFT)
 #define I2S_INTCR_TFT_SHIFT	4
-#define I2S_INTCR_TFT(x)	(((x) - 1) << I2S_INTCR_TFT_SHIFT)
+#define I2S_INTCR_TFT(x)	((x - 1) << I2S_INTCR_TFT_SHIFT)
 #define I2S_INTCR_TFT_MASK	(0x1f << I2S_INTCR_TFT_SHIFT)
 #define I2S_INTCR_TXUIC		BIT(2)
 #define I2S_INTCR_TXUIE_SHIFT	1
@@ -226,26 +230,26 @@
  * TDM ctrl register
  */
 #define TDM_FSYNC_WIDTH_SEL1_MSK	GENMASK(20, 18)
-#define TDM_FSYNC_WIDTH_SEL1(x)		(((x) - 1) << 18)
+#define TDM_FSYNC_WIDTH_SEL1(x)		((x - 1) << 18)
 #define TDM_FSYNC_WIDTH_SEL0_MSK	BIT(17)
 #define TDM_FSYNC_WIDTH_HALF_FRAME	0
 #define TDM_FSYNC_WIDTH_ONE_FRAME	BIT(17)
 #define TDM_SHIFT_CTRL_MSK		GENMASK(16, 14)
 #define TDM_SHIFT_CTRL(x)		((x) << 14)
 #define TDM_SLOT_BIT_WIDTH_MSK		GENMASK(13, 9)
-#define TDM_SLOT_BIT_WIDTH(x)		(((x) - 1) << 9)
+#define TDM_SLOT_BIT_WIDTH(x)		((x - 1) << 9)
 #define TDM_FRAME_WIDTH_MSK		GENMASK(8, 0)
-#define TDM_FRAME_WIDTH(x)		(((x) - 1) << 0)
+#define TDM_FRAME_WIDTH(x)		((x - 1) << 0)
 
 /*
  * CLKDIV
  * Mclk div register
  */
 #define I2S_CLKDIV_TXM_SHIFT	0
-#define I2S_CLKDIV_TXM(x)		(((x) - 1) << I2S_CLKDIV_TXM_SHIFT)
+#define I2S_CLKDIV_TXM(x)		((x - 1) << I2S_CLKDIV_TXM_SHIFT)
 #define I2S_CLKDIV_TXM_MASK	(0xff << I2S_CLKDIV_TXM_SHIFT)
 #define I2S_CLKDIV_RXM_SHIFT	8
-#define I2S_CLKDIV_RXM(x)		(((x) - 1) << I2S_CLKDIV_RXM_SHIFT)
+#define I2S_CLKDIV_RXM(x)		((x - 1) << I2S_CLKDIV_RXM_SHIFT)
 #define I2S_CLKDIV_RXM_MASK	(0xff << I2S_CLKDIV_RXM_SHIFT)
 
 /* Clock divider id */
@@ -287,7 +291,7 @@ enum {
 
 #define HIWORD_UPDATE(v, h, l)	(((v) << (l)) | (GENMASK((h), (l)) << 16))
 
-/* PX30 GRF CONFIGS */
+/* PX30 GRF CONFIGS*/
 #define PX30_I2S0_CLK_IN_SRC_FROM_TX		HIWORD_UPDATE(1, 13, 12)
 #define PX30_I2S0_CLK_IN_SRC_FROM_RX		HIWORD_UPDATE(2, 13, 12)
 #define PX30_I2S0_MCLK_OUT_SRC_FROM_TX		HIWORD_UPDATE(1, 5, 5)
@@ -299,7 +303,7 @@ enum {
 #define PX30_I2S0_CLK_RXONLY \
 	(PX30_I2S0_MCLK_OUT_SRC_FROM_RX | PX30_I2S0_CLK_IN_SRC_FROM_RX)
 
-/* RK1808 GRF CONFIGS */
+/* RK1808 GRF CONFIGS*/
 #define RK1808_I2S0_MCLK_OUT_SRC_FROM_RX	HIWORD_UPDATE(1, 2, 2)
 #define RK1808_I2S0_MCLK_OUT_SRC_FROM_TX	HIWORD_UPDATE(0, 2, 2)
 #define RK1808_I2S0_CLK_IN_SRC_FROM_TX		HIWORD_UPDATE(1, 1, 0)
@@ -311,7 +315,7 @@ enum {
 #define RK1808_I2S0_CLK_RXONLY \
 	(RK1808_I2S0_MCLK_OUT_SRC_FROM_RX | RK1808_I2S0_CLK_IN_SRC_FROM_RX)
 
-/* RK3308 GRF CONFIGS */
+/* RK3308 GRF CONFIGS*/
 #define RK3308_I2S0_8CH_MCLK_OUT_SRC_FROM_RX	HIWORD_UPDATE(1, 10, 10)
 #define RK3308_I2S0_8CH_MCLK_OUT_SRC_FROM_TX	HIWORD_UPDATE(0, 10, 10)
 #define RK3308_I2S0_8CH_CLK_IN_RX_SRC_FROM_TX	HIWORD_UPDATE(1, 9, 9)
@@ -345,7 +349,7 @@ enum {
 	RK3308_I2S1_8CH_CLK_IN_RX_SRC_FROM_RX | \
 	RK3308_I2S1_8CH_CLK_IN_TX_SRC_FROM_RX)
 
-/* RK3568 GRF CONFIGS */
+/* RK3568 GRF CONFIGS*/
 #define RK3568_I2S1_MCLK_OUT_SRC_FROM_TX	HIWORD_UPDATE(1, 5, 5)
 #define RK3568_I2S1_MCLK_OUT_SRC_FROM_RX	HIWORD_UPDATE(0, 5, 5)
 
@@ -376,16 +380,7 @@ enum {
 	(RK3568_I2S3_SCLK_SRC_FROM_RX | \
 	RK3568_I2S3_LRCK_SRC_FROM_RX)
 
-#define RK3568_I2S3_MCLK_IE			HIWORD_UPDATE(0, 3, 3)
-#define RK3568_I2S3_MCLK_OE			HIWORD_UPDATE(1, 3, 3)
-#define RK3568_I2S2_MCLK_IE			HIWORD_UPDATE(0, 2, 2)
-#define RK3568_I2S2_MCLK_OE			HIWORD_UPDATE(1, 2, 2)
-#define RK3568_I2S1_MCLK_TX_IE			HIWORD_UPDATE(0, 1, 1)
-#define RK3568_I2S1_MCLK_TX_OE			HIWORD_UPDATE(1, 1, 1)
-#define RK3568_I2S1_MCLK_RX_IE			HIWORD_UPDATE(0, 0, 0)
-#define RK3568_I2S1_MCLK_RX_OE			HIWORD_UPDATE(1, 0, 0)
-
-/* RV1126 GRF CONFIGS */
+/* RV1126 GRF CONFIGS*/
 #define RV1126_I2S0_MCLK_OUT_SRC_FROM_TX	HIWORD_UPDATE(0, 9, 9)
 #define RV1126_I2S0_MCLK_OUT_SRC_FROM_RX	HIWORD_UPDATE(1, 9, 9)
 
