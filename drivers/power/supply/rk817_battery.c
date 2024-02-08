@@ -486,7 +486,6 @@ struct battery_platform_data {
 struct rk817_battery_device {
 	struct platform_device		*pdev;
 	struct device				*dev;
-	struct i2c_client			*client;
 	struct rk808			*rk817;
 	struct power_supply			*bat;
 	struct power_supply		*chg_psy;
@@ -3005,7 +3004,6 @@ static int rk817_battery_probe(struct platform_device *pdev)
 			of_match_device(rk817_bat_of_match, &pdev->dev);
 	struct rk817_battery_device *battery;
 	struct rk808 *rk817 = dev_get_drvdata(pdev->dev.parent);
-	struct i2c_client *client = rk817->i2c;
 	int i,  ret;
 
 	if (!of_id) {
@@ -3013,12 +3011,11 @@ static int rk817_battery_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	battery = devm_kzalloc(&client->dev, sizeof(*battery), GFP_KERNEL);
+	battery = devm_kzalloc(rk817->dev, sizeof(*battery), GFP_KERNEL);
 	if (!battery)
 		return -EINVAL;
 
 	battery->rk817 = rk817;
-	battery->client = client;
 	battery->dev = &pdev->dev;
 	platform_set_drvdata(pdev, battery);
 	battery->chip_id = rk817->variant;
