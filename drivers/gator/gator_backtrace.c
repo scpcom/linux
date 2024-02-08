@@ -58,14 +58,19 @@ static int report_trace(struct stackframe *frame, void *d)
 #if defined(MODULE)
         unsigned int cpu = get_physical_cpu();
         struct module *mod = __gator_module_address(addr);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+	struct module_memory *core_text = &mod->mem[MOD_TEXT];
+#endif
 
         if (mod) {
             cookie = get_cookie(cpu, current, mod->name, false);
             addr = addr -
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
               (unsigned long)mod->module_core;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
               (unsigned long)mod->core_layout.base;
+#else
+              (unsigned long)core_text->base;
 #endif
         }
 #endif
@@ -122,13 +127,19 @@ static void report_trace(unsigned int cpu, unsigned long *entries, unsigned int 
         unsigned long addr = entries[index];
 #if defined(MODULE)
         struct module * mod = __gator_module_address(addr);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+        struct module_memory *core_text = &mod->mem[MOD_TEXT];
+#endif
+
         if (mod) {
             cookie = get_cookie(cpu, current, mod->name, false);
             addr = addr -
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
               (unsigned long) mod->module_core;
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
               (unsigned long) mod->core_layout.base;
+#else
+              (unsigned long) core_text->base;
 #endif
         }
 #endif
