@@ -938,9 +938,12 @@ static int rga2_MapUserMemory(struct page **pages, uint32_t *pageTable,
 	result = get_user_pages_remote(current, current->mm,
 				       Memory << PAGE_SHIFT,
 				       pageCount, writeFlag, pages, NULL, NULL);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
 	result = get_user_pages_remote(current->mm, Memory << PAGE_SHIFT,
 				       pageCount, writeFlag, pages, NULL, NULL);
+#else
+	result = get_user_pages_remote(current->mm, Memory << PAGE_SHIFT,
+				       pageCount, writeFlag, pages, NULL);
 #endif
 
 	if (result > 0 && result >= pageCount) {
