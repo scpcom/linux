@@ -854,9 +854,9 @@ static int rk805_pinctrl_probe(struct platform_device *pdev)
 	pci->gpio_chip.parent = &pdev->dev;
 
 	if (np)
-		pci->gpio_chip.of_node = np;
+		pci->gpio_chip.fwnode = of_node_to_fwnode(np);
 	else
-		pci->gpio_chip.of_node = pdev->dev.parent->of_node;
+		pci->gpio_chip.fwnode = of_node_to_fwnode(pdev->dev.parent->of_node);
 
 	/* Add gpiochip */
 	ret = devm_gpiochip_add_data(&pdev->dev, &pci->gpio_chip, pci);
