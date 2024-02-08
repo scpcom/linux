@@ -1015,8 +1015,8 @@ static int rockchip_i2s_tdm_dai_probe(struct snd_soc_dai *dai)
 {
 	struct rk_i2s_tdm_dev *i2s_tdm = snd_soc_dai_get_drvdata(dai);
 
-	dai->capture_dma_data = &i2s_tdm->capture_dma_data;
-	dai->playback_dma_data = &i2s_tdm->playback_dma_data;
+	snd_soc_dai_dma_data_set(dai, SNDRV_PCM_STREAM_CAPTURE, &i2s_tdm->capture_dma_data);
+	snd_soc_dai_dma_data_set(dai, SNDRV_PCM_STREAM_PLAYBACK, &i2s_tdm->playback_dma_data);
 
 	return 0;
 }
