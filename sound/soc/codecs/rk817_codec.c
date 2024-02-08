@@ -15,6 +15,7 @@
 #include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/i2c.h>
 #include <linux/mfd/rk808.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -1431,7 +1432,7 @@ static int rk817_platform_probe(struct platform_device *pdev)
 		goto err_;
 	}
 
-	rk817_codec_data->regmap = devm_regmap_init_i2c(rk817->i2c,
+	rk817_codec_data->regmap = devm_regmap_init_i2c(to_i2c_client(rk817->dev),
 					    &rk817_codec_regmap_config);
 	if (IS_ERR(rk817_codec_data->regmap)) {
 		ret = PTR_ERR(rk817_codec_data->regmap);
