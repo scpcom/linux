@@ -13,7 +13,9 @@
 #endif
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+#   define get_user_pages_remote(tsk,mm,start,nr_pages,write,force,pages,vmas)  get_user_pages_remote(mm,start,nr_pages,((write) ? FOLL_WRITE : 0) | ((force) ? FOLL_FORCE : 0),pages,NULL)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
 #   define get_user_pages_remote(tsk,mm,start,nr_pages,write,force,pages,vmas)  get_user_pages_remote(mm,start,nr_pages,((write) ? FOLL_WRITE : 0) | ((force) ? FOLL_FORCE : 0),pages,vmas,NULL)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 /* Kernel version 4.10.0 adds locked argument
