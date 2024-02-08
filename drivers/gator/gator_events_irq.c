@@ -8,6 +8,7 @@
  */
 
 #include "gator.h"
+#include <linux/interrupt.h>
 #include <trace/events/irq.h>
 
 #define HARDIRQ     0
