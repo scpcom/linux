@@ -288,7 +288,6 @@ struct charger_platform_data {
 };
 
 struct rk817_charger {
-	struct i2c_client *client;
 	struct platform_device *pdev;
 	struct device *dev;
 	struct rk808 *rk817;
@@ -1636,7 +1635,6 @@ static int rk817_charge_probe(struct platform_device *pdev)
 	struct rk808 *rk817 = dev_get_drvdata(pdev->dev.parent);
 	const struct of_device_id *of_id =
 			of_match_device(rk817_charge_of_match, &pdev->dev);
-	struct i2c_client *client = rk817->i2c;
 	struct rk817_charger *charge;
 	int i;
 	int ret;
@@ -1653,7 +1651,6 @@ static int rk817_charge_probe(struct platform_device *pdev)
 	charge->rk817 = rk817;
 	charge->pdev = pdev;
 	charge->dev = &pdev->dev;
-	charge->client = client;
 	platform_set_drvdata(pdev, charge);
 
 	charge->regmap = rk817->regmap;
