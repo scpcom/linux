@@ -168,7 +168,11 @@ static DECLARE_WAIT_QUEUE_HEAD(gator_annotate_wait);
 static struct timer_list gator_buffer_wake_up_timer;
 static bool gator_buffer_wake_run;
 /* Initialize semaphore unlocked to initialize memory values */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+static DEFINE_SEMAPHORE(gator_buffer_wake_sem, 1);
+#else
 static DEFINE_SEMAPHORE(gator_buffer_wake_sem);
+#endif
 static struct task_struct *gator_buffer_wake_thread;
 static LIST_HEAD(gator_events);
 
