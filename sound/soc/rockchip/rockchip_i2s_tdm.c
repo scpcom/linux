@@ -1042,6 +1042,7 @@ static int rockchip_dai_tdm_slot(struct snd_soc_dai *dai,
 }
 
 static const struct snd_soc_dai_ops rockchip_i2s_tdm_dai_ops = {
+	.probe = rockchip_i2s_tdm_dai_probe,
 	.hw_params = rockchip_i2s_tdm_hw_params,
 	.set_fmt = rockchip_i2s_tdm_set_fmt,
 	.set_sysclk = rockchip_i2s_tdm_set_sysclk,
@@ -1269,7 +1270,6 @@ static int rockchip_i2s_tdm_dai_prepare(struct platform_device *pdev,
 					struct snd_soc_dai_driver **soc_dai)
 {
 	struct snd_soc_dai_driver rockchip_i2s_tdm_dai = {
-		.probe = rockchip_i2s_tdm_dai_probe,
 		.playback = {
 			.stream_name = "Playback",
 			.channels_min = 2,
