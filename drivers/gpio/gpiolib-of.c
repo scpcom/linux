@@ -422,31 +422,19 @@ out:
 	return desc;
 }
 
-/**
- * of_get_named_gpio() - Get a GPIO number to use with GPIO API
- * @np:		device node to get GPIO from
- * @propname:	Name of property containing gpio specifier(s)
- * @index:	index of the GPIO
- *
- * **DEPRECATED** This function is deprecated and must not be used in new code.
- *
- * Returns:
- * GPIO number to use with Linux generic GPIO API, or one of the errno
- * value on the error condition.
- */
-int of_get_named_gpio(const struct device_node *np, const char *propname,
-		      int index)
+int of_get_named_gpio_flags(const struct device_node *np, const char *list_name,
+			    int index, enum of_gpio_flags *flags)
 {
 	struct gpio_desc *desc;
 
-	desc = of_get_named_gpiod_flags(np, propname, index, NULL);
+	desc = of_get_named_gpiod_flags(np, list_name, index, flags);
 
 	if (IS_ERR(desc))
 		return PTR_ERR(desc);
 	else
 		return desc_to_gpio(desc);
 }
-EXPORT_SYMBOL_GPL(of_get_named_gpio);
+EXPORT_SYMBOL_GPL(of_get_named_gpio_flags);
 
 /* Converts gpio_lookup_flags into bitmask of GPIO_* values */
 static unsigned long of_convert_gpio_flags(enum of_gpio_flags flags)
