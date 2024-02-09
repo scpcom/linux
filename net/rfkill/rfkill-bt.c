@@ -22,6 +22,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/rfkill-bt.h>
 #include <linux/rfkill-wlan.h>
 #include <linux/wakelock.h>
