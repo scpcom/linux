@@ -744,12 +744,12 @@ static struct notifier_block rfkill_wlan_fb_notifier = {
 	.notifier_call = rfkill_wlan_fb_event_notify,
 };
 
-static ssize_t wifi_power_show(struct class *cls, struct class_attribute *attr, char *_buf)
+static ssize_t wifi_power_show(const struct class *cls, const struct class_attribute *attr, char *_buf)
 {
 	return sprintf(_buf, "%d\n", wifi_power_state);
 }
 
-static ssize_t wifi_power_store(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
+static ssize_t wifi_power_store(const struct class *cls, const struct class_attribute *attr, const char *_buf, size_t _count)
 {
 	long poweren = 0;
 
@@ -768,12 +768,12 @@ static ssize_t wifi_power_store(struct class *cls, struct class_attribute *attr,
 
 static CLASS_ATTR_RW(wifi_power);
 
-static ssize_t wifi_bt_vbat_show(struct class *cls, struct class_attribute *attr, char *_buf)
+static ssize_t wifi_bt_vbat_show(const struct class *cls, const struct class_attribute *attr, char *_buf)
 {
 	return sprintf(_buf, "%d\n", wifi_bt_vbat_state);
 }
 
-static ssize_t wifi_bt_vbat_store(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
+static ssize_t wifi_bt_vbat_store(const struct class *cls, const struct class_attribute *attr, const char *_buf, size_t _count)
 {
 	long vbat = 0;
 
@@ -792,7 +792,7 @@ static ssize_t wifi_bt_vbat_store(struct class *cls, struct class_attribute *att
 
 static CLASS_ATTR_RW(wifi_bt_vbat);
 
-static ssize_t wifi_set_carddetect_store(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
+static ssize_t wifi_set_carddetect_store(const struct class *cls, const struct class_attribute *attr, const char *_buf, size_t _count)
 {
 	long val = 0;
 
