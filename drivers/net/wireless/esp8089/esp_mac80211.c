@@ -1979,6 +1979,9 @@ static const struct ieee80211_ops esp_mac80211_ops = {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
 	.flush = esp_op_flush,
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+	.wake_tx_queue = ieee80211_handle_wake_tx_queue,
+#endif
 };
 
 struct esp_pub * esp_pub_alloc_mac80211(struct device *dev)
