@@ -695,7 +695,7 @@ static int rk_pagefault_done(struct rk_iommu *iommu)
 				 * Ignore the return code, though, since we always zap cache
 				 * and clear the page fault anyway.
 				 */
-				if (iommu->domain != &rk_identity_domain)
+				if (iommu->domain && (iommu->domain != &rk_identity_domain))
 					report_iommu_fault(iommu->domain, iommu->dev, iova,
 						   status);
 				else
@@ -1195,7 +1195,7 @@ static int rk_iommu_identity_attach(struct iommu_domain *identity_domain,
 				    struct device *dev)
 {
 	struct rk_iommu *iommu;
-	struct rk_iommu_domain *rk_domain;
+	struct rk_iommu_domain *rk_domain = NULL;
 	unsigned long flags;
 	int ret;
 
@@ -1204,7 +1204,8 @@ static int rk_iommu_identity_attach(struct iommu_domain *identity_domain,
 	if (!iommu)
 		return -ENODEV;
 
-	rk_domain = to_rk_domain(iommu->domain);
+	if (iommu->domain)
+		rk_domain = to_rk_domain(iommu->domain);
 
 	dev_dbg(dev, "Detaching from iommu domain\n");
 
@@ -1212,6 +1213,9 @@ static int rk_iommu_identity_attach(struct iommu_domain *identity_domain,
 		return 0;
 
 	iommu->domain = identity_domain;
+
+	if (!rk_domain)
+		return 0;
 
 	spin_lock_irqsave(&rk_domain->iommus_lock, flags);
 	list_del_init(&iommu->node);
@@ -1629,6 +1633,9 @@ static int __maybe_unused rk_iommu_suspend(struct device *dev)
 {
 	struct rk_iommu *iommu = dev_get_drvdata(dev);
 
+	if (!iommu->domain)
+		return 0;
+
 	if (iommu->domain == &rk_identity_domain)
 		return 0;
 
@@ -1642,6 +1649,9 @@ static int __maybe_unused rk_iommu_suspend(struct device *dev)
 static int __maybe_unused rk_iommu_resume(struct device *dev)
 {
 	struct rk_iommu *iommu = dev_get_drvdata(dev);
+
+	if (!iommu->domain)
+		return 0;
 
 	if (iommu->domain == &rk_identity_domain)
 		return 0;
