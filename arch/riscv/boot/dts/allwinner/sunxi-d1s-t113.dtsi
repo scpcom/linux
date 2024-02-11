@@ -272,6 +272,26 @@
 			#iommu-cells = <1>;
 		};
 
+		codec: audio-codec@2030000 {
+			compatible = "simple-mfd", "syscon";
+			reg = <0x2030000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			regulators@2030348 {
+				compatible = "allwinner,sun20i-d1-analog-ldos";
+				reg = <0x2030348 0x4>;
+				nvmem-cells = <&bg_trim>;
+				nvmem-cell-names = "bg_trim";
+
+				reg_aldo: aldo {
+				};
+
+				reg_hpldo: hpldo {
+				};
+			};
+		};
+
 		dmic: dmic@2031000 {
 			compatible = "allwinner,sun20i-d1-dmic",
 				     "allwinner,sun50i-h6-dmic";
@@ -549,6 +569,15 @@
 			reg = <0x3006000 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			ths_calib: ths-calib@14 {
+				reg = <0x14 0x4>;
+			};
+
+			bg_trim: bg-trim@28 {
+				reg = <0x28 0x4>;
+				bits = <16 8>;
+			};
 		};
 
 		crypto: crypto@3040000 {

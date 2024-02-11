@@ -6,16 +6,6 @@
 
 / {
 	soc {
-		lradc: keys@2009800 {
-			compatible = "allwinner,sun20i-d1-lradc",
-				     "allwinner,sun50i-r329-lradc";
-			reg = <0x2009800 0x400>;
-			interrupts = <SOC_PERIPHERAL_IRQ(61) IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&ccu CLK_BUS_LRADC>;
-			resets = <&ccu RST_BUS_LRADC>;
-			status = "disabled";
-		};
-
 		i2s0: i2s@2032000 {
 			compatible = "allwinner,sun20i-d1-i2s",
 				     "allwinner,sun50i-r329-i2s";

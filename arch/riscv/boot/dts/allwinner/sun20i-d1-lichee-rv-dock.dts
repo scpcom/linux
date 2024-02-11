@@ -71,6 +71,17 @@
 	};
 };
 
+&lradc {
+	status = "okay";
+
+	button-220 {
+		label = "OK";
+		linux,code = <KEY_OK>;
+		channel = <0>;
+		voltage = <220000>;
+	};
+};
+
 &mmc1 {
 	bus-width = <4>;
 	mmc-pwrseq = <&wifi_pwrseq>;
@@ -88,6 +99,18 @@
 
 &ohci1 {
 	status = "okay";
+};
+
+&pio {
+	dmic_pb11_d0_pin: dmic-pb11-d0-pin {
+		pins = "PB11";
+		function = "dmic";
+	};
+
+	dmic_pe17_clk_pin: dmic-pe17-clk-pin {
+		pins = "PE17";
+		function = "dmic";
+	};
 };
 
 &uart1 {
