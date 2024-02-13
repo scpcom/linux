@@ -3203,7 +3203,7 @@ static int hdmi_class_init(void)
 	}
 
 	/*Create a path: sys/class/hdmi*/
-	hdmi_class = class_create(THIS_MODULE, "hdmi");
+	hdmi_class = class_create("hdmi");
 	if (IS_ERR(hdmi_class)) {
 		pr_err("Error:hdmi class_create fail\n");
 		return -1;
