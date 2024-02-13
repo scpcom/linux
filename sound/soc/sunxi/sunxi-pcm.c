@@ -581,8 +581,8 @@ static int sunxi_pcm_new(struct snd_soc_component *component,
 	struct snd_pcm *pcm = rtd->pcm;
 	struct device *dev = rtd->dev;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
-	struct sunxi_dma_params *playback_dma_data = cpu_dai->playback_dma_data;
-	struct sunxi_dma_params *capture_dma_data = cpu_dai->capture_dma_data;
+	struct sunxi_dma_params *playback_dma_data = snd_soc_dai_dma_data_get_playback(cpu_dai);
+	struct sunxi_dma_params *capture_dma_data = snd_soc_dai_dma_data_get_capture(cpu_dai);
 	size_t capture_cma_bytes = SUNXI_AUDIO_CMA_BLOCK_BYTES;
 	size_t playback_cma_bytes = SUNXI_AUDIO_CMA_BLOCK_BYTES;
 	int ret = 0;
