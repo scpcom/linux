@@ -639,6 +639,7 @@ static void sunxi_dmic_shutdown(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_dai_ops sunxi_dmic_dai_ops = {
+	.probe = sunxi_dmic_probe,
 	.startup = sunxi_dmic_startup,
 	.set_sysclk = sunxi_dmic_set_sysclk,
 	.hw_params = sunxi_dmic_hw_params,
@@ -648,7 +649,6 @@ static struct snd_soc_dai_ops sunxi_dmic_dai_ops = {
 };
 
 static struct snd_soc_dai_driver sunxi_dmic_dai = {
-	.probe = sunxi_dmic_probe,
 	.capture = {
 		.channels_min = 1,
 		.channels_max = 8,
