@@ -352,4 +352,15 @@ extern struct platform_driver tv_driver;
 extern struct platform_driver tv_ac200_driver;
 extern struct platform_driver vdpo_driver;
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+static inline int __gpio_get_value(unsigned gpio)
+{
+       return gpiod_get_raw_value(gpio_to_desc(gpio));
+}
+static inline void __gpio_set_value(unsigned gpio, int value)
+{
+       return gpiod_set_raw_value(gpio_to_desc(gpio), value);
+}
+#endif
 #endif
