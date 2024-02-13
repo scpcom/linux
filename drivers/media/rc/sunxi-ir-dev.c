@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/regulator/consumer.h>
 #include <linux/irq.h>
 #include <linux/of_platform.h>
