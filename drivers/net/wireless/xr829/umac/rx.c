@@ -17,6 +17,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rcupdate.h>
 #include <linux/export.h>
+#include <linux/version.h>
 #include <net/mac80211_xr.h>
 #include <net/ieee80211_radiotap.h>
 
@@ -2009,7 +2010,11 @@ ieee80211_rx_h_amsdu(struct ieee80211_rx_data *rx)
 	ieee80211_amsdu_to_8023s(skb, &frame_list, dev->dev_addr,
 				 rx->sdata->vif.type,
 				 rx->local->hw.extra_tx_headroom,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+				 check_da, check_sa, 0);
+#else
 				 check_da, check_sa);
+#endif
 
 	while (!skb_queue_empty(&frame_list)) {
 		rx->skb = __skb_dequeue(&frame_list);
