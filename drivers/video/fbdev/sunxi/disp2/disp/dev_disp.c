@@ -4833,7 +4833,7 @@ static int __init disp_module_init(void)
 		return -1;
 	}
 
-	disp_class = class_create(THIS_MODULE, "disp");
+	disp_class = class_create("disp");
 	if (IS_ERR(disp_class)) {
 		__wrn("class_create fail\n");
 		return -1;
