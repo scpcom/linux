@@ -7,6 +7,7 @@
 #include <linux/device.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/capability.h>
 #include "internal.h"
 #include "sunxi-rfkill.h"
