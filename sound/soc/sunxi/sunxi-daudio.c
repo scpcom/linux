@@ -1503,6 +1503,8 @@ err_resume_regulator_enable:
 }
 
 static struct snd_soc_dai_ops sunxi_daudio_dai_ops = {
+	.probe = sunxi_daudio_probe,
+	.remove = sunxi_daudio_remove,
 	.startup = sunxi_daudio_dai_startup,
 	.set_sysclk = sunxi_daudio_set_sysclk,
 	.set_clkdiv = sunxi_daudio_set_clkdiv,
@@ -1514,8 +1516,6 @@ static struct snd_soc_dai_ops sunxi_daudio_dai_ops = {
 };
 
 static struct snd_soc_dai_driver sunxi_daudio_dai = {
-	.probe = sunxi_daudio_probe,
-	.remove = sunxi_daudio_remove,
 	.playback = {
 		.channels_min = 1,
 		.channels_max = 8,
