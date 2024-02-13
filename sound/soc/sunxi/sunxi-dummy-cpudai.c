@@ -72,7 +72,10 @@ static void sunxi_cpudai_shutdown(struct snd_pcm_substream *substream,
 {
 }
 
+static int sunxi_cpudai_probe(struct snd_soc_dai *dai);
+
 static struct snd_soc_dai_ops sunxi_cpudai_dai_ops = {
+	.probe = sunxi_cpudai_probe,
 	.startup = sunxi_cpudai_startup,
 	.hw_params = sunxi_cpudai_hw_params,
 	.shutdown = sunxi_cpudai_shutdown,
@@ -89,7 +92,6 @@ static int sunxi_cpudai_probe(struct snd_soc_dai *dai)
 }
 
 static struct snd_soc_dai_driver sunxi_cpudai_dai = {
-	.probe = sunxi_cpudai_probe,
 	.playback = {
 		.channels_min = 1,
 		.channels_max = 2,
