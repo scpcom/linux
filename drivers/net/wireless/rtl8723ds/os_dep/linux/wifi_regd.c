@@ -120,7 +120,9 @@ int rtw_regd_init(struct wiphy *wiphy)
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0))
 		wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
+#endif
 #endif
 
 	return 0;
