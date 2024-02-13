@@ -384,6 +384,7 @@ static int sun20i_codec_trigger(struct snd_pcm_substream *substream, int cmd,
 }
 
 static const struct snd_soc_dai_ops sun20i_codec_dai_ops = {
+	.probe = sun20i_codec_dai_probe,
 	.startup	= sun20i_codec_startup,
 	.shutdown	= sun20i_codec_shutdown,
 	.hw_params	= sun20i_codec_hw_params,
@@ -392,7 +393,6 @@ static const struct snd_soc_dai_ops sun20i_codec_dai_ops = {
 
 static struct snd_soc_dai_driver sun20i_codec_dai = {
 	.name = DRIVER_NAME,
-	.probe = sun20i_codec_dai_probe,
 	.ops = &sun20i_codec_dai_ops,
 	.capture = {
 		.stream_name	= "Capture",
