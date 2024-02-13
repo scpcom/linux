@@ -3230,7 +3230,11 @@ ieee80211_prep_tdls_direct(struct wiphy *wiphy, struct net_device *dev,
 }
 
 int ieee80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *dev,
-			const u8 *peer, u8 action_code, u8 dialog_token,
+			const u8 *peer,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0))
+			int link_id,
+#endif
+			u8 action_code, u8 dialog_token,
 			u16 status_code, u32 peer_capability,
 			bool initiator, const u8 *extra_ies,
 			size_t extra_ies_len)
