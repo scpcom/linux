@@ -456,7 +456,7 @@ static int sunxi_pcm_mmap(struct snd_soc_component *component,
 
 static int sunxi_pcm_copy(struct snd_soc_component *component,
 			  struct snd_pcm_substream *substream, int channel,
-			  unsigned long hwoff, void __user *buf,
+			  unsigned long hwoff, struct iov_iter *buf,
 			  unsigned long bytes)
 {
 	int ret = 0;
@@ -465,7 +465,7 @@ static int sunxi_pcm_copy(struct snd_soc_component *component,
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		hwbuf = runtime->dma_area + hwoff;
-		if (copy_from_user(hwbuf, buf, bytes))
+		if (copy_from_iter(hwbuf, bytes, buf) != bytes)
 			return -EFAULT;
 		if (raw_flag > 1) {
 			char *hdmihw_area = hdmiraw_dma_area + 2 * hwoff;
@@ -476,7 +476,7 @@ static int sunxi_pcm_copy(struct snd_soc_component *component,
 		}
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		hwbuf = runtime->dma_area + hwoff;
-		if (copy_to_user(buf, hwbuf, bytes))
+		if (copy_to_iter(hwbuf, bytes, buf) != bytes)
 			return -EFAULT;
 	}
 
@@ -656,7 +656,7 @@ static const struct snd_soc_component_driver sunxi_soc_platform_no_residue = {
 	.trigger	= sunxi_pcm_trigger,
 	.pointer	= sunxi_dmaengine_pcm_pointer,
 	.mmap		= sunxi_pcm_mmap,
-	.copy_user	= sunxi_pcm_copy,
+	.copy		= sunxi_pcm_copy,
 
 	.name		= SUNXI_DMAENGINE_PCM_DRV_NAME,
 	.pcm_construct	= sunxi_pcm_new,
