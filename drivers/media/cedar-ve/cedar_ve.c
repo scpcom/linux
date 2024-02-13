@@ -1875,7 +1875,7 @@ static int cedardev_mmap(struct file *filp, struct vm_area_struct *vma)
 
 
 	/* Set reserved and I/O flag for the area. */
-	vma->vm_flags |= /*VM_RESERVED | */VM_IO;
+	vm_flags_set(vma, /*VM_RESERVED | */VM_IO);
 	/* Select uncached access. */
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
