@@ -1120,7 +1120,7 @@ int __init g2d_module_init(void)
 		return -1;
 	}
 
-	g2d_class = class_create(THIS_MODULE, "g2d");
+	g2d_class = class_create("g2d");
 	if (IS_ERR(g2d_class)) {
 		G2D_ERR_MSG("create class error\n");
 		return -1;
