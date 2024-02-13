@@ -16,6 +16,7 @@
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/version.h>
 //#include <linux/power/scenelock.h>
 #if defined(CONFIG_EXTCON)
