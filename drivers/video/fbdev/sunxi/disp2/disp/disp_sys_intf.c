@@ -448,7 +448,7 @@ uintptr_t disp_sys_pwm_request(struct device *dev, u32 pwm_id)
 	pwm_dev = devm_pwm_get(dev, NULL);
 	if (IS_ERR(pwm_dev) && PTR_ERR(pwm_dev) != -EPROBE_DEFER) {
 		dev_err(dev, "unable to request PWM, trying legacy API\n");
-		pwm_dev = pwm_request(pwm_id, "lcd");
+		pwm_dev = NULL;
 	}
 
 	if ((pwm_dev == NULL) || IS_ERR(pwm_dev)) {
@@ -472,7 +472,6 @@ int disp_sys_pwm_free(uintptr_t p_handler)
 		__wrn("disp_sys_pwm_free, handle is NULL!\n");
 		ret = -1;
 	} else {
-		pwm_free(pwm_dev);
 		__inf("disp_sys_pwm_free pwm %d\n", pwm_dev->pwm);
 	}
 
