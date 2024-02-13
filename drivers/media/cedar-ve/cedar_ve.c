@@ -2274,7 +2274,7 @@ static int create_char_device(void)
 		goto region_del;
 	}
 	//3.create class and new device for auto device node
-	cedar_devp->class = class_create(THIS_MODULE, "cedar_ve");
+	cedar_devp->class = class_create("cedar_ve");
 	if (IS_ERR_OR_NULL(cedar_devp->class)) {
 		VE_LOGE("class create fail\n");
 		ret = -EINVAL;
