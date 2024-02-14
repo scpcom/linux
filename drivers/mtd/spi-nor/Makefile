@@ -16,6 +16,7 @@ spi-nor-objs			+= spansion.o
 spi-nor-objs			+= sst.o
 spi-nor-objs			+= winbond.o
 spi-nor-objs			+= xilinx.o
+spi-nor-objs			+= cvitek_support_list.o
 spi-nor-objs			+= xmc.o
 spi-nor-objs			+= xtx.o
 spi-nor-$(CONFIG_DEBUG_FS)	+= debugfs.o

@@ -184,6 +184,11 @@ config SOC_CANAAN_K210_DTB_SOURCE
 
 endif # ARCH_CANAAN
 
+config ARCH_CVITEK
+	bool "CVITEK SoCs"
+	help
+	  This enables support for cvitek SoC platform hardware.
+
 config SOC_THEAD
 	bool "T-HEAD SoCs"
 	help

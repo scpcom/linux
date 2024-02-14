@@ -1820,3 +1820,4 @@ config ARCH_HIBERNATION_POSSIBLE
 endmenu
 
 source "arch/arm/Kconfig.assembler"
+source "arch/arm/mach-cvitek/Kconfig"
