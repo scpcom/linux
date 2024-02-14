@@ -93,6 +93,11 @@
 #define SPINOR_OP_RD_EVCR      0x65    /* Read EVCR register */
 #define SPINOR_OP_WD_EVCR      0x61    /* Write EVCR register */
 
+/* spi nor otp command */
+#define SPINOR_OP_RD_OTP	0x48
+#define SPINOR_OP_ER_OTP	0x44
+#define SPINOR_OP_WR_OTP	0x42
+
 /* Used for GigaDevices and Winbond flashes. */
 #define SPINOR_OP_ESECR		0x44	/* Erase Security registers */
 #define SPINOR_OP_PSECR		0x42	/* Program Security registers */
@@ -314,6 +319,12 @@ struct spi_nor_controller_ops {
 	ssize_t (*write)(struct spi_nor *nor, loff_t to, size_t len,
 			 const u8 *buf);
 	int (*erase)(struct spi_nor *nor, loff_t offs);
+
+	ssize_t (*read_otp)(struct spi_nor *nor, loff_t from, size_t len, u8 *buf);
+	ssize_t (*write_otp)(struct spi_nor *nor, loff_t to, size_t len,
+			     const u8 *buf);
+	int (*erase_otp)(struct spi_nor *nor, loff_t offs);
+
 };
 
 /**
