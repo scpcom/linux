@@ -13,6 +13,16 @@
 
 struct mmc_host;
 
+struct mmc_gpio {
+	struct gpio_desc *ro_gpio;
+	struct gpio_desc *cd_gpio;
+	irq_handler_t cd_gpio_isr;
+	char *ro_label;
+	char *cd_label;
+	u32 cd_debounce_delay_ms;
+	int cd_irq;
+};
+
 int mmc_gpio_get_ro(struct mmc_host *host);
 int mmc_gpio_get_cd(struct mmc_host *host);
 void mmc_gpio_set_cd_irq(struct mmc_host *host, int irq);

@@ -14,6 +14,7 @@
 #include <asm/errno.h>
 #include <asm/unwind.h>
 #include <asm/hardware/cache-b15-rac.h>
+#include <asm-generic/export.h>
 
 #include "proc-macros.S"
 
@@ -445,6 +446,7 @@ SYM_TYPED_FUNC_START(v7_dma_map_area)
 	beq	v7_dma_inv_range
 	b	v7_dma_clean_range
 SYM_FUNC_END(v7_dma_map_area)
+EXPORT_SYMBOL(v7_dma_map_area)
 
 /*
  *	dma_unmap_area(start, size, dir)

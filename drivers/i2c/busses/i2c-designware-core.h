@@ -300,6 +300,7 @@ struct dw_i2c_dev {
 	int			(*set_sda_hold_time)(struct dw_i2c_dev *dev);
 	int			mode;
 	struct i2c_bus_recovery_info rinfo;
+	int			use_interstop;
 };
 
 #define ACCESS_INTR_MASK			BIT(0)

@@ -535,7 +535,10 @@ struct flash_info {
 #define SPI_NOR_OCTAL_READ		BIT(5)
 #define SPI_NOR_OCTAL_DTR_READ		BIT(6)
 #define SPI_NOR_OCTAL_DTR_PP		BIT(7)
+#define SPI_NOR_QUAD_WRITE      BIT(8) /* Flash support Quad write */
+#define SPI_NOR_QUAD_OP         (SPI_NOR_QUAD_READ | SPI_NOR_QUAD_WRITE)
 
+#define SPI_NOR_HAS_FIX_DUMMY  BIT(9)
 	u8 fixup_flags;
 #define SPI_NOR_4B_OPCODES		BIT(0)
 #define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(1)
@@ -600,6 +603,7 @@ extern const struct spi_nor_manufacturer spi_nor_sst;
 extern const struct spi_nor_manufacturer spi_nor_winbond;
 extern const struct spi_nor_manufacturer spi_nor_xmc;
 extern const struct spi_nor_manufacturer spi_nor_xtx;
+extern const struct spi_nor_manufacturer spi_nor_cvitek;
 
 extern const struct attribute_group *spi_nor_sysfs_groups[];
 
@@ -628,6 +632,7 @@ int spi_nor_read_cr(struct spi_nor *nor, u8 *cr);
 int spi_nor_write_sr(struct spi_nor *nor, const u8 *sr, size_t len);
 int spi_nor_write_sr_and_check(struct spi_nor *nor, u8 sr1);
 int spi_nor_write_16bit_cr_and_check(struct spi_nor *nor, u8 cr);
+int spi_nor_sr_bit1_quad_enable(struct spi_nor *nor);
 
 ssize_t spi_nor_read_data(struct spi_nor *nor, loff_t from, size_t len,
 			  u8 *buf);

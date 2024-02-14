@@ -21,6 +21,9 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb.h>
+#if defined(CONFIG_CVITEK_USB_LEGACY)
+#include <linux/usb/otg.h>
+#endif
 
 #include "trace.h"
 
@@ -46,6 +49,7 @@ static const struct bus_type gadget_bus_type;
  * usb_gadget_connect_locked(), usb_gadget_disconnect_locked(),
  * usb_udc_connect_control_locked(), usb_gadget_udc_start_locked() and
  * usb_gadget_udc_stop_locked() are called with this lock held.
+ * @is_otg - we're registered with OTG core and it takes care of UDC start/stop
  *
  * This represents the internal data structure which is used by the UDC-class
  * to hold information about udc driver and gadget together.
@@ -60,6 +64,9 @@ struct usb_udc {
 	bool				allow_connect;
 	struct work_struct		vbus_work;
 	struct mutex			connect_lock;
+#if defined(CONFIG_CVITEK_USB_LEGACY)
+	bool				is_otg;
+#endif
 };
 
 static const struct class udc_class;
@@ -1333,6 +1340,78 @@ static inline void usb_gadget_disable_async_callbacks(struct usb_udc *udc)
 		gadget->ops->udc_async_callbacks(gadget, false);
 }
 
+#if defined(CONFIG_CVITEK_USB_LEGACY)
+/**
+ * usb_gadget_start - start the usb gadget controller and connect to bus
+ * @gadget: the gadget device to start
+ *
+ * This is external API for use by OTG core.
+ *
+ * Start the usb device controller and connect to bus (enable pull).
+ */
+static int usb_gadget_start(struct usb_gadget *gadget)
+{
+	int ret;
+	struct usb_udc *udc = NULL;
+
+	dev_dbg(&gadget->dev, "%s\n", __func__);
+	mutex_lock(&udc_lock);
+	list_for_each_entry(udc, &udc_list, list)
+		if (udc->gadget == gadget)
+			goto found;
+
+	dev_err(gadget->dev.parent, "%s: gadget not registered.\n",
+		__func__);
+	mutex_unlock(&udc_lock);
+	return -EINVAL;
+
+found:
+	ret = usb_gadget_udc_start(udc);
+	if (ret)
+		dev_err(&udc->dev, "USB Device Controller didn't start: %d\n",
+			ret);
+	else
+		usb_udc_connect_control(udc);
+
+	mutex_unlock(&udc_lock);
+
+	return ret;
+}
+
+/**
+ * usb_gadget_stop - disconnect from bus and stop the usb gadget
+ * @gadget: The gadget device we want to stop
+ *
+ * This is external API for use by OTG core.
+ *
+ * Disconnect from the bus (disable pull) and stop the
+ * gadget controller.
+ */
+static int usb_gadget_stop(struct usb_gadget *gadget)
+{
+	struct usb_udc *udc = NULL;
+
+	dev_dbg(&gadget->dev, "%s\n", __func__);
+	mutex_lock(&udc_lock);
+	list_for_each_entry(udc, &udc_list, list)
+		if (udc->gadget == gadget)
+			goto found;
+
+	dev_err(gadget->dev.parent, "%s: gadget not registered.\n",
+		__func__);
+	mutex_unlock(&udc_lock);
+	return -EINVAL;
+
+found:
+	usb_gadget_disconnect(udc->gadget);
+	udc->driver->disconnect(udc->gadget);
+	usb_gadget_udc_stop(udc);
+	mutex_unlock(&udc_lock);
+
+	return 0;
+}
+#endif
+
 /**
  * usb_udc_release - release the usb_udc struct
  * @dev: the dev member within usb_udc
@@ -1605,6 +1684,13 @@ static int gadget_match_driver(struct device *dev, const struct device_driver *d
 	return 1;
 }
 
+#if defined(CONFIG_CVITEK_USB_LEGACY)
+struct otg_gadget_ops otg_gadget_intf = {
+	.start = usb_gadget_start,
+	.stop = usb_gadget_stop,
+};
+#endif
+
 static int gadget_bind_driver(struct device *dev)
 {
 	struct usb_gadget *gadget = dev_to_usb_gadget(dev);
@@ -1630,6 +1716,7 @@ static int gadget_bind_driver(struct device *dev)
 	if (ret)
 		goto err_bind;
 
+#if !defined(CONFIG_CVITEK_USB_LEGACY)
 	mutex_lock(&udc->connect_lock);
 	ret = usb_gadget_udc_start_locked(udc);
 	if (ret) {
@@ -1644,6 +1731,25 @@ static int gadget_bind_driver(struct device *dev)
 
 	mutex_unlock(&udc->connect_lock);
 
+#else
+	/* If OTG, the otg core starts the UDC when needed */
+	udc->is_otg = !usb_otg_register_gadget(udc->gadget, &otg_gadget_intf);
+	if (!udc->is_otg) {
+		mutex_lock(&udc->connect_lock);
+		ret = usb_gadget_udc_start_locked(udc);
+		if (ret) {
+			mutex_unlock(&udc->connect_lock);
+			goto err_start;
+		}
+		usb_gadget_enable_async_callbacks(udc);
+		udc->allow_connect = true;
+		ret = usb_udc_connect_control_locked(udc);
+		if (ret)
+			goto err_connect_control;
+
+		mutex_unlock(&udc->connect_lock);
+	}
+#endif
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
 	return 0;
 
@@ -1681,6 +1787,7 @@ static void gadget_unbind_driver(struct device *dev)
 
 	udc->allow_connect = false;
 	cancel_work_sync(&udc->vbus_work);
+#if !defined(CONFIG_CVITEK_USB_LEGACY)
 	mutex_lock(&udc->connect_lock);
 	usb_gadget_disconnect_locked(gadget);
 	usb_gadget_disable_async_callbacks(udc);
@@ -1693,6 +1800,24 @@ static void gadget_unbind_driver(struct device *dev)
 	mutex_lock(&udc->connect_lock);
 	usb_gadget_udc_stop_locked(udc);
 	mutex_unlock(&udc->connect_lock);
+#else
+	/* If OTG, the otg core ensures UDC is stopped on unregister */
+	if (udc->is_otg) {
+		usb_otg_unregister_gadget(udc->gadget);
+		udc->driver->unbind(udc->gadget);
+	} else {
+		mutex_lock(&udc->connect_lock);
+		usb_gadget_disconnect_locked(gadget);
+		usb_gadget_disable_async_callbacks(udc);
+		mutex_unlock(&udc->connect_lock);
+
+		udc->driver->unbind(gadget);
+
+		mutex_lock(&udc->connect_lock);
+		usb_gadget_udc_stop_locked(udc);
+		mutex_unlock(&udc->connect_lock);
+	}
+#endif
 
 	mutex_lock(&udc_lock);
 	driver->is_bound = false;
@@ -1780,6 +1905,14 @@ static ssize_t soft_connect_store(struct device *dev,
 		goto out;
 	}
 
+#if defined(CONFIG_CVITEK_USB_LEGACY)
+	/* In OTG mode we don't support softconnect, but b_bus_req */
+	if (udc->is_otg) {
+		dev_err(dev, "soft-connect not supported in OTG mode\n");
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
+#endif
 	if (sysfs_streq(buf, "connect")) {
 		mutex_lock(&udc->connect_lock);
 		usb_gadget_udc_start_locked(udc);

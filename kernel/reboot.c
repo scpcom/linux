@@ -845,7 +845,7 @@ void ctrl_alt_del(void)
 }
 
 #define POWEROFF_CMD_PATH_LEN  256
-static char poweroff_cmd[POWEROFF_CMD_PATH_LEN] = "/sbin/poweroff";
+static char poweroff_cmd[POWEROFF_CMD_PATH_LEN] = "/sbin/poweroff -f";
 static const char reboot_cmd[] = "/sbin/reboot";
 
 static int run_cmd(const char *cmd)

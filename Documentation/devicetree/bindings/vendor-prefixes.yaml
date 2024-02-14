@@ -344,6 +344,8 @@ patternProperties:
     description: Shenzhen Cudy Technology Co., Ltd.
   "^cui,.*":
     description: CUI Devices
+  "^cvitek,.*":
+    description:  Cvitek Co., Ltd.
   "^cypress,.*":
     description: Cypress Semiconductor Corporation
   "^cyx,.*":

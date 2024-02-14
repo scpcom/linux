@@ -303,6 +303,32 @@ static void dwc2_set_stm32mp15_hsotg_params(struct dwc2_hsotg *hsotg)
 	p->hird_threshold_en = false;
 }
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+static void dwc2_set_cv182x_params(struct dwc2_hsotg *hsotg)
+{
+	struct dwc2_core_params *p = &hsotg->params;
+
+	p->otg_cap = DWC2_CAP_PARAM_NO_HNP_SRP_CAPABLE;
+	p->speed = DWC2_SPEED_PARAM_HIGH;
+	p->phy_type = DWC2_PHY_TYPE_PARAM_UTMI;
+	p->ahbcfg = GAHBCFG_HBSTLEN_INCR16 << GAHBCFG_HBSTLEN_SHIFT;
+	p->phy_utmi_width = 16;
+	p->g_dma = 1;
+	p->g_dma_desc = 1;
+	p->lpm = false;
+	p->lpm_clock_gating = false;
+	p->besl = false;
+	p->hird_threshold_en = false;
+	p->max_packet_count = (1 << 10) - 1;
+	p->max_transfer_size = (1 << 19) - 1;
+	p->reload_ctl = 0;
+	p->enable_dynamic_fifo = true;
+	p->en_multiple_tx_fifo = true;
+	/* [TODO] shall we power down this ?*/
+	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
+}
+#endif
+
 const struct of_device_id dwc2_of_match_table[] = {
 	{ .compatible = "brcm,bcm2835-usb", .data = dwc2_set_bcm_params },
 	{ .compatible = "hisilicon,hi6220-usb", .data = dwc2_set_his_params },
@@ -347,6 +373,10 @@ const struct of_device_id dwc2_of_match_table[] = {
 	  .data = dwc2_set_stm32mp15_hsotg_params },
 	{ .compatible = "intel,socfpga-agilex-hsotg",
 	  .data = dwc2_set_socfpga_agilex_params },
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	{ .compatible = "cvitek,cv182x-usb",
+	  .data = dwc2_set_cv182x_params },
+#endif
 	{},
 };
 MODULE_DEVICE_TABLE(of, dwc2_of_match_table);

@@ -415,6 +415,48 @@ TRACE_EVENT(rss_stat,
 		__print_symbolic(__entry->member, TRACE_MM_PAGES),
 		__entry->size)
 	);
+
+TRACE_EVENT(ion_heap_shrink,
+
+	TP_PROTO(const char *heap_name,
+		 size_t len,
+		 long total_allocated),
+
+	TP_ARGS(heap_name, len, total_allocated),
+
+	TP_STRUCT__entry(
+		__field(const char *, heap_name)
+		__field(size_t, len)
+		__field(long, total_allocated)
+	),
+
+	TP_fast_assign(
+		__entry->heap_name = heap_name;
+		__entry->len = len;
+		__entry->total_allocated = total_allocated;
+	),
+
+	TP_printk("heap_name=%s, len=%zu, total_allocated=%ld",
+		  __entry->heap_name, __entry->len, __entry->total_allocated)
+	);
+
+TRACE_EVENT(ion_heap_grow,
+		TP_PROTO(const char *heap_name, size_t len, long total_allocated),
+
+		TP_ARGS(heap_name, len, total_allocated),
+
+		TP_STRUCT__entry(__field(const char *, heap_name)
+				     __field(size_t, len)
+					     __field(long, total_allocated)),
+
+		TP_fast_assign(__entry->heap_name = heap_name; __entry->len = len;
+			   __entry->total_allocated = total_allocated;),
+
+		TP_printk("heap_name=%s, len=%zu, total_allocated=%ld",
+		      __entry->heap_name, __entry->len,
+		      __entry->total_allocated)
+		);
+
 #endif /* _TRACE_KMEM_H */
 
 /* This part must be outside protection */

@@ -27,6 +27,49 @@
 #define PRD_SIZE_MAX	PAGE_SIZE
 #define MIN_PERIODS	4
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK) && defined(UAC1_DBG)
+
+#define dprintk(fmt, arg...)	pr_debug(KERN_DEBUG "%s: " fmt, __func__, ## arg)
+
+#define UAC_DBG_NUM	40
+struct uac_dbg_s {
+	struct timeval	time;
+	struct usb_request req;
+};
+
+static struct uac_dbg_s uac_dbg[UAC_DBG_NUM];
+static int uac_dbg_idx = UAC_DBG_NUM;
+module_param(uac_dbg_idx, int, 0644);
+
+static void uac_dbg_log(struct usb_request *req)
+{
+	struct timeval tv;
+	struct uac_dbg_s *dbg;
+
+	if (uac_dbg_idx >= UAC_DBG_NUM)
+		return;
+
+	do_gettimeofday(&tv);
+	dbg = &uac_dbg[uac_dbg_idx];
+	memcpy(&dbg->req, req, sizeof(struct usb_request));
+	dbg->time.tv_sec = tv.tv_sec;
+	dbg->time.tv_usec = tv.tv_usec;
+	uac_dbg_idx++;
+
+	if (uac_dbg_idx == UAC_DBG_NUM) {
+		int i;
+		u64 time_0;
+
+		for (i = 0; i < uac_dbg_idx; i++) {
+			//time_0 = (uac_dbg[i].time.tv_sec * STOUS) + uac_dbg[i].time.tv_usec;
+			time_0 = uac_dbg[i].time.tv_usec;
+			dprintk("[%d - %llu] status = %d, length = %d\n", i,
+					time_0, uac_dbg[i].req.status, uac_dbg[i].req.actual);
+		}
+	}
+}
+#endif
+
 enum {
 	UAC_FBACK_CTRL,
 	UAC_P_PITCH_CTRL,
@@ -168,6 +211,9 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	if (req->status == -ESHUTDOWN)
 		return;
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK) && defined(UAC1_DBG)
+	uac_dbg_log(req);
+#endif
 	/*
 	 * We can't really do much about bad xfers.
 	 * Afterall, the ISOCH xfers could fail legitimately.
@@ -597,6 +643,9 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 	prm = &uac->c_prm;
 	dev_dbg(dev, "start capture with rate %d\n", prm->srate);
 	ep = audio_dev->out_ep;
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	usb_ep_disable(ep);
+#endif
 	ret = config_ep_by_speed(gadget, &audio_dev->func, ep);
 	if (ret < 0) {
 		dev_err(dev, "config_ep_by_speed for out_ep failed (%d)\n", ret);
@@ -711,6 +760,9 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 	prm = &uac->p_prm;
 	dev_dbg(dev, "start playback with rate %d\n", prm->srate);
 	ep = audio_dev->in_ep;
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	usb_ep_disable(ep);
+#endif
 	ret = config_ep_by_speed(gadget, &audio_dev->func, ep);
 	if (ret < 0) {
 		dev_err(dev, "config_ep_by_speed for in_ep failed (%d)\n", ret);

@@ -17,6 +17,7 @@
 #include <crypto/hash.h>
 #include <crypto/sha1.h>
 #include "tee_private.h"
+#include "tee_cv_private.h"
 
 #define TEE_NUM_DEVICES	32
 
@@ -983,6 +984,8 @@ static DEVICE_ATTR_RO(implementation_id);
 
 static struct attribute *tee_dev_attrs[] = {
 	&dev_attr_implementation_id.attr,
+	&dev_attr_aimodel_keyfile_path.attr,
+	&dev_attr_cv_debug.attr,
 	NULL
 };
 
@@ -1263,6 +1266,8 @@ static int __init tee_init(void)
 		goto out_unreg_chrdev;
 	}
 
+	tee_cv_init();
+
 	return 0;
 
 out_unreg_chrdev:
@@ -1275,6 +1280,7 @@ out_unreg_class:
 
 static void __exit tee_exit(void)
 {
+	tee_cv_exit();
 	bus_unregister(&tee_bus_type);
 	unregister_chrdev_region(tee_devt, TEE_NUM_DEVICES);
 	class_unregister(&tee_class);

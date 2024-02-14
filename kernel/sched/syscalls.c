@@ -13,6 +13,10 @@
 
 #include <uapi/linux/sched/types.h>
 
+#ifdef CONFIG_SCHED_CVITEK
+#include "cvi_sched.h"
+#endif
+
 #include "sched.h"
 #include "autogroup.h"
 
@@ -784,7 +788,9 @@ static int _sched_setscheduler(struct task_struct *p, int policy,
 		policy &= ~SCHED_RESET_ON_FORK;
 		attr.sched_policy = policy;
 	}
-
+#ifdef CONFIG_SCHED_CVITEK
+	cvi_checkpriority(p, &attr);
+#endif
 	return __sched_setscheduler(p, &attr, check, true);
 }
 /**
@@ -806,8 +812,14 @@ int sched_setscheduler(struct task_struct *p, int policy,
 }
 EXPORT_SYMBOL_GPL(sched_setscheduler);
 
+#ifdef CONFIG_SCHED_CVITEK
+int sched_setattr(struct task_struct *p, struct sched_attr *attr)
+{
+	cvi_checkpriority(p, attr);
+#else
 int sched_setattr(struct task_struct *p, const struct sched_attr *attr)
 {
+#endif
 	return __sched_setscheduler(p, attr, true, true);
 }
 EXPORT_SYMBOL_GPL(sched_setattr);

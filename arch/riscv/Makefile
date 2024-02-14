@@ -33,6 +33,11 @@ ifeq ($(CONFIG_ARCH_RV64I),y)
 	KBUILD_CFLAGS += -mabi=lp64
 	KBUILD_AFLAGS += -mabi=lp64
 
+# workaround for C906 ldd performance issue
+ifeq ($(CONFIG_ARCH_CVITEK),y)
+	KBUILD_CFLAGS += -mno-ldd
+endif
+
 	KBUILD_LDFLAGS += -melf64lriscv
 
 	KBUILD_RUSTFLAGS += -Ctarget-cpu=generic-rv64 --target=riscv64imac-unknown-none-elf \
@@ -93,6 +98,8 @@ CC_FLAGS_FPU  := -march=$(shell echo $(riscv-march-y) | sed -E 's/(rv32ima|rv64i
 
 KBUILD_CFLAGS += -mno-save-restore
 KBUILD_CFLAGS += -DCONFIG_PAGE_OFFSET=$(CONFIG_PAGE_OFFSET)
+
+machine-$(CONFIG_ARCH_CVITEK)       += cvitek
 
 ifeq ($(CONFIG_CMODEL_MEDLOW),y)
 	KBUILD_CFLAGS += -mcmodel=medlow

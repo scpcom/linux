@@ -1358,8 +1358,9 @@ void phy_attached_print(struct phy_device *phydev, const char *fmt, ...)
 	char *irq_str = phy_attached_info_irq(phydev);
 
 	if (!fmt) {
-		phydev_info(phydev, ATTACHED_FMT "\n", unbound,
-			    phydev_name(phydev), irq_str);
+		if (strcmp(unbound, "[unbound] "))
+			phydev_info(phydev, ATTACHED_FMT "\n", unbound,
+				    phydev_name(phydev), irq_str);
 	} else {
 		va_list ap;
 

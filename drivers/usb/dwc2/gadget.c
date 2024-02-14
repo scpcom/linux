@@ -315,7 +315,12 @@ static void dwc2_hsotg_init_fifo(struct dwc2_hsotg *hsotg)
 	u32 *txfsz = hsotg->params.g_tx_fifo_size;
 
 	/* Reset fifo map if not correctly cleared during previous session */
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	dev_dbg(hsotg->dev,
+		"%s: fifo is not cleared correctly\n", __func__);
+#else
 	WARN_ON(hsotg->fifo_map);
+#endif
 	hsotg->fifo_map = 0;
 
 	/* set RX/NPTX FIFO sizes */
@@ -434,6 +439,9 @@ static void dwc2_hsotg_unmap_dma(struct dwc2_hsotg *hsotg,
 	struct usb_request *req = &hs_req->req;
 
 	usb_gadget_unmap_request(&hsotg->gadget, req, hs_ep->map_dir);
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	req->dma = 0;
+#endif
 }
 
 /*
@@ -1266,6 +1274,10 @@ static int dwc2_hsotg_map_dma(struct dwc2_hsotg *hsotg,
 {
 	int ret;
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	if (req->dma)
+		return 0;
+#endif
 	hs_ep->map_dir = hs_ep->dir_in;
 	ret = usb_gadget_map_request(&hsotg->gadget, req, hs_ep->dir_in);
 	if (ret)
@@ -2059,7 +2071,15 @@ static void dwc2_hsotg_enqueue_setup(struct dwc2_hsotg *hsotg)
 
 	ret = dwc2_hsotg_ep_queue(&hsotg->eps_out[0]->ep, req, GFP_ATOMIC);
 	if (ret < 0) {
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+		/* Not to show this message due to flow necessary.
+		 * We may switch to device mode without cable connected.
+		 */
+		if (ret != -EAGAIN)
+			dev_err(hsotg->dev, "%s: failed queue (%d)\n", __func__, ret);
+#else
 		dev_err(hsotg->dev, "%s: failed queue (%d)\n", __func__, ret);
+#endif
 		/*
 		 * Don't think there's much we can do other than watch the
 		 * driver fail.
@@ -3418,7 +3438,7 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *hsotg,
 
 	/* remove the HNP/SRP and set the PHY */
 	usbcfg &= ~(GUSBCFG_SRPCAP | GUSBCFG_HNPCAP);
-        dwc2_writel(hsotg, usbcfg, GUSBCFG);
+	dwc2_writel(hsotg, usbcfg, GUSBCFG);
 
 	dwc2_phy_init(hsotg, true);
 
@@ -5020,6 +5040,10 @@ int dwc2_gadget_init(struct dwc2_hsotg *hsotg)
 	else if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
 		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	/* Not support OTG protocol */
+	hsotg->gadget.is_otg = 0;
+#endif
 	ret = dwc2_hsotg_hw_cfg(hsotg);
 	if (ret) {
 		dev_err(hsotg->dev, "Hardware configuration failed: %d\n", ret);

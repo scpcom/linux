@@ -842,6 +842,37 @@ struct dwc2_hregs_backup {
 #define DWC2_LS_SCHEDULE_SLICES	(DWC2_LS_SCHEDULE_FRAMES * \
 				 DWC2_LS_PERIODIC_SLICES_PER_FRAME)
 
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+
+enum CHG_PORT_E {
+	CHGDET_SDP,	/* standard downstream port. */
+	CHGDET_DCP,	/* dedicated charging port. */
+	CHGDET_CDP,	/* charging downstream port. */
+	CHGDET_NUM
+};
+
+struct cvi_usb_clk {
+	int				is_on;
+	struct clk			*clk_o;
+};
+
+struct cviusb_dev {
+	void __iomem *phy_regs;
+	void __iomem *usb_pin_regs;
+	struct cvi_usb_clk	clk_axi;
+	struct cvi_usb_clk	clk_apb;
+	struct cvi_usb_clk	clk_125m;
+	struct cvi_usb_clk	clk_33k;
+	struct cvi_usb_clk	clk_12m;
+	int			vbus_pin;
+	int			vbus_pin_inverted;
+	int			pre_vbus_status;
+	int			id_override;
+	u8			dcd_dis;
+	u8			chgdet;
+};
+#endif
+
 /**
  * struct dwc2_hsotg - Holds the state of the driver, including the non-periodic
  * and periodic schedules
@@ -1220,6 +1251,9 @@ struct dwc2_hsotg {
 	struct dwc2_hsotg_ep *eps_in[MAX_EPS_CHANNELS];
 	struct dwc2_hsotg_ep *eps_out[MAX_EPS_CHANNELS];
 #endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+	struct cviusb_dev cviusb;
+#endif
 };
 
 /* Normal architectures just use readl/write */
@@ -1304,6 +1338,20 @@ static inline bool dwc2_is_hs_iot(struct dwc2_hsotg *hsotg)
 {
 	return (hsotg->hw_params.snpsid & 0xffff0000) == 0x55320000;
 }
+
+#if IS_ENABLED(CONFIG_ARCH_CVITEK)
+/* cviusb readl/write */
+static inline u32 cviusb_readl(const void __iomem *addr)
+{
+	return readl(addr);
+}
+
+static inline void cviusb_writel(u32 value, void __iomem *addr)
+{
+	writel(value, addr);
+}
+
+#endif
 
 /*
  * The following functions support initialization of the core driver component

@@ -303,6 +303,7 @@ struct mmc_host {
 	unsigned int		f_min;
 	unsigned int		f_max;
 	unsigned int		f_init;
+	unsigned int		f_src;
 	u32			ocr_avail;
 	u32			ocr_avail_sdio;	/* SDIO-specific OCR */
 	u32			ocr_avail_sd;	/* SD-specific OCR */
@@ -498,7 +499,7 @@ struct mmc_host {
 	int			cqe_qdepth;
 	bool			cqe_enabled;
 	bool			cqe_on;
-
+	bool			ever_unplugged;
 	/* Inline encryption support */
 #ifdef CONFIG_MMC_CRYPTO
 	struct blk_crypto_profile crypto_profile;
