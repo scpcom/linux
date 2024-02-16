@@ -36,6 +36,7 @@
 	aliases {
 		ethernet0 = &emac;
 		ethernet1 = &xr829;
+		mmc0 = &mmc0;
 		serial0 = &uart0;
 		spi0 = &spi0;
 	};
