@@ -15,6 +15,7 @@
 	compatible = "sipeed,lichee-rv", "allwinner,sun20i-d1";
 
 	aliases {
+		mmc0 = &mmc0;
 		serial0 = &uart0;
 	};
 
