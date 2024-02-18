@@ -368,6 +368,9 @@ config AS_HAS_OPTION_ARCH
 	def_bool y
 	depends on $(as-instr, .option arch$(comma) +m)
 
+config RISCV_EARLY_VA
+	def_bool n
+
 config SUNXI_SOC_NAME
 	string "The name of Sunxi SoC"
 	default ""

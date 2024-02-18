@@ -259,7 +259,7 @@ static void __init setup_bootmem(void)
 	 * In 64-bit, any use of __va/__pa before this point is wrong as we
 	 * did not know the start of DRAM before.
 	 */
-	if (IS_ENABLED(CONFIG_64BIT) && IS_ENABLED(CONFIG_MMU))
+	if (IS_ENABLED(CONFIG_64BIT) && IS_ENABLED(CONFIG_MMU) && !IS_ENABLED(CONFIG_RISCV_EARLY_VA))
 		kernel_map.va_pa_offset = PAGE_OFFSET - phys_ram_base;
 
 	/*
@@ -703,6 +703,7 @@ void __meminit create_pgd_mapping(pgd_t *pgdp, uintptr_t va, phys_addr_t pa, phy
 
 static uintptr_t __meminit best_map_size(phys_addr_t pa, uintptr_t va, phys_addr_t size)
 {
+#if !IS_ENABLED(CONFIG_RISCV_EARLY_VA)
 	if (debug_pagealloc_enabled())
 		return PAGE_SIZE;
 
@@ -713,6 +714,7 @@ static uintptr_t __meminit best_map_size(phys_addr_t pa, uintptr_t va, phys_addr
 	if (pgtable_l4_enabled &&
 	    !(pa & (PUD_SIZE - 1)) && !(va & (PUD_SIZE - 1)) && size >= PUD_SIZE)
 		return PUD_SIZE;
+#endif
 
 	if (IS_ENABLED(CONFIG_64BIT) &&
 	    !(pa & (PMD_SIZE - 1)) && !(va & (PMD_SIZE - 1)) && size >= PMD_SIZE)
@@ -1171,7 +1173,7 @@ asmlinkage void __init setup_vm(uintptr_t dtb_pa)
 	 * physical addresses (if the start of dram is different from the
 	 * kernel physical address start).
 	 */
-	kernel_map.va_pa_offset = IS_ENABLED(CONFIG_64BIT) ?
+	kernel_map.va_pa_offset = (IS_ENABLED(CONFIG_64BIT) && !IS_ENABLED(CONFIG_RISCV_EARLY_VA)) ?
 				0UL : PAGE_OFFSET - kernel_map.phys_addr;
 
 	memory_limit = KERN_VIRT_SIZE;
