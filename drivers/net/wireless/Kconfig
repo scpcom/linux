@@ -31,6 +31,7 @@ config WIRELESS_WDS
 	  necessary, give up on our plan of removing it).
 
 source "drivers/net/wireless/admtek/Kconfig"
+source "drivers/net/wireless/aic8800/Kconfig"
 source "drivers/net/wireless/ath/Kconfig"
 source "drivers/net/wireless/atmel/Kconfig"
 source "drivers/net/wireless/broadcom/Kconfig"
