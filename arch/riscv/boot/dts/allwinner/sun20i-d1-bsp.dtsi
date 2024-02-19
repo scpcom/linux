@@ -15,6 +15,8 @@
 #include <dt-bindings/reset/sun20i-d1-r-ccu.h>
 #include <dt-bindings/thermal/thermal.h>
 
+#define SOC_PERIPHERAL_IRQ(nr)	(nr + 16)
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
@@ -112,7 +114,7 @@
 		dsp_wdt: watchdog@1700400 {
 			compatible = "allwinner,sun20i-d1-wdt";
 			reg = <0x1700400 0x20>;
-			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(122) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&dcxo>, <&rtc CLK_OSC32K>;
 			clock-names = "hosc", "losc";
 			status = "reserved";
@@ -124,7 +126,7 @@
 			      <0x03000000 0x10>,
 			      <0x03001000 0x1000>;
 			//interrupts-extended = <&plic0 82 IRQ_TYPE_LEVEL_HIGH>;
-			interrupts = <82 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(66) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_VE>, <&ccu CLK_VE>, <&ccu CLK_MBUS_VE>;
 			clock-names = "bus_ve", "ve", "mbus_ve";
 			resets = <&ccu RST_BUS_VE>;
@@ -136,12 +138,12 @@
 		pio: pinctrl@2000000 {
 			compatible = "allwinner,sun20i-d1-pinctrl";
 			reg = <0x2000000 0x800>;
-			interrupts = <85 IRQ_TYPE_LEVEL_HIGH>,
-				     <87 IRQ_TYPE_LEVEL_HIGH>,
-				     <89 IRQ_TYPE_LEVEL_HIGH>,
-				     <91 IRQ_TYPE_LEVEL_HIGH>,
-				     <93 IRQ_TYPE_LEVEL_HIGH>,
-				     <95 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(69) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(71) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(73) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(75) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(77) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(79) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_APB0>,
 				 <&dcxo>,
 				 <&rtc CLK_OSC32K>;
@@ -338,7 +340,7 @@
 		pwm: pwm@2000c00 {
 			compatible = "allwinner,sun20i-d1-pwm";
 			reg = <0x2000c00 0x400>;
-			interrupts = <34 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(18) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_PWM>, <&dcxo>;
 			clock-names = "bus", "mod";
 			resets = <&ccu RST_BUS_PWM>;
@@ -361,7 +363,7 @@
 			compatible = "allwinner,sun20i-d1-ledc",
 				     "allwinner,sun50i-a100-ledc";
 			reg = <0x2008000 0x400>;
-			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(20) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_LEDC>, <&ccu CLK_LEDC>;
 			clock-names = "bus", "mod";
 			resets = <&ccu RST_BUS_LEDC>;
@@ -375,7 +377,7 @@
 		ths: temperature-sensor@2009400 {
 			compatible = "allwinner,sun20i-d1-ths";
 			reg = <0x2009400 0x400>;
-			interrupts = <74 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(58) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_THS>, <&dcxo>;
 			clock-names = "bus", "mod";
 			resets = <&ccu RST_BUS_THS>;
@@ -388,7 +390,7 @@
 			compatible = "allwinner,sun20i-d1-lradc",
 				     "allwinner,sun50i-r329-lradc";
 			reg = <0x2009800 0x400>;
-			interrupts = <77 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(61) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_LRADC>;
 			resets = <&ccu RST_BUS_LRADC>;
 			status = "disabled";
@@ -397,7 +399,7 @@
 		mmu_aw: iommu@2010000 {
 			compatible = "allwinner,sunxi-iommu";
 			reg = <0x02010000 0x1000>;
-			interrupts = <80 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(64) IRQ_TYPE_LEVEL_HIGH>;
 			//interrupts-extended = <&plic0 80 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "iommu-irq";
 			clocks = <&ccu CLK_BUS_IOMMU>;
@@ -409,7 +411,7 @@
 		codec: audio-codec@2030000 {
 			compatible = "allwinner,sun20i-d1-codec", "simple-mfd", "syscon";
 			reg = <0x2030000 0x1000>;
-			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(25) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_AUDIO>,
 				 <&ccu CLK_AUDIO_ADC>,
 				 <&ccu CLK_AUDIO_DAC>,
@@ -428,7 +430,7 @@
 			compatible = "allwinner,sun20i-d1-dmic",
 				     "allwinner,sun50i-h6-dmic";
 			reg = <0x2031000 0x400>;
-			interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(24) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_DMIC>,
 				 <&ccu CLK_DMIC>;
 			clock-names = "bus", "mod";
@@ -443,7 +445,7 @@
 			compatible = "allwinner,sun20i-d1-i2s",
 				     "allwinner,sun50i-r329-i2s";
 			reg = <0x2032000 0x1000>;
-			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(26) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2S0>,
 				 <&ccu CLK_I2S0>;
 			clock-names = "apb", "mod";
@@ -458,7 +460,7 @@
 			compatible = "allwinner,sun20i-d1-i2s",
 				     "allwinner,sun50i-r329-i2s";
 			reg = <0x2033000 0x1000>;
-			interrupts = <43 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(27) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2S1>,
 				 <&ccu CLK_I2S1>;
 			clock-names = "apb", "mod";
@@ -482,7 +484,7 @@
 			resets = <&ccu RST_BUS_I2S2>;
 			dmas		= <&dma 5>, <&dma 5>;
 			dma-names	= "tx", "rx";
-			interrupts = <44 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(28) IRQ_TYPE_LEVEL_HIGH>;
 			//interrupts-extended = <&plic0 44 IRQ_TYPE_LEVEL_HIGH>;
 			sign_extend		= <0x00>;
 			tx_data_mode		= <0x00>;
@@ -533,7 +535,7 @@
 		spdif: spdif@2036000 {
 			compatible = "allwinner,sun20i-d1-spdif";
 			reg = <0x2036000 0x400>;
-			interrupts = <39 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(23) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_SPDIF>,
 				 <&ccu CLK_SPDIF_RX>,
 				 <&ccu CLK_SPDIF_TX>;
@@ -549,8 +551,8 @@
 			compatible = "allwinner,sun20i-d1-timer",
 				     "allwinner,sun8i-a23-timer";
 			reg = <0x2050000 0xa0>;
-			interrupts = <75 IRQ_TYPE_LEVEL_HIGH>,
-				     <76 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(59) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(60) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&dcxo>;
 		};
 
@@ -558,7 +560,7 @@
 			compatible = "allwinner,sun20i-d1-wdt-reset",
 				     "allwinner,sun20i-d1-wdt";
 			reg = <0x20500a0 0x20>;
-			interrupts = <79 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(63) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&dcxo>, <&rtc CLK_OSC32K>;
 			clock-names = "hosc", "losc";
 			status = "reserved";
@@ -569,7 +571,7 @@
 			reg = <0x2500000 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(2) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART0>;
 			resets = <&ccu RST_BUS_UART0>;
 			dmas = <&dma 14>, <&dma 14>;
@@ -582,7 +584,7 @@
 			reg = <0x2500400 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <19 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(3) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART1>;
 			resets = <&ccu RST_BUS_UART1>;
 			dmas = <&dma 15>, <&dma 15>;
@@ -595,7 +597,7 @@
 			reg = <0x2500800 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(4) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART2>;
 			resets = <&ccu RST_BUS_UART2>;
 			dmas = <&dma 16>, <&dma 16>;
@@ -608,7 +610,7 @@
 			reg = <0x2500c00 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(5) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART3>;
 			resets = <&ccu RST_BUS_UART3>;
 			dmas = <&dma 17>, <&dma 17>;
@@ -621,7 +623,7 @@
 			reg = <0x2501000 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(6) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART4>;
 			resets = <&ccu RST_BUS_UART4>;
 			dmas = <&dma 18>, <&dma 18>;
@@ -634,7 +636,7 @@
 			reg = <0x2501400 0x400>;
 			reg-io-width = <4>;
 			reg-shift = <2>;
-			interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(7) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_UART5>;
 			resets = <&ccu RST_BUS_UART5>;
 			dmas = <&dma 19>, <&dma 19>;
@@ -647,7 +649,7 @@
 				     "allwinner,sun8i-v536-i2c",
 				     "allwinner,sun6i-a31-i2c";
 			reg = <0x2502000 0x400>;
-			interrupts = <25 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(9) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2C0>;
 			resets = <&ccu RST_BUS_I2C0>;
 			dmas = <&dma 43>, <&dma 43>;
@@ -662,7 +664,7 @@
 				     "allwinner,sun8i-v536-i2c",
 				     "allwinner,sun6i-a31-i2c";
 			reg = <0x2502400 0x400>;
-			interrupts = <26 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(10) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2C1>;
 			resets = <&ccu RST_BUS_I2C1>;
 			dmas = <&dma 44>, <&dma 44>;
@@ -677,7 +679,7 @@
 				     "allwinner,sun8i-v536-i2c",
 				     "allwinner,sun6i-a31-i2c";
 			reg = <0x2502800 0x400>;
-			interrupts = <27 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(11) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2C2>;
 			resets = <&ccu RST_BUS_I2C2>;
 			dmas = <&dma 45>, <&dma 45>;
@@ -692,7 +694,7 @@
 				     "allwinner,sun8i-v536-i2c",
 				     "allwinner,sun6i-a31-i2c";
 			reg = <0x2502c00 0x400>;
-			interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(12) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_I2C3>;
 			resets = <&ccu RST_BUS_I2C3>;
 			dmas = <&dma 46>, <&dma 46>;
@@ -761,7 +763,7 @@
 		dma: dma-controller@3002000 {
 			compatible = "allwinner,sun20i-d1-dma";
 			reg = <0x3002000 0x1000>;
-			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(50) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_DMA>, <&ccu CLK_MBUS_DMA>;
 			clock-names = "bus", "mbus";
 			resets = <&ccu RST_BUS_DMA>;
@@ -817,7 +819,7 @@
 			compatible = "allwinner,sun20i-d1-crypto",
 				     "allwinner,sunxi-ce";
 			reg = <0x3040000 0x800>;
-			interrupts = <68 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(52) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_CE>,
 				 <&ccu CLK_CE>,
 				 <&ccu CLK_MBUS_CE>,
@@ -831,7 +833,7 @@
 			reg = <0x3102000 0x1000>,
 			      <0x3103000 0x1000>;
 			reg-names = "mbus", "dram";
-			interrupts = <59 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(43) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_MBUS>,
 				 <&ccu CLK_DRAM>,
 				 <&ccu CLK_BUS_DRAM>;
@@ -845,7 +847,7 @@
 		mmc0: mmc@4020000 {
 			compatible = "allwinner,sun20i-d1-mmc";
 			reg = <0x4020000 0x1000>;
-			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(40) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_MMC0>, <&ccu CLK_MMC0>;
 			clock-names = "ahb", "mmc";
 			resets = <&ccu RST_BUS_MMC0>;
@@ -861,7 +863,7 @@
 		mmc1: mmc@4021000 {
 			compatible = "allwinner,sun20i-d1-mmc";
 			reg = <0x4021000 0x1000>;
-			interrupts = <57 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(41) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_MMC1>, <&ccu CLK_MMC1>;
 			clock-names = "ahb", "mmc";
 			resets = <&ccu RST_BUS_MMC1>;
@@ -878,7 +880,7 @@
 			compatible = "allwinner,sun20i-d1-emmc",
 				     "allwinner,sun50i-a100-emmc";
 			reg = <0x4022000 0x1000>;
-			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(42) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_MMC2>, <&ccu CLK_MMC2>;
 			clock-names = "ahb", "mmc";
 			resets = <&ccu RST_BUS_MMC2>;
@@ -898,7 +900,7 @@
 			compatible = "allwinner,sun20i-d1-spi",
 				     "allwinner,sun50i-r329-spi";
 			reg = <0x4025000 0x1000>;
-			interrupts = <31 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(15) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_SPI0>, <&ccu CLK_SPI0>;
 			clock-names = "ahb", "mod";
 			resets = <&ccu RST_BUS_SPI0>;
@@ -915,7 +917,7 @@
 				     "allwinner,sun50i-r329-spi-dbi",
 				     "allwinner,sun50i-r329-spi";
 			reg = <0x4026000 0x1000>;
-			interrupts = <32 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(16) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_SPI1>, <&ccu CLK_SPI1>;
 			clock-names = "ahb", "mod";
 			resets = <&ccu RST_BUS_SPI1>;
@@ -931,7 +933,7 @@
 			compatible = "allwinner,sun20i-d1-musb",
 				     "allwinner,sun8i-a33-musb";
 			reg = <0x4100000 0x400>;
-			interrupts = <45 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(29) IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "mc";
 			clocks = <&ccu CLK_BUS_OTG>;
 			resets = <&ccu RST_BUS_OTG>;
@@ -965,7 +967,7 @@
 			compatible = "allwinner,sun20i-d1-ehci",
 				     "generic-ehci";
 			reg = <0x4101000 0x100>;
-			interrupts = <46 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(30) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_OHCI0>,
 				 <&ccu CLK_BUS_EHCI0>,
 				 <&ccu CLK_USB_OHCI0>;
@@ -980,7 +982,7 @@
 			compatible = "allwinner,sun20i-d1-ohci",
 				     "generic-ohci";
 			reg = <0x4101400 0x100>;
-			interrupts = <47 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(31) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_OHCI0>,
 				 <&ccu CLK_USB_OHCI0>;
 			resets = <&ccu RST_BUS_OHCI0>;
@@ -993,7 +995,7 @@
 			compatible = "allwinner,sun20i-d1-ehci",
 				     "generic-ehci";
 			reg = <0x4200000 0x100>;
-			interrupts = <49 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(33) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_OHCI1>,
 				 <&ccu CLK_BUS_EHCI1>,
 				 <&ccu CLK_USB_OHCI1>;
@@ -1008,7 +1010,7 @@
 			compatible = "allwinner,sun20i-d1-ohci",
 				     "generic-ohci";
 			reg = <0x4200400 0x100>;
-			interrupts = <50 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(34) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_OHCI1>,
 				 <&ccu CLK_USB_OHCI1>;
 			resets = <&ccu RST_BUS_OHCI1>;
@@ -1021,7 +1023,7 @@
 			compatible = "allwinner,sun20i-d1-emac",
 				     "allwinner,sun50i-a64-emac";
 			reg = <0x4500000 0x10000>;
-			interrupts = <62 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(46) IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq";
 			clocks = <&ccu CLK_BUS_EMAC>;
 			clock-names = "stmmaceth";
@@ -1047,9 +1049,9 @@
 /*			interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>,tcon-lcd0
 				     <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>,tcon-tv
 				     <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;dsi*/
-			interrupts = <106 IRQ_TYPE_LEVEL_HIGH>,
-				     <107 IRQ_TYPE_LEVEL_HIGH>,
-				     <108 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(90) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(91) IRQ_TYPE_LEVEL_HIGH>,
+				     <SOC_PERIPHERAL_IRQ(92) IRQ_TYPE_LEVEL_HIGH>;
 /*			interrupts-extended = <&plic0 106 IRQ_TYPE_LEVEL_HIGH>,
 					      <&plic0 107 IRQ_TYPE_LEVEL_HIGH>,
 					      <&plic0 108 IRQ_TYPE_LEVEL_HIGH>;*/
@@ -1131,8 +1133,8 @@
 		hdmi: hdmi@5500000 {
 			compatible = "allwinner,sunxi-hdmi";
 			reg = <0x05500000 0xfffff>;
-			interrupts = <93 IRQ_TYPE_LEVEL_HIGH>;
-			//interrupts = <109 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(77) IRQ_TYPE_LEVEL_HIGH>;
+			//interrupts = <SOC_PERIPHERAL_IRQ(93) IRQ_TYPE_LEVEL_HIGH>;
 			//interrupts-extended = <&plic0 93 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_HDMI>,
 				<&ccu CLK_HDMI_24M>,
@@ -1161,7 +1163,7 @@
 		riscv_wdt: watchdog@6011000 {
 			compatible = "allwinner,sun20i-d1-wdt";
 			reg = <0x6011000 0x20>;
-			interrupts = <147 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(131) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&dcxo>, <&rtc CLK_OSC32K>;
 			clock-names = "hosc", "losc";
 		};
@@ -1182,7 +1184,7 @@
 			compatible = "allwinner,sun20i-d1-rtc",
 				     "allwinner,sun50i-r329-rtc";
 			reg = <0x7090000 0x400>;
-			interrupts = <160 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <SOC_PERIPHERAL_IRQ(144) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&r_ccu CLK_BUS_R_RTC>,
 				 <&dcxo>,
 				 <&r_ccu CLK_R_AHB>;
