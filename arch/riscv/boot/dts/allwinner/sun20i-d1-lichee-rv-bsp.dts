@@ -46,6 +46,10 @@
 	cpu-supply = <&reg_vdd_cpu>;
 };
 
+&dcxo {
+	clock-frequency = <24000000>;
+};
+
 &ehci0 {
 	status = "okay";
 };
