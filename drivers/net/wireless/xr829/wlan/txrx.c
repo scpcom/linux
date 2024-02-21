@@ -1230,7 +1230,7 @@ xradio_tx_h_crypt(struct xradio_vif *priv,
 	} else if (skb_tailroom(t->skb) < icv_len) {
 		size_t offset = icv_len - skb_tailroom(t->skb);
 		u8 *p;
-		txrx_printk(XRADIO_DBG_ERROR,
+		txrx_printk_ratelimited(XRADIO_DBG_ERROR,
 			"Slowpath: tailroom is not big enough. "
 			"Req: %zu, got: %d.\n",
 			icv_len, skb_tailroom(t->skb));

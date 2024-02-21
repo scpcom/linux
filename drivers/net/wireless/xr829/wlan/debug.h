@@ -289,6 +289,19 @@ int xradio_logfile(char *buffer, int buf_len, u8 b_time);
 				      "[TXRX_ERR] " __VA_ARGS__);  \
 	} while (0)
 
+#define txrx_printk_ratelimited(level, ...)     \
+	do {                              \
+		if ((level) & dbg_txrx & XRADIO_DBG_ERROR)       \
+			printk_ratelimited(KERN_ERR "[TXRX_ERR] " __VA_ARGS__);  \
+		else if ((level) & dbg_txrx & XRADIO_DBG_WARN)   \
+			printk_ratelimited(KERN_ERR "[TXRX_WRN] " __VA_ARGS__);  \
+		else if ((level) & dbg_txrx)                     \
+			printk_ratelimited(KERN_ERR "[TXRX] " __VA_ARGS__);      \
+		if ((level) & dbg_logfile)         \
+			LOG_FILE_VARS(((level)&XRADIO_DBG_ERROR),  \
+				      "[TXRX_ERR] " __VA_ARGS__);  \
+	} while (0)
+
 #define bh_printk(level, ...)       \
 	do {                              \
 		if ((level) & dbg_bh & XRADIO_DBG_ERROR)       \
@@ -454,6 +467,7 @@ int get_hwt_hif_tx(struct xradio_common *hw_priv, u8 **data,
 #define xradio_dbg(level, ...)
 #define sbus_printk(level, ...)
 #define txrx_printk(level, ...)
+#define txrx_printk_ratelimited(level, ...)
 #define bh_printk(level, ...)
 #define wsm_printk(level, ...)
 #define sta_printk(level, ...)
