@@ -357,7 +357,7 @@ static int __eink_ion_alloc_coherent(struct eink_ion_mem *mem)
 		return -1;
 	}
 
-#if IS_ENABLED(CONFIG_SUNXI_IOMMU)
+#if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 	heap_id_mask = 1 << ION_HEAP_TYPE_SYSTEM;
 #else
 	heap_id_mask = 1 << ION_HEAP_TYPE_DMA;

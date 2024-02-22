@@ -2807,7 +2807,7 @@ static s32 disp_mgr_sw_enable(struct disp_manager *mgr)
 	if (dispdev) {
 		curline0 = disp_al_device_get_cur_line(dispdev->hwdev_index);
 		disp_mgr_sync(mgr, true);
-#if IS_ENABLED(CONFIG_SUNXI_IOMMU)
+#if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 		DISP_TRACE_BEGIN("enable_iommu");
 		mgr->enable_iommu(mgr, true);
 		DISP_TRACE_END("enable_iommu");
@@ -3005,7 +3005,7 @@ extern void sunxi_enable_device_iommu(unsigned int mastor_id, bool flag);
 
 static s32 disp_mgr_enable_iommu(struct disp_manager *mgr, bool en)
 {
-#if IS_ENABLED(CONFIG_SUNXI_IOMMU)
+#if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
 
 	if (mgrp->iommu_en_flag != en)

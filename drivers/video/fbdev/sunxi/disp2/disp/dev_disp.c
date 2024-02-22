@@ -1574,7 +1574,7 @@ static int __disp_ion_alloc_coherent(struct disp_ion_mem *mem)
 	int fd = -1;
 	struct dma_buf *dmabuf;
 
-#if IS_ENABLED(CONFIG_SUNXI_IOMMU)
+#if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 	heap_id_mask = 1 << ION_HEAP_TYPE_SYSTEM;
 #else
 	heap_id_mask = 2;/*1 << ION_HEAP_TYPE_DMA;*/
@@ -2687,7 +2687,7 @@ int disp_mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	if (off < g_disp_mm[mem_id].mem_len) {
-#if IS_ENABLED(CONFIG_SUNXI_IOMMU)
+#if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 		if (g_disp_mm[mem_id].p_ion_mem)
 			return g_disp_mm[mem_id].p_ion_mem->p_item->dmabuf->ops->mmap(g_disp_mm[mem_id].p_ion_mem->p_item->dmabuf, vma);
 		else
