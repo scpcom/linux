@@ -49,10 +49,18 @@ module_param(kernel_stack_unwinding, bool, 0644);
 
 /* -------------------------- KERNEL UNWINDING USING walk_stackframe -------------------------- */
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+static bool report_trace(void *d, unsigned long pc)
+#else
 static int report_trace(struct stackframe *frame, void *d)
+#endif
 {
     unsigned int *depth = d, cookie = NO_COOKIE;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+    unsigned long addr = pc;
+#else
     unsigned long addr = frame->pc;
+#endif
 
     if (*depth) {
 #if defined(MODULE)
@@ -78,7 +86,11 @@ static int report_trace(struct stackframe *frame, void *d)
         (*depth)--;
     }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0))
+    return *depth != 0;
+#else
     return *depth == 0;
+#endif
 }
 
 static void kernel_backtrace(int cpu, struct pt_regs *const regs)
