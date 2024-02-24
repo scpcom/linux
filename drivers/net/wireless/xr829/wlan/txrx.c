@@ -1228,6 +1228,10 @@ xradio_tx_h_crypt(struct xradio_vif *priv,
 			iv_len + WSM_TX_EXTRA_HEADROOM, icv_len);
 		return -ENOMEM;
 	} else if (skb_tailroom(t->skb) < icv_len) {
+		pskb_expand_head(t->skb, 0, icv_len, GFP_ATOMIC);
+	}
+
+	if (skb_tailroom(t->skb) < icv_len) {
 		size_t offset = icv_len - skb_tailroom(t->skb);
 		u8 *p;
 		txrx_printk_ratelimited(XRADIO_DBG_ERROR,
