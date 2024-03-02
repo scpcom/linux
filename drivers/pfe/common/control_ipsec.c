@@ -779,7 +779,7 @@ void* M_ipsec_sa_cache_create(U32 *saddr,U32 *daddr, U32 spi, U8 proto, U8 famil
 		sa->mtu = mtu;
 		sa->dev_mtu = dev_mtu;
 		sa->state = SA_STATE_INIT;
-		sa->elp_sa = allocElpSA(&sa->elp_sa_dma_addr);
+		sa->elp_sa = allocElpSA((dma_addr_t *)&sa->elp_sa_dma_addr);
 #ifdef CONTROL_IPSEC_DEBUG
 		printk(KERN_INFO "%s elp_sa allocated:%x-%x\n", __func__,(u32)sa->elp_sa, (u32)virt_to_phys_iram((void*)sa->elp_sa));
 #endif
