@@ -254,7 +254,7 @@ int pfe_tso( struct sk_buff *skb, struct hif_client_s *client, struct tso_cb_s *
 		seq += s_len;
 
 		/* ethernet/ip/tcp header */
-		__hif_lib_xmit_pkt(client, qno, (void *)f_dma_first->data, sh_len, 0, HIF_DONT_DMA_MAP | hif_flags, skb);
+		__hif_lib_xmit_pkt(client, qno, (void *)(u32)f_dma_first->data, sh_len, 0, HIF_DONT_DMA_MAP | hif_flags, skb);
 		tx_bytes += sh_len;
 
 		while (l_len && s_len)
