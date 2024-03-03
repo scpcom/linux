@@ -1780,6 +1780,8 @@ static struct sk_buff *pfe_vwd_rx_skb(struct vap_desc_s *vap, int qno, unsigned 
 	if (rx_ctrl & HIF_CTRL_RX_WIFI_EXPT) {
 #if defined(CONFIG_COMCERTO_ZONE_DMA_NCNB) || defined(CONFIG_COMCERTO_DMA_COHERENT_SKB)
 		skb = dev_alloc_skb(length + offset + 32);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
+		skb = slab_build_skb(buf_addr);
 #else
 		skb = build_skb(buf_addr, 0);
 #endif
@@ -1867,6 +1869,8 @@ static struct sk_buff *pfe_vwd_rx_skb(struct vap_desc_s *vap, int qno, unsigned 
 		if (skb) {
 			skb->dma_coherent = 1;
 		}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
+		skb = slab_build_skb(buf_addr);
 #else
 		skb = build_skb(buf_addr, 0);
 #endif

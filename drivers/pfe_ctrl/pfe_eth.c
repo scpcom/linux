@@ -2598,6 +2598,8 @@ static struct sk_buff *pfe_eth_rx_skb(struct net_device *dev, struct pfe_eth_pri
 			if (unlikely(!skb)) {
 				goto pkt_drop;
 			}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
+			skb = slab_build_skb(buf_addr);
 #else
 			skb = build_skb(buf_addr, 0);
 #endif
@@ -2685,6 +2687,8 @@ static struct sk_buff *pfe_eth_rx_skb(struct net_device *dev, struct pfe_eth_pri
 #endif
 				goto pkt_drop;
 			}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
+			skb_frag = slab_build_skb(buf_addr);
 #else
 			skb_frag = build_skb(buf_addr, 0);
 #endif

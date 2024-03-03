@@ -198,7 +198,11 @@ static int pfe_pcap_rx_poll (struct napi_struct *napi, int budget)
 				printk(KERN_ERR "Dropping big packet\n");
 				goto pkt_drop;
 			}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0)
+			skb = slab_build_skb(data_addr);
+#else
 			skb = build_skb(data_addr, 0);
+#endif
 
 			if (unlikely(!skb)) {
 				printk(KERN_ERR "Failed to allocate skb header\n");
