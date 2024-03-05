@@ -3,7 +3,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/of.h>
-#include "pinctrl-phobos.h"
+#include "pinctrl-athena2.h"
 
 struct cvitek_pinctrl {
 	struct device *dev;
@@ -81,7 +81,7 @@ static int cvitek_pinctrl_resume(struct device *dev)
 #endif /* CONFIG_PM_SLEEP */
 
 static const struct of_device_id cvi_pinctrl_of_match[] = {
-	{ .compatible = "cvitek,pinctrl-cv180x" },
+	{ .compatible = "cvitek,pinctrl-cv181x" },
 	{},
 };
 
@@ -94,7 +94,7 @@ static struct platform_driver cvi_pinctrl_driver = {
 	.probe = cvi_pinctrl_probe,
 	.remove	= cvi_pinctrl_remove,
 	.driver = {
-		.name = "cvitek,pinctrl-cv180x",
+		.name = "cvitek,pinctrl-cv181x",
 		.of_match_table = cvi_pinctrl_of_match,
 #ifdef CONFIG_PM_SLEEP
 		.pm	= &cvitek_pinctrl_pm_ops,

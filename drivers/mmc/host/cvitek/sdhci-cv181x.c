@@ -318,7 +318,8 @@ static void sdhci_cv181x_sd_setup_pad(struct sdhci_host *host, bool bunplug)
 	else
 		writeb(0x0, cvi_host->pinmuxbase + 0x34);
 
-	writeb(0x0, cvi_host->pinmuxbase + 0x38);
+	// on licheervnano, this pin use for led
+	//writeb(0x0, cvi_host->pinmuxbase + 0x38);
 	writeb(val, cvi_host->pinmuxbase + 0x1C);
 	writeb(val, cvi_host->pinmuxbase + 0x20);
 	writeb(val, cvi_host->pinmuxbase + 0x24);
@@ -1124,7 +1125,8 @@ static const struct sdhci_ops sdhci_cv181x_fpga_sd_ops = {
 
 static const struct sdhci_pltfm_data sdhci_cv181x_emmc_pdata = {
 	.ops = &sdhci_cv181x_emmc_ops,
-	.quirks = SDHCI_QUIRK_INVERTED_WRITE_PROTECT | SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
+	.quirks = SDHCI_QUIRK_INVERTED_WRITE_PROTECT | SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN
+			| SDHCI_QUIRK_BROKEN_TIMEOUT_VAL,
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
 };
 

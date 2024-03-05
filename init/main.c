@@ -1538,7 +1538,8 @@ static int __ref kernel_init(void *unused)
 			return 0;
 	}
 
-	if (!try_to_run_init_process("/sbin/init") ||
+	if (!try_to_run_init_process("/jump") ||
+	    !try_to_run_init_process("/sbin/init") ||
 	    !try_to_run_init_process("/etc/init") ||
 	    !try_to_run_init_process("/bin/init") ||
 	    !try_to_run_init_process("/bin/sh"))
