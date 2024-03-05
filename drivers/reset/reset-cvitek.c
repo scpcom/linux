@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * CVITEK SoCs Reset Controller driver
  *

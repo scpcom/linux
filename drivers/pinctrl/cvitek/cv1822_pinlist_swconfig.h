@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 //##==============================================================================
 //##=== This script is generate by genswconfig.pl from .\00_Mercury_Pinlist_20200528.xls
 //##=== Generate Time stamp is : 2020-05-28 20:47:34

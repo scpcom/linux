@@ -436,12 +436,6 @@ static int cv181xadc_prepare(struct snd_pcm_substream *substream,
 	val = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0);
 	adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0, val);
 	cv181xadc_on(adc);
-#ifdef CONFIG_CVI_ADC_OV_MOD
-	// chang overflow mode to bypass
-	val = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_CTRL1);
-	val &= ~AUDIO_PHY_REG_RXADC_DCB_OPT_MASK;
-	adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_CTRL1, val);
-#endif
 	return 0;
 }
 
@@ -451,6 +445,39 @@ static struct cv181xadc *file_adc_dev(struct file *file)
 	return container_of(file->private_data, struct cv181xadc, miscdev);
 }
 
+static void adc_set_volume(struct cv181xadc *adc, u32 val) {
+	u32 temp;
+	u32 val2;
+
+	pr_info("adc: set volume %d\n", val);
+	pr_debug("adc: ACODEC_SET_INPUT_VOL\n");
+	if ((val < 0) | (val > 24))
+		pr_err("Only support range 0 [0dB] ~ 24 [48dB]\n");
+	else if (val == 0) {
+		/* set mute */
+		temp = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2)
+			| AUDIO_PHY_REG_MUTEL_ON
+			| AUDIO_PHY_REG_MUTER_ON;
+		adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2, temp);
+		temp = (adc_vol_list[val] | (adc_vol_list[val] << 16));
+		adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0, temp);
+	} else {
+		val2 = (adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0) & AUDIO_PHY_REG_ADC_VOLL_MASK);
+		for (temp = 0; temp < 25; temp++) {
+			if (val2 == adc_vol_list[temp])
+				break;
+		}
+		if (temp == 0) {
+			/* unmute */
+			temp = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2)
+				& AUDIO_PHY_REG_MUTEL_OFF
+				& AUDIO_PHY_REG_MUTEL_OFF;
+			adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2, temp);
+		}
+		temp = (adc_vol_list[val] | (adc_vol_list[val] << 16));
+		adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0, temp);
+	}
+};
 
 static long adc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -479,33 +506,7 @@ static long adc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 	case ACODEC_SET_INPUT_VOL:
-		pr_debug("adc: ACODEC_SET_INPUT_VOL\n");
-		if ((val < 0) | (val > 24))
-			pr_err("Only support range 0 [0dB] ~ 24 [48dB]\n");
-		else if (val == 0) {
-			/* set mute */
-			temp = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2)
-				| AUDIO_PHY_REG_MUTEL_ON
-				| AUDIO_PHY_REG_MUTER_ON;
-			adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2, temp);
-			temp = (adc_vol_list[val] | (adc_vol_list[val] << 16));
-			adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0, temp);
-		} else {
-			val2 = (adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0) & AUDIO_PHY_REG_ADC_VOLL_MASK);
-			for (temp = 0; temp < 25; temp++) {
-				if (val2 == adc_vol_list[temp])
-					break;
-			}
-			if (temp == 0) {
-				/* unmute */
-				temp = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2)
-					& AUDIO_PHY_REG_MUTEL_OFF
-					& AUDIO_PHY_REG_MUTEL_OFF;
-				adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA2, temp);
-			}
-			temp = (adc_vol_list[val] | (adc_vol_list[val] << 16));
-			adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_ANA0, temp);
-		}
+		adc_set_volume(adc, val);
 		break;
 
 	case ACODEC_GET_INPUT_VOL:
@@ -888,6 +889,9 @@ static int cv181xadc_probe(struct platform_device *pdev)
 	/* set default input vol gain to maxmum 48dB, vol range is 0~24 */
 	ctrl1 = adc_read_reg(adc->adc_base, AUDIO_PHY_RXADC_CTRL1);
 	adc_write_reg(adc->adc_base, AUDIO_PHY_RXADC_CTRL1, ctrl1 | AUDIO_ADC_IGR_INIT_EN);
+
+	/* default input volume is 20 */
+	adc_set_volume(adc, 20);
 
 	return devm_snd_soc_register_component(&pdev->dev, &soc_component_dev_cv181xadc,
 					  &cv181xadc_dai, 1);
