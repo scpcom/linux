@@ -30,6 +30,16 @@
 #define SR_VS_CLEAN	_AC(0x00000400, UL)
 #define SR_VS_DIRTY	_AC(0x00000600, UL)
 
+#define SR_VS_THEAD	_AC(0x01800000, UL) /* Vector Status */
+#define SR_VS_OFF_THEAD	_AC(0x00000000, UL)
+#define SR_VS_INITIAL_THEAD _AC(0x00800000, UL)
+#define SR_VS_CLEAN_THEAD _AC(0x01000000, UL)
+#define SR_VS_DIRTY_THEAD _AC(0x01800000, UL)
+/* VCSR flags */
+#define VCSR_VXRM_MASK			3
+#define VCSR_VXRM_SHIFT			1
+#define VCSR_VXSAT_MASK			1
+
 #define SR_MS		_AC(0x06000000, UL) /* Matrix Status */
 #define SR_MS_OFF	_AC(0x00000000, UL)
 #define SR_MS_INITIAL	_AC(0x02000000, UL)
@@ -42,7 +52,7 @@
 #define SR_XS_CLEAN	_AC(0x00010000, UL)
 #define SR_XS_DIRTY	_AC(0x00018000, UL)
 
-#define SR_FS_VS	(SR_FS | SR_VS | SR_MS) /* Vector and Floating-Point Unit */
+#define SR_FS_VS	(SR_FS | SR_VS | SR_MS | SR_VS_THEAD) /* Vector and Floating-Point Unit */
 
 #ifndef CONFIG_64BIT
 #define SR_SD		_AC(0x80000000, UL) /* FS/VS/XS dirty */
