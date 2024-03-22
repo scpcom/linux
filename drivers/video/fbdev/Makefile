@@ -123,7 +123,8 @@ obj-$(CONFIG_FB_EFI)              += efifb.o
 obj-$(CONFIG_FB_VGA16)            += vga16fb.o
 obj-$(CONFIG_FB_OF)               += offb.o
 obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
-obj-$(CONFIG_FB_SIMPLE)           += simplefb.o dc8000-fb.o
+obj-$(CONFIG_FB_SIMPLE)           += simplefb.o 
+# dc8000-fb.o
 
 # the test framebuffer is last
 obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
