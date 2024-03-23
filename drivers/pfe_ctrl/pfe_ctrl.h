@@ -112,6 +112,11 @@ struct fpp_msg {
         u16 *payload;
 };
 
+extern int comcerto_fpp_send_command(u16 fcode, u16 length, u16 *payload, u16 *rlen, u16 *rbuf);
+extern int comcerto_fpp_send_command_simple(u16 fcode, u16 length, u16 *payload);
+extern int comcerto_fpp_send_command_atomic(u16 fcode, u16 length, u16 *payload, void (*callback)(unsigned long, int, u16, u16 *), unsigned long data);
+extern int comcerto_fpp_register_event_cb(int (*event_cb)(u16, u16, u16*));
+
 struct pfe_timer_list {
 	struct timer_list timer;
 	void (*function)(unsigned long);

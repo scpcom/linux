@@ -107,8 +107,6 @@ struct pfe_diags
 	struct pfe_diags_info util_diags_info;
 };
 
-extern int comcerto_fpp_send_command(u16 fcode, u16 length, u16 *payload, u16 *resp_length, u16 *resp_payload);
-
 #endif
 
 int pfe_diags_init(struct pfe *pfe);
