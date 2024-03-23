@@ -244,7 +244,6 @@ static void MC4_entry_remove(PMC4Entry this_entry, U32 hash)
 
 #endif
  
-int MC4_Get_Next_Hash_Entry(PMC4Command pMC4Cmd, int reset_action);
 extern TIMER_ENTRY mc4_timer;
 
 /**
@@ -823,7 +822,7 @@ int MC4_handle_MULTICAST(U16 *p, U16 Length)
 }
 
 
-void MC4_Flush_Entries(void)
+static void MC4_Flush_Entries(void)
 {
 	PMC4Entry this_entry;
 	struct slist_entry *entry;
@@ -856,7 +855,7 @@ int MC4_handle_RESET(void)
  *
  *
  */
-U16 M_mc4_cmdproc(U16 cmd_code, U16 cmd_len, U16 *pcmd)
+static U16 M_mc4_cmdproc(U16 cmd_code, U16 cmd_len, U16 *pcmd)
 {
  /*
  	This code will never get invoked, this is because of having single EVENT_MC6 for control,

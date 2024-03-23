@@ -25,12 +25,12 @@
 #include "module_bridge.h"
 
 #if !defined (COMCERTO_2000)
-PVOID bridge_snapshot_alloc(U32 size)
+static PVOID bridge_snapshot_alloc(U32 size)
 {
 	return Heap_Alloc(size);
 }
 
-void bridge_snapshot_free(PVOID p)
+static void bridge_snapshot_free(PVOID p)
 {
 	Heap_Free(p);
 }
@@ -39,12 +39,12 @@ void bridge_snapshot_free(PVOID p)
 
 extern U32 L2Bridge_timeout;
 
-PVOID bridge_snapshot_alloc(U32 size)
+static PVOID bridge_snapshot_alloc(U32 size)
 {
 	return pfe_kzalloc(size, GFP_KERNEL);
 }
 
-void bridge_snapshot_free(PVOID p)
+static void bridge_snapshot_free(PVOID p)
 {
 	pfe_kfree(p);
 }

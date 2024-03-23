@@ -35,9 +35,6 @@
 #include "fppdiag_lib.h"
 #include "module_stat.h"
 
-int IPv4_Get_Next_Hash_CTEntry(PCtExCommand pCtCmd, int reset_action);
-int IPV4_Get_Next_Hash_RtEntry(PRtCommand pRtCmd, int reset_action);
-
 extern TIMER_ENTRY ip_timer;
 
 #if !defined(COMCERTO_2000) 
@@ -56,7 +53,7 @@ struct dlist_head ct_removal_list;
 * @return		flags field value
 *
 */
-U32 hw_ct_get_flags(struct hw_ct *ct)
+static U32 hw_ct_get_flags(struct hw_ct *ct)
 {
 	return be32_to_cpu(readl(&ct->flags));
 }
@@ -69,7 +66,7 @@ U32 hw_ct_get_flags(struct hw_ct *ct)
 * @param flags		flags value to set
 *
 */
-void hw_ct_set_flags(struct hw_ct *ct, U32 flags)
+static void hw_ct_set_flags(struct hw_ct *ct, U32 flags)
 {
 	/* FIXME if the entire conntrack is in non-cacheable/non-bufferable memory,
 	  there should be no need for the memory barrier */
@@ -86,7 +83,7 @@ void hw_ct_set_flags(struct hw_ct *ct, U32 flags)
 * @return		next field value (physical address)
 *
 */
-U32 hw_ct_get_next(struct hw_ct *ct)
+static U32 hw_ct_get_next(struct hw_ct *ct)
 {
 	return be32_to_cpu(readl(&ct->next));
 }
@@ -99,7 +96,7 @@ U32 hw_ct_get_next(struct hw_ct *ct)
 * @param next		next field value (physical address)
 *
 */
-void hw_ct_set_next(struct hw_ct *ct, U32 next)
+static void hw_ct_set_next(struct hw_ct *ct, U32 next)
 {
 	/* FIXME if the entire conntrack is in non-cacheable/non-bufferable memory,
 	  there should be no need for the memory barrier */
@@ -116,7 +113,7 @@ void hw_ct_set_next(struct hw_ct *ct, U32 next)
 * @return		active field value
 *
 */
-U32 hw_ct_get_active(struct hw_ct *ct)
+static U32 hw_ct_get_active(struct hw_ct *ct)
 {
 	return be32_to_cpu(readl(&ct->active));
 }
@@ -129,7 +126,7 @@ U32 hw_ct_get_active(struct hw_ct *ct)
 * @param active		active field value
 *
 */
-void hw_ct_set_active(struct hw_ct *ct, U32 active)
+static void hw_ct_set_active(struct hw_ct *ct, U32 active)
 {
 	writel(cpu_to_be32(active), &ct->active);
 }
@@ -171,7 +168,7 @@ void ct_free(PCtEntry pEntry_orig)
 }
 
 
-struct dlist_head *ct_dlist_head(U32 hash)
+static struct dlist_head *ct_dlist_head(U32 hash)
 {
 	struct pfe_ctrl *ctrl = &pfe->ctrl;
 	struct hw_ct *ct = ctrl->hash_array_baseaddr + hash * CLASS_ROUTE_SIZE;
@@ -565,7 +562,7 @@ void ct_remove(PCtEntry pEntry_orig, PCtEntry pEntry_rep, U32 hash_orig, U32 has
 * @param pEntry		pointer to the software conntrack
 * @param hash		hash index where to update the conntrack
 */
-void ct_update_one(PCtEntry pEntry, U32 hash)
+static void ct_update_one(PCtEntry pEntry, U32 hash)
 {
 	struct hw_ct *ct = pEntry->ct;
 	int i;

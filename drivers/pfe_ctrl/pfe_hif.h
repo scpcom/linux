@@ -314,4 +314,6 @@ static inline void pfe_memcpy(void *dst, void *src, unsigned int len)
 	}
 }
 
+void pfe_hif_desc_dump(struct pfe_hif *hif);
+
 #endif /* _PFE_HIF_H_ */

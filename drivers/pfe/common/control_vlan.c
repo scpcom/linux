@@ -27,9 +27,6 @@
 #include "layer2.h"
 
 
-int Vlan_Get_Next_Hash_Entry(PVlanCommand pVlanCmd, int reset_action);
-
-
 #if defined(COMCERTO_2000)
 
 static PVlanEntry vlan_alloc(void)

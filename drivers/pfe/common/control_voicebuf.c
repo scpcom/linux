@@ -267,7 +267,7 @@ int voice_buffer_command_start(U16 *cmd, U16 len)
 	return NO_ERR;
 }
 
-void voice_source_remove(struct voice_source *source, U16 buffer_id)
+static void voice_source_remove(struct voice_source *source, U16 buffer_id)
 {
 	struct voice_buffer *buf;
 	struct voice_source *prev;

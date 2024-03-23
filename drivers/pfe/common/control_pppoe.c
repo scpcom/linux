@@ -33,8 +33,6 @@
 #include "module_qm.h"
 #include "module_wifi.h"
 
-int PPPoE_Get_Next_SessionEntry(pPPPoECommand pSessionCmd, int reset_action);
-
 #if defined(COMCERTO_2000)
 
 static pPPPoE_Info pppoe_alloc(void)

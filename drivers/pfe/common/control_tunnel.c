@@ -179,7 +179,7 @@ out:
  *
  *
  */
-int M_tnl_add_gre(PTnlEntry pTunnelEntry, int hash)
+static int M_tnl_add_gre(PTnlEntry pTunnelEntry, int hash)
 {
 	PHw_TnlEntry_gre phw_tnl, phw_tnl_first =NULL;
 	dma_addr_t dma_addr;
@@ -749,7 +749,7 @@ static int TNL_handle_IPSEC(U16 *p, U16 Length)
 }
 
 
-void TNL_set_id_conv_seed( sam_port_info_t * sp, U8 IdConvEnable, PTnlEntry t )
+static void TNL_set_id_conv_seed( sam_port_info_t * sp, U8 IdConvEnable, PTnlEntry t )
 {
 	t->sam_id_conv_enable = (IdConvEnable) ? SAM_ID_CONV_PSID: SAM_ID_CONV_NONE;
 	if(!t->sam_id_conv_enable)

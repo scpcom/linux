@@ -39,6 +39,7 @@
 #include "module_wifi.h"
 #include "module_capture.h"
 #include "module_l2tp.h"
+#include "__pfe_ctrl.h"
 
 void __pfe_ctrl_cmd_handler(U16 fcode, U16 length, U16 *payload, U16 *rlen, U16 *rbuf)
 {

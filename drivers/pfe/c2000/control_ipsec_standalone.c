@@ -17,21 +17,15 @@
  *
 */
 
+#include "module_ipv4.h"
+#include "module_ipv6.h"
 #include "module_ipsec.h"
 #include "module_hidrv.h"
 #include "system.h"
 
 #define SAGD_4_OUT      0x9020
 #define SAGD_4_IN       0x9021
-int IPsec_handle_CREATE_SA(U16 *p, U16 Length);
-int IPsec_handle_SA_SET_KEYS(U16 *p, U16 Length);
-int IPsec_handle_SA_SET_TUNNEL(U16 *p, U16 Length);
-int IPsec_handle_SA_SET_STATE(U16 *p, U16 Length);
-int IPsec_handle_SA_SET_LIFETIME(U16 *p, U16 Length);
-int IPv4_HandleIP_CONNTRACK(U16 *p, U16 Length);
-int IPv6_handle_CONNTRACK(U16 *p, U16 Length);
 
-int IP_HandleIP_ROUTE_RESOLVE (U16 *p, U16 Length);
 CommandIPSecCreateSA create_cmd =
 {
         SAGD_4_OUT,

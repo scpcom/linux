@@ -403,7 +403,7 @@ static void RTP_change_flow(PRTPflow pFlow, U16 ingress_socketID, U16 egress_soc
 }
 
 
-int rtp_flow_reset(void)
+static int rtp_flow_reset(void)
 {
 	PRTPflow pEntry;
 	struct slist_entry *entry;
@@ -462,7 +462,7 @@ static void RTP_release_call(PRTPCall pCall)
 	}
 }
 
-int rtp_call_reset(void)
+static int rtp_call_reset(void)
 {
 	PRTPCall pEntry;
 	struct slist_entry *entry;
@@ -1194,7 +1194,7 @@ static void rtpqos_update_entry(PRTPQOS_ENTRY pEntry)
 }
 
 
-int rtpqos_add_entry(PRTPQOS_ENTRY pEntry)
+static int rtpqos_add_entry(PRTPQOS_ENTRY pEntry)
 {
 	struct _thw_rtpqos_entry *hw_entry;
 	int rc;
@@ -1258,7 +1258,7 @@ static void hw_rtpqos_delayed_remove(void)
 	}
 }
 
-void rtpqos_remove_entry(PRTPQOS_ENTRY pEntry)
+static void rtpqos_remove_entry(PRTPQOS_ENTRY pEntry)
 {
 	struct _thw_rtpqos_entry *hw_entry;
 

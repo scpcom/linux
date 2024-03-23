@@ -71,9 +71,6 @@ U32 L2Bridge_l3_bin_number;
 U32 L2Bridge_timeout;
 #endif /* COMCERTO_2000 */
 
-int rx_Get_Next_Hash_BridgeEntry(PL2BridgeQueryEntryResponse pBridgeCmd , int reset_action);
-int rx_Get_Next_Hash_L2FlowEntry(PL2BridgeL2FlowEntryCommand pL2FlowCmd, int reset_action);
-
 extern TIMER_ENTRY bridge_timer;
 
 
@@ -232,12 +229,12 @@ static void hw_l2flow_delayed_remove(void)
 	}
 }
 
-U32 hw_l2flow_get_active(struct _thw_L2Flow_entry *hw_l2flow)
+static U32 hw_l2flow_get_active(struct _thw_L2Flow_entry *hw_l2flow)
 {
 	return be32_to_cpu(readl(&hw_l2flow->active));
 }
 
-void hw_l2flow_set_active(struct _thw_L2Flow_entry *hw_l2flow, U32 active)
+static void hw_l2flow_set_active(struct _thw_L2Flow_entry *hw_l2flow, U32 active)
 {
 	writel(cpu_to_be32(active), &hw_l2flow->active);
 }
@@ -271,12 +268,12 @@ static void hw_l3flow_delayed_remove(void)
 	}
 }
 
-U32 hw_l3flow_get_active(struct _thw_L3Flow_entry *hw_l3flow)
+static U32 hw_l3flow_get_active(struct _thw_L3Flow_entry *hw_l3flow)
 {
 	return be32_to_cpu(readl(&hw_l3flow->active));
 }
 
-void hw_l3flow_set_active(struct _thw_L3Flow_entry *hw_l3flow, U32 active)
+static void hw_l3flow_set_active(struct _thw_L3Flow_entry *hw_l3flow, U32 active)
 {
 	writel(cpu_to_be32(active), &hw_l3flow->active);
 }
@@ -1180,7 +1177,7 @@ static void M_bridge_delayed_removal_handler(void)
 		}
 }
 
-U16 M_bridge_cmdproc(U16 cmd_code, U16 cmd_len, U16 *p)
+static U16 M_bridge_cmdproc(U16 cmd_code, U16 cmd_len, U16 *p)
 {
 	U16 acklen;
 	U16 ackstatus;

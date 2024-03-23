@@ -28,12 +28,12 @@
 #include "module_hidrv.h"
 
 #if !defined(COMCERTO_2000)
-void update_mc_ttl_check(void)
+static void update_mc_ttl_check(void)
 {
 
 }
 #else
-void update_mc_ttl_check(void)
+static void update_mc_ttl_check(void)
 {
 	int id;
 

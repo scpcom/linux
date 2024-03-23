@@ -217,8 +217,8 @@ typedef struct _tSAQueryCommand {
 
 
 
-#if !defined(COMCERTO_2000)
 U16 M_ipsec_cmdproc(U16 cmd_code, U16 cmd_len, U16 *pcmd);
+#if !defined(COMCERTO_2000)
 static int IPsec_handle_CREATE_SA(U16 *p, U16 Length);
 static int IPsec_handle_DELETE_SA(U16 *p, U16 Length);
 static int IPsec_handle_FLUSH_SA(U16 *p, U16 Length);
@@ -228,6 +228,12 @@ static int IPsec_handle_SA_SET_NATT(U16 *p, U16 Length);
 static int IPsec_handle_SA_SET_STATE(U16 *p, U16 Length);
 static int IPsec_handle_SA_SET_LIFETIME(U16 *p, U16 Length);
 static int IPsec_handle_FRAG_CFG(U16 *p, U16 Length);
+#else
+int IPsec_handle_CREATE_SA(U16 *p, U16 Length);
+int IPsec_handle_SA_SET_KEYS(U16 *p, U16 Length);
+int IPsec_handle_SA_SET_TUNNEL(U16 *p, U16 Length);
+int IPsec_handle_SA_SET_STATE(U16 *p, U16 Length);
+int IPsec_handle_SA_SET_LIFETIME(U16 *p, U16 Length);
 #endif
 
 
@@ -497,4 +503,7 @@ BOOL ipsec_init(void);
 void ipsec_exit(void);
 void ipsec_standalone_init(void);
 #endif
+
+int IPsec_Get_Next_SAEntry(PSAQueryCommand  pSAQueryCmd, int reset_action);
+
 #endif

@@ -161,6 +161,7 @@ BOOL M_wifi_init_rx(PModuleDesc pModule );
 #elif defined(COMCERTO_2000)
 void wifi_tx_generate_csum(struct tMetadata *mtd);
 void wifi_rx_validate_csum(struct tMetadata *mtd);
+void M_wifi_init_rx(void);
 #endif
 #endif /* CFG_WIFI_OFFLOAD */
 

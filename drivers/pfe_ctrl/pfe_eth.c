@@ -621,7 +621,7 @@ err_priority:
 /** pfe_eth_sysfs_exit
  *
  */
-void pfe_eth_sysfs_exit(struct net_device *dev)
+static void pfe_eth_sysfs_exit(struct net_device *dev)
 {
 #ifdef PFE_ETH_FRAG_STATS
 	device_remove_file(&dev->dev, &dev_attr_frag_stats);
@@ -1688,7 +1688,7 @@ err0:
 /*
  *  pfe_eth_shutdown
  */
-int pfe_eth_shutdown( struct net_device *dev, int wake)
+static int pfe_eth_shutdown( struct net_device *dev, int wake)
 {
 	struct pfe_eth_priv_s *priv = netdev_priv(dev);
 	int i, qstatus;
@@ -2292,7 +2292,7 @@ static int pfe_eth_set_mac_address(struct net_device *dev, void *addr)
 
 /** pfe_eth_enet_addr_byte_mac
  */
-int pfe_eth_enet_addr_byte_mac(u8 * enet_byte_addr, MAC_ADDR *enet_addr)
+static int pfe_eth_enet_addr_byte_mac(u8 * enet_byte_addr, MAC_ADDR *enet_addr)
 {
 	if ((enet_byte_addr == NULL) || (enet_addr == NULL))
 	{
@@ -2506,7 +2506,7 @@ static unsigned int pfe_eth_fix_features(struct net_device *dev,u32 features)
 
 /** pfe_eth_tx_timeout
  */
-void pfe_eth_tx_timeout(unsigned long data )
+static void pfe_eth_tx_timeout(unsigned long data )
 {
 	struct pfe_eth_priv_s *priv = (struct pfe_eth_priv_s *)data;
 

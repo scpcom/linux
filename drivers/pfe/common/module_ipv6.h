@@ -147,5 +147,7 @@ static __inline U32 HASH_CT6(U32 *Saddr, U32 *Daddr, U32 Sport, U32 Dport, U16 P
 }
 #endif
 
+int IPv6_Get_Next_Hash_CTEntry(PCtExCommandIPv6 pV6CtCmd, int reset_action);
+int IPv6_handle_CONNTRACK(U16 *p, U16 Length);
 
 #endif /* _MODULE_IPV6_H_ */

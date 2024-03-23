@@ -1136,7 +1136,7 @@ static void pfe_vwd_flush_tx(struct vap_desc_s *vap, int force)
 
 /** pfe_vwd_tx_timeout
  */
-void pfe_vwd_tx_timeout(unsigned long data )
+static void pfe_vwd_tx_timeout(unsigned long data )
 {
 	struct pfe_vwd_priv_s *priv = (struct pfe_vwd_priv_s *)data;
 	int ii;

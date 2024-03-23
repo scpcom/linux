@@ -199,7 +199,7 @@ U8 itf_get_phys_port(struct itf *itf)
  *          This function removes an L2 route entry
  *
  */
-int __L2_route_remove(PRouteEntry pRtEntry)
+static int __L2_route_remove(PRouteEntry pRtEntry)
 {
 	U32 hash;
 

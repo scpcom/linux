@@ -516,4 +516,6 @@ static __inline U32 HASH_GRE_TNL(U32 *addr)
 	return (sum & GRE_TUNNEL_HASH_MASK);
 }
 
+void stat_tunnel_reset(PTnlEntry pEntry);
+
 #endif /* _MODULE_TUNNEL_H_ */

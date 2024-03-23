@@ -31,15 +31,6 @@
 
 #ifdef CFG_STATS
 
-int stat_Get_Next_SAEntry(PStatIpsecEntryResponse pSACmd, int reset_action);
-void stat_pppoe_reset(pPPPoE_Info pEntry);
-int stat_PPPoE_Get_Next_SessionEntry(PStatPPPoEEntryResponse pStatSessionCmd, int reset_action);
-int rx_Get_Next_Hash_Stat_BridgeEntry(PStatBridgeEntryResponse pStatBridgeCmd, int reset_action);
-void stat_vlan_reset(PVlanEntry pEntry);
-int stat_VLAN_Get_Next_SessionEntry(PStatVlanEntryResponse pStatVlanCmd, int reset_action);
-void stat_tunnel_reset(PTnlEntry pEntry);
-int stat_tunnel_Get_Next_SessionEntry(PStatTunnelEntryResponse pStatTunnelCmd, int reset_action);
-
 U32 gFpCtrlStatFeatureBitMask;
 
 #if defined(COMCERTO_2000)

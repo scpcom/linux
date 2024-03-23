@@ -133,7 +133,7 @@ static void pfe_check_version_info(const struct firmware *fw)
 * @return		0 on sucess, a negative value on error
 *
 */
-int pfe_load_elf(int pe_mask, const struct firmware *fw)
+static int pfe_load_elf(int pe_mask, const struct firmware *fw)
 {
 	Elf32_Ehdr *elf_hdr = (Elf32_Ehdr *)fw->data;
 	Elf32_Half sections = be16_to_cpu(elf_hdr->e_shnum);

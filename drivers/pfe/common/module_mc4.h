@@ -233,4 +233,6 @@ static __inline MC4Entry *MC4_rule_search(U32 srca, U32 dsta)
 }
 #endif
 
+int MC4_Get_Next_Hash_Entry(PMC4Command pMC4Cmd, int reset_action);
+
 #endif /* _MODULE_MC4_H_ */

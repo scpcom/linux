@@ -87,5 +87,8 @@ static __inline U32 HASH_VLAN(U16 vlan_id)
 	return ((vlan_id >> 12) ^ (vlan_id >> 8) ^ (vlan_id)) & (NUM_VLAN_ENTRIES - 1);
 }
 
+void stat_vlan_reset(PVlanEntry pEntry);
+int Vlan_Get_Next_Hash_Entry(PVlanCommand pVlanCmd, int reset_action);
+
 #endif /* _MODULE_VLAN_H_ */
 

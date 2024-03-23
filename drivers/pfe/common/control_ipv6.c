@@ -30,9 +30,6 @@
 
 
 
-int IPv6_Get_Next_Hash_CTEntry(PCtExCommandIPv6 pV6CtCmd, int reset_action);
-
-
 /**
  * IPv6_delete_CTpair()
  *
@@ -583,7 +580,7 @@ int IPv6_handle_CONNTRACK(U16 *p, U16 Length)
  *
  *
  */
-U16 M_ipv6_cmdproc(U16 cmd_code, U16 cmd_len, U16 *pcmd)
+static U16 M_ipv6_cmdproc(U16 cmd_code, U16 cmd_len, U16 *pcmd)
 {
 	U16 rc;
 	U16 querySize = 0;

@@ -51,7 +51,6 @@
 
 #define SOCKET_NATT	0
 
-int IPsec_Get_Next_SAEntry(PSAQueryCommand  pSAQueryCmd, int reset_action);
 static int IPsec_Free_Natt_socket_v6(PSAEntry sa);
 static int IPsec_Free_Natt_socket_v4(PSAEntry sa);
 
@@ -743,7 +742,7 @@ static int IPsec_Free_Natt_socket_v4(PSAEntry sa)
 	return NO_ERR;
 }
 
-void* M_ipsec_sa_cache_create(U32 *saddr,U32 *daddr, U32 spi, U8 proto, U8 family, U16 handle, U8 replay, U8 esn, U16 mtu, U16 dev_mtu)
+static void* M_ipsec_sa_cache_create(U32 *saddr,U32 *daddr, U32 spi, U8 proto, U8 family, U16 handle, U8 replay, U8 esn, U16 mtu, U16 dev_mtu)
 {
 	U32     hash_key_sa;
 	PSAEntry sa;

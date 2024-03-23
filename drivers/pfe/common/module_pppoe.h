@@ -118,4 +118,7 @@ static __inline U32 HASH_PPPOE(U16 session_id, U8 *srcmac)
 	return ((session_id & 0xff) ^ (session_id >> 8) ^ srcmac[5]) & (NUM_PPPOE_ENTRIES - 1);
 }
 
+void stat_pppoe_reset(pPPPoE_Info pEntry);
+int PPPoE_Get_Next_SessionEntry(pPPPoECommand pSessionCmd, int reset_action);
+
 #endif /* _MODULE_PPPOE_H_ */

@@ -315,6 +315,8 @@ void gemac_enable_copy_all(void *base);
 void gemac_disable_copy_all(void *base);
 void gemac_set_bus_width(void *base, int width);
 void gemac_set_wol(void *base, u32 wol_conf);
+void gemac_enable_mdio(void *base);
+void gemac_disable_mdio(void *base);
 
 void gpi_init(void *base, GPI_CFG *cfg);
 void gpi_reset(void *base);

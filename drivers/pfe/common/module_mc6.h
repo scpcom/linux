@@ -231,4 +231,6 @@ static __inline MC6Entry *MC6_rule_search(U32 *srca, U32 *dsta)
 }
 #endif
 
+int MC6_Get_Next_Hash_Entry(PMC6Command pMC6Cmd, int reset_action);
+
 #endif /* _MODULE_MC6_H_ */

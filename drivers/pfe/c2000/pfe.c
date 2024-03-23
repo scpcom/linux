@@ -132,7 +132,7 @@ void pfe_lib_init(void *cbus_base, void *ddr_base, unsigned long ddr_phys_base, 
  * @param[in] mem_access_addr	DMEM destination address (must be 32bit aligned)
  * @param[in] len		Number of bytes to copy
  */
-void pe_mem_memcpy_to32(int id, u32 mem_access_addr, const void *src, unsigned int len)
+static void pe_mem_memcpy_to32(int id, u32 mem_access_addr, const void *src, unsigned int len)
 {
 	u32 offset = 0, val, addr;
 	unsigned int len32 = len >> 2;

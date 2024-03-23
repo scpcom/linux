@@ -299,5 +299,11 @@ That's why for TMU macros the interface number is used to retrieve statistics fr
 #define STATISTICS_CTRL_GET(counter, variable)		(variable = (gFpCtrlStatistics.FS_##counter))
 
 
+int stat_Get_Next_SAEntry(PStatIpsecEntryResponse pSACmd, int reset_action);
+int stat_PPPoE_Get_Next_SessionEntry(PStatPPPoEEntryResponse pStatSessionCmd, int reset_action);
+int rx_Get_Next_Hash_Stat_BridgeEntry(PStatBridgeEntryResponse pStatBridgeCmd, int reset_action);
+int stat_VLAN_Get_Next_SessionEntry(PStatVlanEntryResponse pStatVlanCmd, int reset_action);
+int stat_tunnel_Get_Next_SessionEntry(PStatTunnelEntryResponse pStatTunnelCmd, int reset_action);
+
 #endif /* _MODULE_STAT_H_ */
 #endif /* CFG_STATS */

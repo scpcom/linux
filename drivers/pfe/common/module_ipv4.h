@@ -543,4 +543,9 @@ static inline void ct_keepalive(PCtEntry pCtEntry)
 
 #endif /* COMCERTO_2000 */
 
+int IPv4_Get_Next_Hash_CTEntry(PCtExCommand pCtCmd, int reset_action);
+int IPV4_Get_Next_Hash_RtEntry(PRtCommand pRtCmd, int reset_action);
+int IPv4_HandleIP_CONNTRACK(U16 *p, U16 Length);
+int IP_HandleIP_ROUTE_RESOLVE (U16 *p, U16 Length);
+
 #endif /* _MODULE_IPV4_H_ */

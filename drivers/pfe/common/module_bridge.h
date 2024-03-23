@@ -635,4 +635,7 @@ static inline PVOID bridge_l3_get_buffer(void)
 	return addr;
 }
 
+int rx_Get_Next_Hash_BridgeEntry(PL2BridgeQueryEntryResponse pBridgeCmd , int reset_action);
+int rx_Get_Next_Hash_L2FlowEntry(PL2BridgeL2FlowEntryCommand pL2FlowCmd, int reset_action);
+
 #endif /* _MODULE_BRIDGE_H_ */

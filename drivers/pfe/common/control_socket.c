@@ -24,6 +24,7 @@
 #ifdef COMCERTO_1000
 #include "module_msp.h"
 #endif
+#include "control_socket.h"
 
 #if defined(COMCERTO_2000)
 #include "control_common.h"
@@ -45,14 +46,14 @@ struct dlist_head hw_sock6_active_list[NUM_SOCK_ENTRIES];	/* list to maintain ac
 struct dlist_head hw_sock_active_list_id[NUM_SOCK_ENTRIES];	/* list to maintain active hw sockets by socket's ID */
 #endif
 
-static void SOCKET4_delete_route(PSockEntry pSocket)
+void SOCKET4_delete_route(PSockEntry pSocket)
 {
 	L2_route_put(pSocket->pRtEntry);
 
 	pSocket->pRtEntry = NULL;
 }
 
-static void SOCKET6_delete_route(PSock6Entry pSocket)
+void SOCKET6_delete_route(PSock6Entry pSocket)
 {
 	L2_route_put(pSocket->pRtEntry);
 

@@ -100,7 +100,7 @@ static void MC6_entry_add_to_pe(U32 dma_addr, U32 hash)
 		pe_dmem_write(id, dma_addr, virt_to_class_dmem(pe_addr), 4);
 }
 
-void MC6_mode_update(void)
+static void MC6_mode_update(void)
 {
 	int id;
 	U32 *pe_addr;
@@ -262,7 +262,6 @@ static void MC6_entry_remove(PMC6Entry this_entry, U32 hash)
 
 #endif
  
-int MC6_Get_Next_Hash_Entry(PMC6Command pMC6Cmd, int reset_action);
 extern TIMER_ENTRY mc6_timer;
 
 /**

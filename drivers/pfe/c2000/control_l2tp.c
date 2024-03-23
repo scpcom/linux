@@ -128,7 +128,7 @@ static pl2tp_entry l2tp_find_entry(U32 hash, U16 local_tun_id, U16 peer_tun_id, 
 	return NULL;
 }
 
-U16 M_l2tp_cmdproc(U16 cmd_code, U16 cmd_len, U16 *p)
+static U16 M_l2tp_cmdproc(U16 cmd_code, U16 cmd_len, U16 *p)
 {
 	U16 acklen;
 	U16 ackstatus;
