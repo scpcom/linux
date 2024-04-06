@@ -87,7 +87,7 @@ static void __init fdt_reserved_mem_save_node(unsigned long node, const char *un
 	}
 
 	rmem->fdt_node = node;
-	strncpy(rmem->name, uname, 8);
+	strncpy(rmem->name, uname, 16);
 	rmem->base = base;
 	rmem->size = size;
 

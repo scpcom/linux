@@ -1645,7 +1645,7 @@ static struct cv181x_hw_clock cv181x_clks[] = {
 		REG_CLK_BYP_1, 7,
 		REG_CLK_SEL_0, 24,
 		REG_DIV_CLK_C906_1_0, 8,
-		CLK_IS_CRITICAL),
+		CLK_IGNORE_UNUSED),
 	CV181X_CLK(CV181X_CLK_SRC_VIP_SYS_3, "clk_src_vip_sys_3",
 		((const char *[]) {"osc", "clk_mipimpll", "clk_cam0pll", "clk_disppll", "clk_fpll"}),
 		REG_CLK_EN_4, 15,

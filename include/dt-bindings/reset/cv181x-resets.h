@@ -114,6 +114,9 @@
 #define RST_AUTO_CLEAR_MAINRST_AP	103
 #define RST_AUTO_CLEAR_SECONDRST_AP	104
 
+#define RST_C906_0    293
+#define RST_C906_1    294
+
 #define CLK_RST_A53		0
 #define CLK_RST_50M_A53		1
 #define CLK_RST_AHB_ROM		2
