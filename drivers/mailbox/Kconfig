@@ -269,6 +269,14 @@ config SUN6I_MSGBOX
 	  various Allwinner SoCs. This mailbox is used for communication
 	  between the application CPUs and the power management coprocessor.
 
+config CVITEK_MAILBOX
+	tristate "CVITEK Mailbox"
+	depends on ARCH_CVITEK
+	help
+	  Mailbox implementation for the hardware message box present in
+	  various CVITEK SoCs. This mailbox is used for communication
+	  between the application CPUs and the power management coprocessor.
+
 config SPRD_MBOX
 	tristate "Spreadtrum Mailbox"
 	depends on ARCH_SPRD || COMPILE_TEST
