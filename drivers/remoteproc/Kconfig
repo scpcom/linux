@@ -312,6 +312,16 @@ config ST_REMOTEPROC
 config ST_SLIM_REMOTEPROC
 	tristate
 
+config CVITEK_REMOTEPROC
+	tristate "CVITEK remoteproc support"
+	depends on ARCH_CVITEK
+	select MAILBOX
+	select CVITEK_MAILBOX
+	help
+	  Say y here to support cvitek processors via the remote
+	  processor framework.
+	  This can be either built-in or a loadable module.
+
 config STM32_RPROC
 	tristate "STM32 remoteproc support"
 	depends on ARCH_STM32 || COMPILE_TEST
