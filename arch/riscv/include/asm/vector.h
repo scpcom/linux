@@ -107,6 +107,7 @@ static inline void __riscv_m_mstate_restore(struct __riscv_m_ext_state *restore_
 extern unsigned long riscv_v_vsize;
 int riscv_v_setup_vsize(void);
 bool riscv_v_first_use_handler(struct pt_regs *regs);
+int riscv_v_thread_zalloc(struct task_struct *tsk);
 void kernel_vector_begin(void);
 void kernel_vector_end(void);
 void get_cpu_vector_context(void);

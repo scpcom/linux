@@ -148,6 +148,11 @@ static int riscv_v_thread_ctx_alloc(struct kmem_cache *cache,
 	return 0;
 }
 
+int riscv_v_thread_zalloc(struct task_struct *tsk)
+{
+	return riscv_v_thread_ctx_alloc(riscv_v_kernel_cachep, &tsk->thread.vstate);
+}
+
 void riscv_v_thread_alloc(struct task_struct *tsk)
 {
 #ifdef CONFIG_RISCV_ISA_V_PREEMPTIVE
