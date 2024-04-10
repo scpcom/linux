@@ -244,6 +244,13 @@ config RTC_DRV_AS3722
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-as3722.
 
+config RTC_DRV_CVITEK
+	tristate "CVITEK RTC driver"
+	depends on ARCH_CVITEK
+	help
+	  If you say yes here you get support for the RTC of cvitek sg200x 
+
+
 config RTC_DRV_DS1307
 	tristate "Dallas/Maxim DS1307/37/38/39/40/41, ST M41T00, EPSON RX-8025, ISL12057"
 	select REGMAP_I2C
