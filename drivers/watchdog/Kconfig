@@ -205,6 +205,14 @@ config CROS_EC_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called cros_ec_wdt.
 
+config CVITEK_WATCHDOG
+	tristate "Cvitek Watchdog support"
+	depends on ARCH_CVITEK
+	select WATCHDOG_CORE
+	help
+		Watchdog for SG200x devices
+	
+
 config DA9052_WATCHDOG
 	tristate "Dialog DA9052 Watchdog"
 	depends on PMIC_DA9052 || COMPILE_TEST
