@@ -186,6 +186,14 @@ config PWM_CROS_EC
 	  PWM driver for exposing a PWM attached to the ChromeOS Embedded
 	  Controller.
 
+config PWM_CVITEK
+        tristate "Cvitek PWM support"
+        depends on ARCH_CVITEK
+        help
+          Generic PWM framework driver for Cvitek SoCs.
+          We use it to control fan.
+
+
 config PWM_DWC
 	tristate "DesignWare PWM Controller"
 	depends on PCI
