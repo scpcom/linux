@@ -16,6 +16,12 @@ config AB8500_GPADC
 	  internal voltages, convert accessory and battery, AC (charger, mains)
 	  and USB voltages integral to the U8500 platform.
 
+config ADC_CVITEK
+	tristate "CVITEK ADC driver"
+	depends on ARCH_CVITEK
+	help
+	  If you say yes here you get support for the ADC of cvitek sg200x 
+
 config AD_SIGMA_DELTA
 	tristate
 	select IIO_BUFFER

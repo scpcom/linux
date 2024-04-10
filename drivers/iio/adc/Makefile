@@ -129,3 +129,6 @@ xilinx-xadc-y := xilinx-xadc-core.o xilinx-xadc-events.o
 obj-$(CONFIG_XILINX_XADC) += xilinx-xadc.o
 obj-$(CONFIG_XILINX_AMS) += xilinx-ams.o
 obj-$(CONFIG_SD_ADC_MODULATOR) += sd_adc_modulator.o
+
+ccflags-y += -I$(srctree)/drivers/iio/adc/cvitek/
+obj-$(CONFIG_ADC_CVITEK) += adc-cvitek.o
