@@ -68,3 +68,4 @@ obj-$(CONFIG_CV181X_THERMAL)	+= cv181x_thermal.o
 obj-$(CONFIG_CV180X_THERMAL)	+= cv180x_thermal.o
 obj-$(CONFIG_CV1835_THERMAL)    += cv1835_thermal.o
 obj-$(CONFIG_CV182X_THERMAL)    += cv182x_thermal.o
+obj-$(CONFIG_CV180X_COOLING) 	+= cv181x_cooling.o
