@@ -448,6 +448,12 @@ config CV180X_THERMAL
 	  the alert trip point interrupts and notifies the thermal framework with
 	  the trip point and temperature details of the zone.
 
+config CV180X_COOLING
+	tristate "CPU Throttling Cooling Driver for CVITEK CV180X"
+	depends on ARCH_CV181X 
+	help
+	  Select this driver for CVITEK CV180X cpu throttling cooling driver
+
 config AMLOGIC_THERMAL
 	tristate "Amlogic Thermal Support"
 	default ARCH_MESON
