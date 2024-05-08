@@ -101,3 +101,6 @@ int sunxi_mmc_check_r1_ready(struct mmc_host *mmc, unsigned ms)
 }
 EXPORT_SYMBOL_GPL(sunxi_mmc_check_r1_ready);
 
+MODULE_DESCRIPTION("Sunxi SD/MMC host driver");
+MODULE_LICENSE("GPL v2");
+MODULE_AUTHOR("lixiang <lixiang@allwinnertech>");
