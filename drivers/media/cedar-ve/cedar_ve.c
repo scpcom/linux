@@ -2566,3 +2566,4 @@ MODULE_DESCRIPTION("User mode CEDAR device interface");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRV_VERSION);
 MODULE_ALIAS("platform:cedarx-sunxi");
+MODULE_INFO(import_ns, "DMA_BUF");
