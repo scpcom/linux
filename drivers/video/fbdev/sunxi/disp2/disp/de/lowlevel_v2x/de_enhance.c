@@ -110,7 +110,7 @@ int de_enhance_info2data(struct disp_enhance_config *config,
 	struct de_rect tmp_win;
 	struct disp_enhance_config tmp_config;
 
-	memcpy(&tmp_config.info, config, sizeof(struct disp_enhance_config));
+	memcpy(&tmp_config, config, sizeof(struct disp_enhance_config));
 	memset(data, 0, sizeof(struct vep_config_data));
 
 	/* FIXME : should be deleted */
