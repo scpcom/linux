@@ -43,7 +43,7 @@ config ARCH_SUNXI
 	depends on MMU && !XIP_KERNEL
 	select ERRATA_THEAD
 	select SUN4I_TIMER
-	select RISCV_EARLY_VA if NONPORTABLE
+	select RISCV_EARLY_VA
 	select RISCV_SUNXI
 	select CPU_PM if CPU_IDLE
 	help

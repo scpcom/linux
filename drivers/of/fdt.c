@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/libfdt.h>
 #include <linux/debugfs.h>
+#include <linux/efi.h>
 #include <linux/serial_core.h>
 #include <linux/sysfs.h>
 #include <linux/random.h>

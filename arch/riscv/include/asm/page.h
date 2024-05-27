@@ -89,12 +89,13 @@ typedef struct page *pgtable_t;
 #define PTE_FMT "%08lx"
 #endif
 
-#if defined(CONFIG_64BIT) && defined(CONFIG_MMU) && !IS_ENABLED(CONFIG_RISCV_EARLY_VA)
+#if defined(CONFIG_64BIT) && defined(CONFIG_MMU)
+#define EARLY_VA_ENABLED (IS_ENABLED(CONFIG_RISCV_EARLY_VA) && !efi_enabled(EFI_MEMMAP))
 /*
  * We override this value as its generic definition uses __pa too early in
  * the boot process (before kernel_map.va_pa_offset is set).
  */
-#define MIN_MEMBLOCK_ADDR      0
+#define MIN_MEMBLOCK_ADDR      (EARLY_VA_ENABLED ? __pa(PAGE_OFFSET) : 0)
 #endif
 
 #define ARCH_PFN_OFFSET		(PFN_DOWN((unsigned long)phys_ram_base))
