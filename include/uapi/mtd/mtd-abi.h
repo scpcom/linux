@@ -274,8 +274,8 @@ struct otp_message {
 #define OTPWRITE		_IOW('M', 27, struct mtd_otp_buf)
 #define OTPREAD			_IOR('M', 28, struct mtd_otp_buf)
 #define OTPERASE_OTP		_IOWR('M', 29, struct erase_info_user)
-#define OTPINFO		_IOWR('M', 30, struct otp_message)
-
+#define OTPINFO			_IOWR('M', 30, struct otp_message)
+#define GET_ALL_SIZE		_IOR('M', 31, unsigned long long)
 /*
  * Obsolete legacy interface. Keep it in order not to break userspace
  * interfaces
