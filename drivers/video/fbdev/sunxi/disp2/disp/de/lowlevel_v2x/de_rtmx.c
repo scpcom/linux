@@ -60,6 +60,17 @@ static struct de_reg_blocks dither_ctrl_block[DE_NUM];
 /* static uintptr_t de_base = 0; */
 static uintptr_t de_base;
 
+int de_rtmx_boot_update_regs(unsigned int sel)
+{
+	if (glb_ctl_block[sel].dirty == 0x1) {
+		memcpy((void *)glb_ctl_block[sel].off, glb_ctl_block[sel].val,
+		       glb_ctl_block[sel].size);
+		glb_ctl_block[sel].dirty = 0;
+	}
+
+	return 0;
+}
+
 int de_rtmx_update_regs(unsigned int sel)
 {
 	int i, j, ui_chno, vi_chno, layno;

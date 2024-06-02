@@ -352,6 +352,7 @@ struct scaler_para {
 int de_rtmx_init(unsigned int sel, uintptr_t reg_base);
 int de_rtmx_exit(unsigned int sel);
 int de_rtmx_update_regs(unsigned int sel);
+int de_rtmx_boot_update_regs(unsigned int sel);
 int de_rtmx_set_gld_reg_base(unsigned int sel, void *base);
 int de_rtmx_set_bld_reg_base(unsigned int sel, void *base);
 int de_rtmx_set_overlay_reg_base(unsigned int sel, unsigned int chno,

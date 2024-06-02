@@ -15,6 +15,11 @@ static unsigned int g_device_fps[DE_NUM] = { 60 };
 static bool g_de_blank[DE_NUM] = { false };
 static unsigned int g_de_freq;
 
+extern s32 bsp_disp_get_screen_width_from_output_type(u32 disp,
+			u32 output_type, u32 output_mode);
+extern s32 bsp_disp_get_screen_height_from_output_type(u32 disp,
+			u32 output_type, u32 output_mode);
+
 int de_update_device_fps(unsigned int sel, u32 fps)
 {
 	g_device_fps[sel] = fps;
@@ -830,6 +835,41 @@ int de_al_enable_irq(unsigned int screen_id, unsigned int en)
 	return de_rtmx_enable_irq(screen_id, en);
 }
 
+int de_al_boot_init(int sel, struct disp_bsp_init_para *para)
+{
+	int width, height;
+	int disp = para->boot_info.disp;
+
+	if (disp != sel)
+		return 0;
+	if ((para->boot_info.type != DISP_OUTPUT_TYPE_HDMI)
+		|| (para->boot_info.fb_sync))
+		return 0;
+
+	width =
+	    bsp_disp_get_screen_width_from_output_type
+	    (sel,
+	     para->boot_info.type,
+	     para->boot_info.mode);
+	height =
+	    bsp_disp_get_screen_height_from_output_type
+	    (sel,
+	     para->boot_info.type,
+	     para->boot_info.mode);
+
+	de_clk_set_reg_base(para->reg_base[DISP_MOD_DE]);
+#if defined(CONFIG_INDEPENDENT_DE)
+	de1_clk_set_reg_base(para->reg_base[DISP_MOD_DE1]);
+#endif
+
+	de_clk_enable(DE_CLK_CORE0 + disp);
+
+	de_rtmx_set_display_size(sel, width, height);
+	de_rtmx_boot_update_regs(sel);
+
+	return 0;
+}
+
 int de_al_init(struct disp_bsp_init_para *para)
 {
 	int i;
@@ -840,12 +880,14 @@ int de_al_init(struct disp_bsp_init_para *para)
 		de_rtmx_init(i, para->reg_base[DISP_MOD_DE + i]);
 		de_vsu_init(i, para->reg_base[DISP_MOD_DE + i]);
 		de_gsu_init(i, para->reg_base[DISP_MOD_DE + i]);
+		de_al_boot_init(i, para);
 	}
 #else
 	for (i = 0; i < num_screens; i++) {
 		de_rtmx_init(i, para->reg_base[DISP_MOD_DE]);
 		de_vsu_init(i, para->reg_base[DISP_MOD_DE]);
 		de_gsu_init(i, para->reg_base[DISP_MOD_DE]);
+		de_al_boot_init(i, para);
 	}
 #endif
 	return 0;

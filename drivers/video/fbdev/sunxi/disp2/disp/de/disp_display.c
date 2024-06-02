@@ -649,6 +649,10 @@ s32 bsp_disp_sync_with_hw(struct disp_bsp_init_para *para)
 		if (!config.aspect_ratio)
 			config.aspect_ratio = 8;
 
+		if ((config.type == DISP_OUTPUT_TYPE_HDMI)
+			&& (!para->boot_info.fb_sync))
+			return bsp_disp_device_set_config(disp, &config);
+
 		mgr = disp_get_layer_manager(disp);
 		if (!mgr)
 			return -1;

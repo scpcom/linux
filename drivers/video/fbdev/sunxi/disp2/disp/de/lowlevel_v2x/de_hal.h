@@ -17,6 +17,7 @@
 #include "de_eink.h"
 #include "de_wb_type.h"
 #endif
+#include "de_clock.h"
 
 extern int de_al_mgr_apply(unsigned int screen_id,
 			   struct disp_manager_data *data);

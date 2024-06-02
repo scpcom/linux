@@ -903,6 +903,7 @@ struct disp_bootloader_info {
 	enum disp_color_range	range;
 	enum disp_scan_info		scan;
 	unsigned int			aspect_ratio;
+	int fb_sync; /* 1: sync fb with bootloader */
 
 };
 
