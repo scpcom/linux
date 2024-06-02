@@ -2881,6 +2881,31 @@ static void disp_clk_put_wrap(struct disp_drv_info *disp_drv)
 #endif
 }
 
+static s32 disp_clk_boot_enable(struct disp_drv_info *disp_drv)
+{
+	int ret = 0;
+
+	ret = clk_prepare_enable(disp_drv->clk_bus_de[0]);
+	if (ret) {
+		DE_WRN("%s(%d): clk_prepare_enable for clk_bus failed\n", __func__, __LINE__);
+		return ret;
+	}
+
+	ret = clk_prepare_enable(disp_drv->clk_de[0]);
+	if (ret) {
+		DE_WRN("%s(%d): clk_prepare_enable for clk failed\n", __func__, __LINE__);
+		return ret;
+	}
+
+	ret = reset_control_deassert(disp_drv->rst_bus_de[0]);
+	if (ret) {
+		DE_WRN("%s(%d): reset_control_deassert for rst_bus_de failed\n", __func__, __LINE__);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int disp_reset_control_get_wrap(struct disp_drv_info *disp_drv)
 {
 	int i;
@@ -3199,6 +3224,8 @@ static int disp_probe(struct platform_device *pdev)
 	ret = disp_reset_control_get_wrap(&g_disp_drv);
 	if (ret)
 		goto out_dispose_mapping;
+
+	disp_clk_boot_enable(&g_disp_drv);
 
 #if defined(CONFIG_DISP2_SUNXI_ION)
 	init_disp_ion_mgr(&g_disp_drv.ion_mgr);
