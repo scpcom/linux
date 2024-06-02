@@ -124,6 +124,7 @@ extern unsigned int disp_boot_para_parse(const char *name);
 extern unsigned long long disp_boot_get_video_paras(unsigned int screen_num);
 extern unsigned int disp_boot_para_parse_array(const char *name, unsigned int *value,
 							  unsigned int count);
+extern const char *disp_boot_para_parse_str(const char *name);
 extern uintptr_t disp_getprop_regbase(
 	char *main_name, char *sub_name, u32 index);
 extern int arisc_query_wakeup_source(unsigned int *event);

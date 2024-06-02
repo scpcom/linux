@@ -1094,12 +1094,18 @@ static void hdmi_fpga_config(void)
 
 static bool disp_is_hdmi_boot(void)
 {
+	const char *boot_fb_str = NULL;
 	unsigned int value;
 	unsigned int output_type0, output_mode0;
 	unsigned int output_type1, output_mode1;
 
 	/*Read video booting params from disp device tree*/
 	value = disp_boot_para_parse("boot_disp");
+	boot_fb_str = disp_boot_para_parse_str("boot_fb0");
+
+	/*To check if fb has been configured in uboot*/
+	if (boot_fb_str == NULL)
+		return false;
 
 	/*To check if hdmi has been configured in uboot*/
 	output_type0 = (value >> 8) & 0xff;
