@@ -340,6 +340,19 @@ static void hdmi_suspend_clk_disable(void)
 		clk_disable_unprepare(hdmi_drv->hdmi_clk);
 }
 
+static void hdmi_rst_deassert(void)
+{
+	int ret;
+
+	ret = reset_control_deassert(hdmi_drv->hdmi_rst);
+	if (ret)
+		pr_info("Couldn't deassert hdmi reset control: %d\n", ret);
+
+	ret = reset_control_deassert(hdmi_drv->hdmi_main_rst);
+	if (ret)
+		pr_info("Couldn't deassert hdmi main reset control: %d\n", ret);
+}
+
 static void hdmi_pin_configure(void)
 {
 	s32 ret = 0;
@@ -517,6 +530,7 @@ static void hdmi_sys_source_configure(void)
 {
 	LOG_TRACE();
 	hdmi_clk_enable();
+	hdmi_rst_deassert();
 	hdmi_pin_configure();
 }
 
@@ -1313,6 +1327,23 @@ static int hdmi_dts_parse_clk(struct platform_device *pdev)
 	return 0;
 }
 
+static int hdmi_dts_parse_rst(struct platform_device *pdev)
+{
+	hdmi_drv->hdmi_rst = devm_reset_control_get_shared(&pdev->dev, "rst_bus_sub");
+	if (IS_ERR(hdmi_drv->hdmi_rst)) {
+		dev_err(&pdev->dev, "fail to get rst for hdmi\n");
+		return -1;
+	}
+
+	hdmi_drv->hdmi_main_rst = devm_reset_control_get_shared(&pdev->dev, "rst_bus_main");
+	if (IS_ERR(hdmi_drv->hdmi_main_rst)) {
+		dev_err(&pdev->dev, "fail to get rst for hdmi main\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int hdmi_dts_parse_power(struct platform_device *pdev)
 {
 	int ret = 0, i;
@@ -1425,6 +1456,8 @@ static int hdmi_tx_init(struct platform_device *pdev)
 
 	hdmi_dts_parse_pin_config(pdev);
 	if (hdmi_dts_parse_clk(pdev))
+		goto free_mem;
+	if (hdmi_dts_parse_rst(pdev))
 		goto free_mem;
 	hdmi_dts_parse_power(pdev);
 

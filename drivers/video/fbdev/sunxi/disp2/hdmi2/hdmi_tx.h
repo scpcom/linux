@@ -34,6 +34,7 @@
 #include <linux/clk-provider.h>
 #include <linux/clk/clk-conf.h>
 #include <linux/clkdev.h>
+#include <linux/reset.h>
 
 #include "hdmi_core/hdmi_core.h"
 #include "hdmi_core/core_cec.h"
@@ -101,6 +102,9 @@ struct hdmi_tx_drv {
 	struct clk			*hdmi_ddc_clk;
 	struct clk			*hdmi_hdcp_clk;
 	struct clk			*hdmi_cec_clk;
+
+	struct reset_control		*hdmi_rst;
+	struct reset_control		*hdmi_main_rst;
 
 	struct task_struct		*hdmi_task;
 	struct task_struct		*cec_task;
