@@ -197,6 +197,10 @@
 };
 
 &disp {
+	boot_disp		 = <0x40a>;
+	boot_disp1		 = <0x1010001>;
+	boot_disp2		 = <0x4>;
+
 	disp_init_enable         = <1>;
 	disp_mode                = <0>;
 
