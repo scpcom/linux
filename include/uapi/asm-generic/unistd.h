@@ -823,8 +823,13 @@ __SYSCALL(__NR_cachestat, sys_cachestat)
 #define __NR_fchmodat2 452
 __SYSCALL(__NR_fchmodat2, sys_fchmodat2)
 
+// Reset/Unreset c906l at cv181x/cv180x
+// add by sophon.com
+#define __NR_reset_c906l 453
+__SYSCALL(__NR_reset_c906l, sys_reset_c906l)
+
 #undef __NR_syscalls
-#define __NR_syscalls 453
+#define __NR_syscalls 454
 
 /*
  * 32 bit systems traditionally used different

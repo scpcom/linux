@@ -571,6 +571,38 @@ long sbi_get_mimpid(void)
 }
 EXPORT_SYMBOL_GPL(sbi_get_mimpid);
 
+long sbi_rst_c906l(void)
+{
+	return __sbi_base_ecall(SBI_EXT_BASE_RST_C906L);
+}
+EXPORT_SYMBOL(sbi_rst_c906l);
+
+long sbi_unrst_c906l(const unsigned long address)
+{
+	struct sbiret ret;
+
+	ret = sbi_ecall(SBI_EXT_BASE, SBI_EXT_BASE_UNRST_C906L
+			, address, 0, 0, 0, 0, 0);
+	if (ret.error)
+		return ret.error;
+
+	return 0;
+}
+EXPORT_SYMBOL(sbi_unrst_c906l);
+
+long sbi_reset_c906l(const unsigned long address)
+{
+	struct sbiret ret;
+
+	ret = sbi_ecall(SBI_EXT_BASE, SBI_EXT_BASE_RESET_C906L
+			, address, 0, 0, 0, 0, 0);
+	if (ret.error)
+		return ret.error;
+
+	return 0;
+}
+EXPORT_SYMBOL(sbi_reset_c906l);
+
 void __init sbi_init(void)
 {
 	int ret;

@@ -4,7 +4,6 @@
  *
  * Copyright (C) 2011 Google, Inc.
  */
-
 #include <linux/err.h>
 #include <linux/freezer.h>
 #include <linux/kthread.h>
@@ -23,6 +22,8 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 	void *vaddr;
 
 #if defined(CONFIG_ARM) || defined(__arm__) || defined(__aarch64__)
+	pr_debug("%s addr=0x%llx, size=%lu\n", __func__, buffer->paddr, PAGE_ALIGN(buffer->size));
+
 	struct sg_page_iter piter;
 	pgprot_t pgprot;
 	struct sg_table *table = buffer->sg_table;
@@ -40,7 +41,7 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 		pgprot = pgprot_writecombine(PAGE_KERNEL);
 
 	for_each_sgtable_page(table, &piter, 0) {
-		BUG_ON(tmp - pages >= npages);
+		WARN_ON(tmp - pages >= npages);
 		*tmp++ = sg_page_iter_page(&piter);
 	}
 
@@ -52,7 +53,7 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 
 #else
 
-	pr_debug("ion_heap_map_kernel addr=0x%llx, size=%lu\n", buffer->paddr, PAGE_ALIGN(buffer->size));
+	pr_debug("%s addr=0x%llx, size=%lu\n", __func__, buffer->paddr, PAGE_ALIGN(buffer->size));
 
 	if (buffer->flags & ION_FLAG_CACHED)
 		vaddr = memremap(buffer->paddr, PAGE_ALIGN(buffer->size), MEMREMAP_WB);
@@ -60,7 +61,7 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 		vaddr = ioremap(buffer->paddr, PAGE_ALIGN(buffer->size));
 
 	if (!vaddr) {
-		pr_err("ion_heap_map_kernel map failed\n");
+		pr_err("%s map failed\n", __func__);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -71,10 +72,15 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 void ion_heap_unmap_kernel(struct ion_heap *heap,
 			   struct ion_buffer *buffer)
 {
+#if defined(CONFIG_ARM) || defined(__arm__) || defined(__aarch64__)
+	vunmap(buffer->vaddr);
+#else
 	if (buffer->flags & ION_FLAG_CACHED)
 		memunmap(buffer->vaddr);
 	else
 		iounmap(buffer->vaddr);
+
+#endif
 }
 
 int ion_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
