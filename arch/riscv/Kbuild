@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-obj-y += kernel/ mm/ net/
+obj-y += kernel/ mm/ net/ march-cvitek/
 obj-$(CONFIG_BUILTIN_DTB) += boot/dts/
 obj-$(CONFIG_CRYPTO) += crypto/
 obj-y += errata/

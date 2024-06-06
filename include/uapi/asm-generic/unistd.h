@@ -841,8 +841,13 @@ __SYSCALL(__NR_lsm_list_modules, sys_lsm_list_modules)
 #define __NR_mseal 462
 __SYSCALL(__NR_mseal, sys_mseal)
 
+// Reset/Unreset c906l at cv181x/cv180x
+// add by sophon.com
+#define __NR_reset_c906l 463
+__SYSCALL(__NR_reset_c906l, sys_reset_c906l)
+
 #undef __NR_syscalls
-#define __NR_syscalls 463
+#define __NR_syscalls 464
 
 /*
  * 32 bit systems traditionally used different

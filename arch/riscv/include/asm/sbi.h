@@ -56,6 +56,9 @@ enum sbi_ext_base_fid {
 	SBI_EXT_BASE_GET_MVENDORID,
 	SBI_EXT_BASE_GET_MARCHID,
 	SBI_EXT_BASE_GET_MIMPID,
+	SBI_EXT_BASE_RESET_C906L,
+	SBI_EXT_BASE_RST_C906L,
+	SBI_EXT_BASE_UNRST_C906L,
 };
 
 enum sbi_ext_time_fid {
@@ -329,6 +332,9 @@ static inline int sbi_console_getchar(void) { return -ENOENT; }
 long sbi_get_mvendorid(void);
 long sbi_get_marchid(void);
 long sbi_get_mimpid(void);
+long sbi_rst_c906l(void);
+long sbi_unrst_c906l(const unsigned long address);
+long sbi_reset_c906l(const unsigned long address);
 void sbi_set_timer(uint64_t stime_value);
 void sbi_shutdown(void);
 void sbi_send_ipi(unsigned int cpu);
