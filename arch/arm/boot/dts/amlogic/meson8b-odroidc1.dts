@@ -195,6 +195,9 @@
 	ethernet_mac_address: mac@1b4 {
 		reg = <0x1b4 0x6>;
 	};
+	usid: usid@1c6 {
+		reg = <0x1c6 0x30>;
+	};
 };
 
 &ethmac {
