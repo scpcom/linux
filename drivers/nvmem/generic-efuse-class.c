@@ -371,6 +371,7 @@ error1:
 out:
 	return ret;
 }
+EXPORT_SYMBOL(generic_efuse_class_probe);
 
 int generic_efuse_class_remove(struct platform_device *pdev)
 {
@@ -379,3 +380,4 @@ int generic_efuse_class_remove(struct platform_device *pdev)
 	class_unregister(&efuse_class);
 	return 0;
 }
+EXPORT_SYMBOL(generic_efuse_class_remove);
