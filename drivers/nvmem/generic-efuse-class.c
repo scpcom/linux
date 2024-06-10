@@ -64,6 +64,7 @@ static ssize_t __efuse_user_attr_show(char *name, char *buf, int output_type);
 DEFINE_EFUEKEY_HEX_SHOW_ATTR(mac)
 DEFINE_EFUEKEY_HEX_SHOW_ATTR(mac_bt)
 DEFINE_EFUEKEY_HEX_SHOW_ATTR(mac_wifi)
+DEFINE_EFUEKEY_HEX_SHOW_ATTR(sn)
 DEFINE_EFUEKEY_HEX_SHOW_ATTR(userdata)
 DEFINE_EFUEKEY_STR_SHOW_ATTR(usid)
 DEFINE_EFUEKEY_STR_SHOW_ATTR(bid)
@@ -178,6 +179,7 @@ ssize_t efuse_user_attr_show(char *name, char *buf)
 CLASS_ATTR_RO(mac);
 CLASS_ATTR_RO(mac_bt);
 CLASS_ATTR_RO(mac_wifi);
+CLASS_ATTR_RO(sn);
 CLASS_ATTR_RO(userdata);
 CLASS_ATTR_RO(usid);
 CLASS_ATTR_RO(bid);
@@ -186,6 +188,7 @@ static struct attribute *efuse_class_attrs[] = {
 	&class_attr_mac.attr,
 	&class_attr_mac_bt.attr,
 	&class_attr_mac_wifi.attr,
+	&class_attr_sn.attr,
 	&class_attr_userdata.attr,
 	&class_attr_usid.attr,
 	&class_attr_bid.attr,
@@ -224,7 +227,9 @@ int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
 
 			if (eth_mac_size > 6)
 				efusekeynum++;
-			if (eth_mac_size > 12)
+			if (eth_mac_size > 6*2)
+				efusekeynum++;
+			if (eth_mac_size > 6*3)
 				efusekeynum++;
 		}
 		efusekeynum++;
@@ -254,10 +259,17 @@ int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
 		efusekey_infos[index].offset = be32_to_cpup(addr++);
 		efusekey_infos[index].size = be32_to_cpup(addr);
 
+		if (!strcmp(efusekey_infos[index].keyname, "ethernet_mac_address") ||
+		    !strcmp(efusekey_infos[index].keyname, "ethernet-mac-address") ||
+		    !strcmp(efusekey_infos[index].keyname, "eth-mac"))
+			strcpy(efusekey_infos[index].keyname, "eth_mac");
+
 		if (!strcmp(efusekey_infos[index].keyname, "eth_mac")) {
 			if (eth_mac_size > 6)
                                 index++;
-			if (eth_mac_size > 12)
+			if (eth_mac_size > 6*2)
+				index++;
+			if (eth_mac_size > 6*3)
 				index++;
 		}
 
@@ -267,6 +279,10 @@ int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
 	for (index = 0; index < efusekeynum; index++) {
 		if (!strcmp(efusekey_infos[index].keyname, "sn"))
 			strcpy(efusekey_infos[index].alias, "usid");
+		else if (!strcmp(efusekey_infos[index].keyname, "usid"))
+			strcpy(efusekey_infos[index].alias, "sn");
+		else if (!strcmp(efusekey_infos[index].keyname, "userdata"))
+			strcpy(efusekey_infos[index].alias, "bid");
 		else if (!strcmp(efusekey_infos[index].keyname, "bid"))
 			strcpy(efusekey_infos[index].alias, "userdata");
 		else if (!strcmp(efusekey_infos[index].keyname, "eth_mac")) {
@@ -290,12 +306,24 @@ int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
 				strcpy(efusekey_infos[index+2].keyname, "wifi_mac");
 				efusekey_infos[index+2].offset += 6*2;
 				efusekey_infos[index+2].size = eth_mac_size-6*2;
+
+				if (efusekey_infos[index+2].size > 6)
+					efusekey_infos[index+2].size = 6;
 			}
+
+                        if (eth_mac_size > 6*3) {
+                                efusekey_infos[index+3] = efusekey_infos[index];
+                                strcpy(efusekey_infos[index+3].keyname, "rsvd_mac");
+                                efusekey_infos[index+3].offset += 6*3;
+                                efusekey_infos[index+3].size = eth_mac_size-6*3;
+                        }
 		}
 		else if (!strcmp(efusekey_infos[index].keyname, "bt_mac"))
                         strcpy(efusekey_infos[index].alias, "mac_bt");
 		else if (!strcmp(efusekey_infos[index].keyname, "wifi_mac"))
                         strcpy(efusekey_infos[index].alias, "mac_wifi");
+		else if (!strcmp(efusekey_infos[index].keyname, "rsvd_mac"))
+			 strcpy(efusekey_infos[index].alias, "mac_rsvd");
 
 		pr_info("efusekeyname: %15s\toffset: %5d\tsize: %5d\n",
 			efusekey_infos[index].alias,
