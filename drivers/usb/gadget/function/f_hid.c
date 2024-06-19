@@ -62,6 +62,7 @@ struct f_hidg {
 	unsigned short			report_desc_length;
 	char				*report_desc;
 	unsigned short			report_length;
+	bool				wakeup_on_write;
 	/*
 	 * use_out_ep - if true, the OUT Endpoint (interrupt out method)
 	 *              will be used to receive reports from the host
@@ -467,9 +468,22 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *offp)
 {
 	struct f_hidg *hidg  = file->private_data;
+	struct usb_composite_dev *cdev = hidg->func.config->cdev;
 	struct usb_request *req;
 	unsigned long flags;
 	ssize_t status = -ENOMEM;
+
+	/*
+	 * remote wakeup is allowed only when the corresponding bit
+	 * in config descriptor is set and wakeup_on_write is enabled.
+     * FIXME: cdev->config can be NULLed on disconnect.
+	 */
+	if (hidg->wakeup_on_write /*&& cdev->config->bmAttributes & 0x20*/){
+		usb_gadget_wakeup(cdev->gadget);
+		ERROR(hidg->func.config->cdev,
+			"usb_gadget_wakeup\n");
+	}
+
 
 	spin_lock_irqsave(&hidg->write_spinlock, flags);
 
@@ -1374,6 +1388,7 @@ F_HID_OPT(subclass, 8, 255);
 F_HID_OPT(protocol, 8, 255);
 F_HID_OPT(no_out_endpoint, 8, 1);
 F_HID_OPT(report_length, 16, 65535);
+F_HID_OPT(wakeup_on_write, 8, 1);
 
 static ssize_t f_hid_opts_report_desc_show(struct config_item *item, char *page)
 {
@@ -1433,6 +1448,7 @@ static struct configfs_attribute *hid_attrs[] = {
 	&f_hid_opts_attr_subclass,
 	&f_hid_opts_attr_protocol,
 	&f_hid_opts_attr_no_out_endpoint,
+	&f_hid_opts_attr_wakeup_on_write,
 	&f_hid_opts_attr_report_length,
 	&f_hid_opts_attr_report_desc,
 	&f_hid_opts_attr_dev,
@@ -1578,6 +1594,7 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
 		}
 	}
 	hidg->use_out_ep = !opts->no_out_endpoint;
+	hidg->wakeup_on_write = opts->wakeup_on_write;
 
 	++opts->refcnt;
 	mutex_unlock(&opts->lock);
