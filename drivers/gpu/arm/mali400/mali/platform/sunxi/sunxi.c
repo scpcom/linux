@@ -1,9 +1,12 @@
 
+#include <linux/version.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/cma.h>
 #include <linux/delay.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <linux/dma-contiguous.h>
+#endif
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
