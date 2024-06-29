@@ -835,6 +835,7 @@ static bool sunxi_mali_has_reset_line(struct device_node *np)
 {
 	return of_device_is_compatible(np, "allwinner,sun4i-a10-mali") ||
 		of_device_is_compatible(np, "allwinner,sun7i-a20-mali") ||
+		of_device_is_compatible(np, "allwinner,sun8i-r40-mali") ||
 		of_device_is_compatible(np, "allwinner,sun8i-h3-mali") ||
 		of_device_is_compatible(np, "allwinner,sun50i-a64-mali") ||
 		of_device_is_compatible(np, "allwinner,sun50i-h5-mali");
@@ -843,12 +844,14 @@ static bool sunxi_mali_has_reset_line(struct device_node *np)
 static bool sunxi_mali_has_low_memory(struct device_node *np)
 {
 	return of_device_is_compatible(np, "allwinner,sun4i-a10-mali") ||
-		of_device_is_compatible(np, "allwinner,sun7i-a20-mali");
+		of_device_is_compatible(np, "allwinner,sun7i-a20-mali") ||
+		of_device_is_compatible(np, "allwinner,sun8i-r40-mali");
 }
 
 static const struct of_device_id sunxi_mali_dt_ids[] = {
 	{ .compatible = "allwinner,sun4i-a10-mali" },
 	{ .compatible = "allwinner,sun7i-a20-mali" },
+	{ .compatible = "allwinner,sun8i-r40-mali" },
 	{ .compatible = "allwinner,sun8i-h3-mali" },
 	{ .compatible = "allwinner,sun50i-a64-mali" },
 	{ .compatible = "allwinner,sun50i-h5-mali" },
@@ -1062,7 +1065,8 @@ int mali_platform_device_register(void)
 	    of_device_is_compatible(np, "allwinner,sun50i-h5-mali"))
 		clk_set_rate(mali->core_clk, 576000000);
 	else if (of_device_is_compatible(np, "allwinner,sun7i-a20-mali") ||
-		 of_device_is_compatible(np, "allwinner,sun8i-a23-mali"))
+		 of_device_is_compatible(np, "allwinner,sun8i-a23-mali") ||
+		 of_device_is_compatible(np, "allwinner,sun8i-r40-mali"))
 		clk_set_rate(mali->core_clk, 384000000);
 	else if (of_device_is_compatible(np, "allwinner,sun50i-a64-mali"))
 		clk_set_rate(mali->core_clk, 432000000);
