@@ -40,8 +40,8 @@ struct nvmem_device *efuse_nvmem;
 static ssize_t __efuse_user_attr_show(char *name, char *buf, int output_type);
 
 #define  DEFINE_EFUEKEY_STR_SHOW_ATTR(keyname)	\
-	static ssize_t  keyname##_show(struct class *cla, \
-					  struct class_attribute *attr,	\
+	static ssize_t  keyname##_show(const struct class *cla, \
+					  const struct class_attribute *attr,	\
 						char *buf)	\
 	{	\
 		ssize_t ret;	\
@@ -51,8 +51,8 @@ static ssize_t __efuse_user_attr_show(char *name, char *buf, int output_type);
 	}
 
 #define  DEFINE_EFUEKEY_HEX_SHOW_ATTR(keyname)	\
-	static ssize_t  keyname##_show(struct class *cla, \
-					  struct class_attribute *attr,	\
+	static ssize_t  keyname##_show(const struct class *cla, \
+					  const struct class_attribute *attr,	\
 						char *buf)	\
 	{	\
 		ssize_t ret;	\
