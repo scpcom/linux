@@ -544,7 +544,7 @@ int disp_sys_pwm_set_polarity(uintptr_t p_handler, int polarity)
 		memset(&state, 0, sizeof(struct pwm_state));
 		pwm_get_state(pwm_dev, &state);
 		state.polarity = polarity;
-		ret = pwm_apply_state(pwm_dev, &state);
+		ret = pwm_apply_might_sleep(pwm_dev, &state);
 		__inf("disp_sys_pwm_Set_Polarity pwm %d, active %s\n",
 		      pwm_dev->pwm, (polarity == 0) ? "high" : "low");
 	}
