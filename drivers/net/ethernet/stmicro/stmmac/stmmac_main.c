@@ -7122,6 +7122,22 @@ static const struct net_device_ops stmmac_netdev_ops = {
 	.ndo_xsk_wakeup = stmmac_xsk_wakeup,
 };
 
+void stmmac_reset_subtask2(struct stmmac_priv *priv)
+{
+	rtnl_lock();
+	netif_trans_update(priv->dev);
+	while (test_and_set_bit(STMMAC_RESETTING, &priv->state))
+		usleep_range(1000, 2000);
+
+	set_bit(STMMAC_DOWN, &priv->state);
+	dev_close(priv->dev);
+	dev_open(priv->dev, NULL);
+	clear_bit(STMMAC_DOWN, &priv->state);
+	clear_bit(STMMAC_RESETTING, &priv->state);
+	rtnl_unlock();
+}
+EXPORT_SYMBOL_GPL(stmmac_reset_subtask2);
+
 static void stmmac_reset_subtask(struct stmmac_priv *priv)
 {
 	if (!test_and_clear_bit(STMMAC_RESET_REQUESTED, &priv->state))
@@ -7133,14 +7149,14 @@ static void stmmac_reset_subtask(struct stmmac_priv *priv)
 
 	rtnl_lock();
 	netif_trans_update(priv->dev);
-	while (test_and_set_bit(STMMAC_RESETING, &priv->state))
+	while (test_and_set_bit(STMMAC_RESETTING, &priv->state))
 		usleep_range(1000, 2000);
 
 	set_bit(STMMAC_DOWN, &priv->state);
 	dev_close(priv->dev);
 	dev_open(priv->dev, NULL);
 	clear_bit(STMMAC_DOWN, &priv->state);
-	clear_bit(STMMAC_RESETING, &priv->state);
+	clear_bit(STMMAC_RESETTING, &priv->state);
 	rtnl_unlock();
 }
 
@@ -8043,6 +8059,8 @@ int stmmac_resume(struct device *dev)
 	rtnl_unlock();
 
 	netif_device_attach(ndev);
+	if (ndev->phydev)
+		phy_start(ndev->phydev);
 
 	return 0;
 }

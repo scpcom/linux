@@ -852,4 +852,12 @@ config CRYPTO_DEV_SA2UL
 source "drivers/crypto/aspeed/Kconfig"
 source "drivers/crypto/starfive/Kconfig"
 
+config CRYPTO_DEV_CVITEK_SPACC
+	tristate "Support for cvitek spacc"
+	depends on ARCH_CVITEK
+	help
+	  This driver provides support for SPACC devices that are part of the CVITEK SoCs.
+	  It handles cryptographic operations and provides a generic interface for SPACC devices.
+	  To compile this driver as a module, choose M here: the module will be called spacc-cvitek.
+
 endif # CRYPTO_HW

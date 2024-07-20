@@ -52,3 +52,5 @@ obj-y += hisilicon/
 obj-$(CONFIG_CRYPTO_DEV_AMLOGIC_GXL) += amlogic/
 obj-y += intel/
 obj-y += starfive/
+obj-$(CONFIG_CRYPTO_DEV_CVITEK_SPACC) += cvitek-spacc.o
+
