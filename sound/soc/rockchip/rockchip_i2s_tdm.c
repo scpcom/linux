@@ -883,10 +883,10 @@ static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 	if (i2s_tdm->is_master_mode) {
 		struct clk *mclk;
 
-		if (i2s_tdm->clk_trcm == TRCM_TX) {
+		if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_TXONLY) {
 			mclk = i2s_tdm->mclk_tx;
 			mclk_rate = i2s_tdm->mclk_tx_freq;
-		} else if (i2s_tdm->clk_trcm == TRCM_RX) {
+		} else if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_RXONLY) {
 			mclk = i2s_tdm->mclk_rx;
 			mclk_rate = i2s_tdm->mclk_rx_freq;
 		} else if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
