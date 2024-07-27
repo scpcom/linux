@@ -2,7 +2,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/of.h>
-#include "pinctrl-cv180x.h"
+#include "pinctrl-phobos.h"
 
 struct cvitek_pinctrl {
 	struct device *dev;
