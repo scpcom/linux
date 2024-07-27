@@ -8,10 +8,10 @@
 
 /memreserve/	CVIMMAP_MONITOR_ADDR CVIMMAP_ATF_SIZE; // ATF (BL31 + BL32) 512KB
 
-#include "cv181x_base.dtsi"
+#include "soph_base.dtsi"
 
 / {
-	model = "Cvitek. CV181X ASIC. ARM.";
+	model = "SOPHGO ASIC. ARM.";
 	interrupt-parent = <&gic>;
 
 	#size-cells = <0x2>;
@@ -80,13 +80,13 @@
 		};
 	};
 
-	cv181x_cooling:cv181x_cooling {
+	cooling:cooling {
 		clocks = <&clk CV181X_CLK_A53>, <&clk CV181X_CLK_TPU>;
 		clock-names = "clk_cpu", "clk_tpu_axi";
 		dev-freqs = <800000000 500000000>,
 			<400000000 375000000>,
 			<400000000 300000000>;
-		compatible = "cvitek,cv181x-cooling";
+		compatible = "sophgo,cooling";
 		#cooling-cells = <2>;
 	};
 

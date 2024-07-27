@@ -1,9 +1,9 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/reset/cv180x-resets.h>
-#include <dt-bindings/clock/cv180x-clock.h>
+#include <dt-bindings/reset/cv181x-resets.h>
+#include <dt-bindings/clock/cv181x-clock.h>
 #include <dt-bindings/thermal/thermal.h>
-#include <dt-bindings/dma/cv180x-dmamap.h>
+#include <dt-bindings/dma/cv181x-dmamap.h>
 #include "cvi_board_memmap.h"
 
 /*
@@ -19,15 +19,15 @@
 /memreserve/	CVIMMAP_MONITOR_ADDR CVIMMAP_OPENSBI_SIZE; // OpenSBI
 #endif
 
-#include "cv180x_base.dtsi"
+#include "soph_base.dtsi"
 
 / {
-	model = "Cvitek. CV180X ASIC. C906.";
+	model = "SOPHGO ASIC. C906.";
 
 	#size-cells = <0x2>;
 	#address-cells = <0x2>;
 
-	c906_cpus:cpus {
+	cpus {
 		#address-cells = <0x01>;
 		#size-cells = <0x00>;
 		timebase-frequency = <25000000>;
@@ -86,14 +86,13 @@
 
 	};
 
-
-	cv180x_cooling:cv180x_cooling {
-		clocks = <&clk CV180X_CLK_C906_0>, <&clk CV180X_CLK_TPU>;
+	cooling:cooling {
+		clocks = <&clk CV181X_CLK_C906_0>, <&clk CV181X_CLK_TPU>;
 		clock-names = "clk_cpu", "clk_tpu_axi";
 		dev-freqs = <850000000 500000000>,
 			<425000000 375000000>,
 			<425000000 300000000>;
-		compatible = "cvitek,cv180x-cooling";
+		compatible = "sophgo,cooling";
 		#cooling-cells = <2>;
 	};
 
@@ -273,12 +272,12 @@
 		interrupts = <31 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
-#if 0
-    emmc:cv-emmc@4300000 {
+
+	emmc:cv-emmc@4300000 {
 		interrupts = <34 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
-#endif
+
 	sd:cv-sd@4310000 {
 		interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
@@ -341,13 +340,13 @@
 		interrupt-names = "csi0", "csi1";
 		interrupt-parent = <&plic0>;
 	};
-#if 0
+
 	ive {
 		interrupt-names = "ive_irq";
 		interrupt-parent = <&plic0>;
 		interrupts = <97 IRQ_TYPE_LEVEL_HIGH>;
 	};
-#endif
+
 	vpss {
 		interrupts = <25 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "sc";
@@ -368,7 +367,6 @@
 	thermal:thermal@030E0000 {
 		interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "tempsen";
-		interrupt-parent = <&plic0>;
 	};
 
 };
