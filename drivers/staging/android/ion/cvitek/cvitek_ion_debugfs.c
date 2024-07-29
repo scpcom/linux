@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) Cvitek Co., Ltd. 2019-2020. All rights reserved.
  *
@@ -46,9 +47,8 @@ void show_bitmap_mem_usage(struct seq_file *s, u32 heap_id, struct gen_pool_chun
 
 	while (free_index_end < size_in_bit) {
 		free_index_start = find_next_zero_bit(map, size_in_bit, free_index_end);
-		if (free_index_start >= size_in_bit) {
+		if (free_index_start >= size_in_bit)
 			break;
-		}
 
 		free_index_end = find_next_bit(map, size_in_bit, free_index_start);
 
@@ -153,7 +153,7 @@ static const struct file_operations debug_heap_fops = {
 
 static int cvi_debugfs_get_alloc_mem(void *data, u64 *val)
 {
-	struct ion_heap *heap = data; 
+	struct ion_heap *heap = data;
 
 	spin_lock(&heap->stat_lock);
 	*val = heap->num_of_alloc_bytes;
@@ -166,7 +166,6 @@ DEFINE_SIMPLE_ATTRIBUTE(cvi_get_alloc_mem, cvi_debugfs_get_alloc_mem, NULL, "%ll
 static int cvi_debugfs_get_total_size(void *data, u64 *val)
 {
 	struct ion_heap *heap = data;
-	
 	*val = heap->total_size;
 
 	return 0;

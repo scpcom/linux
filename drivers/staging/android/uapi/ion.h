@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * drivers/staging/android/uapi/ion.h
+ *
  *
  * Copyright (C) 2011 Google, Inc.
  */
