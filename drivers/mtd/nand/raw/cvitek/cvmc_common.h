@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __CVMC_COMMON_H__
 #define __CVMC_COMMON_H__
 

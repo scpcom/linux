@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
@@ -202,9 +201,7 @@ int cvsnfc_send_nondata_cmd_and_wait(struct cvsnfc_host *host)
 
 	if (irq_status.status == 0) {
 		u32 int_status = cvsfc_read(host, REG_SPI_NAND_INT);
-
 		dev_err(host->dev, "%s command timeout 0x%x\n", __func__, int_status);
-
 		cv_spi_nand_dump_reg(host);
 		return -ETIMEDOUT;
 	}
@@ -268,17 +265,21 @@ uint8_t cvsnfc_read_byte(struct nand_chip *chip)
 	}
 
 	if ((host->cmd_option.last_cmd == NAND_CMD_ERASE1)
-			|| (host->cmd_option.last_cmd == NAND_CMD_PAGEPROG))
+			|| (host->cmd_option.last_cmd == NAND_CMD_PAGEPROG)) {
 		return value;
+	}
 
-	if (host->cmd_option.last_cmd == NAND_CMD_ERASE2)
+	if (host->cmd_option.last_cmd == NAND_CMD_ERASE2) {
 		return value;
+	}
 
-	if (host->cmd_option.command == NAND_CMD_STATUS)
+	if (host->cmd_option.command == NAND_CMD_STATUS) {
 		return value;
+	}
 
-	if (host->cmd_option.last_cmd == NAND_CMD_READOOB)
+	if (host->cmd_option.last_cmd == NAND_CMD_READOOB) {
 		return value;
+	}
 
 	host->offset++;
 
@@ -493,8 +494,9 @@ static int cvsnfc_dev_ready(struct nand_chip *chip)
 
 	do {
 		spi_feature_op(host, GET_OP, STATUS_ADDR, &regval);
-		if (!(regval & STATUS_OIP_MASK))
+		if (!(regval & STATUS_OIP_MASK)) {
 			return 1;
+		}
 	} while (jiffies_to_msecs(jiffies - start_time) < max_erase_time);
 
 	pr_err("%s timeout.\n", __func__);
@@ -705,12 +707,15 @@ static int spi_nand_rw_dma_setup(struct cvsnfc_host *host, void *buf, int len, i
 
 		pr_err("ch_id=%d\n", chan->chan_id);
 
-		for (i = 0; i <= 0x40; i += 4)
+		for (i = 0; i <= 0x40; i += 4) {
 			pr_info("0x%x: 0x%x\n", (0x0 + i), readl(sysdma_reg + i));
-		for (i = 0; i <= 0x40; i += 4)
+		}
+		for (i = 0; i <= 0x40; i += 4) {
 			pr_info("0x%x: 0x%x\n", (0x100 + i), readl(sysdma_reg + 0x100 + i));
-		for (i = 0; i <= 0x40; i += 4)
+		}
+		for (i = 0; i <= 0x40; i += 4) {
 			pr_info("0x%x: 0x%x\n", (0x200 + i), readl(sysdma_reg + 0x200 + i));
+		}
 
 		iounmap(clk_reg);
 		iounmap(sysdma_reg);
@@ -728,7 +733,6 @@ static int spi_nand_rw_dma_setup(struct cvsnfc_host *host, void *buf, int len, i
 static void spi_nand_set_read_from_cache_mode(struct cvsnfc_host *host, uint32_t mode, uint32_t r_col_addr)
 {
 	struct spi_nand_driver *spi_driver = host->spi_nand.driver;
-
 	switch (mode) {
 	case SPI_NAND_READ_FROM_CACHE_MODE_X1:
 		cvsfc_write(host, REG_SPI_NAND_TRX_CTRL3, BIT_REG_TRX_DMA_EN |
@@ -854,7 +858,6 @@ RETRY_READ_CMD:
 
 		if (irq_status.status == 0) {
 			u32 int_status = cvsfc_read(host, REG_SPI_NAND_INT);
-
 			dev_err(host->dev, "%s command timeout 0x%x\n", __func__, int_status);
 			ret = -ETIMEDOUT;
 		}
@@ -924,8 +927,9 @@ static int cvsnfc_read_page(struct nand_chip *chip,
 
 	memcpy(buf, (void *)host->buforg, mtd->writesize);
 
-	if (ret)
+	if (ret) {
 		pr_debug("%s row_addr 0x%x ret %d\n", __func__, row_addr, ret);
+	}
 
 	return ret;
 }
@@ -965,8 +969,9 @@ static int read_oob_data(struct mtd_info *mtd, uint8_t *buf, int row_addr)
 
 	cvsnfc_ctrl_ecc(mtd, ENABLE_ECC);
 
-	if (ret)
+	if (ret) {
 		pr_err("%s row_addr 0x%x ret %d\n", __func__, row_addr, ret);
+	}
 
 	return ret;
 }
@@ -974,8 +979,7 @@ static int read_oob_data(struct mtd_info *mtd, uint8_t *buf, int row_addr)
 static int cvsnfc_read_oob(struct nand_chip *chip,
 			     int page)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
-
+    struct mtd_info *mtd = nand_to_mtd(chip);
 	return read_oob_data(mtd, chip->oob_poi, page);
 }
 
@@ -1020,8 +1024,9 @@ static int cvsnfc_read_subpage(struct nand_chip *chip,
 
 	memcpy(buf, (void *)PTR_INC(host->buforg, data_offs), readlen);
 
-	if (ret)
+	if (ret) {
 		pr_debug("%s row_addr 0x%x ret %d\n", __func__, row_addr, ret);
+	}
 
 	return ret;
 }
@@ -1071,7 +1076,6 @@ RETRY_WRITE_CMD:
 
 		if (irq_status.status == 0) {
 			u32 int_status = cvsfc_read(host, REG_SPI_NAND_INT);
-
 			dev_err(host->dev, "%s command timeout 0x%x\n", __func__, int_status);
 			ret = -ETIMEDOUT;
 		}
@@ -1160,8 +1164,9 @@ static int write_page_helper(struct mtd_info *mtd, struct nand_chip *chip,
 	memcpy((void *)host->buforg, buf, mtd->writesize);
 	ret = spi_nand_prog_load(host, host->buforg, host->pagesize, col_addr,
 			0);
-	if (ret)
+	if (ret) {
 		return ret;
+	}
 
 	ret = spi_nand_prog_exec(host, row_addr);
 	if (ret) {
@@ -1182,7 +1187,7 @@ static int cvsnfc_write_page(struct nand_chip *chip,
 			    const uint8_t *buf, int oob_required, int row_addr)
 {
 	int status = 0;
-	struct mtd_info *mtd = nand_to_mtd(chip);
+    struct mtd_info *mtd = nand_to_mtd(chip);
 
 	/*
 	 * for regular page writes, we let HW handle all the ECC

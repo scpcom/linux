@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __CVSNFC_COMMON_H__
 #define __CVSNFC_COMMON_H__
 
@@ -16,7 +15,7 @@
 #define NAND_PAGE_32K                    6
 
 /*****************************************************************************/
-#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
 #define NAND_ECC_NONE                    0
 #endif
 #define NAND_ECC_0BIT                    0
@@ -92,7 +91,7 @@ struct nand_config_info {
 
 /*****************************************************************************/
 
-#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
 struct nand_flash_dev_ex {
 	struct nand_flash_dev flash_dev;
 
