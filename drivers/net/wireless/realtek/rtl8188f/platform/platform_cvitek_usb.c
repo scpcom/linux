@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2018 bitmain.
@@ -19,7 +18,6 @@
 int platform_wifi_power_on(void)
 {
 	int err = 0;
-
 	RTW_INFO("*** power on rtl8821fu ***\n");
 	return err;
 }
