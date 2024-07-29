@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * drivers/staging/android/ion/compat_ion.h
+ *
  *
  * Copyright (C) 2013 Google, Inc.
  *

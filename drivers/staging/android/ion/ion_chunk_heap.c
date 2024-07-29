@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * drivers/staging/android/ion/ion_chunk_heap.c
+ *
  *
  * Copyright (C) 2012 Google, Inc.
  */

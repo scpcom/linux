@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * drivers/staging/android/ion/ion_carveout_heap.c
+ *
  *
  * Copyright (C) 2011 Google, Inc.
  */
@@ -113,7 +113,7 @@ static struct ion_heap_ops carveout_heap_ops = {
 #ifdef CONFIG_ION_CVITEK
 void cvi_get_rtos_ion_size(size_t *psize)
 {
-	struct device_node * np;
+	struct device_node *np;
 	u32 rtos_ion_size;
 	int ret;
 
@@ -125,7 +125,7 @@ void cvi_get_rtos_ion_size(size_t *psize)
 
 	ret = of_property_read_u32(np, "ion-size", &rtos_ion_size);
 	*psize = rtos_ion_size;
-	if(ret)
+	if (ret)
 		*psize = 0;
 
 	of_node_put(np);
@@ -155,7 +155,7 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 #ifdef CONFIG_ION_CVITEK
 	/* cvitek: freertos will use this space before linux boot up, we shouldn't modify it. */
 	cvi_get_rtos_ion_size(&rtos_ion_size);
-	if(rtos_ion_size){
+	if (rtos_ion_size) {
 		heap_end_addr = heap_data->base + size;
 		rtos_end_page = pfn_to_page(PFN_UP(heap_data->base + rtos_ion_size));
 		size = heap_end_addr - page_to_phys(rtos_end_page);
@@ -187,7 +187,7 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 #ifndef CONFIG_ION_CVITEK
 	carveout_heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
 #endif
-    carveout_heap->heap.name = heap_data->name;
+	carveout_heap->heap.name = heap_data->name;
 #ifdef CONFIG_ION_CVITEK
 	carveout_heap->heap.total_size = heap_data->size;
 #endif
