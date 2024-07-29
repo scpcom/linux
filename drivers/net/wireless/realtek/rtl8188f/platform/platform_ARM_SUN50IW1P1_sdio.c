@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -12,8 +13,7 @@
  * more details.
  *
  *****************************************************************************/
-/*
- * Description:
+/* Description:
  *	This file can be applied to following platforms:
  *	CONFIG_PLATFORM_ARM_SUN50IW1P1
  */
@@ -24,7 +24,7 @@
 
 #ifdef CONFIG_MMC
 #if defined(CONFIG_PLATFORM_ARM_SUN50IW1P1)
-extern void sunxi_mmc_rescan_card(unsigned ids);
+extern void sunxi_mmc_rescan_card(unsigned int ids);
 extern void sunxi_wlan_set_power(int on);
 extern int sunxi_wlan_get_bus_index(void);
 extern int sunxi_wlan_get_oob_irq(void);
@@ -35,8 +35,7 @@ extern unsigned int oob_irq;
 #endif
 #endif /* CONFIG_MMC */
 
-/*
- * Return:
+/* Return:
  *	0:	power on successfully
  *	others: power on failed
  */
@@ -49,6 +48,7 @@ int platform_wifi_power_on(void)
 
 #if defined(CONFIG_PLATFORM_ARM_SUN50IW1P1)
 		int wlan_bus_index = sunxi_wlan_get_bus_index();
+
 		if (wlan_bus_index < 0)
 			return wlan_bus_index;
 
@@ -74,6 +74,7 @@ void platform_wifi_power_off(void)
 #ifdef CONFIG_MMC
 #if defined(CONFIG_PLATFORM_ARM_SUN50IW1P1)
 	int wlan_bus_index = sunxi_wlan_get_bus_index();
+
 	if (wlan_bus_index < 0)
 		return;
 

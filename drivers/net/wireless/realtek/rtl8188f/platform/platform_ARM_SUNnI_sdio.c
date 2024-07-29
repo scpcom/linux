@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -12,8 +13,7 @@
  * more details.
  *
  *****************************************************************************/
-/*
- * Description:
+/* Description:
  *	This file can be applied to following platforms:
  *	CONFIG_PLATFORM_ARM_SUN6I
  *	CONFIG_PLATFORM_ARM_SUN7I
@@ -31,9 +31,9 @@ static signed int gpio_eint_wlan = -1;
 static u32 eint_wlan_handle = 0;
 
 #if defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I)
-extern void sw_mci_rescan_card(unsigned id, unsigned insert);
+extern void sw_mci_rescan_card(unsigned int id, unsigned int insert);
 #elif defined(CONFIG_PLATFORM_ARM_SUN8I)
-extern void sunxi_mci_rescan_card(unsigned id, unsigned insert);
+extern void sunxi_mci_rescan_card(unsigned int id, unsigned int insert);
 #endif
 
 #ifdef CONFIG_PLATFORM_ARM_SUN8I_W5P1
@@ -48,8 +48,7 @@ extern unsigned int oob_irq;
 #endif
 #endif /* CONFIG_MMC */
 
-/*
- * Return:
+/* Return:
  *	0:	power on successfully
  *	others: power on failed
  */
@@ -69,7 +68,7 @@ int platform_wifi_power_on(void)
 #endif
 
 		type = script_get_item("wifi_para", "wifi_sdc_id", &val);
-		if (SCIRPT_ITEM_VALUE_TYPE_INT != type) {
+		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
 			RTW_INFO("get wifi_sdc_id failed\n");
 			ret = -1;
 		} else {
@@ -98,7 +97,7 @@ int platform_wifi_power_on(void)
 		type = script_get_item("wifi_para", "rtl8189es_host_wake", &val);
 #endif
 #endif /* CONFIG_PLATFORM_ARM_SUN8I_W5P1 */
-		if (SCIRPT_ITEM_VALUE_TYPE_PIO != type) {
+		if (type != SCIRPT_ITEM_VALUE_TYPE_PIO) {
 			RTW_INFO("No definition of wake up host PIN\n");
 			ret = -1;
 		} else {

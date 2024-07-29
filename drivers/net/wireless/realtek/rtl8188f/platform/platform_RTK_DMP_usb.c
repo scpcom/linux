@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -18,6 +19,7 @@ int platform_wifi_power_on(void)
 {
 	int ret = 0;
 	u32 tmp;
+
 	tmp = readl((volatile unsigned int *)0xb801a608);
 	tmp &= 0xffffff00;
 	tmp |= 0x55;

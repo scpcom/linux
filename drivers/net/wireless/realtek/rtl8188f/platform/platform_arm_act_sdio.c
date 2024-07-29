@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -12,8 +13,7 @@
  * more details.
  *
  *****************************************************************************/
-/*
- * Description:
+/* Description:
  *	This file can be applied to following platforms:
  *    CONFIG_PLATFORM_ACTIONS_ATM703X
  */
@@ -24,8 +24,7 @@ extern int acts_wifi_init(void);
 extern void acts_wifi_cleanup(void);
 #endif
 
-/*
- * Return:
+/* Return:
  *	0:	power on successfully
  *	others: power on failed
  */
