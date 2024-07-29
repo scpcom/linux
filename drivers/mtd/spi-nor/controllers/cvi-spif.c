@@ -225,15 +225,12 @@ static void timeout_dump_reg(struct cvi_spif *spif, struct dma_chan *chan)
 
 	pr_err("ch_id=%d\n", chan->chan_id);
 
-	for (i = 0; i <= 0x20; i += 4) {
+	for (i = 0; i <= 0x20; i += 4)
 		pr_info("0x%x: 0x%x\n", (0x0 + i), readl(sysdma_reg + i));
-	}
-	for (i = 0; i <= 0x20; i += 4) {
+	for (i = 0; i <= 0x20; i += 4)
 		pr_info("0x%x: 0x%x\n", (0x100 + i), readl(sysdma_reg + 0x100 + i));
-	}
-	for (i = 0; i <= 0x20; i += 4) {
+	for (i = 0; i <= 0x20; i += 4)
 		pr_info("0x%x: 0x%x\n", (0x200 + i), readl(sysdma_reg + 0x200 + i));
-	}
 
 	iounmap(clk_reg);
 	iounmap(sysdma_reg);
@@ -387,9 +384,8 @@ static void cvi_spif_dump_reg(struct cvi_spif *spif)
 
 	writel(0, spif->io_base + REG_SPI_DMMR);
 
-	for (i = 0; i <= 0x28; i = i + 4) {
+	for (i = 0; i <= 0x28; i = i + 4)
 		pr_info("0x%x : 0x%x\n", i, readl(spif->io_base + i));
-	}
 
 	writel(1, spif->io_base + REG_SPI_DMMR);
 }
@@ -461,9 +457,8 @@ static u8 cvi_spi_data_out_tran(struct spi_nor *nor, const u8 *src_buf,
 		 * be cleared after transfer done. and BIT_SPI_INT_RD_FIFO bit will not
 		 * be set even when REG_SPI_FIFO_PT shows non-zero value.
 		 */
-		for (i = 0; i < xfer_size; i++) {
+		for (i = 0; i < xfer_size; i++)
 			writeb(*(src_buf + off + i), spif->io_base + REG_SPI_FIFO_PORT);
-		}
 
 		off += xfer_size;
 	}

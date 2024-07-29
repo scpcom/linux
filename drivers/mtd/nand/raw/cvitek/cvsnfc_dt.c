@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * SPI NAND Flash Controller Device Driver for DT
  *
