@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/mtd/nand.h>
 #include <cvsnfc_common.h>
 #include <match_table.h>
