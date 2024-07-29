@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -12,8 +13,7 @@
  * more details.
  *
  *****************************************************************************/
-/*
- * Description:
+/* Description:
  *	This file can be applied to following platforms:
  *	CONFIG_PLATFORM_ARM_SUNXI Series platform
  *
@@ -42,7 +42,6 @@ extern void wifi_pm_power(int on);
 static script_item_u item;
 #endif
 
-
 int platform_wifi_power_on(void)
 {
 	int ret = 0;
@@ -68,7 +67,7 @@ int platform_wifi_power_on(void)
 		script_item_value_type_e type;
 
 		type = script_get_item("wifi_para", "wifi_usbc_id", &item);
-		if (SCIRPT_ITEM_VALUE_TYPE_INT != type) {
+		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
 			printk("ERR: script_get_item wifi_usbc_id failed\n");
 			ret = -ENOMEM;
 			goto exit;
@@ -89,7 +88,7 @@ int platform_wifi_power_on(void)
 		script_item_value_type_e type;
 
 		type = script_get_item("wifi_para", "wifi_usbc_id", &item);
-		if (SCIRPT_ITEM_VALUE_TYPE_INT != type) {
+		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
 			printk("ERR: script_get_item wifi_usbc_id failed\n");
 			ret = -ENOMEM;
 			goto exit;

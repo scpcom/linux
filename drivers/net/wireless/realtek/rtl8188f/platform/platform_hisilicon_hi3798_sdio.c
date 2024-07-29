@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2017 - 2018 Realtek Corporation.
@@ -83,8 +84,7 @@ static int hisi_wlan_set_carddetect(bool present)
 	return 0;
 }
 
-/*
- * Return:
+/* Return:
  *	0:	power on successfully
  *	others: power on failed
  */

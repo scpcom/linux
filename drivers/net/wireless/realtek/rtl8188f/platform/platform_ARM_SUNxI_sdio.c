@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2013 - 2017 Realtek Corporation.
@@ -22,11 +23,10 @@
 #endif /* !CONFIG_WITS_EVB_V13 */
 
 #define SUNXI_SDIO_WIFI_NUM_RTL8189ES  10
-extern void sunximmc_rescan_card(unsigned id, unsigned insert);
+extern void sunximmc_rescan_card(unsigned int id, unsigned int insert);
 extern int mmc_pm_get_mod_type(void);
 extern int mmc_pm_gpio_ctrl(char *name, int level);
-/*
- *	rtl8189es_shdn	= port:PH09<1><default><default><0>
+/*	rtl8189es_shdn	= port:PH09<1><default><default><0>
  *	rtl8189es_wakeup	= port:PH10<1><default><default><1>
  *	rtl8189es_vdd_en  = port:PH11<1><default><default><0>
  *	rtl8189es_vcc_en  = port:PH12<1><default><default><0>
@@ -51,8 +51,7 @@ int rtl8189es_sdio_poweroff(void)
 }
 #endif /* CONFIG_MMC_SUNXI_POWER_CONTROL */
 
-/*
- * Return:
+/* Return:
  *	0:	power on successfully
  *	others:	power on failed
  */
