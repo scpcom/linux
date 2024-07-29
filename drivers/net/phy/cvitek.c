@@ -211,7 +211,7 @@ static int cv182xa_phy_config_init(struct phy_device *phydev)
 	writel(0x8688, reg_ephy_base + 0x68);
 	writel(0x8484, reg_ephy_base + 0x6c);
 	writel(0x0082, reg_ephy_base + 0x70);
-#else 
+#else
 	// from sean
 	// Fix err: the status is still linkup when removed the network cable.
 	writel(0x2000, reg_ephy_base + 0x40);
