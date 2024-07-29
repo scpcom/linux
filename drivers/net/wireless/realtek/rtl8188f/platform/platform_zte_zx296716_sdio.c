@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /******************************************************************************
  *
  * Copyright(c) 2016 - 2018 Realtek Corporation.
@@ -18,7 +17,8 @@
 #include "platform_zte_zx296716_sdio.h"	/* sdio_reinit() and etc */
 
 
-/* Return:
+/*
+ * Return:
  *	0:	power on successfully
  *	others:	power on failed
  */
