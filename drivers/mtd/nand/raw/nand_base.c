@@ -546,7 +546,7 @@ int nand_markbad_bbm(struct nand_chip *chip, loff_t ofs)
 	return nand_default_block_markbad(chip, ofs);
 }
 
-/*
+/**
  * nand_block_markbad_lowlevel - mark a block bad
  * @chip: NAND chip object
  * @ofs: offset from device start
@@ -564,7 +564,7 @@ int nand_markbad_bbm(struct nand_chip *chip, loff_t ofs)
  *
  * Note that we retain the first error encountered in (2) or (3), finish the
  * procedures, and dump the error in the end.
- */
+*/
 static int nand_block_markbad_lowlevel(struct nand_chip *chip, loff_t ofs)
 {
 	struct mtd_info *mtd = nand_to_mtd(chip);
@@ -753,7 +753,6 @@ EXPORT_SYMBOL_GPL(nand_gpio_waitrdy);
 void panic_nand_wait(struct nand_chip *chip, unsigned long timeo)
 {
 	int i;
-
 	for (i = 0; i < timeo; i++) {
 		if (chip->legacy.dev_ready) {
 			if (chip->legacy.dev_ready(chip))
@@ -2820,7 +2819,6 @@ static int nand_check_erased_buf(void *buf, int len, int bitflips_threshold)
 	for (; len >= sizeof(long);
 	     len -= sizeof(long), bitmap += sizeof(long)) {
 		unsigned long d = *((unsigned long *)bitmap);
-
 		if (d == ~0UL)
 			continue;
 		weight = hweight_long(d);
@@ -4523,7 +4521,6 @@ static int nand_do_write_ops(struct nand_chip *chip, loff_t to,
 
 		if (unlikely(oob)) {
 			size_t len = min(oobwritelen, oobmaxlen);
-
 			oob = nand_fill_oob(chip, oob, len, ops);
 			oobwritelen -= len;
 		} else {
@@ -4951,7 +4948,6 @@ void sanitize_string(uint8_t *s, size_t len)
 static int nand_id_has_period(u8 *id_data, int arrlen, int period)
 {
 	int i, j;
-
 	for (i = 0; i < period; i++)
 		for (j = i + period; j < arrlen; j += period)
 			if (id_data[i] != id_data[j])
@@ -5418,9 +5414,9 @@ ident_done:
 	chip->bbt_erase_shift = chip->phys_erase_shift =
 		ffs(mtd->erasesize) - 1;
 	if (targetsize & 0xffffffff)
-		chip->chip_shift = ffs((unsigned int)targetsize) - 1;
+		chip->chip_shift = ffs((unsigned)targetsize) - 1;
 	else {
-		chip->chip_shift = ffs((unsigned int)(targetsize >> 32));
+		chip->chip_shift = ffs((unsigned)(targetsize >> 32));
 		chip->chip_shift += 32 - 1;
 	}
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 #include "linux/types.h"
 #include <linux/mtd/rawnand.h>
 #include <linux/io.h>
@@ -1528,8 +1527,9 @@ static int spi_nand_winbond_select_die(struct cvsnfc_host *host, unsigned int id
 {
 	static uint8_t pre_id = 0xff;
 
-	if (id == pre_id)
+	if (id == pre_id) {
 		return 0;
+	}
 
 	// Select Die
 	cvsfc_write(host, REG_SPI_NAND_TRX_CTRL2, 0x1);
