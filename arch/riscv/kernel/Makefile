@@ -63,6 +63,7 @@ obj-y	+= sys_riscv.o
 obj-y	+= sys_hwprobe.o
 obj-y	+= time.o
 obj-y	+= traps.o
+obj-y	+= io.o
 obj-y	+= riscv_ksyms.o
 obj-y	+= stacktrace.o
 obj-y	+= cacheinfo.o
