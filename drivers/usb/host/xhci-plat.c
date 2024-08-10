@@ -266,12 +266,17 @@ int xhci_plat_probe(struct platform_device *pdev, struct device *sysdev, const s
 		if (device_property_read_bool(tmpdev, "xhci-skip-phy-init-quirk"))
 			xhci->quirks |= XHCI_SKIP_PHY_INIT;
 
+		#if defined(CONFIG_SOC_SPACEMIT_K1X)
+		if (device_property_read_bool(tmpdev, "reset-on-resume"))
+			xhci->quirks |= XHCI_RESET_ON_RESUME;
+		#endif
+
 		device_property_read_u32(tmpdev, "imod-interval-ns",
 					 &xhci->imod_interval);
 	}
 
 	/*
-	 * Drivers such as dwc3 manages PHYs themself (and rely on driver name
+	 * Drivers such as dwc3 manages PHYs themself (and rely on drivers name
 	 * matching for the xhci platform device).
 	 */
 	of_match = of_match_device(pdev->dev.driver->of_match_table, &pdev->dev);

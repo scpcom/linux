@@ -56,6 +56,9 @@ enum sbi_ext_base_fid {
 	SBI_EXT_BASE_GET_MVENDORID,
 	SBI_EXT_BASE_GET_MARCHID,
 	SBI_EXT_BASE_GET_MIMPID,
+#if defined(CONFIG_SOC_SPACEMIT_K1PRO) || defined(CONFIG_SOC_SPACEMIT_K1X)
+	SBI_EXT_BASE_FLUSH_CACHE_ALL,
+#endif
 };
 
 enum sbi_ext_time_fid {
@@ -333,6 +336,10 @@ void sbi_set_timer(uint64_t stime_value);
 void sbi_shutdown(void);
 void sbi_send_ipi(unsigned int cpu);
 int sbi_remote_fence_i(const struct cpumask *cpu_mask);
+
+#if defined(CONFIG_SOC_SPACEMIT_K1PRO) || defined(CONFIG_SOC_SPACEMIT_K1X)
+void sbi_flush_local_dcache_all(void);
+#endif
 
 int sbi_remote_sfence_vma_asid(const struct cpumask *cpu_mask,
 				unsigned long start,

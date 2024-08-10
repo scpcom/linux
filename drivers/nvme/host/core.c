@@ -2076,6 +2076,9 @@ static bool nvme_update_disk_info(struct nvme_ns *ns, struct nvme_id_ns *id,
 	 */
 	lim->logical_block_size = bs;
 	lim->physical_block_size = min(phys_bs, atomic_bs);
+#if defined(CONFIG_SOC_SPACEMIT_K1X)
+	lim->max_segment_size = 0x80000;
+#endif
 	lim->io_min = phys_bs;
 	lim->io_opt = io_opt;
 	if ((ns->ctrl->quirks & NVME_QUIRK_DEALLOCATE_ZEROES) &&

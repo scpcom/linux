@@ -144,7 +144,7 @@ ifeq ($(CONFIG_RISCV_M_MODE)$(CONFIG_SOC_CANAAN_K210),yy)
 KBUILD_IMAGE := $(boot)/loader.bin
 else
 ifeq ($(CONFIG_EFI_ZBOOT),)
-KBUILD_IMAGE	:= $(boot)/Image.gz
+KBUILD_IMAGE := $(boot)/Image.gz.itb
 else
 KBUILD_IMAGE := $(boot)/vmlinuz.efi
 endif
@@ -184,15 +184,22 @@ endif
 vdso-install-y			+= arch/riscv/kernel/vdso/vdso.so.dbg
 vdso-install-$(CONFIG_COMPAT)	+= arch/riscv/kernel/compat_vdso/compat_vdso.so.dbg
 
-BOOT_TARGETS := Image Image.gz Image.bz2 Image.lz4 Image.lzma Image.lzo Image.zst Image.xz loader loader.bin xipImage vmlinuz.efi
+BOOT_TARGETS := Image Image.gz Image.itb Image.gz.itb Image.bz2 Image.lz4 Image.lzma Image.lzo Image.zst Image.xz loader loader.bin xipImage vmlinuz.efi
 
-all:	$(notdir $(KBUILD_IMAGE))
+#
+# extra files
+#
+include $(srctree)/arch/riscv/generic/Platform
+bootvars-y	= ITS_INPUTS="$(its-y)"
+
+all:	$(notdir $(KBUILD_IMAGE)) Image.itb Image.gz.itb
 
 loader.bin: loader
-Image.gz Image.bz2 Image.lz4 Image.lzma Image.lzo Image.zst Image.xz loader xipImage vmlinuz.efi: Image
+Image.gz loader xipImage vmlinuz.efi: Image
+Image.itb Image.gz.itb Image.bz2 Image.lz4 Image.lzma Image.lzo Image.zst Image.xz: Image Image.gz
 
 $(BOOT_TARGETS): vmlinux
-	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
+	$(Q)$(MAKE) $(build)=$(boot) $(bootvars-y) $(boot)/$@
 	@$(kecho) '  Kernel: $(boot)/$@ is ready'
 
 # the install target always installs KBUILD_IMAGE (which may be compressed)

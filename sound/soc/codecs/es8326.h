@@ -104,7 +104,7 @@
 #define ES8326_MUTE (3 << 0)
 
 /* ES8326_CLK_CTL */
-#define ES8326_CLK_ON (0x7f << 0)
+#define ES8326_CLK_ON (0x7e << 0)
 #define ES8326_CLK_OFF (0 << 0)
 
 /* ES8326_CLK_INV */
@@ -196,5 +196,9 @@
 /* ES8326_CHIP_VERSION 0xFF */
 #define ES8326_VERSION (1 << 0)
 #define ES8326_VERSION_B (3 << 0)
+
+#if IS_ENABLED(CONFIG_SND_SOC_SPACEMIT)
+#define SPACEMIT_CONFIG_CODEC_ES8326 1
+#endif
 
 #endif

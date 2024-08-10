@@ -421,6 +421,12 @@
 #define SEED_OPST_DEAD		_AC(0xC0000000, UL)
 #define SEED_ENTROPY_MASK	_AC(0xFFFF, UL)
 
+#ifdef CONFIG_SOC_SPACEMIT_K1X
+/* TCM enable register */
+#define CSR_TCMCFG		0x5db
+#define TCM_EN			_AC(0x00000001, UL) /* TCM Access Enable */
+#endif
+
 #ifdef CONFIG_RISCV_M_MODE
 # define CSR_STATUS	CSR_MSTATUS
 # define CSR_IE		CSR_MIE

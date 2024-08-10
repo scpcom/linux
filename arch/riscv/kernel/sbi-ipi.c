@@ -12,6 +12,7 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <asm/sbi.h>
+#include <asm/csr.h>
 
 DEFINE_STATIC_KEY_FALSE(riscv_sbi_for_rfence);
 EXPORT_SYMBOL_GPL(riscv_sbi_for_rfence);
@@ -35,6 +36,15 @@ static int sbi_ipi_starting_cpu(unsigned int cpu)
 	enable_percpu_irq(sbi_ipi_virq, irq_get_trigger_type(sbi_ipi_virq));
 	return 0;
 }
+
+#ifdef CONFIG_SOC_SPACEMIT
+static int sbi_clint_ipi_starting_cpu(unsigned int cpu)
+{
+	csr_set(CSR_IE, IE_SIE);
+
+	return 0;
+}
+#endif
 
 void __init sbi_ipi_init(void)
 {
@@ -74,6 +84,11 @@ void __init sbi_ipi_init(void)
 	cpuhp_setup_state(CPUHP_AP_IRQ_RISCV_SBI_IPI_STARTING,
 			  "irqchip/sbi-ipi:starting",
 			  sbi_ipi_starting_cpu, NULL);
+#ifdef CONFIG_SOC_SPACEMIT
+	cpuhp_setup_state(CPUHP_AP_CLINT_IPI_RISCV_STARTING,
+			  "irqchip/sbi-clint-ipi:starting",
+			  sbi_clint_ipi_starting_cpu, NULL);
+#endif
 
 	riscv_ipi_set_virq_range(virq, BITS_PER_BYTE);
 	pr_info("providing IPIs using SBI IPI extension\n");
