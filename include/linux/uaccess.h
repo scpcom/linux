@@ -225,6 +225,16 @@ copy_to_user(void __user *to, const void *from, unsigned long n)
 	return _copy_to_user(to, from, n);
 #endif
 }
+#ifdef CONFIG_COMPAT
+static __always_inline unsigned long __must_check
+copy_in_user(void __user *to, const void __user *from, unsigned long n)
+{
+	might_fault();
+	if (access_ok(to, n) && access_ok(from, n))
+		n = raw_copy_in_user(to, from, n);
+	return n;
+}
+#endif
 
 #ifndef copy_mc_to_kernel
 /*
