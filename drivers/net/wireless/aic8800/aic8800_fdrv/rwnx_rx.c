@@ -2008,7 +2008,8 @@ u8 rwnx_rxdataind_aicwf(struct rwnx_hw *rwnx_hw, void *hostid, void *rx_priv)
 
 	if (hw_rxhdr->is_monitor_vif) {
 		status = RX_STAT_MONITOR;
-		printk("monitor rx\n");
+		// dont flood my console
+		//printk("monitor rx\n");
 	}
 
 	if (hw_rxhdr->flags_upload)
