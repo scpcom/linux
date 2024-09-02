@@ -176,10 +176,20 @@ static void cpufreq_exit(struct cpufreq_policy *policy)
 	clk_put(policy->clk);
 }
 
+#ifdef CONFIG_SOC_SPACEMIT_K1X
+extern int spacmeit_cpufreq_veritfy(struct cpufreq_policy_data *policy);
+extern void spacemit_cpufreq_ready(struct cpufreq_policy *policy);
+#endif
+
 static struct cpufreq_driver dt_cpufreq_driver = {
 	.flags = CPUFREQ_NEED_INITIAL_FREQ_CHECK |
 		 CPUFREQ_IS_COOLING_DEV,
+#ifndef CONFIG_SOC_SPACEMIT_K1X
 	.verify = cpufreq_generic_frequency_table_verify,
+#else
+	.verify = spacmeit_cpufreq_veritfy,
+	.ready = spacemit_cpufreq_ready,
+#endif
 	.target_index = set_target,
 	.get = cpufreq_generic_get,
 	.init = cpufreq_init,

@@ -2281,6 +2281,7 @@ static int flexcan_probe(struct platform_device *pdev)
 		if (irq <= 0)
 			return -ENODEV;
 	} else {
+		const struct of_device_id *of_id;
 		irq = -1;
 		of_id = of_match_device(r_flexcan_of_match, &pdev->dev);
 		if (of_id)
