@@ -584,6 +584,63 @@ static int cvi_spif_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, size_t len
 	return 0;
 }
 
+static ssize_t cvi_spif_read_otp(struct spi_nor *nor, loff_t from, size_t len, u_char *buf)
+{
+	struct cvi_spif *spif = nor->priv;
+	u32 sck_div_orig;
+	u8 cmd[5] = {0};
+	u8 tmp;
+	int count = 0;
+	int i;
+
+	/* set clock to 30MHz for no-addr cmd */
+	sck_div_orig = cvi_spif_clk_setup(spif, 4);
+
+	writel(0, spif->io_base + REG_SPI_DMMR);
+	writel(0x2, spif->io_base + REG_SPI_CE_CTRL);
+
+	cmd[0] = SPINOR_OP_RD_OTP;
+	cmd[1] = from >> 16;
+	cmd[2] = from >> 8;
+	cmd[3] = from >> 0;
+	cmd[4] = 0;
+	cvi_spi_data_out_tran(nor, cmd, 5, 1);
+
+	cvi_spi_data_in_tran(nor, buf, len, 1);
+
+	writel(0x3, spif->io_base + REG_SPI_CE_CTRL);
+
+	/* restore higher speed */
+	cvi_spif_clk_setup(spif, sck_div_orig);
+	return len;
+}
+
+static ssize_t cvi_spif_write_otp(struct spi_nor *nor, loff_t to, size_t len, const u8 *buf)
+{
+	u8 cmd[4] = {0};
+	struct cvi_spif *spif = nor->priv;
+	u32 sck_div_orig;
+
+	cmd[0] = SPINOR_OP_WR_OTP;
+	cmd[1] = to >> 16;
+	cmd[2] = to >> 8;
+	cmd[3] = to >> 0;
+
+	sck_div_orig = cvi_spif_clk_setup(spif, 4);
+	writel(0, spif->io_base + REG_SPI_DMMR);
+	writel(0x2, spif->io_base + REG_SPI_CE_CTRL);
+	cvi_spi_data_out_tran(nor, cmd, 1, 1);
+	cvi_spi_data_out_tran(nor, cmd + 1, 3, 1);
+
+	/* data */
+	if (len)
+		cvi_spi_data_out_tran(nor, buf, len, 1);
+	writel(0x3, spif->io_base + REG_SPI_CE_CTRL);
+	/* restore higher speed */
+	cvi_spif_clk_setup(spif, sck_div_orig);
+	return len;
+}
+
 static int cvi_spif_write_reg(struct spi_nor *nor, u8 opcode, const u8 *buf, size_t len)
 {
 	struct cvi_spif *spif = nor->priv;
@@ -711,6 +768,8 @@ static const struct spi_nor_controller_ops cvi_controller_ops = {
 	.write_reg = cvi_spif_write_reg,
 	.read = cvi_spif_read,
 	.write = cvi_spif_write,
+	.read_otp = cvi_spif_read_otp,
+	.write_otp = cvi_spif_write_otp
 };
 
 static int cvi_spif_setup_flash(struct cvi_spif *spif,

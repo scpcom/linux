@@ -140,6 +140,7 @@ enum spi_nor_option_flags {
 	SNOR_F_RWW		= BIT(14),
 	SNOR_F_ECC		= BIT(15),
 	SNOR_F_NO_WP		= BIT(16),
+	SNOR_F_SUPPORT_OTP  = BIT(17),
 };
 
 struct spi_nor_read_command {
@@ -515,7 +516,8 @@ struct flash_info {
 	u16 page_size;
 	u8 n_banks;
 	u8 addr_nbytes;
-
+	u32		otp_num;
+	u32		otp_size;
 	u16 flags;
 #define SPI_NOR_HAS_LOCK		BIT(0)
 #define SPI_NOR_HAS_TB			BIT(1)
@@ -539,6 +541,7 @@ struct flash_info {
 #define SPI_NOR_QUAD_OP         (SPI_NOR_QUAD_READ | SPI_NOR_QUAD_WRITE)
 
 #define SPI_NOR_HAS_FIX_DUMMY  BIT(9)
+#define SPI_NOR_SUPPORT_OTP	BIT(10)
 	u8 fixup_flags;
 #define SPI_NOR_4B_OPCODES		BIT(0)
 #define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(1)
@@ -548,6 +551,21 @@ struct flash_info {
 	const struct spi_nor_otp_organization *otp;
 	const struct spi_nor_fixups *fixups;
 };
+
+#define CVI_INFO(_jedec_id, _ext_id, _sector_size, _n_sectors, _otp_num, _otp_size)	\
+	.id = {							\
+		((_jedec_id) >> 16) & 0xff,			\
+		((_jedec_id) >> 8) & 0xff,			\
+		(_jedec_id) & 0xff,				\
+		((_ext_id) >> 8) & 0xff,			\
+		(_ext_id) & 0xff,				\
+	},						\
+	.id_len = (!(_jedec_id) ? 0 : (3 + ((_ext_id) ? 2 : 0))),	\
+	.sector_size = (_sector_size),				\
+	.n_sectors = (_n_sectors),				\
+	.otp_num = _otp_num,					\
+	.otp_size = _otp_size,					\
+	.page_size = 256,					\
 
 #define SNOR_ID(...)							\
 	(&(const struct spi_nor_id){					\
