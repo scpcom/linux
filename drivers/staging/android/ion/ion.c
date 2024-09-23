@@ -982,10 +982,10 @@ static int ion_device_create(void)
 }
 subsys_initcall(ion_device_create);
 #ifdef CONFIG_ION_CVITEK
-#include <linux/syscalls.h>
+#include <linux/fdtable.h>
 void ion_free(pid_t pid, int fd)
 {
-	ksys_close(fd);
+	close_fd(fd);
 }
 EXPORT_SYMBOL(ion_free);
 #endif
