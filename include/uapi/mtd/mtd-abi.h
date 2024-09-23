@@ -39,6 +39,12 @@ struct mtd_oob_buf {
 	unsigned char __user *ptr;
 };
 
+struct mtd_otp_buf {
+	__u32 start;
+	__u32 length;
+	unsigned char __user *ptr;
+};
+
 struct mtd_oob_buf64 {
 	__u64 start;
 	__u32 pad;
@@ -196,6 +202,11 @@ struct otp_info {
 	__u32 locked;
 };
 
+struct otp_message {
+	__u32 count;
+	__u32 length;
+	__u32 locked;
+};
 /*
  * Note, the following ioctl existed in the past and was removed:
  * #define MEMSETOOBSEL           _IOW('M', 9, struct nand_oobinfo)
@@ -260,6 +271,10 @@ struct otp_info {
  * without OOB, e.g., NOR flash.
  */
 #define MEMREAD			_IOWR('M', 26, struct mtd_read_req)
+#define OTPWRITE		_IOW('M', 27, struct mtd_otp_buf)
+#define OTPREAD			_IOR('M', 28, struct mtd_otp_buf)
+#define OTPERASE_OTP		_IOWR('M', 29, struct erase_info_user)
+#define OTPINFO		_IOWR('M', 30, struct otp_message)
 
 /*
  * Obsolete legacy interface. Keep it in order not to break userspace
