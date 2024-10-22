@@ -1419,4 +1419,12 @@ config TOUCHSCREEN_DWAV_USB_MT
 
 	  module will be called dwav-usb-mt.
 
+config TOUCHSCREEN_CHIPONE_TDDI
+	tristate "Chipone-tddi touchscreen support"
+	depends on SPI
+	help
+	  Say Y here if you have a touchscreen using Chipone-tddi.
+
+	  If unsure, say N.
+
 endif
