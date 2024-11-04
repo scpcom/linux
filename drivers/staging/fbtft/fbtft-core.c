@@ -76,6 +76,19 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
 				  const char *name, int index,
 				  struct gpio_desc **gpiop)
 {
+#if (!IS_ENABLED(CONFIG_FB_TFT_ST7789))
+	struct device *dev = par->info->device;
+
+	*gpiop = devm_gpiod_get_index_optional(dev, name, index,
+					       GPIOD_OUT_LOW);
+	if (IS_ERR(*gpiop))
+		return dev_err_probe(dev, PTR_ERR(*gpiop), "Failed to request %s GPIO\n", name);
+
+	fbtft_par_dbg(DEBUG_REQUEST_GPIOS, par, "%s: '%s' GPIO\n",
+		      __func__, name);
+
+	return 0;
+#else
     struct device *dev = par->info->device;
     struct device_node *node = dev->of_node;
     int gpio, flags, ret = 0;
@@ -110,6 +123,7 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
     }
 
     return ret;
+#endif
 }
 
 static int fbtft_request_gpios(struct fbtft_par *par)
@@ -244,10 +258,13 @@ static void fbtft_reset(struct fbtft_par *par)
 	msleep(10);
 	gpiod_set_value_cansleep(par->gpio.reset, 0);
 	msleep(200);
-	gpiod_set_value_cansleep(par->gpio.reset, 1);
-	msleep(10);
+#if (!IS_ENABLED(CONFIG_FB_TFT_ST7789))
 
 	gpiod_set_value_cansleep(par->gpio.cs, 1);  /* Activate chip */
+#else
+	gpiod_set_value_cansleep(par->gpio.reset, 1);
+	msleep(10);
+#endif
 }
 
 static void fbtft_update_display(struct fbtft_par *par, unsigned int start_line,
