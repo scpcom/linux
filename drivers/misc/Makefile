@@ -75,4 +75,5 @@ obj-y				+= keba/
 obj-$(CONFIG_SUNXI_ADDR_MGT)    += sunxi-addr/
 obj-$(CONFIG_SUNXI_RFKILL)      += sunxi-rf/
 obj-$(CONFIG_SPACEMIT_TCM)	+= tcm.o
+obj-$(CONFIG_OCP2138)	+= ocp2138.o
 obj-$(CONFIG_ICM42607)		+= icm42607.o input-polldev.o

@@ -124,3 +124,4 @@ obj-$(CONFIG_TOUCHSCREEN_DWAV_USB_MT)	+= dwav-usb-mt.o
 
 obj-$(CONFIG_TOUCHSCREEN_CHIPONE_TDDI)	+= chipone-tddi/
 obj-y += chsc5xxx/
+obj-y += focaltech_touch/
