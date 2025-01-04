@@ -6,6 +6,15 @@
 
 / {
 	model = "Milk-V Duo256M";
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-user {
+			gpios = <&porte 2 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "activity";
+		};
+	};
 };
 
 &mipi_rx {
@@ -44,3 +53,7 @@
 	status = "okay";
 };
 
+/* gpio porte 2 is connected to led */
+&vo {
+	reset-gpio = <&porte 3 GPIO_ACTIVE_LOW>;
+};
