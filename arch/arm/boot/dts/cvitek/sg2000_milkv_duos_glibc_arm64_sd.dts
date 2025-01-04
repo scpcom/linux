@@ -7,6 +7,26 @@
 / {
 	model = "Milk-V DuoS";
 
+	leds {
+		compatible = "gpio-leds";
+
+		led0 {
+			gpios = <&porta 29 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "activity";
+			label = "blue";
+		};
+		led1 {
+			gpios = <&porte 6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "netdev";
+			label = "orange";
+		};
+		led2 {
+			gpios = <&porte 8 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "stmmac-0:00:link";
+			label = "green";
+		};
+	};
+
 	sd:cv-sd@4310000 {
 		max-frequency = <10000000>;
 	};
