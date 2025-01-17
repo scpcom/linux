@@ -14,7 +14,7 @@
 #include "k1-x_thermal_cooling.dtsi"
 
 / {
-	model = "spacemit k1-x deb1 board";
+	model = "Banana Pi BPI-F3";
 	modules_usrload = "8852bs";
 
 	cpus: cpus {
