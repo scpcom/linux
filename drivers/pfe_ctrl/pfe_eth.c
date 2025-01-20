@@ -3178,6 +3178,8 @@ static int pfe_eth_init_one( struct pfe *pfe, int id )
 		goto err3;
 	}
 
+	dev->min_mtu = 64 - ETH_HLEN -4;
+	dev->max_mtu = JUMBO_FRAME_SIZE - ETH_HLEN -4;
 	dev->mtu = 1500;
 
 	/* supported features */
