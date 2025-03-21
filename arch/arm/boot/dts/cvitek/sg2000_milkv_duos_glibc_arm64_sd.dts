@@ -7,6 +7,9 @@
 / {
 	model = "Milk-V DuoS";
 
+	/delete-node/ wifi_pin;
+	/delete-node/ bt_pin;
+
 	leds {
 		compatible = "gpio-leds";
 
@@ -109,11 +112,12 @@
 	max-frequency = <187500000>;
 };
 
-&wifi_pin {
-	status = "okay";
-	compatible = "cvitek,wifi-pin";
-	poweron-gpio = <&porta 15 GPIO_ACTIVE_HIGH>;
-	wakeup-gpio = <&porte 7 GPIO_ACTIVE_HIGH>;
+&porta {
+	wifi_pwr {
+		gpio-hog;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
 };
 
 &usb {
