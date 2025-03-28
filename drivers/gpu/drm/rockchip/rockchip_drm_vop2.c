@@ -4532,15 +4532,6 @@ static void vop2_post_config(struct drm_crtc *crtc)
 	u16 vsize = vdisplay * (vcstate->top_margin + vcstate->bottom_margin) / 200;
 	u16 hact_end, vact_end;
 	u32 val;
-	u32 bg_dly;
-	u32 pre_scan_dly;
-
-	bg_dly = vp->data->pre_scan_max_dly[3];
-	vop2_writel(vp->vop2, RK3568_VP_BG_MIX_CTRL(vp->id),
-		    FIELD_PREP(RK3568_VP_BG_MIX_CTRL__BG_DLY, bg_dly));
-
-	pre_scan_dly = ((bg_dly + (hdisplay >> 1) - 1) << 16) | hsync_len;
-	vop2_vp_write(vp, RK3568_VP_PRE_SCAN_HTIMING, pre_scan_dly);
 
 	vsize = rounddown(vsize, 2);
 	hsize = rounddown(hsize, 2);
