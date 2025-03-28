@@ -2,6 +2,7 @@
 #
 #
 CONFIG_SYSVIPC=y
+CONFIG_POSIX_MQUEUE=y
 
 #
 #
