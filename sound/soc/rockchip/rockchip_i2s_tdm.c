@@ -74,6 +74,8 @@ struct rk_i2s_tdm_dev {
 	int rx_reset_id;
 	atomic_t refcount;
 	spinlock_t lock; /* xfer lock */
+	unsigned int mclk_rx_freq;
+	unsigned int mclk_tx_freq;
 };
 
 static int to_ch_num(unsigned int val)
@@ -847,6 +849,27 @@ static int rockchip_i2s_tdm_params_channels(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+static int rockchip_i2s_tdm_set_sysclk(struct snd_soc_dai *cpu_dai, int stream,
+				       unsigned int freq, int dir)
+{
+	struct rk_i2s_tdm_dev *i2s_tdm = to_info(cpu_dai);
+
+	if (i2s_tdm->clk_trcm) {
+		i2s_tdm->mclk_tx_freq = freq;
+		i2s_tdm->mclk_rx_freq = freq;
+	} else {
+		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+			i2s_tdm->mclk_tx_freq = freq;
+		else
+			i2s_tdm->mclk_rx_freq = freq;
+	}
+
+	dev_dbg(i2s_tdm->dev, "The target mclk_%s freq is: %d\n",
+		stream ? "rx" : "tx", freq);
+
+	return 0;
+}
+
 static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 				      struct snd_pcm_hw_params *params,
 				      struct snd_soc_dai *dai)
@@ -861,6 +884,7 @@ static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 
 		if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_TXONLY) {
 			mclk = i2s_tdm->mclk_tx;
+			mclk_rate = i2s_tdm->mclk_tx_freq;
 		} else if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_RXONLY) {
 			mclk = i2s_tdm->mclk_rx;
 			mclk_rate = i2s_tdm->mclk_rx_freq;
@@ -872,7 +896,7 @@ static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 			mclk_rate = i2s_tdm->mclk_rx_freq;
 		}
 
-		ret = clk_set_rate(mclk, DEFAULT_MCLK_FS * params_rate(params));
+		ret = clk_set_rate(mclk, mclk_rate);
 		if (ret)
 			goto err;
 
