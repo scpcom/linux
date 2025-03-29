@@ -49,7 +49,6 @@
 #include "../drm_crtc_internal.h"
 #include "../drm_internal.h"
 
-#include "rockchip_drm_drv.h"
 #include "rockchip_drm_gem.h"
 #include "rockchip_drm_fb.h"
 #include "rockchip_drm_vop.h"
@@ -1526,6 +1525,16 @@ static bool rockchip_vop2_mod_supported(struct drm_plane *plane, u32 format, u64
 {
 	if (modifier == DRM_FORMAT_MOD_INVALID)
 		return false;
+
+	if (vop2->data->soc_id == 3568 || vop2->data->soc_id == 3566) {
+		if (vop2_cluster_window(win)) {
+			if (modifier == DRM_FORMAT_MOD_LINEAR) {
+				drm_dbg_kms(vop2->drm,
+					    "Cluster window only supports format with afbc\n");
+				return false;
+			}
+		}
+	}
 
 	if (modifier == DRM_FORMAT_MOD_LINEAR)
 		return true;
@@ -4522,6 +4531,15 @@ static void vop2_post_config(struct drm_crtc *crtc)
 	u16 vsize = vdisplay * (vcstate->top_margin + vcstate->bottom_margin) / 200;
 	u16 hact_end, vact_end;
 	u32 val;
+	u32 bg_dly;
+	u32 pre_scan_dly;
+
+	bg_dly = vp->data->pre_scan_max_dly[3];
+	vop2_writel(vp->vop2, RK3568_VP_BG_MIX_CTRL(vp->id),
+		    FIELD_PREP(RK3568_VP_BG_MIX_CTRL__BG_DLY, bg_dly));
+
+	pre_scan_dly = ((bg_dly + (hdisplay >> 1) - 1) << 16) | hsync_len;
+	vop2_vp_write(vp, RK3568_VP_PRE_SCAN_HTIMING, pre_scan_dly);
 
 	vsize = rounddown(vsize, 2);
 	hsize = rounddown(hsize, 2);
@@ -5338,6 +5356,7 @@ static void vop2_setup_cluster_alpha(struct vop2 *vop2, struct vop2_cluster *clu
 	u16 src_glb_alpha_val = 0xff, dst_glb_alpha_val = 0xff;
 	bool premulti_en = false;
 	bool swap = false;
+	u32 offset = 0;
 
 	if (!sub_win) {
 		/* At one win mode, win0 is dst/bottom win, and win1 is a all zero src/top win */
