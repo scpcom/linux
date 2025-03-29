@@ -884,6 +884,7 @@ static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 
 		if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_TXONLY) {
 			mclk = i2s_tdm->mclk_tx;
+			mclk_rate = i2s_tdm->mclk_tx_freq;
 		} else if (i2s_tdm->clk_trcm == I2S_CKR_TRCM_RXONLY) {
 			mclk = i2s_tdm->mclk_rx;
 			mclk_rate = i2s_tdm->mclk_rx_freq;
@@ -895,7 +896,7 @@ static int rockchip_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 			mclk_rate = i2s_tdm->mclk_rx_freq;
 		}
 
-		ret = clk_set_rate(mclk, DEFAULT_MCLK_FS * params_rate(params));
+		ret = clk_set_rate(mclk, mclk_rate);
 		if (ret)
 			goto err;
 
