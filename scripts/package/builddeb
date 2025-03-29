@@ -46,8 +46,9 @@ install_linux_image () {
 		gzip "${pdir}/usr/share/doc/${pname}/config"
 	else
 		mkdir -p "${pdir}/boot"
-		cp System.map "${pdir}/boot/System.map-${KERNELRELEASE}"
-		cp ${KCONFIG_CONFIG} "${pdir}/boot/config-${KERNELRELEASE}"
+		mkdir -p "${pdir}/lib/boot/${KERNELRELEASE}"
+		cp System.map "${pdir}/lib/boot/${KERNELRELEASE}/System.map"
+		cp ${KCONFIG_CONFIG} "${pdir}/lib/boot/${KERNELRELEASE}/config"
 	fi
 
 	# Not all arches have the same installed path in debian
@@ -61,7 +62,7 @@ install_linux_image () {
 	*)
 		installed_image_path="boot/vmlinuz-${KERNELRELEASE}";;
 	esac
-	cp "$(${MAKE} -s -f ${srctree}/Makefile image_name)" "${pdir}/${installed_image_path}"
+	cp "$(${MAKE} -s -f ${srctree}/Makefile image_name)" "${pdir}/lib/boot/${KERNELRELEASE}/vmlinuz"
 
 	# Install the maintainer scripts
 	# Note: hook scripts under /etc/kernel are also executed by official Debian
@@ -78,6 +79,16 @@ install_linux_image () {
 
 		set -e
 
+		EOF
+
+		[ $script != postinst ] || cat <<-EOF >> "${pdir}/DEBIAN/${script}"
+		cp -p "/lib/boot/${KERNELRELEASE}/vmlinuz" "/$installed_image_path"
+		cp -p "/lib/boot/${KERNELRELEASE}/System.map" "/boot/System.map-${KERNELRELEASE}"
+		cp -p "/lib/boot/${KERNELRELEASE}/config" "/boot/config-${KERNELRELEASE}"
+
+		EOF
+
+		cat <<-EOF >> "${pdir}/DEBIAN/${script}"
 		# Pass maintainer script parameters to hook scripts
 		export DEB_MAINT_PARAMS="\$*"
 
@@ -85,6 +96,17 @@ install_linux_image () {
 		export INITRD=$(if_enabled_echo CONFIG_BLK_DEV_INITRD Yes No)
 
 		test -d ${debhookdir}/${script}.d && run-parts --arg="${KERNELRELEASE}" --arg="/${installed_image_path}" ${debhookdir}/${script}.d
+		EOF
+
+		[ $script != postrm ] || cat <<-EOF >> "${pdir}/DEBIAN/${script}"
+
+		rm -f "/$installed_image_path"
+		rm -f "/boot/System.map-${KERNELRELEASE}"
+		rm -f "/boot/config-${KERNELRELEASE}"
+
+		EOF
+
+		cat <<-EOF >> "${pdir}/DEBIAN/${script}"
 		exit 0
 		EOF
 		chmod 755 "${pdir}/DEBIAN/${script}"
