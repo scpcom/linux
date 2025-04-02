@@ -71,7 +71,8 @@ ifdef CONFIG_TOOLCHAIN_NEEDS_OLD_ISA_SPEC
 KBUILD_CFLAGS += -Wa,-misa-spec=2.2
 KBUILD_AFLAGS += -Wa,-misa-spec=2.2
 else
-riscv-march-$(CONFIG_TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI) := $(riscv-march-y)_zicsr_zifencei
+riscv-march-cflags-$(CONFIG_TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI) := $(riscv-march-cflags-y)_zicsr_zifencei
+riscv-march-aflags-$(CONFIG_TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI) := $(riscv-march-aflags-y)_zicsr_zifencei
 endif
 
 KBUILD_CFLAGS += -march=$(riscv-march-cflags-y) -Wa,-march=$(riscv-march-aflags-y)
