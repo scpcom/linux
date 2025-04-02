@@ -64,7 +64,11 @@ void switch_mm(struct mm_struct *prev, struct mm_struct *next,
 	asid = (next->context.asid.counter & SATP_ASID_MASK)
 		<< SATP_ASID_SHIFT;
 
+#ifndef CONFIG_TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI
 	csr_write(sptbr, virt_to_pfn(next->pgd) | SATP_MODE | asid);
+#else
+	csr_write(satp, virt_to_pfn(next->pgd) | SATP_MODE | asid);
+#endif
 #endif
 
 	flush_icache_deferred(next);

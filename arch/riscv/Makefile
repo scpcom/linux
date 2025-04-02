@@ -29,8 +29,10 @@ ifeq ($(CONFIG_ARCH_RV64I),y)
 	KBUILD_AFLAGS += -mabi=lp64
 
 # workaround for C906 ldd performance issue
+ifeq ($(CONFIG_TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI),)
 ifeq ($(CONFIG_ARCH_CVITEK),y)
 	KBUILD_CFLAGS += -mno-ldd
+endif
 endif
 
 	KBUILD_LDFLAGS += -melf64lriscv
