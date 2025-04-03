@@ -420,7 +420,6 @@ config FPU
 
 config VECTOR
 	bool "VECTOR support"
-	depends on !TOOLCHAIN_NEEDS_EXPLICIT_ZICSR_ZIFENCEI
 	default n
 
 choice VECTOR_VERSION
