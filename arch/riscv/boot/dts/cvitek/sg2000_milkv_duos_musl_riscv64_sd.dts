@@ -91,6 +91,10 @@
 	status = "okay";
 };
 
+&sd {
+	no-1-8-v;
+};
+
 &wifisd {
 	status = "okay";
 	cap-sd-highspeed;
