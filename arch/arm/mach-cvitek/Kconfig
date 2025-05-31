@@ -45,6 +45,8 @@ config ARCH_CV181X
     select ARM_GIC
     select ARM_AMBA
     select ARM_GIC_V3
+	select ARM_PSCI
+	select HAVE_ARM_ARCH_TIMER
 	help
 	  This enables support for Cvitek's CV181X
 
