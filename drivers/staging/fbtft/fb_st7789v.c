@@ -20,6 +20,8 @@
 
 #define DRVNAME "fb_st7789v"
 
+#define MILKV_DRVNAME "fb_milkv_st7789v"
+
 #define DEFAULT_GAMMA \
 	"70 2C 2E 15 10 09 48 33 53 0B 19 18 20 25\n" \
 	"70 2C 2E 15 10 09 48 33 53 0B 19 18 20 25"
@@ -38,13 +40,17 @@
  * @PORCTRL: porch setting
  * @GCTRL: gate control
  * @VCOMS: VCOM setting
+ * @LCMCTRL: LCM control
  * @VDVVRHEN: VDV and VRH command enable
  * @VRHS: VRH set
  * @VDVS: VDV set
  * @VCMOFSET: VCOM offset set
+ * @FRCTRL2: frame rate control in normal mode
  * @PWCTRL1: power control 1
  * @PVGAMCTRL: positive voltage gamma control
  * @NVGAMCTRL: negative voltage gamma control
+ * @PWCTRL2: power control 2
+ * @EQCTRL: Equalize time control
  *
  * The command names are the same as those found in the datasheet to ease
  * looking up their semantics and usage.
@@ -58,13 +64,17 @@ enum st7789v_command {
 	PORCTRL = 0xB2,
 	GCTRL = 0xB7,
 	VCOMS = 0xBB,
+	LCMCTRL = 0xC0,
 	VDVVRHEN = 0xC2,
 	VRHS = 0xC3,
 	VDVS = 0xC4,
 	VCMOFSET = 0xC5,
+	FRCTRL2 = 0xC6,
 	PWCTRL1 = 0xD0,
 	PVGAMCTRL = 0xE0,
 	NVGAMCTRL = 0xE1,
+	PWCTRL2 = 0xE8,
+	EQCTRL = 0xE9,
 };
 
 #define MADCTL_BGR BIT(3) /* bitmask for RGB/BGR order */
@@ -462,6 +472,80 @@ static struct fbtft_display display = {
 
 FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789v", &display);
 
+static int init_milkv_display(struct fbtft_par *par)
+{
+	par->fbtftops.reset(par);
+
+	/* turn off sleep mode */
+	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
+	mdelay(120);
+
+	/* set pixel format to RGB-565 */
+	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
+
+	write_reg(par, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
+
+	write_reg(par, PORCTRL, 0x0C,0x0C,0x00,0x33,0x33);
+
+	/*
+	 * VGH = 13.26V
+	 * VGL = -10.43V
+	 */
+	write_reg(par, GCTRL, 0x35);
+
+	write_reg(par, VCOMS, 0x19);
+	write_reg(par, LCMCTRL, 0x2C);
+
+	/*
+	 * VDV and VRH register values come from command write
+	 * (instead of NVM)
+	 */
+	write_reg(par, VDVVRHEN, 0x01);
+
+	write_reg(par, VRHS, 0x12);
+
+	/* VDV = 0V */
+	write_reg(par, VDVS, 0x20);
+
+	write_reg(par, FRCTRL2, 0x0F);
+
+	/*
+	 * AVDD = 6.8V
+	 * AVCL = -4.8V
+	 * VDS = 2.3V
+	 */
+	write_reg(par, PWCTRL1, 0xA4, 0xA1);
+
+	write_reg(par, PVGAMCTRL, 0xD0,0x04,0x0D,0x11,0x13,0x2B,0x3F,0x54,0x4C,0x18,0x0D,0x0B,0x1F,0x23);
+	write_reg(par, NVGAMCTRL, 0xD0,0x04,0x0C,0x11,0x13,0x2C,0x3F,0x44,0x51,0x2F,0x1F,0x1F,0x20,0x23);
+
+	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
+
+	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
+	mdelay(200);
+
+	return 0;
+}
+
+static struct fbtft_display milkv_display = {
+	.regwidth = 8,
+	.width = 240,
+	.height = 320,
+	.gamma_num = 2,
+	.gamma_len = 14,
+	.gamma = HSD20_IPS_GAMMA,
+	.fbtftops = {
+		.init_display = init_milkv_display,
+		.set_var = set_var,
+		.set_gamma = set_gamma,
+		.blank = blank,
+	},
+};
+
+FBTFT_REGISTER_DRIVER(MILKV_DRVNAME, "milkv,st7789v", &milkv_display)
+
+MODULE_ALIAS("spi:" MILKV_DRVNAME);
+MODULE_ALIAS("platform:" MILKV_DRVNAME);
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
 MODULE_ALIAS("spi:st7789v");
