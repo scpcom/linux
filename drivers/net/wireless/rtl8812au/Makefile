@@ -43,10 +43,7 @@ EXTRA_CFLAGS += -Wno-type-limits
 
 EXTRA_CFLAGS += -Wno-vla
 
-#EXTRA_CFLAGS += -I$(src)/include
-mkfile_patch := $(abspath $(lastword $(MAKEFILE_LIST)))
-src := $(patsubst %/, %, $(dir $(mkfile_patch)))
-EXTRA_CFLAGS += -I$(src)/include
+EXTRA_CFLAGS += -I$(srctree)/$(src)/include
 
 
 EXTRA_LDFLAGS += --strip-debug
@@ -289,7 +286,7 @@ _HAL_INTFS_FILES :=	hal/hal_intf.o \
 			hal/hal_hci/hal_$(HCI_NAME).o \
 			hal/led/hal_$(HCI_NAME)_led.o
 
-EXTRA_CFLAGS += -I$(src)/hal/btc
+EXTRA_CFLAGS += -I$(srctree)/$(src)/hal/btc
 _BTC_FILES += hal/btc/halbtc8723bwifionly.o \
 				hal/btc/halbtc8822bwifionly.o \
 				hal/btc/halbtc8821cwifionly.o
