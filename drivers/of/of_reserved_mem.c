@@ -29,6 +29,12 @@
 #include "of_private.h"
 
 #if defined(CONFIG_ARCH_CVITEK)
+struct reserved_mem_addr_entry {
+	char *uname;
+	phys_addr_t addr;
+};
+static struct reserved_mem_addr_entry reserved_mem_addr_array[MAX_RESERVED_REGIONS];
+static int reserved_mem_addr_entry_count;
 struct reserved_mem_size_entry {
 	char *uname;
 	phys_addr_t size;
@@ -362,6 +368,7 @@ static int __init __reserved_mem_alloc_size(unsigned long node, const char *unam
 	bool nomap;
 	int ret;
 #if defined(CONFIG_ARCH_CVITEK)
+	phys_addr_t addr = 0;
 	int i;
 #endif
 
@@ -375,6 +382,16 @@ static int __init __reserved_mem_alloc_size(unsigned long node, const char *unam
 	}
 	size = dt_mem_next_cell(dt_root_size_cells, &prop);
 #if defined(CONFIG_ARCH_CVITEK)
+	for (i = 0; i < reserved_mem_addr_entry_count; i++) {
+		if (!strcmp(uname, reserved_mem_addr_array[i].uname)) {
+			pr_info("fix reserved-memory item %s from bootargs\n", reserved_mem_addr_array[i].uname);
+
+			pr_info("old addr=%pa, new addr=%pa\n", &addr, &reserved_mem_addr_array[i].addr);
+
+			addr = reserved_mem_addr_array[i].addr;
+			break;
+		}
+	}
 	for (i = 0; i < reserved_mem_size_entry_count; i++) {
 		if (!strcmp(uname, reserved_mem_size_array[i].uname)) {
 			pr_info("fix reserved-memory item %s from bootargs\n", reserved_mem_size_array[i].uname);
@@ -419,8 +436,10 @@ static int __init __reserved_mem_alloc_size(unsigned long node, const char *unam
 
 		while (len > 0) {
 			start = dt_mem_next_cell(dt_root_addr_cells, &prop);
+			if (addr) start = addr;
 			end = start + dt_mem_next_cell(dt_root_size_cells,
 						       &prop);
+			if (addr && size) end = start + size;
 
 			ret = __reserved_mem_alloc_in_range(size, align,
 					start, end, nomap, &base);
@@ -506,6 +525,29 @@ static char *next_arg_separator(char *args, char **param, char **val, char separ
 	return skip_spaces(next);
 }
 
+
+static int __init early_reserved_addr(char *args)
+{
+	char *param, *addr;
+	u64 u64_addr;
+
+	pr_debug("%s args is %s\n", __func__, args);
+
+	while (*args) {
+		args = next_arg_separator(args, &param, &addr, ':');
+		reserved_mem_addr_array[reserved_mem_addr_entry_count].uname = param;
+		kstrtou64(addr, 16, &u64_addr);
+		reserved_mem_addr_array[reserved_mem_addr_entry_count].addr = u64_addr;
+		reserved_mem_addr_entry_count++;
+
+		pr_debug("%s, parsed %s", __func__, param);
+
+		pr_debug(" val=%pa\n", &reserved_mem_addr_array[reserved_mem_addr_entry_count - 1].addr);
+	}
+
+	return 0;
+}
+early_param("reserved_mem_addr", early_reserved_addr);
 
 static int __init early_reserved_size(char *args)
 {
