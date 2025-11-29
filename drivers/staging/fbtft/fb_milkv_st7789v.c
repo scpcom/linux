@@ -7,18 +7,14 @@
 
 #include <linux/bitops.h>
 #include <linux/delay.h>
-#include <linux/gpio/consumer.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/interrupt.h>
-#include <linux/completion.h>
 #include <linux/module.h>
-
 #include <video/mipi_display.h>
 
 #include "fbtft.h"
 
-#define DRVNAME "fb_st7789v"
+#define DRVNAME "fb_milkv_st7789v"
 
 #define DEFAULT_GAMMA \
 	"70 2C 2E 15 10 09 48 33 53 0B 19 18 20 25\n" \
@@ -29,8 +25,6 @@
 	"D0 05 0A 09 08 05 2E 43 45 0F 16 16 2B 33"
 
 #define HSD20_IPS 1
-
-#define CGRAM_OFFSET 1
 
 /**
  * enum st7789v_command - ST7789V display controller commands
@@ -80,62 +74,6 @@ enum st7789v_command {
 #define MADCTL_MX BIT(6) /* bitmask for column address order */
 #define MADCTL_MY BIT(7) /* bitmask for page address order */
 
-/* 60Hz for 16.6ms, configured as 2*16.6ms */
-#define PANEL_TE_TIMEOUT_MS  33
-
-static struct completion panel_te; /* completion for panel TE line */
-static int irq_te; /* Linux IRQ for LCD TE line */
-
-static irqreturn_t panel_te_handler(int irq, void *data)
-{
-	complete(&panel_te);
-	return IRQ_HANDLED;
-}
-
-/*
- * init_tearing_effect_line() - init tearing effect line.
- * @par: FBTFT parameter object.
- *
- * Return: 0 on success, or a negative error code otherwise.
- */
-static int init_tearing_effect_line(struct fbtft_par *par)
-{
-	struct device *dev = par->info->device;
-	struct gpio_desc *te;
-	int rc, irq;
-
-	te = gpiod_get_optional(dev, "te", GPIOD_IN);
-	if (IS_ERR(te))
-		return dev_err_probe(dev, PTR_ERR(te), "Failed to request te GPIO\n");
-
-	/* if te is NULL, indicating no configuration, directly return success */
-	if (!te) {
-		irq_te = 0;
-		return 0;
-	}
-
-	irq = gpiod_to_irq(te);
-
-	/* GPIO is locked as an IRQ, we may drop the reference */
-	gpiod_put(te);
-
-	if (irq < 0)
-		return irq;
-
-	irq_te = irq;
-	init_completion(&panel_te);
-
-	/* The effective state is high and lasts no more than 1000 microseconds */
-	rc = devm_request_irq(dev, irq_te, panel_te_handler,
-			      IRQF_TRIGGER_RISING, "TE_GPIO", par);
-	if (rc)
-		return dev_err_probe(dev, rc, "TE IRQ request failed.\n");
-
-	disable_irq_nosync(irq_te);
-
-	return 0;
-}
-
 /**
  * init_display() - initialize the display controller
  *
@@ -152,13 +90,7 @@ static int init_tearing_effect_line(struct fbtft_par *par)
  */
 static int init_display(struct fbtft_par *par)
 {
-	int rc;
-
 	par->fbtftops.reset(par);
-
-	rc = init_tearing_effect_line(par);
-	if (rc)
-		return rc;
 
 	/* turn off sleep mode */
 	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
@@ -166,47 +98,32 @@ static int init_display(struct fbtft_par *par)
 
 	/* set pixel format to RGB-565 */
 	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
-	if (HSD20_IPS)
-		write_reg(par, PORCTRL, 0x05, 0x05, 0x00, 0x33, 0x33);
 
-	else
-		write_reg(par, PORCTRL, 0x08, 0x08, 0x00, 0x22, 0x22);
+	write_reg(par, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
+
+	write_reg(par, PORCTRL, 0x0C,0x0C,0x00,0x33,0x33);
 
 	/*
 	 * VGH = 13.26V
 	 * VGL = -10.43V
 	 */
-	if (HSD20_IPS)
-		write_reg(par, GCTRL, 0x75);
-	else
-		write_reg(par, GCTRL, 0x35);
+	write_reg(par, GCTRL, 0x35);
+
+	write_reg(par, VCOMS, 0x19);
+	write_reg(par, LCMCTRL, 0x2C);
 
 	/*
 	 * VDV and VRH register values come from command write
 	 * (instead of NVM)
 	 */
-	write_reg(par, VDVVRHEN, 0x01, 0xFF);
+	write_reg(par, VDVVRHEN, 0x01);
 
-	/*
-	 * VAP =  4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 * VAN = -4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 */
-	if (HSD20_IPS)
-		write_reg(par, VRHS, 0x13);
-	else
-		write_reg(par, VRHS, 0x0B);
+	write_reg(par, VRHS, 0x12);
 
 	/* VDV = 0V */
 	write_reg(par, VDVS, 0x20);
 
-	/* VCOM = 0.9V */
-	if (HSD20_IPS)
-		write_reg(par, VCOMS, 0x22);
-	else
-		write_reg(par, VCOMS, 0x20);
-
-	/* VCOM offset = 0V */
-	write_reg(par, VCMOFSET, 0x20);
+	write_reg(par, FRCTRL2, 0x0F);
 
 	/*
 	 * AVDD = 6.8V
@@ -215,135 +132,15 @@ static int init_display(struct fbtft_par *par)
 	 */
 	write_reg(par, PWCTRL1, 0xA4, 0xA1);
 
-	/* TE line output is off by default when powering on */
-	if (irq_te)
-		write_reg(par, MIPI_DCS_SET_TEAR_ON, 0x00);
+	write_reg(par, PVGAMCTRL, 0xD0,0x04,0x0D,0x11,0x13,0x2B,0x3F,0x54,0x4C,0x18,0x0D,0x0B,0x1F,0x23);
+	write_reg(par, NVGAMCTRL, 0xD0,0x04,0x0C,0x11,0x13,0x2C,0x3F,0x44,0x51,0x2F,0x1F,0x1F,0x20,0x23);
+
+	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
 
 	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
-
-	if (HSD20_IPS)
-		write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
+	mdelay(200);
 
 	return 0;
-}
-
-/*
- * write_vmem() - write data to display.
- * @par: FBTFT parameter object.
- * @offset: offset from screen_buffer.
- * @len: the length of data to be writte.
- *
- * Return: 0 on success, or a negative error code otherwise.
- */
-static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
-{
-	struct device *dev = par->info->device;
-	int ret;
-
-	if (irq_te) {
-		enable_irq(irq_te);
-		reinit_completion(&panel_te);
-		ret = wait_for_completion_timeout(&panel_te,
-						  msecs_to_jiffies(PANEL_TE_TIMEOUT_MS));
-		if (ret == 0)
-			dev_err(dev, "wait panel TE timeout\n");
-
-		disable_irq(irq_te);
-	}
-
-	switch (par->pdata->display.buswidth) {
-	case 8:
-		ret = fbtft_write_vmem16_bus8(par, offset, len);
-		break;
-	case 9:
-		ret = fbtft_write_vmem16_bus9(par, offset, len);
-		break;
-	case 16:
-		ret = fbtft_write_vmem16_bus16(par, offset, len);
-		break;
-	default:
-		dev_err(dev, "Unsupported buswidth %d\n",
-			par->pdata->display.buswidth);
-		ret = 0;
-		break;
-	}
-
-	return ret;
-}
-
-static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
-{
-	int colstart = 0, rowstart = 0;
-	int _init_width = par->pdata->display.width;
-	int _init_height = par->pdata->display.height;
-
-	switch (par->info->var.rotate) {
-	case 0: // Portrait
-	    #ifdef CGRAM_OFFSET
-	    if (_init_width == 135) {
-	        colstart = 52;
-	        rowstart = 40;
-	    } else {
-	        colstart = 0;
-	        rowstart = 0;
-	    }
-	    #endif
-	    break;
-	case 270: // Landscape (Portrait + 90)
-	    #ifdef CGRAM_OFFSET
-	    if (_init_width == 135) {
-	        colstart = 40;
-	        rowstart = 53;
-	    } else {
-	        colstart = 0;
-	        rowstart = 0;
-	    }
-	    #endif
-	    break;
-	case 180: // Inverter portrait
-	    #ifdef CGRAM_OFFSET
-	    if (_init_width == 135) {
-	        colstart = 53;
-	        rowstart = 40;
-	    } else if ((_init_width == 240) && (_init_height == 240)) {
-	        colstart = 0;
-	        rowstart = 80;
-	    } else {
-	        colstart = 0;
-	        rowstart = 0;
-	    }
-	    #endif
-	    break;
-	case 90: // Inverted landscape
-	    #ifdef CGRAM_OFFSET
-	    if (_init_width == 135) {
-	        colstart = 40;
-	        rowstart = 52;
-	    } else if ((_init_width == 240) && (_init_height == 240)) {
-	        colstart = 80;
-	        rowstart = 0;
-	    } else {
-	        colstart = 0;
-	        rowstart = 0;
-	    }
-	    #endif
-	    break;
-	}
-
-	#ifdef CGRAM_OFFSET
-	xs += colstart;
-	xe += colstart;
-	ys += rowstart;
-	ye += rowstart;
-	#endif
-
-	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS,
-		  xs >> 8, xs & 0xFF, xe >> 8, xe & 0xFF);
-
-	write_reg(par, MIPI_DCS_SET_PAGE_ADDRESS,
-		  ys >> 8, ys & 0xFF, ye >> 8, ye & 0xFF);
-
-	write_reg(par, MIPI_DCS_WRITE_MEMORY_START);
 }
 
 /**
@@ -460,21 +257,19 @@ static struct fbtft_display display = {
 	.gamma = HSD20_IPS_GAMMA,
 	.fbtftops = {
 		.init_display = init_display,
-		.write_vmem = write_vmem,
-		.set_addr_win = set_addr_win,
 		.set_var = set_var,
 		.set_gamma = set_gamma,
 		.blank = blank,
 	},
 };
 
-FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789v", &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "milkv,st7789v", &display)
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
-MODULE_ALIAS("spi:st7789v");
-MODULE_ALIAS("platform:st7789v");
+MODULE_ALIAS("spi:milkv_st7789v");
+MODULE_ALIAS("platform:milkv_st7789v");
 
-MODULE_DESCRIPTION("FB driver for the ST7789V LCD Controller");
+MODULE_DESCRIPTION("Milk-V FB driver for the ST7789V LCD Controller");
 MODULE_AUTHOR("Dennis Menschel");
 MODULE_LICENSE("GPL");
