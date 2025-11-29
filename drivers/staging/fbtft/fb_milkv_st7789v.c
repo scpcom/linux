@@ -109,7 +109,10 @@ static int init_display(struct fbtft_par *par)
 	 */
 	write_reg(par, GCTRL, 0x35);
 
+	/* VCOM = 0.725V */
 	write_reg(par, VCOMS, 0x19);
+
+	/* LCM = Default */
 	write_reg(par, LCMCTRL, 0x2C);
 
 	/*
@@ -118,11 +121,16 @@ static int init_display(struct fbtft_par *par)
 	 */
 	write_reg(par, VDVVRHEN, 0x01);
 
+	/*
+	 * VAP =  4.45V + (VCOM + VCOM offset + 0.5 * VDV)
+	 * VAN = -4.45V + (VCOM + VCOM offset + 0.5 * VDV)
+	 */
 	write_reg(par, VRHS, 0x12);
 
 	/* VDV = 0V */
 	write_reg(par, VDVS, 0x20);
 
+	/* FR = 60Hz */
 	write_reg(par, FRCTRL2, 0x0F);
 
 	/*
