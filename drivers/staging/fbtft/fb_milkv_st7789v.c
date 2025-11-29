@@ -14,7 +14,7 @@
 
 #include "fbtft.h"
 
-#define DRVNAME "fb_st7789v"
+#define DRVNAME "fb_milkv_st7789v"
 
 #define DEFAULT_GAMMA \
 	"70 2C 2E 15 10 09 48 33 53 0B 19 18 20 25\n" \
@@ -98,47 +98,32 @@ static int init_display(struct fbtft_par *par)
 
 	/* set pixel format to RGB-565 */
 	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
-	if (HSD20_IPS)
-		write_reg(par, PORCTRL, 0x05, 0x05, 0x00, 0x33, 0x33);
 
-	else
-		write_reg(par, PORCTRL, 0x08, 0x08, 0x00, 0x22, 0x22);
+	write_reg(par, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
+
+	write_reg(par, PORCTRL, 0x0C,0x0C,0x00,0x33,0x33);
 
 	/*
 	 * VGH = 13.26V
 	 * VGL = -10.43V
 	 */
-	if (HSD20_IPS)
-		write_reg(par, GCTRL, 0x75);
-	else
-		write_reg(par, GCTRL, 0x35);
+	write_reg(par, GCTRL, 0x35);
+
+	write_reg(par, VCOMS, 0x19);
+	write_reg(par, LCMCTRL, 0x2C);
 
 	/*
 	 * VDV and VRH register values come from command write
 	 * (instead of NVM)
 	 */
-	write_reg(par, VDVVRHEN, 0x01, 0xFF);
+	write_reg(par, VDVVRHEN, 0x01);
 
-	/*
-	 * VAP =  4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 * VAN = -4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 */
-	if (HSD20_IPS)
-		write_reg(par, VRHS, 0x13);
-	else
-		write_reg(par, VRHS, 0x0B);
+	write_reg(par, VRHS, 0x12);
 
 	/* VDV = 0V */
 	write_reg(par, VDVS, 0x20);
 
-	/* VCOM = 0.9V */
-	if (HSD20_IPS)
-		write_reg(par, VCOMS, 0x22);
-	else
-		write_reg(par, VCOMS, 0x20);
-
-	/* VCOM offset = 0V */
-	write_reg(par, VCMOFSET, 0x20);
+	write_reg(par, FRCTRL2, 0x0F);
 
 	/*
 	 * AVDD = 6.8V
@@ -147,10 +132,13 @@ static int init_display(struct fbtft_par *par)
 	 */
 	write_reg(par, PWCTRL1, 0xA4, 0xA1);
 
-	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
+	write_reg(par, PVGAMCTRL, 0xD0,0x04,0x0D,0x11,0x13,0x2B,0x3F,0x54,0x4C,0x18,0x0D,0x0B,0x1F,0x23);
+	write_reg(par, NVGAMCTRL, 0xD0,0x04,0x0C,0x11,0x13,0x2C,0x3F,0x44,0x51,0x2F,0x1F,0x1F,0x20,0x23);
 
-	if (HSD20_IPS)
-		write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
+	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
+
+	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
+	mdelay(200);
 
 	return 0;
 }
@@ -275,13 +263,13 @@ static struct fbtft_display display = {
 	},
 };
 
-FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789v", &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "milkv,st7789v", &display)
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
-MODULE_ALIAS("spi:st7789v");
-MODULE_ALIAS("platform:st7789v");
+MODULE_ALIAS("spi:milkv_st7789v");
+MODULE_ALIAS("platform:milkv_st7789v");
 
-MODULE_DESCRIPTION("FB driver for the ST7789V LCD Controller");
+MODULE_DESCRIPTION("Milk-V FB driver for the ST7789V LCD Controller");
 MODULE_AUTHOR("Dennis Menschel");
 MODULE_LICENSE("GPL");
