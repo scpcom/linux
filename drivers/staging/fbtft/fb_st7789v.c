@@ -33,6 +33,8 @@
 
 #define CGRAM_OFFSET 1
 
+#include "init_st7789v.h"
+
 #define MADCTL_BGR BIT(3) /* bitmask for RGB/BGR order */
 #define MADCTL_MV BIT(5) /* bitmask for page/column order */
 #define MADCTL_MX BIT(6) /* bitmask for column address order */
@@ -110,79 +112,7 @@ static int init_tearing_effect_line(struct fbtft_par *par)
  */
 static int init_display(struct fbtft_par *par)
 {
-	int rc;
-
-	par->fbtftops.reset(par);
-
-	rc = init_tearing_effect_line(par);
-	if (rc)
-		return rc;
-
-	/* turn off sleep mode */
-	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
-	mdelay(120);
-
-	/* set pixel format to RGB-565 */
-	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
-	if (HSD20_IPS)
-		write_reg(par, PORCTRL, 0x05, 0x05, 0x00, 0x33, 0x33);
-
-	else
-		write_reg(par, PORCTRL, 0x08, 0x08, 0x00, 0x22, 0x22);
-
-	/*
-	 * VGH = 13.26V
-	 * VGL = -10.43V
-	 */
-	if (HSD20_IPS)
-		write_reg(par, GCTRL, 0x75);
-	else
-		write_reg(par, GCTRL, 0x35);
-
-	/*
-	 * VDV and VRH register values come from command write
-	 * (instead of NVM)
-	 */
-	write_reg(par, VDVVRHEN, 0x01, 0xFF);
-
-	/*
-	 * VAP =  4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 * VAN = -4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 */
-	if (HSD20_IPS)
-		write_reg(par, VRHS, 0x13);
-	else
-		write_reg(par, VRHS, 0x0B);
-
-	/* VDV = 0V */
-	write_reg(par, VDVS, 0x20);
-
-	/* VCOM = 0.9V */
-	if (HSD20_IPS)
-		write_reg(par, VCOMS, 0x22);
-	else
-		write_reg(par, VCOMS, 0x20);
-
-	/* VCOM offset = 0V */
-	write_reg(par, VCMOFSET, 0x20);
-
-	/*
-	 * AVDD = 6.8V
-	 * AVCL = -4.8V
-	 * VDS = 2.3V
-	 */
-	write_reg(par, PWCTRL1, 0xA4, 0xA1);
-
-	/* TE line output is off by default when powering on */
-	if (irq_te)
-		write_reg(par, MIPI_DCS_SET_TEAR_ON, 0x00);
-
-	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
-
-	if (HSD20_IPS)
-		write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
-
-	return 0;
+	return init_st7789v_display(par);
 }
 
 /*
