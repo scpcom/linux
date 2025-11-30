@@ -36,6 +36,7 @@
  * @VRHS: VRH set
  * @VDVS: VDV set
  * @VCMOFSET: VCOM offset set
+ * @FRCTRL2: frame rate control in normal mode
  * @PWCTRL1: power control 1
  * @PVGAMCTRL: positive voltage gamma control
  * @NVGAMCTRL: negative voltage gamma control
@@ -56,6 +57,7 @@ enum st7789_command {
 	VRHS = 0xC3,
 	VDVS = 0xC4,
 	VCMOFSET = 0xC5,
+	FRCTRL2 = 0xC6,
 	PWCTRL1 = 0xD0,
 	PVGAMCTRL = 0xE0,
 	NVGAMCTRL = 0xE1,
@@ -83,28 +85,68 @@ enum st7789_command {
 static int init_display(struct fbtft_par *par)
 {
 	par->fbtftops.reset(par);
-    mdelay(120);
-	write_reg(par, 0x11);
 	mdelay(120);
-    write_reg(par, 0x36, 0x00);
-    write_reg(par, 0x3A, 0x65);
-    write_reg(par, 0xB2, 0x0C, 0x0C, 0x00, 0x33, 0x33);
-    write_reg(par, 0xB7, 0x35);
-    write_reg(par, 0xBB, 0x29);
-    write_reg(par, 0xC2, 0x01);
-    write_reg(par, 0xC3, 0x19);
-    write_reg(par, 0xC4, 0x20);
-	write_reg(par, 0xC5, 0x1A);
-    write_reg(par, 0xC6, 0x1F);
-    write_reg(par, 0xD0, 0xA4, 0xA1);
-    write_reg(par, 0xE0, 0xD0, 0x08, 0x0E, 0x09, 0x09, 0x05, 0x31, 0x33, 0x48, 0x17, 0x14, 0x15, 0x31, 0x34);
-    write_reg(par, 0xE1, 0xD0, 0x08, 0x0E, 0x09, 0x09, 0x15, 0x31, 0x33, 0x48, 0x17, 0x14, 0x15, 0x31, 0x34);
-    write_reg(par, 0x21);
-    write_reg(par, 0x11);
-    mdelay(120);
-    write_reg(par, 0x29);
-    mdelay(200);
-    return 0;
+
+	/* turn off sleep mode */
+	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
+	mdelay(120);
+
+	write_reg(par, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
+
+	/* set control interface to 18bit/pixel and pixel format to RGB-565 */
+	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, (MIPI_DCS_PIXEL_FMT_18BIT << 4) | MIPI_DCS_PIXEL_FMT_16BIT);
+
+	write_reg(par, PORCTRL, 0x0C, 0x0C, 0x00, 0x33, 0x33);
+
+	/*
+	 * VGH = 13.26V
+	 * VGL = -10.43V
+	 */
+	write_reg(par, GCTRL, 0x35);
+
+	/* VCOM = 1.125V */
+	write_reg(par, VCOMS, 0x29);
+
+	/*
+	 * VDV and VRH register values come from command write
+	 * (instead of NVM)
+	 */
+	write_reg(par, VDVVRHEN, 0x01);
+
+	/*
+	 * VAP =  4.8V + (VCOM + VCOM offset + 0.5 * VDV)
+	 * VAN = -4.8V + (VCOM + VCOM offset + 0.5 * VDV)
+	 */
+	write_reg(par, VRHS, 0x19);
+
+	/* VDV = 0V */
+	write_reg(par, VDVS, 0x20);
+
+	/* VCOM offset = -0.15V */
+	write_reg(par, VCMOFSET, 0x1A);
+
+	/* FR = 39Hz */
+	write_reg(par, FRCTRL2, 0x1F);
+
+	/*
+	 * AVDD = 6.8V
+	 * AVCL = -4.8V
+	 * VDS = 2.3V
+	 */
+	write_reg(par, PWCTRL1, 0xA4, 0xA1);
+
+	write_reg(par, PVGAMCTRL, 0xD0, 0x08, 0x0E, 0x09, 0x09, 0x05, 0x31, 0x33, 0x48, 0x17, 0x14, 0x15, 0x31, 0x34);
+	write_reg(par, NVGAMCTRL, 0xD0, 0x08, 0x0E, 0x09, 0x09, 0x15, 0x31, 0x33, 0x48, 0x17, 0x14, 0x15, 0x31, 0x34);
+
+	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
+
+	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
+	mdelay(120);
+
+	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
+	mdelay(200);
+
+	return 0;
 }
 
 /**
