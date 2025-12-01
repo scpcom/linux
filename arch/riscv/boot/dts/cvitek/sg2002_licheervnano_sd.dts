@@ -148,7 +148,7 @@
 
         // /delete-node/ spidev@0;
         st7789: st7789@0{
-		compatible = "sitronix,st7789";
+		compatible = "sitronix,st7789x";
 		reg = <0>;
 		status = "okay";
 		spi-max-frequency = <80000000>;
