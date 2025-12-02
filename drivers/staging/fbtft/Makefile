@@ -35,6 +35,7 @@ obj-$(CONFIG_FB_TFT_ST7789)      += fb_st7789.o
 obj-$(CONFIG_FB_TFT_ST7789V)     += fb_st7789v.o
 obj-$(CONFIG_FB_TFT_MILKV_ST7789V) += fb_milkv_st7789v.o
 obj-$(CONFIG_FB_TFT_ST7789X)     += fb_st7789x.o
+obj-$(CONFIG_FB_TFT_ST7796S)     += fb_st7796s.o
 obj-$(CONFIG_FB_TFT_TINYLCD)     += fb_tinylcd.o
 obj-$(CONFIG_FB_TFT_TLS8204)     += fb_tls8204.o
 obj-$(CONFIG_FB_TFT_UC1611)      += fb_uc1611.o
