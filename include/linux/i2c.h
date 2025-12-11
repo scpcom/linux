@@ -608,6 +608,11 @@ struct i2c_bus_recovery_info {
 	/* gpio recovery */
 	struct gpio_desc *scl_gpiod;
 	struct gpio_desc *sda_gpiod;
+
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pins_default;
+	struct pinctrl_state *pins_gpio;
+
 };
 
 int i2c_recover_bus(struct i2c_adapter *adap);

@@ -21,8 +21,12 @@
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/clk.h>
 
 #include "spi-dw.h"
+#include <linux/iopoll.h>
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
@@ -37,6 +41,7 @@ struct chip_data {
 
 	u16 clk_div;		/* baud rate divider */
 	u32 speed_hz;		/* baud rate */
+	u32 rx_sample_dly;	/* RX sample delay */
 	void (*cs_control)(u32 command);
 };
 
@@ -137,13 +142,16 @@ void dw_spi_set_cs(struct spi_device *spi, bool enable)
 {
 	struct dw_spi *dws = spi_controller_get_devdata(spi->controller);
 	struct chip_data *chip = spi_get_ctldata(spi);
+	bool cs_high = !!(spi->mode & SPI_CS_HIGH);
 
 	/* Chip select logic is inverted from spi_set_cs() */
 	if (chip && chip->cs_control)
 		chip->cs_control(!enable);
 
-	if (!enable)
+	if (cs_high == enable)
 		dw_writel(dws, DW_SPI_SER, BIT(spi->chip_select));
+	else
+		dw_writel(dws, DW_SPI_SER, 0);
 }
 EXPORT_SYMBOL_GPL(dw_spi_set_cs);
 
@@ -326,9 +334,9 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 		return -EINVAL;
 	}
 	/* Default SPI mode is SCPOL = 0, SCPH = 0 */
-	cr0 = (transfer->bits_per_word - 1)
+	cr0 = ((transfer->bits_per_word - 1) << SPI_DFS_32_OFFSET)
 		| (chip->type << SPI_FRF_OFFSET)
-		| (spi->mode << SPI_MODE_OFFSET)
+		| ((spi->mode << SPI_MODE_OFFSET) & SPI_MOD_MASK)
 		| (chip->tmode << SPI_TMOD_OFFSET);
 
 	/*
@@ -382,8 +390,7 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 
 	if (dws->dma_mapped) {
 		ret = dws->dma_ops->dma_transfer(dws, transfer);
-		if (ret < 0)
-			return ret;
+		return ret;
 	}
 
 	if (chip->poll_mode)
@@ -413,10 +420,24 @@ static int dw_spi_setup(struct spi_device *spi)
 	/* Only alloc on first setup */
 	chip = spi_get_ctldata(spi);
 	if (!chip) {
+		struct dw_spi *dws = spi_controller_get_devdata(spi->controller);
+		u32 rx_sample_dly_ns;
+
 		chip = kzalloc(sizeof(struct chip_data), GFP_KERNEL);
 		if (!chip)
 			return -ENOMEM;
 		spi_set_ctldata(spi, chip);
+		/* Get specific / default rx-sample-delay */
+		if (device_property_read_u32(&spi->dev,
+					     "rx-sample-delay-ns",
+					     &rx_sample_dly_ns) != 0)
+			/* Use default controller value */
+			rx_sample_dly_ns = dws->def_rx_sample_dly_ns;
+		chip->rx_sample_dly = DIV_ROUND_CLOSEST(rx_sample_dly_ns,
+							NSEC_PER_SEC /
+							dws->max_freq);
+		printk("%s: rx_sample_dly_ns=0x%X, chip->rx_sample_dly=0x%X\n",
+			__FUNCTION__, rx_sample_dly_ns, chip->rx_sample_dly);
 	}
 
 	/*
@@ -478,6 +499,24 @@ static void spi_hw_init(struct device *dev, struct dw_spi *dws)
 	}
 }
 
+#ifdef CONFIG_SPI_POWER_OPTIMIZATION
+extern bool __clk_is_enabled(struct clk *clk);
+int dw_spi_prepare_hardware(struct spi_controller *ctlr)
+{
+	struct platform_device *pdev = container_of(&ctlr->dev, struct platform_device, dev);
+	struct dw_spi_mmio *dwsmmio = platform_get_drvdata(pdev);
+	axera_spi_prepare_clk(dwsmmio, true, dwsmmio->spi_id);
+	return 0;
+}
+
+int dw_spi_unprepare_hardware(struct spi_controller *ctlr)
+{
+	struct platform_device *pdev = container_of(&ctlr->dev, struct platform_device, dev);
+	struct dw_spi_mmio *dwsmmio = platform_get_drvdata(pdev);
+	axera_spi_prepare_clk(dwsmmio, false, dwsmmio->spi_id);
+	return 0;
+}
+#endif
 int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 {
 	struct spi_controller *master;
@@ -504,7 +543,7 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 		goto err_free_master;
 	}
 
-	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_LOOP;
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LOOP;
 	master->bits_per_word_mask = SPI_BPW_MASK(8) | SPI_BPW_MASK(16);
 	master->bus_num = dws->bus_num;
 	master->num_chipselect = dws->num_cs;
@@ -520,13 +559,22 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 	if (dws->set_cs)
 		master->set_cs = dws->set_cs;
 
+#ifdef CONFIG_SPI_POWER_OPTIMIZATION
+	master->prepare_transfer_hardware	= dw_spi_prepare_hardware;
+	master->unprepare_transfer_hardware	= dw_spi_unprepare_hardware;
+#endif
 	/* Basic HW init */
 	spi_hw_init(dev, dws);
-
+	/* Get default rx sample delay */
+	device_property_read_u32(dev, "rx-sample-delay-ns",
+				 &dws->def_rx_sample_dly_ns);
+#if defined (CONFIG_APB_SPI_DW_DMA)
+	dw_apb_spi_dma_register(dws);
+#endif
 	if (dws->dma_ops && dws->dma_ops->dma_init) {
 		ret = dws->dma_ops->dma_init(dws);
 		if (ret) {
-			dev_warn(dev, "DMA init failed\n");
+			dev_warn(dev, "DMA init: invalid DMA\n");
 			dws->dma_inited = 0;
 		} else {
 			master->can_dma = dws->dma_ops->can_dma;
@@ -583,6 +631,7 @@ int dw_spi_resume_host(struct dw_spi *dws)
 {
 	int ret;
 
+	dws->cur_rx_sample_dly = 0;
 	spi_hw_init(&dws->master->dev, dws);
 	ret = spi_controller_resume(dws->master);
 	if (ret)

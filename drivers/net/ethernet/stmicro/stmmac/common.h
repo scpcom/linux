@@ -47,7 +47,7 @@
 #define STMMAC_CHAN0	0	/* Always supported and default for all chips */
 
 /* These need to be power of two, and >= 4 */
-#define DMA_TX_SIZE 512
+#define DMA_TX_SIZE 1024
 #define DMA_RX_SIZE 512
 #define STMMAC_GET_ENTRY(x, size)	((x + 1) & (size - 1))
 
@@ -197,7 +197,12 @@ struct stmmac_safety_stats {
 #define CSR_F_100M	100000000
 #define CSR_F_150M	150000000
 #define CSR_F_250M	250000000
-#define CSR_F_300M	300000000
+#ifdef CONFIG_DWMAC_AXERA
+/* maximum of bus-clock is 312M in AX620 */
+#define CSR_F_300M     313000000
+#else
+#define CSR_F_300M     300000000
+#endif
 
 #define	MAC_CSR_H_FRQ_MASK	0x20
 

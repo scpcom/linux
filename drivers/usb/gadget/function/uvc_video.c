@@ -12,13 +12,17 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/video.h>
-
+#include <asm/unaligned.h>
 #include <media/v4l2-dev.h>
 
 #include "uvc.h"
 #include "uvc_queue.h"
 #include "uvc_video.h"
-
+#ifdef CONFIG_ARCH_AXERA
+#define HEADER_SIZE 32
+#define HEADER_MAGIC_NUM 123
+#define HEADER_DUPLICATE 1
+#endif
 /* --------------------------------------------------------------------------
  * Video codecs
  */
@@ -30,8 +34,18 @@ uvc_video_encode_header(struct uvc_video *video, struct uvc_buffer *buf,
 	data[0] = 2;
 	data[1] = UVC_STREAM_EOH | video->fid;
 
+#ifdef CONFIG_ARCH_AXERA
+	if((HEADER_MAGIC_NUM == *(char *)buf->mem) && (HEADER_DUPLICATE == *((char *)buf->mem + 1))
+		&& usb_endpoint_xfer_bulk(video->ep->desc) ) {
+		return 2;
+	} else {
+		if (buf->bytesused - video->queue.buf_used <= len - 2)
+			data[1] |= UVC_STREAM_EOF;
+	}
+#else
 	if (buf->bytesused - video->queue.buf_used <= len - 2)
 		data[1] |= UVC_STREAM_EOF;
+#endif
 
 	return 2;
 }
@@ -42,10 +56,22 @@ uvc_video_encode_data(struct uvc_video *video, struct uvc_buffer *buf,
 {
 	struct uvc_video_queue *queue = &video->queue;
 	unsigned int nbytes;
+
 	void *mem;
 
-	/* Copy video data to the USB buffer. */
+#ifdef CONFIG_ARCH_AXERA
+	void *tmp_buf;
+
+	if(HEADER_MAGIC_NUM == *(char*)buf->mem){
+		tmp_buf = (char*)buf->mem + HEADER_SIZE;
+	}else{
+		tmp_buf = (char*)buf->mem;
+	}
+
+	mem = tmp_buf + queue->buf_used;
+#else
 	mem = buf->mem + queue->buf_used;
+#endif
 	nbytes = min((unsigned int)len, buf->bytesused - queue->buf_used);
 
 	memcpy(data, mem, nbytes);
@@ -72,7 +98,18 @@ uvc_video_encode_bulk(struct usb_request *req, struct uvc_video *video,
 
 	/* Process video data. */
 	len = min((int)(video->max_payload_size - video->payload_size), len);
+
+#ifdef CONFIG_ARCH_AXERA
+	if((HEADER_MAGIC_NUM == *(char *)buf->mem) && (HEADER_DUPLICATE == *((char *)buf->mem + 1))){
+		video->queue.buf_used = 0;
+		buf->bytesused = 0;
+		ret = 0;
+	} else {
+		ret = uvc_video_encode_data(video, buf, mem, len);
+	}
+#else
 	ret = uvc_video_encode_data(video, buf, mem, len);
+#endif
 
 	video->payload_size += ret;
 	len -= ret;
@@ -87,6 +124,7 @@ uvc_video_encode_bulk(struct usb_request *req, struct uvc_video *video,
 		video->fid ^= UVC_STREAM_FID;
 
 		video->payload_size = 0;
+		req->zero = 1;
 	}
 
 	if (video->payload_size == video->max_payload_size ||
@@ -107,9 +145,18 @@ uvc_video_encode_isoc(struct usb_request *req, struct uvc_video *video,
 	mem += ret;
 	len -= ret;
 
-	/* Process video data. */
+#ifdef CONFIG_ARCH_AXERA
+	if((HEADER_MAGIC_NUM == *(char *)buf->mem) && (HEADER_DUPLICATE == *((char *)buf->mem + 1))){
+		video->queue.buf_used = ret;
+		len = video->req_size;
+	} else {
+		ret = uvc_video_encode_data(video, buf, mem, len);
+		len -= ret;
+	}
+#else
 	ret = uvc_video_encode_data(video, buf, mem, len);
 	len -= ret;
+#endif
 
 	req->length = video->req_size - len;
 
@@ -133,7 +180,11 @@ static int uvcg_video_ep_queue(struct uvc_video *video, struct usb_request *req)
 	if (ret < 0) {
 		printk(KERN_INFO "Failed to queue request (%d).\n", ret);
 		/* Isochronous endpoints can't be halted. */
+#ifdef CONFIG_ARCH_AXERA
+		if (video->ep->desc != NULL && usb_endpoint_xfer_bulk(video->ep->desc))
+#else
 		if (usb_endpoint_xfer_bulk(video->ep->desc))
+#endif
 			usb_ep_set_halt(video->ep);
 	}
 
@@ -184,13 +235,13 @@ uvc_video_complete(struct usb_ep *ep, struct usb_request *req)
 		break;
 
 	case -ESHUTDOWN:	/* disconnect from host. */
-		printk(KERN_DEBUG "VS request cancelled.\n");
+		//printk(KERN_DEBUG "VS request cancelled.\n");
 		uvcg_queue_cancel(queue, 1);
 		goto requeue;
 
 	default:
-		printk(KERN_INFO "VS request completed with status %d.\n",
-			req->status);
+		//printk(KERN_DEBUG "VS request completed with status %d.\n",
+		//	req->status);
 		uvcg_queue_cancel(queue, 0);
 		goto requeue;
 	}
@@ -216,6 +267,7 @@ uvc_video_complete(struct usb_ep *ep, struct usb_request *req)
 
 requeue:
 	spin_lock_irqsave(&video->req_lock, flags);
+
 	list_add_tail(&req->list, &video->req_free);
 	spin_unlock_irqrestore(&video->req_lock, flags);
 }
@@ -248,12 +300,19 @@ uvc_video_alloc_requests(struct uvc_video *video)
 	unsigned int req_size;
 	unsigned int i;
 	int ret = -ENOMEM;
+	struct uvc_device *uvc;
 
+	uvc = container_of(video, struct uvc_device, video);
 	BUG_ON(video->req_size);
 
-	req_size = video->ep->maxpacket
-		 * max_t(unsigned int, video->ep->maxburst, 1)
-		 * (video->ep->mult);
+	if (!usb_endpoint_xfer_bulk(video->ep->desc)) {
+		req_size = video->ep->maxpacket
+			 * max_t(unsigned int, video->ep->maxburst, 1)
+			 * (video->ep->mult);
+	} else {
+		req_size = video->ep->maxpacket
+			 * max_t(unsigned int, video->ep->maxburst, 1);
+	}
 
 	for (i = 0; i < UVC_NUM_REQUESTS; ++i) {
 		video->req_buffer[i] = kmalloc(req_size, GFP_KERNEL);
@@ -360,6 +419,9 @@ int uvcg_video_enable(struct uvc_video *video, int enable)
 	}
 
 	if (!enable) {
+#ifdef CONFIG_ARCH_AXERA
+		uvcg_queue_cancel(&video->queue, 0);
+#endif
 		for (i = 0; i < UVC_NUM_REQUESTS; ++i)
 			if (video->req[i])
 				usb_ep_dequeue(video->ep, video->req[i]);
@@ -376,6 +438,9 @@ int uvcg_video_enable(struct uvc_video *video, int enable)
 		return ret;
 
 	if (video->max_payload_size) {
+#ifdef CONFIG_ARCH_AXERA
+		video->max_payload_size = video->imagesize;
+#endif
 		video->encode = uvc_video_encode_bulk;
 		video->payload_size = 0;
 	} else
@@ -383,7 +448,28 @@ int uvcg_video_enable(struct uvc_video *video, int enable)
 
 	return uvcg_video_pump(video);
 }
+#ifdef CONFIG_UVC_H264
+/*
+ * Initialize the UVC video stream.
+ */
+int uvcg_video_init(struct uvc_video *video, struct uvc_device *uvc)
+{
+	INIT_LIST_HEAD(&video->req_free);
+	spin_lock_init(&video->req_lock);
 
+	video->fcc = V4L2_PIX_FMT_YUYV;
+	video->bpp = 16;
+	video->width = 320;
+	video->height = 240;
+	video->imagesize = 320 * 240 * 2;
+	video->uvc = uvc;
+
+	/* Initialize the video buffers queue. */
+	uvcg_queue_init(&video->queue, V4L2_BUF_TYPE_VIDEO_OUTPUT,
+			&video->mutex);
+	return 0;
+}
+#else
 /*
  * Initialize the UVC video stream.
  */
@@ -403,4 +489,4 @@ int uvcg_video_init(struct uvc_video *video)
 			&video->mutex);
 	return 0;
 }
-
+#endif

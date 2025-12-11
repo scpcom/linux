@@ -45,7 +45,11 @@
 #define SDHCI_DUMP(f, x...) \
 	pr_err("%s: " DRIVER_NAME ": " f, mmc_hostname(host->mmc), ## x)
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+#define MAX_TUNING_LOOP 64
+#else
 #define MAX_TUNING_LOOP 40
+#endif
 
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
@@ -122,6 +126,27 @@ EXPORT_SYMBOL_GPL(sdhci_dumpregs);
  * Low level functions                                                       *
  *                                                                           *
 \*****************************************************************************/
+static void sdhci_do_enable_v4_mode(struct sdhci_host *host)
+{
+	u16 ctrl2;
+
+	ctrl2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	if (ctrl2 & 0x1000)
+		return;
+
+	ctrl2 |= 0x1000;
+	sdhci_writew(host, ctrl2, SDHCI_HOST_CONTROL2);
+}
+
+/*
+ * This can be called before sdhci_add_host() by Vendor's host controller
+ * driver to enable v4 mode if supported.
+ */
+void sdhci_enable_v4_mode(struct sdhci_host *host)
+{
+	sdhci_do_enable_v4_mode(host);
+}
+EXPORT_SYMBOL_GPL(sdhci_enable_v4_mode);
 
 static inline bool sdhci_data_line_cmd(struct mmc_command *cmd)
 {
@@ -1534,6 +1559,10 @@ void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 		return;
 
 	clk = sdhci_calc_clk(host, clock, &host->mmc->actual_clock);
+	#ifdef HAPS_DEBUG
+	if(clock == 10000000)
+		clk = 1;
+	#endif
 	sdhci_enable_clk(host, clk);
 }
 EXPORT_SYMBOL_GPL(sdhci_set_clock);
@@ -2033,6 +2062,10 @@ int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 		/* Wait for 5ms */
 		usleep_range(5000, 5500);
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		if (host->ops->voltage_switch)
+			host->ops->voltage_switch(host);
+#endif
 		/* 3.3V regulator output should be stable within 5 ms */
 		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 		if (!(ctrl & SDHCI_CTRL_VDD_180))
@@ -2159,6 +2192,7 @@ void sdhci_reset_tuning(struct sdhci_host *host)
 }
 EXPORT_SYMBOL_GPL(sdhci_reset_tuning);
 
+#if !(IS_ENABLED(CONFIG_MMC_SDHCI_AXERA))
 static void sdhci_abort_tuning(struct sdhci_host *host, u32 opcode)
 {
 	sdhci_reset_tuning(host);
@@ -2170,6 +2204,7 @@ static void sdhci_abort_tuning(struct sdhci_host *host, u32 opcode)
 
 	mmc_abort_tuning(host->mmc, opcode);
 }
+#endif
 
 /*
  * We use sdhci_send_tuning() because mmc_send_tuning() is not a good fit. SDHCI
@@ -2229,11 +2264,21 @@ void sdhci_send_tuning(struct sdhci_host *host, u32 opcode)
 
 }
 EXPORT_SYMBOL_GPL(sdhci_send_tuning);
-
+#define CNDS_SDHCI_HRS35 0x8C
+#define CNDS_SDHCI_SD_BASE 0x104e0000
+#define CNDS_SDHCI_SDIO_BASE 0x104d0000
+#define CNDS_SDHCI_REG_SIZE 0X100
 static void __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
 {
 	int i;
-
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	void __iomem *regs = NULL;
+	if (!(host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
+		regs = ioremap(CNDS_SDHCI_SDIO_BASE,CNDS_SDHCI_REG_SIZE);
+	} else {
+		regs = ioremap(CNDS_SDHCI_SD_BASE,CNDS_SDHCI_REG_SIZE);
+	}
+#endif
 	/*
 	 * Issue opcode repeatedly till Execute Tuning is set to 0 or the number
 	 * of loops reaches 40 times.
@@ -2244,27 +2289,48 @@ static void __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
 		sdhci_send_tuning(host, opcode);
 
 		if (!host->tuning_done) {
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+			sdhci_do_reset(host, SDHCI_RESET_CMD);
+			sdhci_do_reset(host, SDHCI_RESET_DATA);
+			pr_info("%s: Tuning timeout, continue...\n", mmc_hostname(host->mmc));
+#else
 			pr_debug("%s: Tuning timeout, falling back to fixed sampling clock\n",
 				 mmc_hostname(host->mmc));
 			sdhci_abort_tuning(host, opcode);
 			return;
+#endif
 		}
-
-		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
-		if (!(ctrl & SDHCI_CTRL_EXEC_TUNING)) {
-			if (ctrl & SDHCI_CTRL_TUNED_CLK)
-				return; /* Success! */
-			break;
-		}
-
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		mdelay(5);
+#else
 		/* Spec does not require a delay between tuning cycles */
 		if (host->tuning_delay > 0)
 			mdelay(host->tuning_delay);
+#endif
+
+		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+		if (!(ctrl & SDHCI_CTRL_EXEC_TUNING)) {
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+			if (ctrl & SDHCI_CTRL_TUNED_CLK) {
+				pr_info("hw tuning success, val: 0x%x\n", readl(regs + CNDS_SDHCI_HRS35));
+				iounmap(regs);
+				return; /* Success! */
+			}
+#else
+			if (ctrl & SDHCI_CTRL_TUNED_CLK)
+				return; /* Success! */
+#endif
+			break;
+		}
+
 	}
 
 	pr_info("%s: Tuning failed, falling back to fixed sampling clock\n",
 		mmc_hostname(host->mmc));
 	sdhci_reset_tuning(host);
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	iounmap(regs);
+#endif
 }
 
 int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
@@ -2302,7 +2368,9 @@ int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		break;
 
 	case MMC_TIMING_UHS_SDR104:
+#if !(IS_ENABLED(CONFIG_MMC_SDHCI_AXERA))
 	case MMC_TIMING_UHS_DDR50:
+#endif
 		break;
 
 	case MMC_TIMING_UHS_SDR50:
@@ -2313,7 +2381,9 @@ int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	default:
 		goto out;
 	}
-
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	if ((host->mmc->caps2 & MMC_CAP2_NO_SD) && (host->mmc->caps2 & MMC_CAP2_NO_SDIO)) //sd & sdio use hardware tuning
+#endif
 	if (host->ops->platform_execute_tuning) {
 		err = host->ops->platform_execute_tuning(host, opcode);
 		goto out;
@@ -3020,6 +3090,7 @@ static irqreturn_t sdhci_thread_irq(int irq, void *dev_id)
 
 #ifdef CONFIG_PM
 
+#if !(IS_ENABLED(CONFIG_MMC_SDHCI_AXERA))
 static bool sdhci_cd_irq_can_wakeup(struct sdhci_host *host)
 {
 	return mmc_card_is_removable(host->mmc) &&
@@ -3068,6 +3139,7 @@ static bool sdhci_enable_irq_wakeups(struct sdhci_host *host)
 	return host->irq_wake_enabled;
 }
 
+
 static void sdhci_disable_irq_wakeups(struct sdhci_host *host)
 {
 	u8 val;
@@ -3082,6 +3154,7 @@ static void sdhci_disable_irq_wakeups(struct sdhci_host *host)
 
 	host->irq_wake_enabled = false;
 }
+#endif
 
 int sdhci_suspend_host(struct sdhci_host *host)
 {
@@ -3089,6 +3162,7 @@ int sdhci_suspend_host(struct sdhci_host *host)
 
 	mmc_retune_timer_stop(host->mmc);
 
+#if !(IS_ENABLED(CONFIG_MMC_SDHCI_AXERA))
 	if (!device_may_wakeup(mmc_dev(host->mmc)) ||
 	    !sdhci_enable_irq_wakeups(host)) {
 		host->ier = 0;
@@ -3096,6 +3170,7 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		sdhci_writel(host, 0, SDHCI_SIGNAL_ENABLE);
 		free_irq(host->irq, host);
 	}
+#endif
 
 	return 0;
 }
@@ -3124,6 +3199,7 @@ int sdhci_resume_host(struct sdhci_host *host)
 		mmiowb();
 	}
 
+#if !(IS_ENABLED(CONFIG_MMC_SDHCI_AXERA))
 	if (host->irq_wake_enabled) {
 		sdhci_disable_irq_wakeups(host);
 	} else {
@@ -3133,6 +3209,7 @@ int sdhci_resume_host(struct sdhci_host *host)
 		if (ret)
 			return ret;
 	}
+#endif
 
 	sdhci_enable_card_detection(host);
 
@@ -3545,7 +3622,7 @@ int sdhci_setup_host(struct sdhci_host *host)
 	override_timeout_clk = host->timeout_clk;
 
 	if (host->version > SDHCI_SPEC_300) {
-		pr_err("%s: Unknown controller version (%d). You may experience problems.\n",
+		pr_debug("%s: Unknown controller version (%d). You may experience problems.\n",
 		       mmc_hostname(mmc), host->version);
 	}
 

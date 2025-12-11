@@ -606,6 +606,25 @@ config SND_SOC_ES8328_SPI
 	depends on SPI_MASTER
 	select SND_SOC_ES8328
 
+config SND_SOC_AXERA_ES8328
+	tristate
+
+config SND_SOC_ES7210
+	tristate "Everest Semi ES7210 4CH ADC"
+	depends on I2C
+
+config SND_SOC_ES7243L
+	tristate "Everest Semi ES7243L 2CH ADC"
+	depends on I2C
+
+config SND_SOC_ES8156
+	tristate "Everest Semi ES8156 2CH DAC"
+	depends on I2C
+
+config SND_SOC_ES8311
+	tristate "Everest Semi ES8311 2CH DAC"
+	depends on I2C
+
 config SND_SOC_GTM601
 	tristate 'GTM601 UMTS modem audio codec'
 

@@ -664,7 +664,7 @@ static int spinand_mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
 static int spinand_markbad(struct nand_device *nand, const struct nand_pos *pos)
 {
 	struct spinand_device *spinand = nand_to_spinand(nand);
-	u8 marker[2] = { };
+	u8 marker[2] = {0xAA, 0xAA};
 	struct nand_page_io_req req = {
 		.pos = *pos,
 		.ooboffs = 0,
@@ -763,6 +763,8 @@ static const struct spinand_manufacturer *spinand_manufacturers[] = {
 	&macronix_spinand_manufacturer,
 	&micron_spinand_manufacturer,
 	&winbond_spinand_manufacturer,
+	&esmt_spinand_manufacturer,
+	&fmsh_spinand_manufacturer,
 };
 
 static int spinand_manufacturer_detect(struct spinand_device *spinand)

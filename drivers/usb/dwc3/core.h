@@ -29,6 +29,10 @@
 
 #include <linux/phy/phy.h>
 
+#ifdef CONFIG_ARCH_AXERA
+#define CONFIG_USB_DWC3_AXERA
+#endif
+
 #define DWC3_MSG_MAX	500
 
 /* Global constants */
@@ -240,6 +244,7 @@
 
 /* Global User Control Register */
 #define DWC3_GUCTL_HSTINAUTORETRY	BIT(14)
+#define DWC3_GUCTL_REFCLKPER_MASK	0x3ff
 
 /* Global User Control 1 Register */
 #define DWC3_GUCTL1_PARKMODE_DISABLE_SS	BIT(17)
@@ -360,6 +365,11 @@
 /* Global Frame Length Adjustment Register */
 #define DWC3_GFLADJ_30MHZ_SDBND_SEL		BIT(7)
 #define DWC3_GFLADJ_30MHZ_MASK			0x3f
+
+/* Global Ref Clock Adjustment Register */
+#define DWC3_GFLADJ_REFCLK_LPM_SEL			BIT(23)
+#define DWC3_GFLADJ_REFCLK_FLADJ_MASK		0x3fff
+#define DWC3_GFLADJ_REFCLK_240MHZ_DECR_MASK	0x7f
 
 /* Global User Control Register 2 */
 #define DWC3_GUCTL2_RST_ACTBITLATER		BIT(14)

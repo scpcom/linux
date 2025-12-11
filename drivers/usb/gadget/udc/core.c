@@ -273,7 +273,12 @@ int usb_ep_queue(struct usb_ep *ep,
 {
 	int ret = 0;
 
+#ifndef CONFIG_ARCH_AXERA
 	if (WARN_ON_ONCE(!ep->enabled && ep->address)) {
+#else
+	if (!ep->enabled && ep->address) {
+		printk("Warn: %s disabled\n", ep->name);
+#endif
 		ret = -ESHUTDOWN;
 		goto out;
 	}

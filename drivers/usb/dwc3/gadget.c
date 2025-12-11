@@ -26,6 +26,9 @@
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
+#ifdef CONFIG_USB_DWC3_AXERA
+#include "dwc3-axera.h"
+#endif
 
 #define DWC3_ALIGN_FRAME(d)	(((d)->frame_number + (d)->interval) \
 					& ~((d)->interval - 1))
@@ -270,7 +273,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 {
 	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
 	struct dwc3		*dwc = dep->dwc;
-	u32			timeout = 1000;
+	u32			timeout = 10000;
 	u32			saved_config = 0;
 	u32			reg;
 
@@ -1428,8 +1431,13 @@ static int dwc3_gadget_ep_dequeue(struct usb_ep *ep,
 			else
 				goto out1;
 		}
+#ifdef CONFIG_USB_DWC3_AXERA
+		/* fix Segmentation fault for uvc*/
+		mdelay(10);
+#else
 		dev_err(dwc->dev, "request %pK was not queued to %s\n",
 				request, ep->name);
+#endif
 		ret = -EINVAL;
 		goto out0;
 	}
@@ -3134,6 +3142,7 @@ out:
 	return irq;
 }
 
+
 /**
  * dwc3_gadget_init - initializes gadget related registers
  * @dwc: pointer to our controller context structure
@@ -3144,6 +3153,10 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 {
 	int ret;
 	int irq;
+
+#ifdef CONFIG_USB_DWC3_AXERA
+	axera_usb_device_init(dwc);
+#endif
 
 	irq = dwc3_gadget_get_irq(dwc);
 	if (irq < 0) {

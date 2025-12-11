@@ -217,6 +217,15 @@ config SFP
 	depends on HWMON || HWMON=n
 	select MDIO_I2C
 
+config JLSEMI_PHY
+	tristate "JLSEMI PHYs"
+	help
+	Currently has a driver for the jlsemi
+
+config AXERA_EPHY
+	tristate "AXERA EPHYs"
+	help
+	Currently has a driver for the axera
 config AMD_PHY
 	tristate "AMD PHYs"
 	---help---
@@ -272,6 +281,11 @@ config BCM_CYGNUS_PHY
 
 config BCM_NET_PHYLIB
 	tristate
+
+config AXERA_EPHY
+	tristate "AXERA EPHYs"
+	help
+	Currently has a driver for the axera
 
 config BROADCOM_PHY
 	tristate "Broadcom PHYs"

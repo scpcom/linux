@@ -387,10 +387,129 @@ phy_has_fixups_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(phy_has_fixups);
 
+static unsigned int reg_val;
+static ssize_t
+phy_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "0x%x\n", reg_val);
+}
+
+static ssize_t
+phy_reg_store(struct device *dev,
+		    struct device_attribute *attr,
+		    const char *buf, size_t count)
+{
+	struct phy_device *phydev = to_phy_device(dev);
+	int index = 0, val = 0, reg = 0;
+	char tmp[32];
+	char *data_cmd, *data_index, *data_reg, *data_val;
+	char *data;
+	int ret;
+
+	if (count >= sizeof(tmp))
+		goto out;
+
+	memset(tmp, 0, sizeof(tmp));
+	memcpy(tmp, buf, count);
+
+	//cmd
+	data = tmp;
+	data_cmd = tmp;
+	data = strstr(data, " ");
+	if (!data) {
+		//pr_err("data cmd:%s failed\n", data_cmd);
+		goto out;
+	}
+	*data = 0;
+	if (strcmp(data_cmd, "read") && strcmp(data_cmd, "write")) {
+		goto out;
+	}
+
+	//page
+	data++;
+	data_index = data;
+	data = strstr(data, " ");
+	if (!data) {
+		goto out;
+	}
+	*data = 0;
+
+	ret = kstrtoint(data_index, 16, &index);
+	if (ret) {
+		pr_err("kstrtoint data_index:%s failed\n", data_index);
+		goto out;
+	}
+
+	if (index < 0 || index > 9)
+		goto out;
+
+	if (!strcmp(data_cmd, "write")) {
+		//reg
+		data++;
+		data_reg = data;
+		data = strstr(data, " ");
+		if (!data) {
+			goto out;
+		}
+		*data = 0;
+		ret = kstrtoint(data_reg, 16, &reg);
+		if (ret) {
+			goto out;
+		}
+
+		if (reg < 0 || reg>32)
+			goto out;
+
+		//value
+		data++;
+		data_val = data;
+		ret = kstrtoint(data_val, 16, &val);
+		if (ret) {
+			goto out;
+		}
+
+		if (val<0 || val > 0xffff)
+			goto out;
+	} else {
+		//reg
+		data++;
+		data_reg = data;
+		ret = kstrtoint(data_reg, 16, &reg);
+		if (ret) {
+			goto out;
+		}
+
+		if (reg < 0 || reg>32)
+			goto out;
+	}
+
+	if (!strcmp(data_cmd, "read")) {
+		phy_write(phydev, 0x1f, 0x0100*index);
+		val = phy_read(phydev, reg);
+		reg_val = val;
+		pr_info("Read phy page=0x%x register=0x%x value=0x%x\n", (int)index, (int)reg, (int)val);
+	}
+
+	if (!strcmp(data_cmd, "write")) {
+		pr_info("Write phy page=0x%x register=0x%x value=0x%x\n", (int)index, (int)reg, (int)val);
+		phy_write(phydev, 0x1f, 0x0100*index);
+		phy_write(phydev, reg, val);
+	}
+
+	return count;
+
+out:
+	pr_err("<read> <page> <reg>/ex:read 0x6 0x10\n");
+	pr_err("<write> <page> <reg> <value>/ex:write 0x6 0x10 0x556e\n");
+	return count;
+}
+
+static DEVICE_ATTR_RW(phy_reg);
 static struct attribute *phy_dev_attrs[] = {
 	&dev_attr_phy_id.attr,
 	&dev_attr_phy_interface.attr,
 	&dev_attr_phy_has_fixups.attr,
+	&dev_attr_phy_reg.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(phy_dev);

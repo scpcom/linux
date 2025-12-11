@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "i2c-designware-core.h"
 
@@ -413,6 +414,20 @@ i2c_dw_read(struct dw_i2c_dev *dev)
 	}
 }
 
+#ifdef CONFIG_AX_RISCV_SUPPORT
+#include "linux/soc/axera/chip_reg.h"
+static int ax_get_riscv_use_status(struct dw_i2c_dev *dev)
+{
+	u32 *regs, status;
+	// riscv i2c status, dummy_sw12, bit[7:0], 1 is using
+	regs = (u32 *)ioremap(COMM_SYS_GLB_DUMMY_SW12, 4);
+	status = *regs & BIT(dev->i2c_id);
+	iounmap((void *)regs);
+
+	return status;
+}
+#endif
+
 /*
  * Prepare controller for a transaction and call i2c_dw_xfer_msg.
  */
@@ -421,6 +436,28 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 {
 	struct dw_i2c_dev *dev = i2c_get_adapdata(adap);
 	int ret;
+
+	#ifdef CONFIG_AX_RISCV_SUPPORT
+	if (!dev->i2c_probe_status) {
+		if (!ax_get_riscv_use_status(dev)) {
+			ret = i2c_dw_set_timings_master(dev);
+			if (ret)
+				return ret;
+
+			ret = dev->init(dev);
+			if (ret)
+				return ret;
+			dev->i2c_probe_status = true;
+		} else {
+			dev_err(dev->dev, "%s busy, risc-v using\n", dev_name(dev->dev));
+			return EBUSY;
+		}
+	}
+	#endif
+
+#ifndef CONFIG_PM
+	ax_i2c_prepare_hardware(&adap->dev);
+#endif
 
 	dev_dbg(dev->dev, "%s: msgs: %d\n", __func__, num);
 
@@ -497,6 +534,10 @@ done:
 done_nolock:
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
+
+#ifndef CONFIG_PM
+	ax_i2c_unprepare_hardware(&adap->dev);
+#endif
 
 	return ret;
 }
@@ -632,16 +673,16 @@ static void i2c_dw_prepare_recovery(struct i2c_adapter *adap)
 	struct dw_i2c_dev *dev = i2c_get_adapdata(adap);
 
 	i2c_dw_disable(dev);
+	ax_i2c_clk(dev->i2c_id, false);
 	reset_control_assert(dev->rst);
-	i2c_dw_prepare_clk(dev, false);
 }
 
 static void i2c_dw_unprepare_recovery(struct i2c_adapter *adap)
 {
 	struct dw_i2c_dev *dev = i2c_get_adapdata(adap);
 
-	i2c_dw_prepare_clk(dev, true);
 	reset_control_deassert(dev->rst);
+	ax_i2c_clk(dev->i2c_id, true);
 	i2c_dw_init_master(dev);
 }
 
@@ -650,15 +691,17 @@ static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
 	struct i2c_bus_recovery_info *rinfo = &dev->rinfo;
 	struct i2c_adapter *adap = &dev->adapter;
 	struct gpio_desc *gpio;
-	int r;
 
-	gpio = devm_gpiod_get(dev->dev, "scl", GPIOD_OUT_HIGH);
-	if (IS_ERR(gpio)) {
-		r = PTR_ERR(gpio);
-		if (r == -ENOENT || r == -ENOSYS)
-			return 0;
-		return r;
+	rinfo->pinctrl = devm_pinctrl_get(dev->dev);
+	if (IS_ERR_OR_NULL(rinfo->pinctrl)) {
+		rinfo->pinctrl = NULL;
+		dev_info(dev->dev, "can't get pinctrl, bus recovery not supported\n");
 	}
+
+	gpio = devm_gpiod_get_optional(dev->dev, "scl", GPIOD_OUT_HIGH);
+	if (IS_ERR_OR_NULL(gpio))
+		return PTR_ERR_OR_ZERO(gpio);
+
 	rinfo->scl_gpiod = gpio;
 
 	gpio = devm_gpiod_get_optional(dev->dev, "sda", GPIOD_IN);
@@ -693,6 +736,18 @@ int i2c_dw_probe(struct dw_i2c_dev *dev)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_AX_RISCV_SUPPORT
+	if (!ax_get_riscv_use_status(dev)) {
+		dev->i2c_probe_status = true;
+		ret = i2c_dw_set_timings_master(dev);
+		if (ret)
+			return ret;
+
+		ret = dev->init(dev);
+		if (ret)
+			return ret;
+	}
+#else
 	ret = i2c_dw_set_timings_master(dev);
 	if (ret)
 		return ret;
@@ -700,6 +755,7 @@ int i2c_dw_probe(struct dw_i2c_dev *dev)
 	ret = dev->init(dev);
 	if (ret)
 		return ret;
+#endif
 
 	snprintf(adap->name, sizeof(adap->name),
 		 "Synopsys DesignWare I2C adapter");
@@ -739,6 +795,10 @@ int i2c_dw_probe(struct dw_i2c_dev *dev)
 	if (ret)
 		dev_err(dev->dev, "failure adding adapter: %d\n", ret);
 	pm_runtime_put_noidle(dev->dev);
+
+#ifndef CONFIG_PM
+	ax_i2c_unprepare_hardware(&adap->dev);
+#endif
 
 	return ret;
 }

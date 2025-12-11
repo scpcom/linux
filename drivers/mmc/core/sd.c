@@ -1236,6 +1236,21 @@ static int mmc_sd_hw_reset(struct mmc_host *host)
 	return mmc_sd_init_card(host, host->card->ocr, host->card);
 }
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+void __mmc_stop_host(struct mmc_host *host);
+
+static int mmc_sd_shutdown(struct mmc_host *host)
+{
+	__mmc_stop_host(host);
+
+	mmc_claim_host(host);
+	mmc_power_off(host);
+	mmc_release_host(host);
+
+	return 0;
+}
+#endif
+
 static const struct mmc_bus_ops mmc_sd_ops = {
 	.remove = mmc_sd_remove,
 	.detect = mmc_sd_detect,
@@ -1244,7 +1259,11 @@ static const struct mmc_bus_ops mmc_sd_ops = {
 	.suspend = mmc_sd_suspend,
 	.resume = mmc_sd_resume,
 	.alive = mmc_sd_alive,
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	.shutdown = mmc_sd_shutdown,
+#else
 	.shutdown = mmc_sd_suspend,
+#endif
 	.hw_reset = mmc_sd_hw_reset,
 };
 

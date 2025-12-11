@@ -413,6 +413,82 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 
 EXPORT_SYMBOL(mmc_alloc_host);
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+static ssize_t reset_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	struct mmc_host *host = container_of(dev, struct mmc_host, class_dev);
+	int present;
+
+	present = host->ops->get_cd(host);
+	if(!present) {
+		dev_info(dev, "no card\n");
+		return n;
+	}
+
+	if (sysfs_streq(buf, "1")) {
+		dev_info(dev, "do sd hw reset...\n");
+		mmc_claim_host(host);
+		mmc_hw_reset(host);
+		mmc_release_host(host);
+	}
+	else {
+		dev_err(dev, "unsupported command\n");
+	}
+	return n;
+}
+static DEVICE_ATTR_WO(reset);
+
+static ssize_t power_control_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	struct mmc_host *host = container_of(dev, struct mmc_host, class_dev);
+	ssize_t	ret;
+
+	if (sysfs_streq(buf, "up")) {
+		dev_info(dev, "power up card\n");
+		mmc_start_host(host);
+	} else if (sysfs_streq(buf, "off")) {
+		dev_info(dev, "power off card\n");
+		mmc_stop_host(host);
+	} else {
+		dev_err(dev, "unsupported command:%s\n", buf);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = n;
+out:
+	return ret;
+}
+static DEVICE_ATTR_WO(power_control);
+
+static ssize_t card_present_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	int present;
+	struct mmc_host *host = container_of(dev, struct mmc_host, class_dev);
+
+	present = host->ops->get_cd(host);
+
+	return sprintf(buf, "%d\n", present);
+}
+
+static DEVICE_ATTR_RO(card_present);
+static struct attribute *sd_attrs[] = {
+	&dev_attr_reset.attr,
+	&dev_attr_power_control.attr,
+	&dev_attr_card_present.attr,
+	NULL,
+};
+static const struct attribute_group sd_attr_group = {
+	.attrs = sd_attrs,
+};
+static const struct attribute_group *sd_attr_groups[] = {
+	&sd_attr_group,
+	NULL,
+};
+#endif
 /**
  *	mmc_add_host - initialise host hardware
  *	@host: mmc host
@@ -427,6 +503,12 @@ int mmc_add_host(struct mmc_host *host)
 
 	WARN_ON((host->caps & MMC_CAP_SDIO_IRQ) &&
 		!host->ops->enable_sdio_irq);
+
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	if (!(host->caps2 & MMC_CAP2_NO_SD)) {
+		host->class_dev.groups = sd_attr_groups;
+	}
+#endif
 
 	err = device_add(&host->class_dev);
 	if (err)
