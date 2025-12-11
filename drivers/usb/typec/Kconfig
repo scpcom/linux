@@ -72,6 +72,15 @@ config TYPEC_RT1711H
 	  Type-C Port Controller Manager to provide USB PD and USB
 	  Type-C functionalities.
 
+config TYPEC_SGM7220
+	tristate "AXERA SGM7220 Type-C chip driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  AXERA SGM7220 Type-C chip driver that works with
+	  Type-C Port Controller Manager to provide USB PD and USB
+	  Type-C functionalities.
+
 source "drivers/usb/typec/fusb302/Kconfig"
 
 config TYPEC_WCOVE
