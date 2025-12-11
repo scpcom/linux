@@ -15,7 +15,7 @@
 #include <linux/mutex.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
-#include "ax_gzipd_api.h"
+#include <axera/ax_gzipd_api.h>
 #include "ax_gzipd_log.h"
 
 #define BYPASS_EN 0

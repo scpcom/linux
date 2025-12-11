@@ -11,7 +11,7 @@
 #ifndef _AX_GZIPD_HAL_TYPE_H_
 #define _AX_GZIPD_HAL_TYPE_H_
 
-#include "ax_gzipd_api.h"
+#include <axera/ax_gzipd_api.h>
 
 typedef struct {
     AX_S32 *handle;

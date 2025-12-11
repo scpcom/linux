@@ -22,7 +22,7 @@
 #include <linux/fs.h>
 #include <linux/pm.h>
 #include "ax_gzipd_reg.h"
-#include "ax_gzipd_api.h"
+#include <axera/ax_gzipd_api.h>
 #include "ax_gzipd_sys.h"
 #include "ax_gzipd_adapter.h"
 #include "ax_gzipd_log.h"

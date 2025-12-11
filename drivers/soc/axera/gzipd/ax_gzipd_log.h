@@ -11,7 +11,7 @@
 #ifndef _AX_GZIPD_DEV_LOG_H_
 #define _AX_GZIPD_DEV_LOG_H_
 
-#include "ax_global_type.h"
+#include <axera/ax_global_type.h>
 #include "ax_gzipd_adapter.h"
 
 // #define GZIPD_CRC32_ENABLE

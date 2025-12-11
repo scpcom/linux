@@ -20,7 +20,7 @@
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 
-#include "ax_gzipd_api.h"
+#include <axera/ax_gzipd_api.h>
 #include "ax_gzipd_drv.h"
 #include "ax_gzipd_mng.h"
 #include "ax_gzipd_adapter.h"

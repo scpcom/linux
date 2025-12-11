@@ -14,7 +14,7 @@
 #include <types.h>
 
 #include "ax_gzipd_log.h"
-#include "ax_gzipd_api.h"
+#include <axera/ax_gzipd_api.h>
 #include "ax_gzipd_adapter.h"
 
 #define AX_GZIP_INST_HANDLE_MAX 100

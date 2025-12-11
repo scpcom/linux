@@ -11,7 +11,7 @@
 #ifndef __AX_GZIPD_DEV_SYS__
 #define __AX_GZIPD_DEV_SYS__
 
-#include "ax_base_type.h"
+#include <axera/ax_base_type.h>
 
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
