@@ -11,7 +11,7 @@
 #include "ax_riscv_drv.h"
 #include "ax_riscv_debug.h"
 #include "ax_riscv_utils.h"
-#include "osal_ax.h"
+extern s32 ax_os_release_reserved_mem(unsigned long phy_start, size_t size, const char *s);
 #include <asm/io.h>
 #include <linux/module.h>
 #include <linux/init.h>
