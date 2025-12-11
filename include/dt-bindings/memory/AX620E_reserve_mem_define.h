@@ -2,18 +2,19 @@
 #define __DTS_AX620E_RESERVE_MEM_DEFINE_H
 
 
-#define ATF_RESERVED_START_HI
-#define ATF_RESERVED_START_LO
-#define ATF_RESERVED_SIZE_HI
-#define ATF_RESERVED_SIZE_LO
+#define ATF_RESERVED_START_HI 0x0
+#define ATF_RESERVED_START_LO 0x40040000
+#define ATF_RESERVED_SIZE_HI 0x0
+#define ATF_RESERVED_SIZE_LO 0x40000
 
 #define SUPPORT_ATF
 
+#define OPTEE_BOOT
 #ifdef OPTEE_BOOT
-#define OPTEE_RESERVED_START_HI
-#define OPTEE_RESERVED_START_LO
-#define OPTEE_RESERVED_SIZE_HI
-#define OPTEE_RESERVED_SIZE_LO
+#define OPTEE_RESERVED_START_HI 0x0
+#define OPTEE_RESERVED_START_LO 0x44200000
+#define OPTEE_RESERVED_SIZE_HI 0x0
+#define OPTEE_RESERVED_SIZE_LO 0x2000000
 #endif
 
 #ifdef SUPPORT_RISCV
@@ -61,7 +62,7 @@
 #define CMM_RECYCLE_SIZE
 #endif
 
-#define BOOTARGS "bootargs"
-#define CMM_ARGS "cmmargs"
+#define BOOTARGS "mem=1024M console=ttyS0,115200n8 earlycon=uart8250,mmio32,0x4880000 board_id=0,boot_reason=0x0 initcall_debug=0 quiet loglevel=0 usbcore.autosuspend=-1 root=/dev/mmcblk0p16 rootfstype=ext4 rw rootwait blkdevparts=mmcblk0:768K(spl),512K(ddrinit),256K(atf),256K(atf_b),1536K(uboot),1536K(uboot_b),1M(env),6M(logo),6M(logo_b),1M(optee),1M(optee_b),1M(dtb),1M(dtb_b),256M(kernel),256M(kernel_b),29189M(ubuntu_rootfs)"
+#define CMM_ARGS "anonymous,0,0x80000000,3072M"
 
 #endif /* __DTS_AX620E_RESERVE_MEM_DEFINE_H */
