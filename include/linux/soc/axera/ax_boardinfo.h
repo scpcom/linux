@@ -14,6 +14,7 @@ typedef enum ax630c_board_type {
 	PHY_AX630C_SLT_V1_0 = 8,
 	PHY_AX630C_DEMO_V1_1 = 6,
 	PHY_AX630C_DEMO_LP4_V1_0 = 12,
+	PHY_AX630C_DEMO_LP4_V1_1 = 14,
 } ax630c_board_type_e;
 
 typedef enum ax620q_board_type {
@@ -37,6 +38,7 @@ typedef enum board_type {
 	AX630C_DEMO_LP4_V1_0,
 	AX620Q_LP4_38BOARD_V1_0,
 	AX620Q_LP4_MINION_BOARD,
+	AX630C_DEMO_LP4_V1_1,
 	AX620E_BOARD_MAX,
 } board_type_e;
 

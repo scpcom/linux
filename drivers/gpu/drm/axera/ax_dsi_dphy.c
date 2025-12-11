@@ -1968,7 +1968,7 @@ void dsi_dphy_config(int lanes, unsigned long long lane_bps, struct cdns_dphy *d
 
 	board_id = ax_info_get_board_id();
 
-	if (board_id == AX630C_DEMO_LP4_V1_0 || board_id == AX630C_DEMO_V1_1 || board_id == AX620Q_LP4_DEMO_V1_1) {
+	if (board_id == AX630C_DEMO_LP4_V1_0 || board_id == AX630C_DEMO_LP4_V1_1 || board_id == AX630C_DEMO_V1_1 || board_id == AX620Q_LP4_DEMO_V1_1) {
 		writel(1, dphy->regs + DPHY_TX0_REG22_ADDR);
 		writel(0, dphy->regs + DPHY_TX0_REG23_ADDR);
 		writel(4, dphy->regs + DPHY_TX0_REG24_ADDR);
