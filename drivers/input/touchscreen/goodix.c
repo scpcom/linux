@@ -551,6 +551,7 @@ static int goodix_get_gpio_config(struct goodix_ts_data *ts)
 	}
 
 	ts->gpiod_int = gpiod;
+	ts->client->irq = gpiod_to_irq(gpiod);
 
 	/* Get the reset line GPIO pin number */
 	gpiod = devm_gpiod_get_optional(dev, GOODIX_GPIO_RST_NAME, GPIOD_IN);
