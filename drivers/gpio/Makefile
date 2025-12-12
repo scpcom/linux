@@ -163,3 +163,4 @@ obj-$(CONFIG_GPIO_ZYNQ)		+= gpio-zynq.o
 obj-$(CONFIG_GPIO_ZX)		+= gpio-zx.o
 obj-$(CONFIG_GPIO_LOONGSON1)	+= gpio-loongson1.o
 
+obj-$(CONFIG_GPIO_PI4IOE5V64XX)		+= gpio-pi4ioe5v64xx.o
