@@ -31,6 +31,7 @@
 #include "init_st7789v.h"
 #include "init_milkv_st7789v.h"
 #include "init_st7789v_weactstudio.h"
+#include "init_st7796s.h"
 
 #define MADCTL_BGR BIT(3) /* bitmask for RGB/BGR order */
 #define MADCTL_MV BIT(5) /* bitmask for page/column order */
@@ -58,26 +59,8 @@ MODULE_PARM_DESC(panel, "type of attached panel");
  */
 static int init_display(struct fbtft_par *par)
 {
-	char *panel_name = NULL;
-
-	if (strcmp(panel_option, "") != 0) {
-		panel_name = panel_option;
-	} else {
-		return -ENODEV;
-	}
-
-	if (panel_name == NULL) {
-		return init_st7789v_display(par);
-	} else if (strcmp(panel_name,"st7789") == 0) {
-		return init_st7789_display(par);
-	} else if ((strcmp(panel_name,"milkv_st7789v") == 0) ||
-		   (strcmp(panel_name,"st7789v_milkv") == 0)) {
-		return init_milkv_st7789v_display(par);
-	} else if (strcmp(panel_name,"st7789v_weactstudio") == 0) {
-		return init_st7789v_weactstudio_display(par);
-	}
-
-	return init_st7789v_display(par);
+	// panel name not set
+	return -ENODEV;
 }
 
 /**
@@ -185,7 +168,7 @@ static int blank(struct fbtft_par *par, bool on)
 	return 0;
 }
 
-static struct fbtft_display display = {
+static struct fbtft_display st7789x_display = {
 	.regwidth = 8,
 	.width = 240,
 	.height = 320,
@@ -200,7 +183,50 @@ static struct fbtft_display display = {
 	},
 };
 
-FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789x", &display);
+static struct fbtft_display st7796x_display = {
+	.regwidth = 8,
+	.width = 320,
+	.height = 480,
+	.gamma_num = 0,     /* ST7796S does not require gamma tables */
+	.gamma_len = 0,
+	.fbtftops = {
+		.init_display = init_display,
+		.set_var = set_var,
+		.blank = blank,
+	},
+};
+
+static struct fbtft_display *get_display(void)
+{
+	char *panel_name = NULL;
+
+	if (strcmp(panel_option, "") != 0) {
+		panel_name = panel_option;
+	}
+
+	if (panel_name == NULL) {
+		return &st7789x_display;
+	} else if (strcmp(panel_name,"st7789") == 0) {
+		st7789x_display.fbtftops.init_display = init_st7789_display;
+		return &st7789x_display;
+	} else if ((strcmp(panel_name,"milkv_st7789v") == 0) ||
+		   (strcmp(panel_name,"st7789v_milkv") == 0)) {
+		st7789x_display.fbtftops.init_display = init_milkv_st7789v_display;
+		return &st7789x_display;
+	} else if (strcmp(panel_name,"st7789v_weactstudio") == 0) {
+		st7789x_display.fbtftops.init_display = init_st7789v_weactstudio_display;
+		return &st7789x_display;
+	} else if (strcmp(panel_name,"st7796s") == 0) {
+		st7796x_display.fbtftops.init_display = init_st7796s_display;
+		return &st7796x_display;
+	}
+
+	strcpy(panel_option, "st7789v");
+	st7789x_display.fbtftops.init_display = init_st7789v_display;
+	return &st7789x_display;
+}
+
+FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789x", get_display());
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
