@@ -373,7 +373,7 @@ int ax_vfb_register(struct ax_fb_device *vfbdev)
 		DRM_ERROR("vfbdev is NULL\n");
 		return -EINVAL;
 	}
-
+	if (!vfbdev->pdev) {DRM_ERROR("vfbdev->pdev is NULL\n");return -EINVAL;}
 	pdev = vfbdev->pdev;
 	dev = &pdev->dev;
 
