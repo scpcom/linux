@@ -393,7 +393,7 @@
 	cdns,phy-input-delay-mmc-highspeed = <2>;
 	cdns,phy-input-delay-mmc-ddr = <2>;
 	cdns,phy-dll-delay-sdclk = <45>;
-	cdns,phy-dll-delay-sdclk-hsmmc = <23>;
+	cdns,phy-dll-delay-sdclk-hsmmc = <31>;
 	cdns,phy-dll-delay-strobe = <18>;
 	fixed-emmc-driver-type = <4>;
 	status = "okay";
