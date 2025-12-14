@@ -21,9 +21,11 @@ struct ax_plane {
 		struct drm_property *blk_id_c;
 		struct drm_property *phy_addr_y;
 		struct drm_property *phy_addr_c;
+		struct drm_property *phy_addr_alp;
 		struct drm_property *layer_id;
 		struct drm_property *active;
 		struct drm_property *colorkey;
+		struct drm_property *blend_info;
 	} props;
 
 	struct ax_fb fb;

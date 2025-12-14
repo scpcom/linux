@@ -33,6 +33,11 @@ struct axfb_colorkey {
     u32 key_high;
 };
 
+struct axfb_blend_info {
+	u16 mode;
+	u16 stride;
+	u64 phy_addr;
+};
 
 #define AX_FBIOPUT_CURSOR_POS   _IOW('F', 0x21, struct axfb_cursor_pos)
 #define AX_FBIOPUT_CURSOR_RES   _IOW('F', 0x22, struct axfb_cursor_res)
@@ -42,5 +47,7 @@ struct axfb_colorkey {
 #define AX_FBIOGET_TYPE         _IOR('F', 0x26, u16)
 #define AX_FBIOGET_COLORKEY     _IOR('F', 0x27, struct axfb_colorkey)
 #define AX_FBIOPUT_COLORKEY     _IOW('F', 0x28, struct axfb_colorkey)
+#define AX_FBIOGET_BLEND_INFO   _IOR('F', 0x29, struct axfb_blend_info)
+#define AX_FBIOPUT_BLEND_INFO   _IOW('F', 0x2A, struct axfb_blend_info)
 
 #endif /* __AX_DRM_VFB_H */

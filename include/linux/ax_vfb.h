@@ -33,6 +33,11 @@ struct ax_fb_device {
 		u64 enable	: 1; /* [60] */
 		u64 inv		: 1; /* [61] */
 	} colorkey;
+	struct {
+		u16 mode;
+		u16 stride;
+		u64 phy_addr;
+	} blend_info;
 
 	void *pdev;
 	void *data;

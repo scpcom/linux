@@ -31,6 +31,8 @@
 #define AX_FB_GET_COLOERKEY_VAL_HIGH(val)	(((val) >> 30) & 0x3FFFFFFF)
 #define AX_FB_GET_COLOERKEY_EN(val)		(((val) >> 60) & 0x1)
 #define AX_FB_GET_COLOERKEY_INV(val)		(((val) >> 61) & 0X1)
+#define AX_FB_GET_BLD_MODE(val)			((val) & 0xFF)
+#define AX_FB_GET_BLD_STRIDE(val)		(((val) >> 8) & 0xFFFF)
 
 static int ax_plane_atomic_check(struct drm_plane *plane,
 				 struct drm_plane_state *plane_state)
@@ -189,6 +191,8 @@ static int ax_plane_set_property(struct drm_plane *plane,
 		ax_plane->fb.phy_addr_y = val;
 	else if (property == ax_plane->props.phy_addr_c)
 		ax_plane->fb.phy_addr_c = val;
+	else if (property == ax_plane->props.phy_addr_alp)
+		ax_plane->fb.phy_addr_alp = val;
 	else if (property == ax_plane->props.crtc_x_offs)
 		ax_plane->fb.dst_x = val;
 	else if (property == ax_plane->props.layer_id)
@@ -200,6 +204,9 @@ static int ax_plane_set_property(struct drm_plane *plane,
 		ax_plane->fb.colorkey_inv = AX_FB_GET_COLOERKEY_INV(val);
 		ax_plane->fb.colorkey_val_low = AX_FB_GET_COLOERKEY_VAL_LOW(val);
 		ax_plane->fb.colorkey_val_high = AX_FB_GET_COLOERKEY_VAL_HIGH(val);
+	}else if (property == ax_plane->props.blend_info) {
+		ax_plane->fb.blend_mode = AX_FB_GET_BLD_MODE(val);
+		ax_plane->fb.stride_alp = AX_FB_GET_BLD_STRIDE(val);
 	}
 	return 0;
 }
@@ -317,6 +324,10 @@ int ax_plane_create(struct drm_crtc *crtc)
 		} else if (type == DRM_PLANE_TYPE_OVERLAY) {
 			ax_plane->props.colorkey = drm_property_create_range(drm_dev, DRM_MODE_PROP_ATOMIC, "COLORKEY", 0 , ~(u64)0);
 			drm_object_attach_property(&plane->base, ax_plane->props.colorkey, 0);
+			ax_plane->props.blend_info = drm_property_create_range(drm_dev, DRM_MODE_PROP_ATOMIC, "BLD_INFO", 0 , ~(u64)0);
+			drm_object_attach_property(&plane->base, ax_plane->props.blend_info, 0);
+			ax_plane->props.phy_addr_alp = drm_property_create_range(drm_dev, DRM_MODE_PROP_ATOMIC, "PHY_ADDR_ALP", 0 , ~(u64)0);
+			drm_object_attach_property(&plane->base, ax_plane->props.phy_addr_alp, 0);
 		}
 
 		ax_plane->props.crtc_x_offs = drm_property_create_range(drm_dev, DRM_MODE_PROP_ATOMIC, "CRTC_X_OFFS", 0, (u32)2048);

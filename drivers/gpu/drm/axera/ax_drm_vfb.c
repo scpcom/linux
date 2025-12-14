@@ -280,6 +280,7 @@ static int vfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	struct axfb_cursor_pos hot;
 	struct axfb_cursor_res res;
 	struct axfb_colorkey colorkey;
+	struct axfb_blend_info blend_info;
 	__u16 cursor_show;
 	void __user *argp = (void __user *)arg;
 	int ret = 0;
@@ -353,6 +354,21 @@ static int vfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		vfbdev->colorkey.enable = colorkey.enable;
 		vfbdev->colorkey.inv = colorkey.inv;
 
+		break;
+	case AX_FBIOGET_BLEND_INFO:
+		blend_info.mode = vfbdev->blend_info.mode;
+		blend_info.stride = vfbdev->blend_info.stride;
+		blend_info.phy_addr = vfbdev->blend_info.phy_addr;
+
+		ret = copy_to_user(argp, &blend_info, sizeof(blend_info)) ? -EFAULT : 0;
+		break;
+	case AX_FBIOPUT_BLEND_INFO:
+		if (copy_from_user(&blend_info, argp, sizeof(blend_info)))
+			return -EFAULT;
+
+		vfbdev->blend_info.mode = blend_info.mode;
+		vfbdev->blend_info.stride = blend_info.stride;
+		vfbdev->blend_info.phy_addr = blend_info.phy_addr;
 		break;
 	default:
 		ret = -ENOTTY;

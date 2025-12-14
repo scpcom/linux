@@ -76,6 +76,13 @@ enum {
 };
 
 enum {
+	AX_VO_BLEND_MODE_PER_PIXEL,
+	AX_VO_BLEND_MODE_GLOBAL0,
+	AX_VO_BLEND_MODE_GLOBAL1,
+	AX_VO_BLEND_MODE_BUT,
+};
+
+enum {
     AX_VO_CSC_MATRIX_IDENTITY = 0,
     AX_VO_CSC_MATRIX_BT601_TO_BT601,
     AX_VO_CSC_MATRIX_BT601_TO_BT709,
@@ -138,6 +145,8 @@ struct ax_fb {
 
 	u32 format;
 
+	u32 blend_mode;
+
 	u32 fb_w;
 	u32 fb_h;
 
@@ -155,12 +164,14 @@ struct ax_fb {
 
 	u32 stride_y;
 	u32 stride_c;
+	u32 stride_alp;
 
 	u32 blk_id_y;
 	u32 blk_id_c;
 
 	u64 phy_addr_y;
 	u64 phy_addr_c;
+	u64 phy_addr_alp;
 };
 
 #define DISP_GAMMA_SIZE			(33 * 33)
