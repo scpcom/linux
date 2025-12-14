@@ -138,8 +138,8 @@
 	status = "okay";
 };
 
-&deb_gpio_lp_emmc {
-	lp-num = <0xB>; /* use db_gpio11 as wakeup source */
+&deb_gpio_lp {
+	lp-status = <11 1>;/* use db_gpio11 as wakeup source */
 	status = "okay";
 };
 
