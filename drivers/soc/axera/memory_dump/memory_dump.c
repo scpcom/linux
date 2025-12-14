@@ -1,53 +1,19 @@
 #include <asm/cacheflush.h>
-#include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/init.h>
 #include <linux/of.h>
 #include <linux/mm.h>
-#include <linux/kcore.h>
-#include <linux/user.h>
-#include <linux/platform_device.h>
-#include <linux/elfcore.h>
-#include <linux/export.h>
-#include <linux/printk.h>
 #include <linux/module.h>
-#include <linux/mutex.h>
-#include <linux/proc_fs.h>
-#include <linux/seq_file.h>
 #include <linux/elf.h>
-#include <linux/elfcore.h>
-#include <linux/uaccess.h>
-#include <linux/kallsyms.h>
-#include <asm/stacktrace.h>
-#include <asm-generic/kdebug.h>
-#include <linux/kdebug.h>
 #include <linux/of_fdt.h>
-#include <linux/elfcore.h>
-#include <linux/debugfs.h>
-#include <linux/fs.h>
 #include <linux/delay.h>
-#include <asm/fixmap.h>
-#include <asm/memory.h>
-#include <asm/pgtable.h>
-#include <linux/list.h>
 #include <linux/crash_core.h>
-#include <asm/page.h>
-#include <asm/sections.h>
 #include <linux/reboot.h>
-#include <linux/timer.h>
-#include <linux/timex.h>
 #include <linux/rtc.h>
 #include <linux/libfdt.h>
-#include <asm/neon.h>
 
+#define DUMPINFO_OFFSET      1024
+#define ALIGN_UP_16(v)       ((v + 0xF) & (~0xF))
 
-#define TIME_ADDR 1088
-#define MMU_ADDR  2048
-#define MAGIC_ADDR  1024
-#define SYS_MEM_SIZE 1048
-#define DUMP_OFFSET  0x3000
-
-void *axera_dump_vaddr;
 struct arm_v8_mmu_regs {
 	u64 sctlr_el1;
 	u64 ttbr0_el1;
@@ -59,23 +25,32 @@ struct arm_v8_mmu_regs {
 	u64 reg_null;
 };
 
-struct axera_memory_info {
-	unsigned long info_paddr;
-	unsigned long info_size;
-	unsigned long info_vaddr;
-	unsigned long paddr;
-	unsigned long vaddr;
-	unsigned long size;
+struct axera_dump_info {
+	unsigned long info_paddr;       /*dump info phy address*/
+	unsigned long info_size;        /*dump info size*/
+	unsigned long info_vaddr;       /*dump info virtual address*/
+	unsigned long kernel_paddr;     /*kernel start phy address*/
+	unsigned long kernel_vaddr;     /*kernel start virtual address*/
+	unsigned long kmem_size;        /*kernel mem size*/
+	unsigned long dump_info_addr;   /*dump info start address*/
+	unsigned long magic_addr;       /*sysdump magic addr*/
+	unsigned long time_addr;        /*sysdump time addr*/
+	unsigned long dump_ranges_addr; /*dump ranges start address*/
+	unsigned long pt_note_addr;     /*pt note address*/
+	unsigned long mmu_addr;         /*mmu regs save addr*/
+	unsigned int  cpu_id;           /*panic cpu id*/
+	unsigned int  dump_cnt;         /*sysdump range count*/
 };
 
-static u32 all_mem_size;
-struct arm_v8_mmu_regs *ax650_mmu_regs;
-struct axera_memory_info dump_info;
+static u32 s_os_mem_size;
+static unsigned long s_note_sz;
+static struct arm_v8_mmu_regs *s_axera_mmu_regs_ptr;
+static struct axera_dump_info s_dump_info;
 
 static int __init mem_setup(char *str)
 {
-	get_option(&str, &all_mem_size);
-	printk("mem_setup = %s all_mem_size = %d\n", str, all_mem_size);
+	get_option(&str, &s_os_mem_size);
+	printk("mem_setup = %s s_os_mem_size = %d\n", str, s_os_mem_size);
 	return 1;
 }
 
@@ -83,7 +58,6 @@ __setup("mem=", mem_setup);
 
 static void axera_save_mmu_regs(struct arm_v8_mmu_regs *mmu_regs)
 {
-
 #ifdef CONFIG_ARM64
 	u64 tmp = 0;
 	asm volatile ("mrs %1, sctlr_el1\n\t"
@@ -116,13 +90,7 @@ static void axera_save_mmu_regs(struct arm_v8_mmu_regs *mmu_regs)
 #endif
 }
 
-void axera_final_note(Elf_Word *buf)
-{
-	memset(buf, 0xff, sizeof(struct elf_note));
-}
-
-
-Elf_Word *axera_append_elf_note(Elf_Word *buf, char *name, unsigned int type,void *data, size_t data_len)
+void *axera_append_elf_note(Elf_Word *buf, char *name, unsigned int type, void *data, size_t data_len)
 {
 	struct elf_note *note = (struct elf_note *)buf;
 
@@ -134,129 +102,77 @@ Elf_Word *axera_append_elf_note(Elf_Word *buf, char *name, unsigned int type,voi
 	buf += DIV_ROUND_UP(note->n_namesz, sizeof(Elf_Word));
 	memcpy(buf, data, data_len);
 	buf += DIV_ROUND_UP(data_len, sizeof(Elf_Word));
-	return buf;
+
+	return (void*)buf;
 }
 
-inline void axera_crash_save_cpu(struct pt_regs *regs, int cpu,void *addr)
+void axera_crash_save_cpu(struct pt_regs *regs, int cpu)
 {
 	struct elf_prstatus prstatus;
-	u32 *buf;
+	char core_name[8]={0};
+	u32 *buf = (u32*)(s_dump_info.pt_note_addr + cpu*s_note_sz);
 
-	if ((cpu < 0) || (cpu >= nr_cpu_ids))
+	if ((buf == NULL) || (cpu < 0) || (cpu >= nr_cpu_ids))
 		return;
-	if(addr == NULL)
-		return ;
 
-	buf = (u32 *)(addr + cpu * (sizeof(note_buf_t) - sizeof(struct elf_note)));
-	if (!buf)
-		return;
+	snprintf(core_name, 32, "CORE%02d", cpu);
 	memset(&prstatus, 0, sizeof(prstatus));
-#ifdef CONFIG_ARM64
-	//prstatus.common.pr_pid = current->pid;
-#endif
 	if(regs != NULL)
 		elf_core_copy_kernel_regs(&prstatus.pr_reg, regs);
-	axera_append_elf_note(buf, "CORE", NT_PRSTATUS,&prstatus, sizeof(prstatus));
-	if (ax650_mmu_regs != NULL)
-		axera_save_mmu_regs(ax650_mmu_regs + cpu);
+	axera_append_elf_note(buf, core_name, NT_PRSTATUS, &prstatus, sizeof(prstatus));
 }
 
-EXPORT_SYMBOL(axera_crash_save_cpu);
-
-void axera_prepare_elf32_headers(void *elfdr)
+void* axera_prepare_elf_headers(struct pt_regs *regs)
 {
-	Elf32_Phdr *phdr;
-	Elf32_Ehdr *ehdr;
+	unsigned int cpu;
+	Elf_Phdr *phdr;
+	Elf_Ehdr *ehdr;
+	unsigned long notes_addr;
+	unsigned long cur_notes_vaddr;
 
-	ehdr = (Elf32_Ehdr *)elfdr;
-	ehdr->e_ident[EI_MAG0] = ELFMAG0,
-	ehdr->e_ident[EI_MAG1] = ELFMAG1,
-	ehdr->e_ident[EI_MAG2] = ELFMAG2,
-	ehdr->e_ident[EI_MAG3] = ELFMAG3,
+	ehdr = (Elf_Ehdr *)s_dump_info.info_vaddr;
+	memcpy(ehdr->e_ident, ELFMAG, SELFMAG);
 	ehdr->e_ident[EI_CLASS] = ELF_CLASS,
 	ehdr->e_ident[EI_DATA] = ELF_DATA,
 	ehdr->e_ident[EI_VERSION] = EV_CURRENT,
 	ehdr->e_ident[EI_OSABI] = ELF_OSABI,
-	ehdr->e_ident[EI_CLASS] = ELFCLASS32;
 	ehdr->e_type = ET_CORE;
 	ehdr->e_machine = ELF_ARCH;
 	ehdr->e_version = EV_CURRENT;
-	ehdr->e_entry = 0;
-	ehdr->e_phoff = sizeof(Elf32_Ehdr);
-	ehdr->e_shoff = 0;
-	ehdr->e_flags = 0;
-	ehdr->e_ehsize = sizeof(Elf32_Ehdr);
-	ehdr->e_phentsize = sizeof(Elf32_Phdr);
-	ehdr->e_phnum = 2;
-	ehdr->e_shentsize = 0;
-	ehdr->e_shnum = 0;
-	ehdr->e_shstrndx = 0;
-	phdr = elfdr + sizeof(Elf32_Ehdr);
+	ehdr->e_phoff = sizeof(Elf_Ehdr);
+	ehdr->e_ehsize = sizeof(Elf_Ehdr);
+	ehdr->e_phentsize = sizeof(Elf_Phdr);
+	/* Prepare one phdr of type PT_NOTE for each present cpu */
+	phdr = (Elf_Phdr*)(ehdr + 1);
+	notes_addr = s_dump_info.pt_note_addr - s_dump_info.info_vaddr;
+	cur_notes_vaddr = s_dump_info.pt_note_addr;
+	phdr->p_filesz = 0;
+	for_each_present_cpu(cpu) {
+		phdr->p_filesz += s_note_sz;
+		cur_notes_vaddr += s_note_sz;
+	}
+	/* Prepare one PT_NOTE header for vmcoreinfo */
 	phdr->p_type = PT_NOTE;
-	phdr->p_offset = 4096;
-	phdr->p_vaddr = 0;
-	phdr->p_paddr = 0;
-	phdr->p_filesz = sizeof(note_buf_t)*NR_CPUS + VMCOREINFO_NOTE_SIZE;
-	phdr->p_memsz = sizeof(note_buf_t)*NR_CPUS + VMCOREINFO_NOTE_SIZE;
-	phdr->p_flags = 0;
-	phdr->p_align = 0;
+	phdr->p_offset = phdr->p_paddr = notes_addr;
+	phdr->p_filesz += vmcoreinfo_size;
+	phdr->p_memsz = phdr->p_filesz;
+	phdr->p_vaddr = s_dump_info.kernel_vaddr;
+	phdr->p_paddr = s_dump_info.kernel_paddr;
+	memcpy((void*)cur_notes_vaddr, vmcoreinfo_note, vmcoreinfo_size);
+	(ehdr->e_phnum)++;
+	/* kernel dump */
 	phdr ++;
 	phdr->p_type = PT_LOAD;
 	phdr->p_flags = PF_R | PF_W | PF_X;
-	phdr->p_offset = DUMP_OFFSET;
-	phdr->p_vaddr = dump_info.vaddr;
-	phdr->p_paddr = dump_info.paddr;
-	phdr->p_filesz = dump_info.size;
-	phdr->p_memsz = dump_info.size;
+	phdr->p_offset = s_dump_info.info_size;
+	phdr->p_vaddr = s_dump_info.kernel_vaddr;
+	phdr->p_paddr = s_dump_info.kernel_paddr;
+	phdr->p_filesz = s_dump_info.kmem_size;
+	phdr->p_memsz = s_dump_info.kmem_size;
 	phdr->p_align = 0;
-}
+	(ehdr->e_phnum)++;
 
-void axera_prepare_elf64_headers(void *elfdr)
-{
-	Elf64_Phdr *phdr;
-	Elf64_Ehdr *ehdr;
-
-	ehdr = (Elf64_Ehdr *)elfdr;
-	ehdr->e_ident[EI_MAG0] = ELFMAG0,
-	ehdr->e_ident[EI_MAG1] = ELFMAG1,
-	ehdr->e_ident[EI_MAG2] = ELFMAG2,
-	ehdr->e_ident[EI_MAG3] = ELFMAG3,
-	ehdr->e_ident[EI_CLASS] = ELF_CLASS,
-	ehdr->e_ident[EI_DATA] = ELF_DATA,
-	ehdr->e_ident[EI_VERSION] = EV_CURRENT,
-	ehdr->e_ident[EI_OSABI] = ELF_OSABI,
-	ehdr->e_ident[EI_CLASS] = ELFCLASS64;
-	ehdr->e_type = ET_CORE;
-	ehdr->e_machine = ELF_ARCH;
-	ehdr->e_version = EV_CURRENT;
-	ehdr->e_entry = 0;
-	ehdr->e_phoff = sizeof(Elf64_Ehdr);
-	ehdr->e_shoff = 0;
-	ehdr->e_flags = 0;
-	ehdr->e_ehsize = sizeof(Elf64_Ehdr);
-	ehdr->e_phentsize = sizeof(Elf64_Phdr);
-	ehdr->e_phnum = 2;
-	ehdr->e_shentsize = 0;
-	ehdr->e_shnum = 0;
-	ehdr->e_shstrndx = 0;
-	phdr = elfdr + sizeof(Elf64_Ehdr);
-	phdr->p_type = PT_NOTE;
-	phdr->p_offset = 4096;
-	phdr->p_vaddr = 0;
-	phdr->p_paddr = 0;
-	phdr->p_filesz = sizeof(note_buf_t)*NR_CPUS + VMCOREINFO_NOTE_SIZE;
-	phdr->p_memsz = sizeof(note_buf_t)*NR_CPUS + VMCOREINFO_NOTE_SIZE;
-	phdr->p_flags = 0;
-	phdr->p_align = 0;
-	phdr ++;
-	phdr->p_type = PT_LOAD;
-	phdr->p_flags = PF_R | PF_W | PF_X;
-	phdr->p_offset = DUMP_OFFSET;
-	phdr->p_vaddr = dump_info.vaddr;
-	phdr->p_paddr = dump_info.paddr;
-	phdr->p_filesz = dump_info.size;
-	phdr->p_memsz = dump_info.size;
-	phdr->p_align = 0;
+	return (void*)++phdr;
 }
 
 static inline void axera_crash_setup_regs(struct pt_regs *newregs,
@@ -320,40 +236,43 @@ static inline void axera_crash_setup_regs(struct pt_regs *newregs,
 
 void axera_save_memory_dump(void)
 {
+	unsigned int cpu;
 	struct timespec64 txc;
 	struct rtc_time tm;
 	u32 reason_mask = 0xf98e7c6d;
-	u32 *buf;
-	int cpu;
 	struct pt_regs newregs;
+	void *meminfo_ptr;
+	unsigned long addr;
 
-	axera_crash_setup_regs(&newregs,NULL);
-
-#ifdef CONFIG_ARM64
-	axera_prepare_elf64_headers((void *)dump_info.info_vaddr);
-#else
-	axera_prepare_elf32_headers((void *)dump_info.info_vaddr);
-#endif
 	bust_spinlocks(1);
+	axera_crash_setup_regs(&newregs, NULL);
+#ifdef CONFIG_CRASH_CORE
+	crash_save_vmcoreinfo();
+#endif
+#ifdef CONFIG_KEXEC
+	machine_crash_shutdown(&newregs);
+#endif
+	meminfo_ptr = axera_prepare_elf_headers(&newregs);
+	s_dump_info.cpu_id = smp_processor_id();
+	addr = (unsigned long)meminfo_ptr + sizeof(struct axera_dump_info);
+	if (s_dump_info.dump_ranges_addr < ALIGN_UP_16(addr)){
+		pr_warn("[warn] sysdump address overlay!!!");
+	}
+	memcpy((void*)s_dump_info.dump_info_addr, &s_dump_info, sizeof(s_dump_info));
 	ktime_get_real_ts64(&txc);
 	txc.tv_sec -= sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(txc.tv_sec, &tm);
 	tm.tm_mon += 1;
-	printk("kernel panic dump : %d-%d-%d %d:%d:%d\n", tm.tm_year + 1900,
+	pr_err("kernel panic time : %d-%d-%d %d:%d:%d\n", tm.tm_year + 1900,
 	       tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	memcpy((void *)(dump_info.info_vaddr + TIME_ADDR), &tm, sizeof(tm));
-	memcpy((void *)(dump_info.info_vaddr + MAGIC_ADDR), &reason_mask, sizeof(reason_mask));
-	memcpy((void *)(dump_info.info_vaddr + SYS_MEM_SIZE), &all_mem_size, sizeof(all_mem_size));
-	ax650_mmu_regs = (struct arm_v8_mmu_regs *)(dump_info.info_vaddr + MMU_ADDR);
-	buf = (u32 *)((dump_info.info_vaddr +0x1000) + 8 * (sizeof(note_buf_t) - sizeof(struct elf_note)));
-	if (!buf)
-		return;
-	memcpy(buf,vmcoreinfo_note,VMCOREINFO_NOTE_SIZE);
+	memcpy((void *)(s_dump_info.time_addr), &tm, sizeof(tm));
+	memcpy((void *)(s_dump_info.magic_addr), &reason_mask, sizeof(reason_mask));
+	s_axera_mmu_regs_ptr = (struct arm_v8_mmu_regs *)(s_dump_info.mmu_addr);
+	axera_save_mmu_regs(s_axera_mmu_regs_ptr);
 	for_each_present_cpu(cpu) {
-		axera_crash_save_cpu(NULL, cpu,axera_dump_vaddr);
+		axera_crash_save_cpu(NULL, cpu);
 	}
-	axera_crash_save_cpu(&newregs,smp_processor_id(),axera_dump_vaddr);
-
+	axera_crash_save_cpu(&newregs,smp_processor_id());
 	mdelay(100);
 #ifdef CONFIG_ARM64
 	crash_smp_send_stop();
@@ -374,10 +293,12 @@ void axera_save_memory_dump(void)
 static int __init axera_memory_dump_init(void)
 {
 	int offset;
-	int len;
-	unsigned long addr, size, memory_addr;
+	int len, i;
+	int cnt;
 	const u32 *val;
+	unsigned long addr, size, memory_addr;
 	unsigned long dump_info_vaddr;
+	u32 *tmp;
 
 	void *fdt = initial_boot_params;
 
@@ -414,10 +335,31 @@ static int __init axera_memory_dump_init(void)
 	if (dump_info_vaddr == 0x0)
 		return -EIO;
 	memset((void *)dump_info_vaddr, 0, size);
-	dump_info.info_paddr = addr;
-	dump_info.info_size = size;
-	dump_info.info_vaddr = (unsigned long)dump_info_vaddr;
-	axera_dump_vaddr = (void *)(dump_info_vaddr + 0x1000);
+	s_dump_info.info_paddr     = addr;
+	s_dump_info.info_size      = size;
+	s_dump_info.info_vaddr     = (unsigned long)dump_info_vaddr;
+	s_dump_info.dump_info_addr = ALIGN_UP_16(s_dump_info.info_vaddr + DUMPINFO_OFFSET);
+	s_dump_info.magic_addr     = ALIGN_UP_16(s_dump_info.dump_info_addr + sizeof(struct axera_dump_info));
+	s_dump_info.time_addr      = ALIGN_UP_16(s_dump_info.magic_addr + sizeof(int));
+	/*dump ranges*/
+	val = fdt_getprop(fdt, offset, "dump_ranges", &len);
+	if (val == NULL) {
+		pr_err("get dump_ranges failed! len=%d\n", len);
+		return -ENODEV;
+	}
+	s_dump_info.dump_ranges_addr = ALIGN_UP_16(s_dump_info.time_addr + sizeof(struct rtc_time));
+	cnt = len / (4 * sizeof(int));
+	s_dump_info.dump_cnt = cnt;
+	tmp = (u32*)s_dump_info.dump_ranges_addr;
+	for (i=0; i < cnt; i++){
+		*tmp++ = fdt32_to_cpu(val[i*4]);
+		*tmp++ = fdt32_to_cpu(val[i*4 + 1]);
+		*tmp++ = fdt32_to_cpu(val[i*4 + 2]);
+		*tmp++ = fdt32_to_cpu(val[i*4 + 3]);
+	}
+	s_dump_info.pt_note_addr = ALIGN_UP_16(s_dump_info.dump_ranges_addr + cnt*4*sizeof(int));
+	s_dump_info.mmu_addr     = ALIGN_UP_16(s_dump_info.pt_note_addr + sizeof(note_buf_t)*NR_CPUS + VMCOREINFO_NOTE_SIZE);
+
 	offset = fdt_path_offset(fdt, "/memory@40000000");
 	if (offset < 0)
 		pr_err("memory node error \n");
@@ -430,9 +372,15 @@ static int __init axera_memory_dump_init(void)
 #else
 	memory_addr = fdt32_to_cpu(val[1]);
 #endif
-	dump_info.paddr = memory_addr;
-	dump_info.size = all_mem_size * SZ_1M;
-	dump_info.vaddr = (unsigned long)phys_to_virt(memory_addr);
+	s_dump_info.kernel_paddr = memory_addr;
+	s_dump_info.kmem_size    = s_os_mem_size * SZ_1M;
+	s_dump_info.kernel_vaddr = (unsigned long)phys_to_virt(memory_addr);
+	s_note_sz = round_up(sizeof(struct elf_note), sizeof(Elf_Word));
+	s_note_sz += round_up(strlen("CORE00"), sizeof(Elf_Word));
+	s_note_sz += round_up(sizeof(struct elf_prstatus), sizeof(Elf_Word));
+
+	BUG_ON((s_dump_info.kernel_paddr + s_dump_info.kmem_size) < (s_dump_info.info_paddr + s_dump_info.info_size));
+
 	return 0;
 }
 

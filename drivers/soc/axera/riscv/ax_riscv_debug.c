@@ -48,6 +48,19 @@ static void riscv_print_log(struct seq_file *m, char *base, u32 offset, u32 len)
     }
 }
 
+static void riscv_debug_print_log(char *base, u32 offset, u32 len)
+{
+    int i;
+    char *log_start = base + offset;
+
+    for (i = 0; i < (len - offset); i++) {
+        pr_cont("%c", *(log_start + i));
+    }
+    for (i = 0; i < offset; i++) {
+        pr_cont("%c", *(base + i));
+    }
+}
+
 static int riscv_proc_show(struct seq_file *m, void *v)
 {
     int ret;
@@ -90,6 +103,54 @@ static int riscv_proc_show(struct seq_file *m, void *v)
 
     return 0;
 }
+
+int riscv_debug_log_print(void)
+{
+    int ret;
+    u64 addr, size;
+    void *log_mem_base;
+    log_header_t *log_header;
+    char *log_base;
+    u32 len, offset;
+
+    printk(">>>>>>>>>>>>>>>riscv debug log start<<<<<<<<<<<<<<<<<<<\n");
+
+    ret = ax_riscv_utils_get_dts_reg(RISCV_DTS_NODE_LOG_MEM, &addr, &size);
+    if (ret != 0) {
+        printk("get log memory info fail\n");
+        return -1;
+    }
+
+    log_mem_base = ioremap_wc(addr, size);
+    if (log_mem_base == NULL) {
+        printk("remap riscv log memory 0x%llx size %llu fail", addr, size);
+        return -1;
+    }
+    log_header = (log_header_t *)log_mem_base;
+    log_base = (char *)log_mem_base + sizeof(log_header_t);
+    if (log_header->magic != LOG_MAGIC) {
+        printk("riscv log header magic error, 0x%x\n", log_header->magic);
+        iounmap(log_mem_base);
+        return -1;
+    }
+    printk("riscv log dump version %s\n", log_header->version);
+    if (log_header->log_mem_cnt <= log_header->log_total_len) {
+        offset = 0;
+        len = log_header->log_mem_cnt;
+    } else {
+        offset = log_header->log_mem_cnt % log_header->log_total_len;
+        len = log_header->log_total_len;
+    }
+    printk("riscv log addr 0x%llx size 0x%llx offset %u len %u cnt %u\n",
+            addr, size, offset, len, log_header->log_mem_cnt);
+    riscv_debug_print_log(log_base, offset, len);
+    iounmap(log_mem_base);
+    printk(">>>>>>>>>>>>>>>riscv debug log end<<<<<<<<<<<<<<<<<<<\n");
+
+    return 0;
+}
+
+EXPORT_SYMBOL(riscv_debug_log_print);
 
 static int riscv_proc_open(struct inode *inode, struct file *file)
 {

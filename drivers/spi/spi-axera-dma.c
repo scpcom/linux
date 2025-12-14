@@ -44,7 +44,7 @@ static int ax_dma_per_lli_addr_invalid(phys_addr_t lli_paddr)
 	phys_addr_t ddr_start = 0x40000000;
 	phys_addr_t ddr_end;
 
-	if (AX620Q_CHIP == ax_get_chip_type()) {
+	if (AX630C_CHIP != ax_get_chip_type()) {
 		ddr_end = 0x4FFFFFFF;
 		printk("620Q mem whole space [0x%X:0x%X]\n", ddr_start, ddr_end);
 	}

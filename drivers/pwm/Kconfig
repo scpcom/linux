@@ -519,13 +519,4 @@ config PWM_AXERA
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-axera.
 
-config PWM_AXERA_SETTING
-	tristate "AXERA PWM Setting support"
-	depends on PWM_AXERA
-	help
-		AXERA PWM Setting driver
-
-		To compile this driver as a module, choose M here: the module
-		will be called pwm-setting.
-
 endif

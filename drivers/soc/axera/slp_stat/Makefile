@@ -1,1 +1,1 @@
-obj-$(CONFIG_AXERA_SLEEP_STATE) += slp_stat.o
+obj-y += slp_stat.o

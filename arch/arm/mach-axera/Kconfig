@@ -19,6 +19,14 @@ config ARCH_AX620E
 	select PINCTRL_SINGLE
 	help
 	  Support for Axera AX620E SoC family
+
+config CLK_AUX_SUSPEND_DISABLE
+	bool "clk aux will be disabled during sleep"
+	depends on ARCH_AX620E
+	default y
+	help
+	  Used to disable clk aux during sleep or clk aux always work.
+
 endmenu
 
 endif

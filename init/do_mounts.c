@@ -25,6 +25,7 @@
 
 #ifdef CONFIG_AX_DEBUG_BOOT_TIME
 #include <linux/soc/axera/chip_reg.h>
+#include "../drivers/soc/axera/riscv/ax_riscv_debug.h"
 #endif
 
 #include "do_mounts.h"
@@ -596,6 +597,7 @@ void __init prepare_namespace(void)
 		msleep(1);
 	}
 	if (i == 3000) {
+		riscv_debug_log_print();
 		pr_err("wait riscv load rootfs fail\n");
 	}
 #ifdef CONFIG_AX_DEBUG_BOOT_TIME

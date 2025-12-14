@@ -277,6 +277,8 @@ struct dw_i2c_dev {
 	struct i2c_bus_recovery_info rinfo;
 	u32			i2c_id;
 	bool			i2c_probe_status;
+	u32			poll_mode;
+	spinlock_t		lock;
 };
 extern void __iomem *i2c_clk_reg;
 

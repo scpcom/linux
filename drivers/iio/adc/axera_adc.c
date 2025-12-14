@@ -83,33 +83,6 @@ static const struct iio_chan_spec ax_adc_iio_channels[] = {
 	AX_ADC_CHAN(3),
 };
 
-static int ax_adc_config(struct ax_adc *adc)
-{
-	u32 val;
-	void __iomem *regs;
-	regs = adc->base;
-	writel(0, regs + AX_ADC_RSTN);
-
-	val = readl(regs + AX_ADC_CTRL);
-	writel(val, regs + AX_ADC_CTRL);
-
-	val = readl(regs + AX_ADC_CLK_EN);
-	val |= AX_ADC_EN;
-	writel(val, regs + AX_ADC_CLK_EN);
-
-	writel(0x3, regs + AX_ADC_FILTER_VOL_SEL);
-	writel(0xf, regs + AX_ADC_FILTER_VOL_EN);
-
-	writel(AX_ADC_EN, regs + AX_ADC_RSTN);
-
-	val = readl(regs + AX_ADC_MON_CH);
-	val |= AX_ADC_SEL;
-	writel(val ,regs + AX_ADC_MON_CH);
-	writel(AX_ADC_EN, regs + AX_ADC_MON_EN);
-
-	return 0;
-}
-
 static int ax_adc_read_chan(struct ax_adc *adc, unsigned int ch)
 {
 	int val;
@@ -273,11 +246,12 @@ static int ax_adc_probe(struct platform_device *pdev)
 		return PTR_ERR(adc->base);
 
 	indio_dev->name = dev_name(&pdev->dev);
+	indio_dev->dev.parent = &pdev->dev;
+	indio_dev->dev.of_node = pdev->dev.of_node;
 	indio_dev->info = &ax_adc_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->channels = ax_adc_iio_channels;
 	indio_dev->num_channels = ARRAY_SIZE(ax_adc_iio_channels);
-	ax_adc_config(adc);
 
 	adc->irq = platform_get_irq(pdev, 0);
 	if (adc->irq < 0) {

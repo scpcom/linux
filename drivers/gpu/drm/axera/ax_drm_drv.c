@@ -369,6 +369,34 @@ static int ax_drm_sys_resume(struct device *dev)
 }
 #endif
 
+static int boot_logo_mode;
+
+static int __init uboot_logo_mode_parse(char *options)
+{
+	if (!strcmp(options, "dpi"))
+		boot_logo_mode = AX_DISP_OUT_MODE_DPI;
+	else if (!strcmp(options, "mipi"))
+		boot_logo_mode = AX_DISP_OUT_MODE_DSI_DPI_VIDEO;
+	else {
+		DRM_INFO("uboot logo mode neither \"dpi\" nor \"mipi\"\n");
+		boot_logo_mode = AX_DISP_OUT_MODE_BUT;
+	}
+	return 1;
+}
+__setup("logomode=", uboot_logo_mode_parse);
+
+int ax_display_get_bootlogo_mode(void)
+{
+	return boot_logo_mode;
+}
+EXPORT_SYMBOL(ax_display_get_bootlogo_mode);
+
+void ax_display_reset_bootlogo_mode(void)
+{
+	boot_logo_mode = AX_DISP_OUT_MODE_BUT;
+}
+EXPORT_SYMBOL(ax_display_reset_bootlogo_mode);
+
 static const struct dev_pm_ops ax_drm_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(ax_drm_sys_suspend, ax_drm_sys_resume)
 };
@@ -384,7 +412,7 @@ static struct platform_driver ax_drm_platform_driver = {
 	.probe = ax_drm_platform_probe,
 	.remove = ax_drm_platform_remove,
 	.driver = {
-		   .name = "ax drm drv",
+		   .name = "ax-drm-drv",
 		   .of_match_table = ax_drm_dt_ids,
 		   .pm = &ax_drm_pm_ops,
 		   },

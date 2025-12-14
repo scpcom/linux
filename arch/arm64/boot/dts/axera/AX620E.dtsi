@@ -141,8 +141,8 @@
 			reg = <0x0 0x4880000 0x0 0x400>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
-			resets = <&periph_reset 21 0x20 1>,
-				 <&periph_reset 20 0x20 1>;
+			resets = <&periph_reset_ext 21 0xE8 21 0xEC>,
+				 <&periph_reset_ext 20 0xE8 20 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <0>;
@@ -157,8 +157,8 @@
 			reg-io-width = <4>;
 			dmas = <&dma_per 42 &dma_per 43>;
 			dma-names = "tx", "rx";
-			resets = <&periph_reset 23 0x20 1>,
-				 <&periph_reset 22 0x20 1>;
+			resets = <&periph_reset_ext 23 0xE8 23 0xEC>,
+				 <&periph_reset_ext 22 0xE8 22 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <1>;
@@ -173,8 +173,8 @@
 			reg-io-width = <4>;
 			dmas = <&dma_per 44 &dma_per 45>;
 			dma-names = "tx", "rx";
-			resets = <&periph_reset 25 0x20 1>,
-				 <&periph_reset 24 0x20 1>;
+			resets = <&periph_reset_ext 25 0xE8 25 0xEC>,
+				 <&periph_reset_ext 24 0xE8 24 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <2>;
@@ -189,8 +189,8 @@
 			reg-io-width = <4>;
 			dmas = <&dma_per 46 &dma_per 47>;
 			dma-names = "tx", "rx";
-			resets = <&periph_reset 27 0x20 1>,
-				 <&periph_reset 26 0x20 1>;
+			resets = <&periph_reset_ext 27 0xE8 27 0xEC>,
+				 <&periph_reset_ext 26 0xE8 26 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <3>;
@@ -205,8 +205,8 @@
 			reg-io-width = <4>;
 			dmas = <&dma_per 48 &dma_per 49>;
 			dma-names = "tx", "rx";
-			resets = <&periph_reset 29 0x20 1>,
-				 <&periph_reset 28 0x20 1>;
+			resets = <&periph_reset_ext 29 0xE8 29 0xEC>,
+				 <&periph_reset_ext 28 0xE8 28 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <4>;
@@ -221,8 +221,8 @@
 			reg-io-width = <4>;
 			dmas = <&dma_per 50 &dma_per 51>;
 			dma-names = "tx", "rx";
-			resets = <&periph_reset 31 0x20 1>,
-				 <&periph_reset 30 0x20 1>;
+			resets = <&periph_reset_ext 31 0xE8 31 0xEC>,
+				 <&periph_reset_ext 30 0xE8 30 0xEC>;
 			reset-names = "reset", "preset";
 			clock-frequency = <208000000>;
 			ax_clk_id = <5>;
@@ -233,8 +233,8 @@
 		ax_gpio0: gpio@4800000 {
 			compatible = "axera,ax-apb-gpio";
 			reg = <0x0 0x4800000 0x0 0x400>;
-			resets = <&periph_reset 10 0x18 1>,
-				 <&periph_reset 11 0x18 1>;
+			resets = <&periph_reset_ext 10 0xD8 10 0xDC>,
+				 <&periph_reset_ext 11 0xD8 11 0xDC>;
 			reset-names = "gpio_prst", "gpio_rst";
 			ax_clk_id = <0>;
 			gpio-controller;
@@ -260,8 +260,8 @@
 		ax_gpio1: gpio@4801000 {
 			compatible = "axera,ax-apb-gpio";
 			reg = <0x0 0x4801000 0x0 0x400>;
-			resets = <&periph_reset 12 0x18 1>,
-			         <&periph_reset 13 0x18 1>;
+			resets = <&periph_reset_ext 12 0xD8 12 0xDC>,
+			         <&periph_reset_ext 13 0xD8 13 0xDC>;
 			reset-names = "gpio_prst", "gpio_rst";
 			ax_clk_id = <1>;
 			gpio-controller;
@@ -287,7 +287,7 @@
 		ax_gpio2: gpio@6000000 {
 			compatible = "axera,ax-apb-gpio";
 			reg = <0x0 0x6000000 0x0 0x400>;
-			resets = <&periph_reset 14 0x18 1>, <&periph_reset 15 0x18 1>;
+			resets = <&periph_reset_ext 14 0xD8 14 0xDC>, <&periph_reset_ext 15 0xD8 15 0xDC>;
 			reset-names = "gpio_prst", "gpio_rst";
 			ax_clk_id = <2>;
 			gpio-controller;
@@ -312,7 +312,7 @@
 		ax_gpio3: gpio@6001000 {
 			compatible = "axera,ax-apb-gpio";
 			reg = <0x0 0x6001000 0x0 0x400>;
-			resets = <&periph_reset 16 0x18 1>, <&periph_reset 17 0x18 1>;
+			resets = <&periph_reset_ext 16 0xD8 16 0xDC>, <&periph_reset_ext 17 0xD8 17 0xDC>;
 			reset-names = "gpio_prst", "gpio_rst";
 			ax_clk_id = <3>;
 			gpio-controller;
@@ -378,8 +378,7 @@
 			      <0x0 0x4870000 0x0 0x400>;
 			interrupts = <GIC_SPI 149 IRQ_TYPE_LEVEL_HIGH>;
 			cpu_flag = <0>;
-			clock-frequency = <24000000>;
-			keep-alive = <24000000 175>;
+			keep-alive = <175>;
 			clk_set = <0xA8 0xAC 19>;
 			aclk = <0xB0 0xB4 14>;
 			pclk = <0xC8 0xCC 19>;
@@ -393,8 +392,7 @@
 			      <0x0 0x4870000 0x0 0x400>;
 			interrupts = <GIC_SPI 150 IRQ_TYPE_LEVEL_HIGH>;
 			cpu_flag = <1>;
-			clock-frequency = <24000000>;
-			keep-alive = <24000000 175>;
+			keep-alive = <175>;
 			clk_set = <0xA8 0xAC 20>;
 			aclk = <0xB0 0xB4 15>;
 			pclk = <0xC8 0xCC 20>;
@@ -419,8 +417,9 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <0>;
-			resets = <&periph_reset 18 0x18 1>,
-				 <&periph_reset 19 0x18 1>;
+			poll_mode = <0>;
+			resets = <&periph_reset_ext 18 0xD8 18 0xDC>,
+				 <&periph_reset_ext 19 0xD8 19 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -436,8 +435,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <1>;
-			resets = <&periph_reset 20 0x18 1>,
-				 <&periph_reset 21 0x18 1>;
+			resets = <&periph_reset_ext 20 0xD8 20 0xDC>,
+				 <&periph_reset_ext 21 0xD8 21 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -453,8 +452,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <2>;
-			resets = <&periph_reset 22 0x18 1>,
-				 <&periph_reset 23 0x18 1>;
+			resets = <&periph_reset_ext 22 0xD8 22 0xDC>,
+				 <&periph_reset_ext 23 0xD8 23 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -470,8 +469,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <3>;
-			resets = <&periph_reset 24 0x18 1>,
-				 <&periph_reset 25 0x18 1>;
+			resets = <&periph_reset_ext 24 0xD8 24 0xDC>,
+				 <&periph_reset_ext 25 0xD8 25 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -487,8 +486,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <4>;
-			resets = <&periph_reset 26 0x18 1>,
-				 <&periph_reset 27 0x18 1>;
+			resets = <&periph_reset_ext 26 0xD8 26 0xDC>,
+				 <&periph_reset_ext 27 0xD8 27 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -504,8 +503,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <5>;
-			resets = <&periph_reset 28 0x18 1>,
-				 <&periph_reset 29 0x18 1>;
+			resets = <&periph_reset_ext 28 0xD8 28 0xDC>,
+				 <&periph_reset_ext 29 0xD8 29 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -521,8 +520,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <6>;
-			resets = <&periph_reset 30 0x18 1>,
-				 <&periph_reset 31 0x18 1>;
+			resets = <&periph_reset_ext 30 0xD8 30 0xDC>,
+				 <&periph_reset_ext 31 0xD8 31 0xDC>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -538,8 +537,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <7>;
-			resets = <&periph_reset 0 0x1c 1>,
-				 <&periph_reset 1 0x1c 1>;
+			resets = <&periph_reset_ext 0 0xE0 0 0xE4>,
+				 <&periph_reset_ext 1 0xE0 1 0xE4>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -550,8 +549,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <8>;
-			resets = <&periph_reset 2 0x1c 1>,
-				 <&periph_reset 3 0x1c 1>;
+			resets = <&periph_reset_ext 2 0xE0 2 0xE4>,
+				 <&periph_reset_ext 3 0xE0 3 0xE4>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -562,8 +561,8 @@
 			clock-frequency = <400000>;
 			i2c-sda-hold-time-ns = <500>;
 			ax_clk_id = <9>;
-			resets = <&periph_reset 4 0x1c 1>,
-				 <&periph_reset 5 0x1c 1>;
+			resets = <&periph_reset_ext 4 0xE0 4 0xE4>,
+				 <&periph_reset_ext 5 0xE0 5 0xE4>;
 			reset-names = "prst","rst";
 			status = "disabled";
 		};
@@ -589,7 +588,7 @@
 			reg = <0x0 0x6050000 0x0 0x400>,
 			      <0x0 0x4870000 0x0 0x10000>;
 			interrupt-names = "i2s_mst";
-			//interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma_per 15 &dma_per 14>;
 			dma-names = "rx", "tx";
 			clocks = <&periph_clk AX620X_PCLK_I2S_M_EB>,
@@ -607,15 +606,15 @@
 			compatible = "axera,dwc-i2s-slv";
 			reg = <0x0 0x6051000 0x0 0x400>,
 			      <0x0 0x4870000 0x0 0x10000>;
-			//interrupt-names = "i2s_slv";
-			//interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "i2s_slv";
+			interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma_per 17 &dma_per 16>;
 			dma-names = "rx", "tx";
 			clocks = <&periph_clk AX620X_PCLK_I2S_S_EB>,
 				 <&periph_clk AX620X_CLK_I2S_REF0_EB>;
 			clock-names = "i2s_pclk", "i2s_mclk";
 			resets = <&periph_reset_async 8 0xE0 8 0XE4 0XC 28 0XC0 28 0XC4 28>,
-				 <&periph_reset 9 0x1C 1>;  /* slave reset without clk */
+				 <&periph_reset_ext 9 0xE0 9 0XE4>;  /* slave reset without clk */
 			reset-names = "prst", "rst";
 			channel = <3>;
 			#sound-dai-cells = <0>;
@@ -652,7 +651,7 @@
 				 <&periph_clk AX620X_CLK_I2S_REF0_EB>;
 			clock-names = "i2s_pclk", "i2s_mclk";
 			resets = <&periph_reset_async 12 0xE0 12 0XE4 0XC 30 0XC0 30 0XC4 30>,
-				 <&periph_reset 13 0x1C 1>;  /* slave reset without clk */
+				 <&periph_reset_ext 13 0xE0 13 0xE4>;  /* slave reset without clk */
 			reset-names = "prst", "rst";
 			channel = <4>;
 			#sound-dai-cells = <0>;
@@ -662,8 +661,8 @@
 			compatible = "axera,dwc-i2s-mst";
 			reg = <0x0 0x6050000 0x0 0x400>,
 			      <0x0 0x4870000 0x0 0x10000>;
-			//interrupt-names = "i2s_mst";
-			//interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "i2s_mst";
+			interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma_per 15 &dma_per 14>;
 			dma-names = "rx", "tx";
 			clocks = <&periph_clk AX620X_PCLK_I2S_M_EB>,
@@ -681,15 +680,15 @@
 			compatible = "axera,dwc-i2s-slv";
 			reg = <0x0 0x6051000 0x0 0x400>,
 			      <0x0 0x4870000 0x0 0x10000>;
-			//interrupt-names = "i2s_slv";
-			//interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "i2s_slv";
+			interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma_per 17 &dma_per 16>;
 			dma-names = "rx", "tx";
 			clocks = <&periph_clk AX620X_PCLK_I2S_S_EB>,
 				 <&periph_clk AX620X_CLK_I2S_AUDIO_REF_EB>;
 			clock-names = "i2s_pclk", "i2s_mclk";
 			resets = <&periph_reset_async 8 0xE0 8 0XE4 0XC 28 0XC0 28 0XC4 28>,
-				 <&periph_reset 9 0x1C 1>;  /* slave reset without clk */
+				 <&periph_reset_ext 9 0xE0 9 0XE4>;  /* slave reset without clk */
 			reset-names = "prst", "rst";
 			channel = <3>;
 			#sound-dai-cells = <0>;
@@ -720,11 +719,11 @@
 				 <&periph_clk AX620X_ACLK_CE_EB>,
 				 <&periph_clk AX620X_CLK_CE_CNT_EB>;
 			clock-names = "pclk", "core", "cnt";
-			resets = <&periph_reset 4 0x18 1>,
-				 <&periph_reset 5 0x18 1>,
-				 <&periph_reset 6 0x18 1>,
-				 <&periph_reset 8 0xD8 8 0xDC 0xC 12 0xC0 12 0xC4 12>,
-				 <&periph_reset 7 0x18 1>;
+			resets = <&periph_reset_ext 4 0xD8 4 0xDC>,
+				 <&periph_reset_ext 5 0xD8 5 0xDC>,
+				 <&periph_reset_ext 6 0xD8 6 0xDC>,
+				 <&periph_reset_async 8 0xD8 8 0xDC 0xC 12 0xC0 12 0xC4 12>,
+				 <&periph_reset_ext 7 0xD8 7 0xDC>;
 			reset-names = "main_sw_rst", "cnt_sw_rst",
 				      "soft_sw_rst", "sw_prst",
 				      "sw_rst";
@@ -770,9 +769,9 @@
 				 <&flash_clk AX620X_CLK_EMAC_PTP_REF_EB>;
 			clock-names = "emac_aclk", "ephy_clk", "rgmii_tx_clk",
 				      "rmii_phy_clk", "ptp_clk";
-			resets = <&flash_reset 8 0x14 1>,
-				 <&flash_reset 9 0x14 1>,
-				 <&flash_reset 0 0x20 1>;
+			resets = <&flash_reset_ext 8 0x4014 8 0x8014>,
+				 <&flash_reset_ext 9 0x4014 9 0x8014>,
+				 <&flash_reset_ext 0 0x4020 0 0x8020>;
 			reset-names = "emac_rst", "ephy_rst", "ephy_shutdown";
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
@@ -783,19 +782,9 @@
 			status = "disabled";
 		};
 
-		deb_gpio_lp_nor: DEB_GPIO_LP@104F0000 {
+		deb_gpio_lp: deb_gpio_lp@2340000 {
 			compatible = "axera, deb-gpio-lp";
-			reg = <0x0 0x104F0000 0x0 0x1000>,
-					<0x0 0x2340000 0x0 0x10000>;
-			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "wakeup_int";
-			status = "disabled";
-		};
-
-		deb_gpio_lp_emmc: DEB_GPIO_LP@2301000 {
-			compatible = "axera, deb-gpio-lp";
-			reg = <0x0 0x2301000 0x0 0x1000>,
-					<0x0 0x2340000 0x0 0x10000>;
+			reg = <0x0 0x2340000 0x0 0x10000>;
 			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "wakeup_int";
 			status = "disabled";
@@ -804,8 +793,8 @@
 		ax_hrtimer: ax_hrtimer@4830000 {
 			compatible = "ax,hrtimer";
 			reg = <0x0 0x4830000 0x0 0x400>;
-			resets = <&periph_reset 4 0x20 1>,
-				 <&periph_reset 5 0x20 1>;
+			resets = <&periph_reset_ext 4 0xE8 4 0xEC>,
+				 <&periph_reset_ext 5 0xE8 5 0xEC>;
 			reset-names = "preset","reset";
 			clocks = <&periph_clk AX620X_PCLK_TIMER0_EB>,
 				 <&periph_clk AX620X_CLK_TIMER0_EB>;
@@ -824,8 +813,8 @@
 			compatible = "axera,dw-apb-timer";
 			reg = <0x0 0x6030000 0x0 0x400>,
 				<0x0 0x4870000 0x0 0x10000>;
-			resets = <&periph_reset 6 0x20 1>,
-				 <&periph_reset 7 0x20 1>;
+			resets = <&periph_reset_ext 6 0xE8 6 0xEC>,
+				 <&periph_reset_ext 7 0xE8 7 0xEC>;
 			reset-names = "preset","reset";
 #if 0
 			clocks = <&periph_clk AX620X_PCLK_TIMER1_EB>,
@@ -871,8 +860,8 @@
 			interrupts = <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "timer32_int";
 			timer_index = <0>;
-			rerets = <&periph_reset 8 0x20 1>,
-				 <&periph_reset 9 0x20 1>;
+			rerets = <&periph_reset_ext 8 0xE8 8 0xEC>,
+				 <&periph_reset_ext 9 0xE8 9 0xEC>;
 			reset-names = "preset", "reset";
 #if 0
 			clocks = <&periph_clk AX620X_PCLK_TMR32_0_EB>,
@@ -897,8 +886,8 @@
 			interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "timer32_int";
 			timer_index = <1>;
-			rerets = <&periph_reset 10 0x20 1>,
-				 <&periph_reset 11 0x20 1>;
+			rerets = <&periph_reset_ext 10 0xE8 10 0xEC>,
+				 <&periph_reset_ext 11 0xE8 11 0xEC>;
 			reset-names = "preset", "reset";
 #if 0
 			clocks = <&periph_clk AX620X_PCLK_TMR32_1_EB>,
@@ -922,8 +911,8 @@
 			interrupts = <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "timer32_int";
 			timer_index = <2>;
-			rerets = <&periph_reset 12 0x20 1>,
-				 <&periph_reset 13 0x20 1>;
+			rerets = <&periph_reset_ext 12 0xE8 12 0xEC>,
+				 <&periph_reset_ext 13 0xE8 13 0xEC>;
 			reset-names = "preset", "reset";
 #if 0
 			clocks = <&periph_clk AX620X_PCLK_TMR32_2_EB>,
@@ -947,8 +936,8 @@
 			interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "timer32_int";
 			timer_index = <3>;
-			rerets = <&periph_reset 14 0x20 1>,
-				 <&periph_reset 15 0x20 1>;
+			rerets = <&periph_reset_ext 14 0xE8 14 0xEC>,
+				 <&periph_reset_ext 15 0xE8 15 0xEC>;
 			reset-names = "preset", "reset";
 #if 0
 			clocks = <&periph_clk AX620X_PCLK_TMR32_3_EB>,
@@ -970,11 +959,11 @@
 			reg = <0x0 0x6060000 0x0 0x400>,
 				<0x0 0x4870000 0x0 0x10000>;
 			#pwm-cells = <2>;
-			resets = <&periph_reset 19 0x1c 1>,
-				 <&periph_reset 15 0x1c 1>,
-				 <&periph_reset 16 0x1c 1>,
-				 <&periph_reset 17 0x1c 1>,
-				 <&periph_reset 18 0x1c 1>;
+			resets = <&periph_reset_ext 19 0xE0 19 0xE4>,
+				 <&periph_reset_ext 15 0xE0 15 0xE4>,
+				 <&periph_reset_ext 16 0xE0 16 0xE4>,
+				 <&periph_reset_ext 17 0xE0 17 0xE4>,
+				 <&periph_reset_ext 18 0xE0 18 0xE4>;
 			reset-names = "pwm-rst",
 				      "pwm-ch0-rst",
 				      "pwm-ch1-rst",
@@ -1004,11 +993,11 @@
 			reg = <0x0 0x6061000 0x0 0x400>,
 				<0x0 0x4870000 0x0 0x10000>;
 			#pwm-cells = <2>;
-			resets = <&periph_reset 24 0x1c 1>,
-				 <&periph_reset 20 0x1c 1>,
-				 <&periph_reset 21 0x1c 1>,
-				 <&periph_reset 22 0x1c 1>,
-				 <&periph_reset 23 0x1c 1>;
+			resets = <&periph_reset_ext 24 0xE0 24 0xE4>,
+				 <&periph_reset_ext 20 0xE0 20 0xE4>,
+				 <&periph_reset_ext 21 0xE0 21 0xE4>,
+				 <&periph_reset_ext 22 0xE0 22 0xE4>,
+				 <&periph_reset_ext 23 0xE0 23 0xE4>;
 			reset-names = "pwm-rst", "pwm-ch0-rst",
 				      "pwm-ch1-rst", "pwm-ch2-rst",
 				      "pwm-ch3-rst";
@@ -1037,11 +1026,11 @@
 			reg = <0x0 0x6062000 0x0 0x400>,
 				<0x0 0x4870000 0x0 0x10000>;
 			#pwm-cells = <2>;
-			resets = <&periph_reset 29 0x1c 1>,
-				 <&periph_reset 25 0x1c 1>,
-				 <&periph_reset 26 0x1c 1>,
-				 <&periph_reset 27 0x1c 1>,
-				 <&periph_reset 28 0x1c 1>;
+			resets = <&periph_reset_ext 29 0xE0 29 0xE4>,
+				 <&periph_reset_ext 25 0xE0 25 0xE4>,
+				 <&periph_reset_ext 26 0xE0 26 0xE4>,
+				 <&periph_reset_ext 27 0xE0 27 0xE4>,
+				 <&periph_reset_ext 28 0xE0 28 0xE4>;
 			reset-names = "pwm-rst", "pwm-ch0-rst",
 				      "pwm-ch1-rst", "pwm-ch2-rst",
 				      "pwm-ch3-rst";
@@ -1173,15 +1162,22 @@
 			interrupt-names = "csictrl0", "csictrl1";
 		};
 
+		mipi_switch: mipi_switch@2406200 {
+			compatible = "axera,mipi_switch";
+			sensor-vsync0 = <15>; /*GPIO0-A15 for sensor vsync*/
+            sensor-vsync1 = <34>; /*GPIO1-A2 for sensor vsync*/
+			switch0 = <32>; /*GPIO1-A0 for mipi switch*/
+		};
+
 		emmc: sdhc@1B40000 {
 			compatible = "axera,sdhc";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			reg = <0x0 0x01B40000 0x0 0x10000>;
 			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&cpu_reset 12 0x10 1>,
-				 <&cpu_reset 12 0x10 1>,
-				 <&cpu_reset 11 0x10 1>;
+			resets = <&cpu_reset_ext 12 0x1010 12 0x2010>,
+				 <&cpu_reset_ext 12 0x1010 12 0x2010>,
+				 <&cpu_reset_ext 11 0x1010 11 0x2010>;
 			reset-names = "prst", "arst", "cardrst";
 			status = "disabled";
 		};
@@ -1191,9 +1187,9 @@
 			#size-cells = <2>;
 			reg = <0x0 0x104E0000 0x0 0x10000>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&flash_reset 17 0x14 1>,
-				 <&flash_reset 16 0x14 1>,
-				 <&flash_reset 15 0x14 1>;
+			resets = <&flash_reset_ext 17 0x4014 17 0x8014>,
+				 <&flash_reset_ext 16 0x4014 16 0x8014>,
+				 <&flash_reset_ext 15 0x4014 15 0x8014>;
 			reset-names = "prst", "arst", "cardrst";
 			status = "disabled";
 		};
@@ -1203,9 +1199,9 @@
 			#size-cells = <2>;
 			reg = <0x0 0x104D0000 0x0 0x10000>;
 			interrupts = <GIC_SPI 73 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&flash_reset 20 0x14 1>,
-				 <&flash_reset 19 0x14 1>,
-				 <&flash_reset 18 0x14 1>;
+			resets = <&flash_reset_ext 20 0x4014 20 0x8014>,
+				 <&flash_reset_ext 19 0x4014 19 0x8014>,
+				 <&flash_reset_ext 18 0x4014 18 0x8014>;
 			reset-names = "prst", "arst", "cardrst";
 			status = "disabled";
 		};
@@ -1221,8 +1217,8 @@
 			clocks = <&periph_clk AX620X_CLK_SPI_M0_EB>,
 				 <&periph_clk AX620X_PCLK_SPI_M0_EB>;
 			clock-names = "apb_ssi_clk", "pclk";
-			resets = <&periph_reset 31 0x1C 1>,
-				 <&periph_reset 30 0x1C 1>;
+			resets = <&periph_reset_ext 31 0xE0 31 0xE4>,
+				 <&periph_reset_ext 30 0xE0 30 0xE4>;
 			reset-names = "rst", "prst";
 			dmas = <&dma_per 9>, <&dma_per 8>;
 			dma-names = "rx", "tx";
@@ -1240,8 +1236,8 @@
 			clocks = <&periph_clk AX620X_CLK_SPI_M1_EB>,
 				 <&periph_clk AX620X_PCLK_SPI_M1_EB>;
 			clock-names = "apb_ssi_clk", "pclk";
-			resets = <&periph_reset 1 0x20 1>,
-				 <&periph_reset 0 0x20 1>;
+			resets = <&periph_reset_ext 1 0xE8 1 0xEC>,
+				 <&periph_reset_ext 0 0xE8 0 0xEC>;
 			reset-names = "rst", "prst";
 			dmas = <&dma_per 11>, <&dma_per 10>;
 			dma-names = "rx", "tx";
@@ -1259,8 +1255,8 @@
 			clocks = <&periph_clk AX620X_CLK_SPI_M2_EB>,
 				 <&periph_clk AX620X_PCLK_SPI_M2_EB>;
 			clock-names = "apb_ssi_clk", "pclk";
-			resets = <&periph_reset 3 0x20 1>,
-				 <&periph_reset 2 0x20 1>;
+			resets = <&periph_reset_ext 3 0xE8 3 0xEC>,
+				 <&periph_reset_ext 2 0xE8 2 0xEC>;
 			reset-names = "rst", "prst";
 			dmas = <&dma_per 13>, <&dma_per 12>;
 			dma-names = "rx", "tx";
@@ -1277,8 +1273,8 @@
 			clocks = <&flash_clk AX620X_CLK_SPI_S_EB>,
 				 <&flash_clk AX620X_HCLK_SPI_S_EB>;
 			clock-names = "ahb_ssi_s_clk", "hclk";
-			resets = <&flash_reset 22 0x14 1>,
-				 <&flash_reset 21 0x14 1>;
+			resets = <&flash_reset_ext 22 0x4014 22 0x8014>,
+				 <&flash_reset_ext 21 0x4014 21 0x8014>;
 			reset-names = "rst", "hrst";
 			status = "disabled";
 		};
@@ -1295,8 +1291,8 @@
 			clocks = <&cpu_clk AX620X_CLK_H_SSI_EB>,
 				 <&cpu_clk AX620X_HCLK_SPI_EB>;
 			clock-names = "flashclk", "pclk";
-			resets = <&cpu_reset 18 0x10 1>,
-				 <&cpu_reset 17 0x10 1>;
+			resets = <&cpu_reset_ext 18 0x1010 18 0x2010>,
+				 <&cpu_reset_ext 17 0x1010 17 0x2010>;
 			reset-names = "rst", "prst";
 			dmas = <&dma_per 1>, <&dma_per 0>;
 			dma-names = "rx", "tx";
@@ -1358,7 +1354,7 @@
 			snps,axi-max-burst-len = <256>;
 			clocks = <&periph_clk AX620X_CLK_DW_DMA_EB>;
 			clock-names = "dmac-clk";
-			resets = <&periph_reset 9 0x18 1>;
+			resets = <&periph_reset_ext 9 0xD8 9 0xDC>;
 			reset-names = "dmac-rst";
 			interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -1377,8 +1373,8 @@
 			clocks = <&periph_clk AX620X_ACLK_AX_DMA_PER_EB>,
 				 <&periph_clk AX620X_PCLK_AX_DMA_PER_EB>;
 			clock-names = "dmaper-aclk", "dmaper-pclk";
-			resets = <&periph_reset 1 0x18 1>,
-				 <&periph_reset 2 0x18 1>;
+			resets = <&periph_reset_ext 1 0xD8 1 0xDC>,
+				 <&periph_reset_ext 2 0xD8 2 0xDC>;
 			reset-names = "dmaper-arst", "dmaper-prst";
 			status = "disabled";
 		};
@@ -1390,8 +1386,8 @@
 			clocks = <&flash_clk AX620X_ACLK_AX_DMA_EB>,
 				 <&flash_clk AX620X_PCLK_AX_DMA_EB>;
 			clock-names = "dma-aclk", "dma-pclk";
-			resets = <&flash_reset 2 0x14 1>,
-				 <&flash_reset 3 0x14 1>;
+			resets = <&flash_reset_ext 2 0x4014 2 0x8014>,
+				 <&flash_reset_ext 3 0x4014 3 0x8014>;
 			reset-names = "dma-arst", "dma-prst";
 			status = "disabled";
 		};
@@ -1452,14 +1448,14 @@
 				 <&mm_clk AX620X_CLK_VPP_SCL4_EB>;
 			clock-names = "vpp_clk", "vpp_pclk", "cmd_clk", "cmd_pclk", "scl0_clk", "scl1_clk",
 				      "scl2_clk", "scl3_clk", "scl4_clk";
-			resets = <&mm_reset 21 0x10 1>,
+			resets = <&mm_reset_4 21 0xC4 21 0xC8>, /* vpp_fifo_sw_rst without clk reg */
 				 <&mm_reset_async 22 0xC4 22 0xC8 0x8 13 0xB4 13 0xB8 13>,
 				 <&mm_reset_async 23 0xC4 23 0xC8 0x8 14 0xB4 14 0xB8 14>,
 				 <&mm_reset_async 24 0xC4 24 0xC8 0x8 15 0xB4 15 0xB8 15>,
 				 <&mm_reset_async 25 0xC4 25 0xC8 0x8 16 0xB4 16 0xB8 16>,
 				 <&mm_reset_async 26 0xC4 26 0xC8 0x8 17 0xB4 17 0xB8 17>,
 				 <&mm_reset_async 27 0xC4 27 0xC8 0x8 25 0xB4 25 0xB8 25>,
-				 <&mm_reset 28 0x10 1>,
+				 <&mm_reset_async 28 0xC4 28 0xC8 0x8 12 0xB4 12 0xB8 12>,
 				 <&mm_reset_async 4 0xC4 4 0xC8 0x8 19 0xB4 19 0xB8 19>,
 				 <&mm_reset_async 5 0xC4 5 0xC8 0x8 3 0xB4 3 0xB8 3>;
 			reset-names = "vpp_rst0", "vpp_rst1", "vpp_rst2",
@@ -1480,9 +1476,9 @@
 				 <&mm_clk AX620X_CLK_CMD_EB>,
 				 <&mm_clk AX620X_PCLK_CMD_EB>;
 			clock-names = "gdc_clk", "gdc_pclk", "cmd_clk", "cmd_pclk";
-			resets = <&mm_reset 13 0x10 1>,
+			resets = <&mm_reset_4 13 0xC4 13 0xC8>, /* gdc_fifo_sw_rst without clk reg */
 				 <&mm_reset_async 14 0xC4 14 0xC8 0x8 22 0xB4 22 0xB8 22>,
-				 <&mm_reset 15 0x10 1>,
+				 <&mm_reset_async 15 0xC4 15 0xC8 0x8 8 0xB4 8 0xB8 8>,
 				 <&mm_reset_async 4 0xC4 4 0xC8 0x8 19 0xB4 19 0xB8 19>,
 				 <&mm_reset_async 5 0xC4 5 0xC8 0x8 3 0xB4 3 0xB8 3>;
 			reset-names = "gdc_rst0", "gdc_rst1", "gdc_rst2", "gdc_rst3", "gdc_rst4";
@@ -1570,6 +1566,8 @@
 			id = <0>;
 			type = <0>;
 			/* use_cdma; */
+			vo-chn-max = <16>;
+			vo-poly-line-width = <16>;
 			operating-points-v2 = <&vo0_dfs>;
 			status = "disabled";
 		};
@@ -1590,6 +1588,8 @@
 			interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
 			id = <1>;
 			type = <1>;
+			vo-chn-max = <16>;
+			vo-poly-line-width = <16>;
 			operating-points-v2 = <&vo1_dfs>;
 			status = "disabled";
 		};
@@ -1877,8 +1877,8 @@
 			clocks = <&flash_clk AX620X_CLK_GZIPD_EB>,
 					 <&flash_clk AX620X_CLK_GZIPD_CORE_EB>;
 			clock-names = "gzipd_clk", "gzipd_core_clk";
-			resets = <&flash_reset 10 0x14 1>,
-					 <&flash_reset 11 0x14 1>;
+			resets = <&flash_reset_ext 10 0x4014 10 0x8014>,
+					 <&flash_reset_ext 11 0x4014 11 0x8014>;
 			reset-names = "gzipd_rst", "gzipd_core_rst";
 		};
 	};

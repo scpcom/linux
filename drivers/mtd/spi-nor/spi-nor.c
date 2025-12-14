@@ -41,6 +41,8 @@
 #define SPI_NOR_MAX_ID_LEN	6
 #define SPI_NOR_MAX_ADDR_WIDTH	4
 
+#define SPI_NOR_WRITE_ENABLE_FOR_VOLATILE_STATUS_REGISTER
+
 struct flash_info {
 	char		*name;
 
@@ -163,6 +165,17 @@ static inline int write_sr(struct spi_nor *nor, u8 val)
 	nor->cmd_buf[0] = val;
 	return nor->write_reg(nor, SPINOR_OP_WRSR, nor->cmd_buf, 1);
 }
+
+#ifdef SPI_NOR_WRITE_ENABLE_FOR_VOLATILE_STATUS_REGISTER
+/*
+ * Set write enable latch with Write Enable for volatile status register command.
+ * Returns negative if error occurred.
+ */
+static inline int write_enable_volatile(struct spi_nor *nor)
+{
+	return nor->write_reg(nor, SPINOR_OP_WRENVSR, NULL, 0);
+}
+#endif
 
 /*
  * Set write enable latch with Write Enable command.
@@ -582,7 +595,11 @@ static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
 {
 	int ret;
 
+#ifdef SPI_NOR_WRITE_ENABLE_FOR_VOLATILE_STATUS_REGISTER
+	write_enable_volatile(nor);
+#else
 	write_enable(nor);
+#endif
 	ret = write_sr(nor, status_new);
 	if (ret)
 		return ret;
@@ -1527,7 +1544,11 @@ static int write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
 {
 	ssize_t ret;
 
+#ifdef SPI_NOR_WRITE_ENABLE_FOR_VOLATILE_STATUS_REGISTER
+	write_enable_volatile(nor);
+#else
 	write_enable(nor);
+#endif
 
 	ret = nor->write_reg(nor, SPINOR_OP_WRSR, sr_cr, 2);
 	if (ret < 0) {
@@ -2738,9 +2759,40 @@ static int spi_nor_setup(struct spi_nor *nor, const struct flash_info *info,
 	return 0;
 }
 
+#if defined (CONFIG_MTD_SPI_NOR_FORCE_UNLOCK)
+static int spi_nor_protect_process(struct spi_nor *nor)
+{
+	int ret;
+	u8 sr, cr;
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDSR, &sr, 1);
+	if (ret < 0) {
+		pr_err("error %d reading SR\n", (int)ret);
+		return ret;
+	}
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDCR, &cr, 1);
+	if (ret < 0) {
+		pr_err("error %d reading CR\n", ret);
+		return ret;
+	}
+
+	pr_info("%s: sr=0x%x, cr=0x%x\n", __func__, sr, cr);
+	if (sr & (SR_BP0 | SR_BP1 | SR_BP2 | SR_TB | SR_SRWD)) {
+		pr_err("%s: need disable protect\n", __func__);
+		return 1;
+	}
+
+	return 0;
+}
+#endif
+
 static int spi_nor_init(struct spi_nor *nor)
 {
 	int err;
+#if defined (CONFIG_MTD_SPI_NOR_FORCE_UNLOCK)
+	int need_disable_proctect = spi_nor_protect_process(nor);
+#endif
 
 	/*
 	 * Atmel, SST, Intel/Numonyx, and others serial NOR tend to power up
@@ -2749,8 +2801,15 @@ static int spi_nor_init(struct spi_nor *nor)
 	if (JEDEC_MFR(nor->info) == SNOR_MFR_ATMEL ||
 	    JEDEC_MFR(nor->info) == SNOR_MFR_INTEL ||
 	    JEDEC_MFR(nor->info) == SNOR_MFR_SST ||
+#if defined (CONFIG_MTD_SPI_NOR_FORCE_UNLOCK)
+	    need_disable_proctect == 1 ||
+#endif
 	    nor->info->flags & SPI_NOR_HAS_LOCK) {
+#ifdef SPI_NOR_WRITE_ENABLE_FOR_VOLATILE_STATUS_REGISTER
+		write_enable_volatile(nor);
+#else
 		write_enable(nor);
+#endif
 		write_sr(nor, 0);
 		spi_nor_wait_till_ready(nor);
 	}

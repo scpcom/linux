@@ -261,7 +261,7 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	regs = ioremap(MISC_INFO_ADDR, sizeof(misc_info_t));
 	misc_info = (misc_info_t *) regs;
 
-	if (misc_info->chip_type == (int)AX620Q_CHIP) {
+	if (misc_info->chip_type == (int)AX620Q_CHIP || misc_info->chip_type == (int)AX620QX_CHIP) {
 		if (dt_cpufreq_early_change_opp_table(policy->cpus, CPU_MAX_REAL_FREQ) < 0) {
 			goto out_free_opp;
 		}

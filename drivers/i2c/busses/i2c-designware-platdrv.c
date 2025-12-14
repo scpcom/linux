@@ -281,6 +281,11 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	dev->dev = &pdev->dev;
 	dev->irq = irq;
 	platform_set_drvdata(pdev, dev);
+	ret = device_property_read_u32(&pdev->dev, "poll_mode", &dev->poll_mode);
+	if (ret) {
+		dev->poll_mode = 0;
+	}
+	spin_lock_init(&dev->lock);
 	/* Optional interface clock */
 	device_property_read_u32(&pdev->dev, "ax_clk_id", &clk_id);
 	dev->i2c_id = clk_id;
@@ -358,7 +363,6 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 
 	if (!dev->sda_hold_time && t->sda_hold_ns)
 		dev->sda_hold_time = div_u64(clk_khz * t->sda_hold_ns + 500000, 1000000);
-
 	dw_i2c_set_fifo_size(dev, pdev->id);
 	if ((t->bus_freq_hz >= 400000) && (t->bus_freq_hz <= 1000000))
 		writel((I2C_CLK_SOURCE  * 5) / 100000000, dev->base + DW_IC_FS_SPKLEN);
@@ -384,8 +388,8 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 
 	if (dev->pm_disabled)
 		pm_runtime_get_noresume(&pdev->dev);
-
 	pm_runtime_enable(&pdev->dev);
+	pm_runtime_irq_safe(&pdev->dev);
 
 	if (dev->mode == DW_IC_SLAVE)
 		ret = i2c_dw_probe_slave(dev);

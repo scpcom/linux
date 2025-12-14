@@ -3,7 +3,7 @@
 typedef enum chip_type {
 	NONE_CHIP_TYPE = 0x0,
 	AX620Q_CHIP = 0x1,
-	RESERVED_CHIP = 0x2,
+	AX620QX_CHIP = 0x2,
 	AX630C_CHIP = 0x4,
 	AX620E_CHIP_MAX = 0x5,
 } chip_type_e;
@@ -11,6 +11,7 @@ typedef enum chip_type {
 typedef enum ax630c_board_type {
 	PHY_AX630C_EVB_V1_0 = 0,
 	PHY_AX630C_DEMO_V1_0 = 1,
+	PHY_AX630C_DEMO_DDR3_V1_0 = 3,
 	PHY_AX630C_SLT_V1_0 = 8,
 	PHY_AX630C_DEMO_V1_1 = 6,
 	PHY_AX630C_DEMO_LP4_V1_0 = 12,
@@ -38,6 +39,7 @@ typedef enum board_type {
 	AX630C_DEMO_LP4_V1_0,
 	AX620Q_LP4_38BOARD_V1_0,
 	AX620Q_LP4_MINION_BOARD,
+	//AX630C_DEMO_DDR3_V1_0,
 	AX630C_DEMO_LP4_V1_1,
 	AX620E_BOARD_MAX,
 } board_type_e;

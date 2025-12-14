@@ -27,6 +27,9 @@
 #define AX_THM_INT_CLR		0x108
 #define AX_THM_INT_STS		0x110
 
+#define AX_MSR_ONE_EN		0x38
+#define AX_MSR_VREF		0xB0
+
 #define AX_THM_DATA0		0x78
 #define AX_THM_DATA1		0x7C
 #define AX_THM_DATA2		0x80
@@ -47,6 +50,7 @@
 #define AX_ADC_FILTER_VOL_EN	0x30
 #define AX_ADC_MON_EN		0xC8
 #define AX_ADC_MON_CH		0xC4
+#define AX_ADC_MON_INTERVAL	0xCC
 #define AX_ADC_SEL		(0xf << 10 )
 #define AX_ADC_EN		BIT(0)
 
@@ -115,32 +119,55 @@ static int ax_adc_config(struct axera_thermal_data *data)
 	u32 val;
 	void __iomem *regs;
 	regs = data->regs;
-	writel(0, regs + AX_ADC_RSTN);
 
 	val = readl(regs + AX_ADC_CLK_EN);
 	val |= AX_ADC_EN;
 	writel(val, regs + AX_ADC_CLK_EN);
 
-	writel(0x3, regs + AX_ADC_FILTER_VOL_SEL);/*set filter num*/
+	writel(0x0, regs + AX_ADC_FILTER_VOL_SEL);/*set filter num*/
 	writel(0xf, regs + AX_ADC_FILTER_VOL_EN);/*set filter enable*/
-
-	writel(AX_ADC_EN, regs + AX_ADC_RSTN);
+	writel(0x100, regs + AX_ADC_MON_INTERVAL);
 
 	val = readl(regs + AX_ADC_MON_CH);
 	val |= AX_ADC_SEL;
 	writel(val ,regs + AX_ADC_MON_CH);
-	writel(AX_ADC_EN, regs + AX_ADC_MON_EN);
 
 	return 0;
 }
+
+static int ax_thmeral_config(struct axera_thermal_data *data)
+{
+	void __iomem *regs;
+	regs = data->regs;
+	u32 val = 0;
+
+	writel(0x0, regs + AX_THM_INT_MASK);
+	writel(0x1, regs + AX_THM_MA_CTRL);
+	writel(0x1, regs);
+
+	val = thm_vref | 0x18;
+	writel(val, regs + AX_THM_CTRL);
+
+	val = readl(regs + AX_THM_CLK_EN);
+	val |= 0x2;
+	writel(val, regs + AX_THM_CLK_EN);
+
+	val = readl(regs + AX_THM_MON_CH);
+	val |= AX_THM_SEL(0);
+	writel(val, regs + AX_THM_MON_CH);
+
+	writel(0x70000, regs + AX_THM_INT_MASK);
+	return 0;
+}
+
 static int ax620_thermal_enable_sensor(struct axera_thermal_data *data)
 {
-	struct axera_thermal_sensor *sensor;
-	u32 val;
 	void __iomem *regs;
 	void __iomem *base;
+	u32 val;
 
 	misc_info_t *misc_info;
+	struct axera_thermal_sensor *sensor = &data->sensor;
 	regs = data->regs;
 
 	base = ioremap(MISC_INFO_ADDR, sizeof(misc_info_t));
@@ -148,83 +175,48 @@ static int ax620_thermal_enable_sensor(struct axera_thermal_data *data)
 		printk("MISC_INFO_ADDR IOREMAP ERR\n");
 		return -1;
 	}
+
 	misc_info = (misc_info_t *) base;
 	thm_vref = (misc_info->thm_vref) << 5;
 	if (!thm_vref)
 		thm_vref = (0x7 << 5);
 	iounmap(base);
 
-	sensor = &data->sensor;
-
 	base = ioremap(COMMON_SYS_BASE, 0x10000);
 	writel(((1 << 10) | (1 << 14)), base + 0x34);
 	writel(GENMASK(20, 19), base + 0x5c);
 	iounmap(base);
-	ax_adc_config(data);
+
 	mutex_lock(&data->lock);
-
-	writel(0, regs + AX_THM_RSTN);
-	writel(0x0, data->regs + AX_THM_INT_MASK);
-	writel(0x1, regs + AX_THM_MA_CTRL);
-	writel(0x1, regs);
-
-	val = readl(regs + AX_THM_CTRL);
-	val = 0;
-	val |= thm_vref;
-	val |= 0x18;
-	writel(val, regs + AX_THM_CTRL);
-
-	val = readl(regs + AX_THM_CLK_EN);
-	val |= 0x2;
-	writel(val, regs + AX_THM_CLK_EN);
-
+	writel(0x0, regs + AX_THM_RSTN);
+	writel(0x0, regs + AX_THM_MON_EN);
+	ax_adc_config(data);
+	ax_thmeral_config(data);
 	writel(0x1, regs + AX_THM_RSTN);
-
-	writel(BIT(14), data->regs + 0x38);
+	writel(BIT(14), regs + AX_MSR_ONE_EN);
 	udelay(100);
-	verf_vol = readl(data->regs + 0xb0);
-
-	val = readl(regs + AX_THM_MON_CH);
-	val |= AX_THM_SEL(0);
-	writel(val, regs + AX_THM_MON_CH);
-
+	verf_vol = readl(regs + AX_MSR_VREF);
 	val = temp2step(sensor->thres[0]);
 	writel(val, regs + AX_THM_TEMP_LOW);
 	val = temp2step(sensor->thres[1]);
 	writel(val, regs + AX_THM_TEMP_MEDIAN);
 	val = temp2step(sensor->thres[2]);
 	writel(val, regs + AX_THM_TEMP_HIGH);
-
-	writel(0x70000, data->regs + AX_THM_INT_MASK);
 	writel(0x1, regs + AX_THM_MON_EN);
-
 	mutex_unlock(&data->lock);
 	return 0;
 }
 
 static int ax620_thermal_disable_sensor(struct axera_thermal_data *data)
 {
-	u32 val;
 	void __iomem *regs;
-	void __iomem *base;
 	regs = data->regs;
 	mutex_lock(&data->lock);
-	val = readl(regs + AX_THM_MA_CTRL);
-	val &= (~0x1);
-	writel(val, regs + AX_THM_MA_CTRL);
-	val = readl(regs + AX_THM_INT_MASK);
-	val |= 0x70000;
-	writel(val, regs + AX_THM_INT_MASK);
-	val = readl(regs + AX_THM_INT_CLR);
-	val |= 0x70000;
-	writel(val, regs + AX_THM_INT_CLR);
+	writel(0x0, regs + AX_THM_MON_EN);
+	/* close AIN0-3, open temp 0 */
+	writel(0x1, regs + AX_ADC_MON_CH);
+	writel(0x1, regs + AX_THM_MON_EN);
 	mutex_unlock(&data->lock);
-
-	base = ioremap(COMMON_SYS_BASE, 0x10000);
-	writel(GENMASK(20, 19), base + 0x58);
-	writel(((1 << 10) | (1 << 14)), base + 0x38);
-	iounmap(base);
-
 	return 0;
 }
 
@@ -390,6 +382,7 @@ static int axera_thermal_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to setup the sensor: %d\n", ret);
 		return ret;
 	}
+
 	if (data->irq) {
 		ret = devm_request_irq(dev, data->irq, axera_thermal_alarm_irq,
 				IRQF_SHARED, "axera_thermal", data);

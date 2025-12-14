@@ -171,8 +171,7 @@ static int ax_virt_encoder_atomic_check(struct drm_encoder *encoder,
 static void ax_virt_encoder_disable(struct drm_encoder *encoder)
 {
 	int ret;
-	struct ax_virt_connector *virt_connector =
-	    encoder_to_virt_connector(encoder);
+	struct ax_virt_connector *virt_connector = encoder_to_virt_connector(encoder);
 
 	DRM_DEBUG_DRIVER("enter, [encoder:%d:%s]\n", encoder->base.id,
 			 encoder->name);
@@ -188,13 +187,13 @@ static void ax_virt_encoder_disable(struct drm_encoder *encoder)
 	}
 
 	ax_virt_connector_clk_unprepare(virt_connector);
+	virt_connector->state = VIRT_STATUS_DISABLED;
 }
 
 static void ax_virt_encoder_enable(struct drm_encoder *encoder)
 {
 	int ret;
-	struct ax_virt_connector *virt_connector =
-	    encoder_to_virt_connector(encoder);
+	struct ax_virt_connector *virt_connector = encoder_to_virt_connector(encoder);
 
 	DRM_DEBUG_DRIVER("enter, [encoder:%d:%s]\n", encoder->base.id,
 			 encoder->name);
@@ -208,6 +207,7 @@ static void ax_virt_encoder_enable(struct drm_encoder *encoder)
 		if (ret)
 			DRM_ERROR("pannel enable failed, ret = %d\n", ret);
 	}
+	virt_connector->state = VIRT_STATUS_ENABLED;
 }
 
 static void ax_virt_encoder_mode_set(struct drm_encoder *encoder,
@@ -328,6 +328,8 @@ static void ax_virt_encoder_mode_set(struct drm_encoder *encoder,
 				DRM_ERROR("virt connector flash nx clk clk_set_rate %d failed: %d", clk, ret);
 		}
 	}
+
+	virt_connector->clock = clk;
 
 	DRM_DEBUG_DRIVER("comm 1x clk: %ld  comm 1x clk:%ld  flash 1x clk:%ld flash nx clk:%ld\n",
 			 clk_get_rate(virt_connector->common_1x_clk),
@@ -515,31 +517,30 @@ static int ax_virt_connector_create(struct device *dev, void *data)
 		return -ENODEV;
 	}
 
-	virt_connector =
-	    devm_kzalloc(&pdev->dev, sizeof(*virt_connector), GFP_KERNEL);
+	virt_connector = devm_kzalloc(dev, sizeof(*virt_connector), GFP_KERNEL);
 	if (!virt_connector) {
 		DRM_ERROR("alloc misc connector failed\n");
 		return -ENOMEM;
 	}
 
-	platform_set_drvdata(pdev, virt_connector);
+	dev_set_drvdata(dev, virt_connector);
 
 	ret = ax_misc_panel_find(dev, virt_connector);
 	if (ret || !virt_connector->panel)
 		goto err0;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	virt_connector->common_glb_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	virt_connector->common_glb_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(virt_connector->common_glb_regs))
 		goto err0;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	virt_connector->flashsys_glb_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	virt_connector->flashsys_glb_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(virt_connector->flashsys_glb_regs))
 		goto err0;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	virt_connector->dispsys_glb_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	virt_connector->dispsys_glb_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(virt_connector->dispsys_glb_regs))
 		goto err0;
 
@@ -636,7 +637,7 @@ static int ax_virt_connector_create(struct device *dev, void *data)
 
 	virt_connector->fmt_out = AX_DISP_OUT_FMT_RGB565;
 
-	virt_connector->state = 1;
+	virt_connector->state = VIRT_STATUS_CREATED;
 
 	DRM_INFO("virt connector create done\n");
 
@@ -652,7 +653,7 @@ err0:
 
 static void ax_virt_connector_destroy(struct ax_virt_connector *virt_connector)
 {
-	if (virt_connector->state) {
+	if ((virt_connector->state >= VIRT_STATUS_CREATED) && (virt_connector->state < VIRT_STATUS_DESTORY)) {
 		if (virt_connector->panel)
 			drm_panel_detach(virt_connector->panel);
 		drm_connector_cleanup(&virt_connector->connector);
@@ -662,6 +663,7 @@ static void ax_virt_connector_destroy(struct ax_virt_connector *virt_connector)
 	reset_control_assert(virt_connector->common_nx_rst_ctrl);
 	reset_control_assert(virt_connector->flash_1x_rst_ctrl);
 	reset_control_assert(virt_connector->flash_1x_rst_ctrl);
+	virt_connector->state = VIRT_STATUS_DESTORY;
 }
 
 static int ax_bt_dpi_bind(struct device *dev, struct device *master, void *data)
@@ -688,13 +690,12 @@ static void ax_bt_dpi_unbind(struct device *dev, struct device *master,
 			     void *data)
 {
 	struct ax_virt_connector *virt_connector;
-	struct platform_device *pdev = to_platform_device(dev);
 
-	DRM_INFO("bt dpi unbind\n");
-
-	virt_connector = (struct ax_virt_connector *)platform_get_drvdata(pdev);
+	virt_connector = (struct ax_virt_connector *)dev_get_drvdata(dev);
 
 	ax_virt_connector_destroy(virt_connector);
+
+	DRM_INFO("bt dpi unbind\n");
 }
 
 const struct component_ops bt_dpi_component_ops = {
@@ -736,14 +737,125 @@ static const struct of_device_id bt_dpi_drm_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, bt_dpi_drm_dt_ids);
 
+#ifdef CONFIG_PM_SLEEP
+static int ax_bt_dpi_suspend(struct device *dev)
+{
+	struct ax_virt_connector *virt_connector = (struct ax_virt_connector *)dev_get_drvdata(dev);
+	if (virt_connector->state == VIRT_STATUS_ENABLED) {
+		ax_virt_connector_clk_unprepare(virt_connector);
+		reset_control_assert(virt_connector->common_1x_rst_ctrl);
+		reset_control_assert(virt_connector->common_nx_rst_ctrl);
+		reset_control_assert(virt_connector->flash_1x_rst_ctrl);
+		reset_control_assert(virt_connector->flash_1x_rst_ctrl);
+	}
+
+	DRM_INFO("ax_bt_dpi_suspend\n");
+	return 0;
+}
+
+static int ax_bt_dpi_resume(struct device *dev)
+{
+	int ret;
+	struct ax_virt_connector *virt_connector = (struct ax_virt_connector *)dev_get_drvdata(dev);
+	if (virt_connector->state == VIRT_STATUS_ENABLED) {
+		reset_control_deassert(virt_connector->common_1x_rst_ctrl);
+		reset_control_deassert(virt_connector->common_nx_rst_ctrl);
+		reset_control_deassert(virt_connector->flash_1x_rst_ctrl);
+		reset_control_deassert(virt_connector->flash_nx_rst_ctrl);
+
+		if (virt_connector->id == 0) {
+			writel(COMM_SYSGLB_LCD_VOMUX_SEL, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_CLR);
+			writel(1, virt_connector->dispsys_glb_regs + DISPC_SYSGLB_LVDS_CLK_SEL_SET);
+		} else if (virt_connector->id == 1) {
+			if (virt_connector->dmux_sel == 1) {
+				writel(COMM_SYSGLB_LCD_VOMUX_SEL, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_SET);
+				writel(COMM_SYSGLB_DPULITE_DMUX_SEL, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_SET);
+			}
+			else {
+				writel(COMM_SYSGLB_DPULITE_DMUX_SEL, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_CLR);
+				writel(COMM_SYSGLB_DPULITE_TX_CLKING_MODE, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_SET);
+			}
+			writel(COMM_SYSGLB_DPULITE_DPHYTX_EN, virt_connector->common_glb_regs + COMM_SYSGLB_VO_CFG_SET);
+		}
+		writel(FLASH_SYSGLB_IMAGE_TX_EN, virt_connector->flashsys_glb_regs + FLASH_SYSGLB_IMAGE_TX_SET);
+
+		if (virt_connector->common_1x_clk) {
+			ret = clk_set_rate(virt_connector->common_1x_clk, virt_connector->clock);
+			if (ret < 0)
+				DRM_ERROR("virt connector common 1x clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+		}
+
+		if (virt_connector->common_nx_clk) {
+			ret = clk_set_rate(virt_connector->common_nx_clk, virt_connector->clock);
+			if (ret < 0)
+				DRM_ERROR("virt connector common nx clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+		}
+
+		if (virt_connector->id == 0 || (virt_connector->id == 1 && virt_connector->dmux_sel == 1)) {
+			if (virt_connector->flash_1x_clk) {
+				ret = clk_set_rate(virt_connector->flash_1x_clk, virt_connector->clock);
+				if (ret < 0)
+					DRM_ERROR("virt connector flash 1x clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+			}
+
+			if (virt_connector->flash_nx_clk) {
+				ret = clk_set_rate(virt_connector->flash_nx_clk, virt_connector->clock);
+				if (ret < 0)
+					DRM_ERROR("virt connector flash nx clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+			}
+		}
+
+		ret = ax_virt_connector_clk_prepare(virt_connector);
+		if (ret)
+			DRM_ERROR("virt encoder prepare failed, ret = %d\n", ret);
+
+		if (virt_connector->common_1x_clk) {
+			ret = clk_set_rate(virt_connector->common_1x_clk, virt_connector->clock);
+			if (ret < 0)
+				DRM_ERROR("virt connector common 1x clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+		}
+
+		if (virt_connector->common_nx_clk) {
+			ret = clk_set_rate(virt_connector->common_nx_clk, virt_connector->clock);
+			if (ret < 0)
+				DRM_ERROR("virt connector common nx clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+		}
+
+		if (virt_connector->id == 0 || (virt_connector->id == 1 && virt_connector->dmux_sel == 1)) {
+			if (virt_connector->flash_1x_clk) {
+				ret = clk_set_rate(virt_connector->flash_1x_clk, virt_connector->clock);
+				if (ret < 0)
+					DRM_ERROR("virt connector flash 1x clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+			}
+
+			if (virt_connector->flash_nx_clk) {
+				ret = clk_set_rate(virt_connector->flash_nx_clk, virt_connector->clock);
+				if (ret < 0)
+					DRM_ERROR("virt connector flash nx clk clk_set_rate %d failed: %d", virt_connector->clock, ret);
+			}
+		}
+	}
+
+	DRM_INFO("lvds ax_bt_dpi_resume\n");
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops ax_bt_dpi_pm_ops = {
+	.suspend_noirq = ax_bt_dpi_suspend,
+	.resume_noirq = ax_bt_dpi_resume,
+};
+
 struct platform_driver bt_dpi_platform_driver = {
 	.probe = ax_bt_dpi_probe,
 	.remove = ax_bt_dpi_remove,
 	.driver = {
-		   .name = "bt-dpi-drv",
+		   .name = "ax-bt-dpi-drv",
 		   .of_match_table = of_match_ptr(bt_dpi_drm_dt_ids),
+		   .pm = &ax_bt_dpi_pm_ops,
 		   },
 };
 
-MODULE_DESCRIPTION("axera dpu driver");
+MODULE_DESCRIPTION("axera dpi driver");
 MODULE_LICENSE("GPL v2");

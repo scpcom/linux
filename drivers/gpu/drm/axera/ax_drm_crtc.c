@@ -293,8 +293,10 @@ static void ax_crtc_atomic_enable(struct drm_crtc *crtc, struct drm_crtc_state *
 
 	mutex_lock(&drm_mgr->sleep_lock);
 
-	if (dp_funs->dpu_reset)
-		dp_funs->dpu_reset(dp_dev->data);
+	if (dp_funs->dpu_reset) {
+		if ((ax_crtc->mode.type < AX_DISP_OUT_MODE_BUT) && (ax_display_get_bootlogo_mode() != ax_crtc->mode.type))
+			dp_funs->dpu_reset(dp_dev->data);
+	}
 
 	mutex_unlock(&drm_mgr->sleep_lock);
 
@@ -701,7 +703,7 @@ struct platform_driver crtc_platform_driver = {
 	.probe = ax_crtc_probe,
 	.remove = ax_crtc_remove,
 	.driver = {
-		   .name = "dpu-drv",
+		   .name = "ax-crtc-drv",
 		   .of_match_table = of_match_ptr(crtc_drm_dt_ids),
 		   },
 };

@@ -538,9 +538,8 @@ void ax_os_mem_vfree(int id, const void *addr)
 }
 EXPORT_SYMBOL(ax_os_mem_vfree);
 
-s32 ax_os_release_reserved_mem(unsigned long phy_start, size_t size, const char *s)
+s32 ax_os_release_reserved_mem(unsigned long phy_start, size_t size, char *s)
 {
-	s32 ret = 0;
 	void *vir_start = phys_to_virt(phy_start);
 	void *vir_end = vir_start + size;
 	free_reserved_area(vir_start, vir_end, POISON_FREE_INITMEM, s);
@@ -602,7 +601,6 @@ int ax_model_release_mem(void)
 {
 	int ret;
 	u64 addr, size;
-	struct device_node *dts_node;
 
 	if (model_release)
 		return 0;

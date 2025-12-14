@@ -58,7 +58,10 @@
 #define I2S_DMACR		0x200
 #define DMAEN_TXBLOCK_SHIFT	17
 #define DMAEN_RXBLOCK_SHIFT	16
-
+#define I2S_TX_OVER_EMPTY_MASK 0X30
+#define I2S_TX_OVER_MASK 0X20
+#define I2S_RX_OVER_MASK 0X02
+#define I2S_RX_OVER_AVA_MASK 0X03
 /*
  * Component parameter register fields - define the I2S block's
  * configuration.

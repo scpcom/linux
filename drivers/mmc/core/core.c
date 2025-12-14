@@ -1771,7 +1771,8 @@ void mmc_power_off(struct mmc_host *host)
 	axera_set_sd_pin(host, 0);
 #endif
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
-	mdelay(1);
+	if ((host->caps2 & MMC_CAP2_NO_SD)) //if it is not SD card
+		mdelay(1);
 #else
 	/*
 	 * Some configurations, such as the 802.11 SDIO card in the OLPC
@@ -1785,8 +1786,8 @@ void mmc_power_off(struct mmc_host *host)
 void mmc_power_cycle(struct mmc_host *host, u32 ocr)
 {
 	mmc_power_off(host);
-	/* Wait at least 1 ms according to SD spec */
-	mmc_delay(1);
+	/* Wait at least 1 ms according to SD spec, the dcdc will affect the power down time. */
+	mmc_delay(100);
 	mmc_power_up(host, ocr);
 }
 

@@ -124,7 +124,7 @@ static inline u32 actt_read_reg(void __iomem *io_base, int reg)
 static int actt_startup(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai)
 {
-	pr_info("bengin actt_startup");
+	pr_debug("bengin actt_startup");
 	return 0;
 }
 
@@ -145,7 +145,7 @@ static int actt_get_params(struct snd_pcm_hw_params *params,
 	int coeff;
 
 	if(NULL == dev) {
-		pr_info("actt_get_bit_width, get dev info failed.\n");
+		pr_err("actt_get_bit_width, get dev info failed.\n");
 	}
 
 	switch (params_format(params)) {
@@ -159,7 +159,7 @@ static int actt_get_params(struct snd_pcm_hw_params *params,
 		dev->bit_width = 0x0c;
 		break;
 	default:
-		pr_info("actt: unsupported PCM fmt  %d",
+		pr_err("actt: unsupported PCM fmt  %d",
 			params_format(params));
 		return -EINVAL;
 	}
@@ -190,19 +190,19 @@ static int actt_get_params(struct snd_pcm_hw_params *params,
 		dev->samplerate_l = 31;
 		break;
 	default:
-		pr_info("actt: unsupported PCM samplerate_h %d",
+		pr_err("actt: unsupported PCM samplerate_h %d",
 			params_rate(params));
 		return -EINVAL;
 	}
 	coeff = actt_get_coeff(params_rate(params),params_format(params));
 	if (coeff < 0) {
-		pr_info("Unable to configure sample rate %dHz with %d bit_width\n",
+		pr_err("Unable to configure sample rate %dHz with %d bit_width\n",
 			params_rate(params), params_format(params));
 		return coeff;
 	}
 
 	dev->blk_frequency = actt_coeff_div[coeff].sclk << 6;
-	pr_info("coeff: %d  dev->blk_frequency: %x \n",coeff, dev->blk_frequency);
+	pr_debug("coeff: %d  dev->blk_frequency: %x \n",coeff, dev->blk_frequency);
 
 	return 0;
 }
@@ -214,9 +214,9 @@ static int actt_hw_params(struct snd_pcm_substream *substream,
 	struct ax_actt_dev *dev = snd_soc_dai_get_drvdata(dai);
 	u32 reg = 0;
 
-	pr_info("bengin actt_hw_params set.");
+	pr_debug("bengin actt_hw_params set.");
 	if (actt_get_params(params, dev)) {
-		pr_info("actt_get_params failed!\n");
+		pr_err("actt_get_params failed!\n");
 		return -EINVAL;
 	}
 
@@ -279,7 +279,7 @@ static int actt_mute(struct snd_soc_dai *dai, int mute, int direction)
 {
 	u32 reg = 0;
 	struct ax_actt_dev *dev = snd_soc_dai_get_drvdata(dai);
-	pr_info("bengin actt_mute %d\n",mute);
+	pr_debug("bengin actt_mute %d\n",mute);
 	if (SNDRV_PCM_STREAM_PLAYBACK == direction) {
 		reg = actt_read_reg(dev->actt_base, TX_MUTE_ENABLE);
 		if (mute) {
@@ -294,17 +294,17 @@ static int actt_mute(struct snd_soc_dai *dai, int mute, int direction)
 static int actt_set_sysclk(struct snd_soc_dai *dai,
 			   int clk_id, unsigned int freq, int dir)
 {
-	pr_info("bengin actt_set_sysclk");
+	pr_debug("bengin actt_set_sysclk");
 
 	switch (freq) {
 	case 11289600:
-		pr_info("%s, freq: %u\n", __func__, freq);
+		pr_debug("%s, freq: %u\n", __func__, freq);
 		break;
 	case 12288000:
-		pr_info("%s, freq: %u\n", __func__, freq);
+		pr_debug("%s, freq: %u\n", __func__, freq);
 		break;
 	default:
-		pr_info("%s, actt don't support freq: %u\n", __func__, freq);
+		pr_err("%s, actt don't support freq: %u\n", __func__, freq);
 		return -EINVAL;
 	}
 
@@ -314,15 +314,15 @@ static int actt_set_sysclk(struct snd_soc_dai *dai,
 static int actt_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct ax_actt_dev *dev = snd_soc_dai_get_drvdata(dai);
-	pr_info("%s, fmt: 0x%x\n", __func__, fmt);
+	pr_debug("%s, fmt: 0x%x\n", __func__, fmt);
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
-		pr_info("%s, actt rx only support master fmt_mode: 0x%x\n",
+		pr_debug("%s, actt rx only support master fmt_mode: 0x%x\n",
 			__func__, SND_SOC_DAIFMT_CBM_CFM);
 		break;
 	case SND_SOC_DAIFMT_CBS_CFS:
-		pr_info("%s, actt tx only support salve .fmt_mode: 0x%x\n",
+		pr_debug("%s, actt tx only support salve .fmt_mode: 0x%x\n",
 			__func__, SND_SOC_DAIFMT_CBS_CFS);
 		break;
 	default:
@@ -332,20 +332,20 @@ static int actt_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	/* interface format */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
-		pr_info("actt in I2S Format\n");
+		pr_debug("actt in I2S Format\n");
 		dev->format = IIS_FORMAT_DEFAULT;
 		dev->clksel = IIS_CLK_SEL_DEFAULT;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
 		return -EINVAL;
 	case SND_SOC_DAIFMT_LEFT_J:
-		pr_info("actt in LJ Format\n");
+		pr_debug("actt in LJ Format\n");
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
-		pr_info("actt in DSP-A Format\n");
+		pr_debug("actt in DSP-A Format\n");
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
-		pr_info("actt in DSP-B Format\n");
+		pr_debug("actt in DSP-B Format\n");
 		break;
 	default:
 		return -EINVAL;
@@ -358,8 +358,8 @@ static int actt_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai 
 {
 	struct ax_actt_dev *dev = snd_soc_dai_get_drvdata(dai);
 
-	pr_info("bengin actt_hw_free");
-return 0;
+	pr_debug("bengin actt_hw_free");
+	return 0;
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		actt_write_reg(dev->actt_base, RX_DEAL_ENABLE, DISABLE);
 	} else {
@@ -383,7 +383,7 @@ static const struct snd_soc_dai_ops actt_dai_ops = {
 static int actt_set_bias_level(struct snd_soc_component *component,
 			       enum snd_soc_bias_level level)
 {
-	pr_info("actt_set_bias_level %d\n",level);
+	pr_debug("actt_set_bias_level %d\n",level);
 
 	switch (level) {
 	case SND_SOC_BIAS_ON:
@@ -401,14 +401,14 @@ static int actt_set_bias_level(struct snd_soc_component *component,
 
 static int actt_component_probe(struct snd_soc_component *component)
 {
-	pr_info("actt_component_probe\n ");
+	pr_debug("actt_component_probe\n ");
 	return 0;
 }
 
 static void actt_remove(struct snd_soc_component *component)
 {
 	actt_set_bias_level(component,SND_SOC_BIAS_OFF);
-	pr_info("actt_remove\n ");
+	pr_debug("actt_remove\n ");
 }
 
 static int actt_resume(struct snd_soc_component *component)
@@ -450,7 +450,7 @@ static int actt_iir_get(struct snd_kcontrol *kcontrol,
 	for (i = 0; i < params->max; i++) {
 		ret = snd_soc_component_read(component, (REG + 0x4 * i), &reg_val);
 		if (ret < 0) {
-			pr_info("snd_soc_component_read failed. ret = %d.\n", ret);
+			pr_err("snd_soc_component_read failed. ret = %d.\n", ret);
 			return ret;
 		}
 		/*
@@ -774,7 +774,7 @@ static int actt_rx_set_mic_gpio_output(int iGpiostatus, struct ax_mic_gpio* mic_
 
 	 node = of_find_compatible_node(NULL,NULL,"axera,ax_actt");
 	 if(!node){
-		pr_info("get node miclp error\n");
+		pr_err("get node miclp error\n");
 	 } else {
 		mic_gpio->l_p = of_get_named_gpio(node, "gpio-mic-lp",0);
 		ret = gpio_request(mic_gpio->l_p,NULL);
@@ -880,8 +880,16 @@ static int actt_rx_amic_en(struct snd_soc_dapm_widget *w,
 		actt_write_reg(dev->actt_base, RX_DEAL_ENABLE, ENABLE);
 		udelay(1000);
 		actt_write_reg(dev->actt_base, RX_ALC_SET, dev->alc_status);
-		actt_write_reg(dev->actt_base, RX_LEFT_ANA_GAIN_SET, dev->rx_again_l);
-		actt_write_reg(dev->actt_base, RX_RIGHT_ANA_GAIN_SET, dev->rx_again_r);
+		/* alc_en is 7 bit. alc is en, again and dgain need to be 0db */
+		if ((dev->alc_status >> 7)) {
+			actt_write_reg(dev->actt_base, RX_LEFT_ANA_GAIN_SET, 0);
+			actt_write_reg(dev->actt_base, RX_RIGHT_ANA_GAIN_SET, 0);
+			actt_write_reg(dev->actt_base, RX_LEFT_DIG_GAIN_SET, 0);
+			actt_write_reg(dev->actt_base, RX_RIGHT_DIG_GAIN_SET, 0);
+		} else {
+			actt_write_reg(dev->actt_base, RX_LEFT_ANA_GAIN_SET, dev->rx_again_l);
+			actt_write_reg(dev->actt_base, RX_RIGHT_ANA_GAIN_SET, dev->rx_again_r);
+		}
 		actt_write_reg(dev->actt_base, RX_IIR_BYPASS1_ENABLE, dev->rx_bypass1);
 		actt_write_reg(dev->actt_base, RX_IIR_BYPASS2_ENABLE, dev->rx_bypass2);
 		actt_write_reg(dev->actt_base, RX_3D_ENABLE, dev->rx_3d);
@@ -891,7 +899,7 @@ static int actt_rx_amic_en(struct snd_soc_dapm_widget *w,
 #else
 		actt_write_reg(dev->actt_base, RX_IIS_ENABLE, ENABLE);
 #endif
-		pr_info("actt_rx_amic_en! ");
+		pr_debug("actt_rx_amic_en! ");
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 #ifdef INTERNAL_REF
@@ -901,7 +909,7 @@ static int actt_rx_amic_en(struct snd_soc_dapm_widget *w,
 #endif
 		actt_write_reg(dev->actt_base, RX_DEAL_ENABLE, DISABLE);
 		snd_soc_component_update_bits(component, INPUT_SEL, 0x4, 0x0);
-		pr_info("actt_rx_amic_dis! ");
+		pr_debug("actt_rx_amic_dis! ");
 		break;
 	}
 
@@ -928,7 +936,7 @@ static int actt_rx_dmic_en(struct snd_soc_dapm_widget *w,
 #else
 		actt_write_reg(dev->actt_base, RX_IIS_ENABLE, ENABLE);
 #endif
-		pr_info("actt_rx_dmic_en!");
+		pr_debug("actt_rx_dmic_en!");
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 #ifdef INTERNAL_REF
@@ -938,7 +946,7 @@ static int actt_rx_dmic_en(struct snd_soc_dapm_widget *w,
 #endif
 		actt_write_reg(dev->actt_base, RX_DEAL_ENABLE, DISABLE);
 		snd_soc_component_update_bits(component, DMIC_SET, 0x80, 0x0);
-		pr_info("actt_rx_dmic_dis!");
+		pr_debug("actt_rx_dmic_dis!");
 		break;
 	}
 
@@ -956,11 +964,11 @@ static int actt_tx_get_pa(int iGpiostatus, struct ax_tx_pa_gpio* pa_gpio)
 
 	 node = of_find_compatible_node(NULL,NULL,"axera,ax_actt");
 	 if(!node){
-		pr_info("get node miclp error\n");
+		pr_err("get node miclp error\n");
 	 } else {
 		pa_gpio->pa_speaker = of_get_named_gpio(node, "gpio-pa-speaker",0);
 		if (pa_gpio->pa_speaker < 0) {
-			pr_info("don't get pa_gpio->speaker gpio! %d\n",pa_gpio->pa_speaker);
+			pr_err("don't get pa_gpio->speaker gpio! %d\n",pa_gpio->pa_speaker);
 		} else {
 			ret = gpio_request(pa_gpio->pa_speaker,NULL);
 			if (ret != 0) {
@@ -977,7 +985,7 @@ static int actt_tx_get_pa(int iGpiostatus, struct ax_tx_pa_gpio* pa_gpio)
 
 		pa_gpio->pa_linout = of_get_named_gpio(node, "gpio-pa-lineout",0);
 		if (pa_gpio->pa_linout < 0) {
-			pr_info("don't get pa_gpio->pa_linout gpio!  %d\n",pa_gpio->pa_linout);
+			pr_err("don't get pa_gpio->pa_linout gpio!  %d\n",pa_gpio->pa_linout);
 		} else {
 			ret = gpio_request(pa_gpio->pa_linout,NULL);
 			if (ret != 0) {
@@ -1005,13 +1013,13 @@ static int actt_tx_free_pa(struct ax_tx_pa_gpio* pa_gpio)
 
 	if (gpio_is_valid(pa_gpio->pa_speaker)) {
 		gpio_free(pa_gpio->pa_speaker);
-		pr_info("pa_gpio->pa_speaker free ok\n");
+		pr_debug("pa_gpio->pa_speaker free ok\n");
 	}
 
 	if (gpio_is_valid(pa_gpio->pa_linout)) {
 		gpio_direction_input(pa_gpio->pa_linout);
 		gpio_free(pa_gpio->pa_linout);
-		pr_info("pa_gpio->pa_linout free ok\n");
+		pr_debug("pa_gpio->pa_linout free ok\n");
 	}
 
 	return 0;
@@ -1026,12 +1034,12 @@ static int actt_tx_set_pa_value(int iGpio_value, struct ax_tx_pa_gpio* pa_gpio)
 
 	if (gpio_is_valid(pa_gpio->pa_speaker)) {
 		gpio_set_value(pa_gpio->pa_speaker,iGpio_value);
-		pr_info("pa_gpio->pa_speaker set value %d\n",iGpio_value);
+		pr_debug("pa_gpio->pa_speaker set value %d\n",iGpio_value);
 	}
 
 	if (gpio_is_valid(pa_gpio->pa_linout)) {
 		gpio_set_value(pa_gpio->pa_linout,iGpio_value);
-		pr_info("pa_gpio->pa_linout set value %d\n",iGpio_value);
+		pr_debug("pa_gpio->pa_linout set value %d\n",iGpio_value);
 	}
 	return 0;
 }
@@ -1049,7 +1057,7 @@ static int actt_tx_en(struct snd_soc_dapm_widget *w,
 		udelay(1000);
 		actt_tx_get_pa(0,&dev->pa_gpio);
 		actt_tx_set_pa_value(1,&dev->pa_gpio);
-		pr_info("actt_tx_en!");
+		pr_debug("actt_tx_en!");
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		actt_tx_set_pa_value(0,&dev->pa_gpio);
@@ -1057,7 +1065,7 @@ static int actt_tx_en(struct snd_soc_dapm_widget *w,
 		udelay(1000);
 		actt_write_reg(dev->actt_base, TX_DEAL_ENABLE, DISABLE);
 		actt_write_reg(dev->actt_base, TX_IIS_ENABLE, DISABLE);
-		pr_info("actt_tx_disable!");
+		pr_debug("actt_tx_disable!");
 		break;
 	}
 
@@ -1129,7 +1137,7 @@ static struct snd_soc_dai_driver actt_dai = {
 
 static int ax_actt_remove(struct platform_device *pdev)
 {
-	pr_info("ax_actt_remove\n");
+	pr_debug("ax_actt_remove\n");
 	return 0;
 }
 
@@ -1204,7 +1212,7 @@ static int ax_actt_probe(struct platform_device *pdev)
 	int ret;
 	struct resource *res;
 	int reg = 0;
-	pr_info("ax_actt_probe\n");
+	pr_debug("ax_actt_probe\n");
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev)

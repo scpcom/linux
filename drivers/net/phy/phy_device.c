@@ -1007,6 +1007,46 @@ int phy_init_hw(struct phy_device *phydev)
 	if (!phydev->drv || !phydev->drv->config_init)
 		return 0;
 
+#ifdef CONFIG_AXERA_EPHY
+	//ephy soft reset.
+	if (phydev->phy_id == 0x00441400) {
+		int i=0;
+		int retry=3;
+		int reg;
+		do {
+			if (phydev->drv->soft_reset)
+				ret = phydev->drv->soft_reset(phydev);
+			else
+				ret = genphy_soft_reset(phydev);
+
+			i++;
+
+			if (ret < 0) {
+				pr_err("PHY soft reset failed, reset again\n");
+				msleep(50);
+				continue;
+			}
+
+			// check reset reg value
+			reg = phy_read(phydev, MII_BMCR);
+			if ((reg==0x3000) || (reg==0x3100)) {
+				pr_info("PHY soft reset success\n");
+				break;
+			} else {
+				pr_err("PHY soft reset failed, bmcr:0x%x, reset again\n", reg);
+				msleep(50);
+			}
+		} while (i < retry);
+	} else {
+		if (phydev->drv->soft_reset)
+			ret = phydev->drv->soft_reset(phydev);
+		else
+			ret = genphy_soft_reset(phydev);
+
+		if (ret < 0)
+			return ret;
+	}
+#else
 	if (phydev->drv->soft_reset)
 		ret = phydev->drv->soft_reset(phydev);
 	else
@@ -1014,6 +1054,7 @@ int phy_init_hw(struct phy_device *phydev)
 
 	if (ret < 0)
 		return ret;
+#endif
 
 	ret = phy_scan_fixups(phydev);
 	if (ret < 0)
@@ -1652,6 +1693,20 @@ int genphy_update_link(struct phy_device *phydev)
 		phydev->link = 0;
 	else
 		phydev->link = 1;
+
+#ifdef CONFIG_AXERA_PHY_CHANGELINK_DELAY_CHECK
+	if (!phydev->link && (phydev->state == PHY_CHANGELINK)) {
+		int retry=0;
+		while (retry < 3) {
+			status = phy_read(phydev, MII_BMSR);
+			if (status & BMSR_LSTATUS) {
+				phydev->link = 1;
+				break;
+			}
+			retry++;
+		}
+	}
+#endif
 
 	return 0;
 }

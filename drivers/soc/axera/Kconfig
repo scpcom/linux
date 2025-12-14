@@ -35,8 +35,7 @@ config AXERA_WAKE_TIMER
 
 config AXERA_SLEEP_STATE
 	tristate "axera slp state"
-	depends on PM_SLEEP=y
- 	default n
+ 	default y
 
 config AXERA_HRTIMER
 	tristate "axera hrtimer"
@@ -115,6 +114,13 @@ config AXERA_BUILDIN_PRVDRV_MIPI_RX
 	depends on AXERA_BUILDIN_PRVDRV=y
 	help
 		This integrates ax_mipi_rx driver to linux kernel.
+	default n
+
+config AXERA_BUILDIN_PRVDRV_MIPI_SWITCH
+	bool "integrates ax_mipi_switch driver to linux kernel"
+	depends on AXERA_BUILDIN_PRVDRV=y
+	help
+		This integrates ax_mipi_switch driver to linux kernel.
 	default n
 
 config AXERA_BUILDIN_PRVDRV_NPU

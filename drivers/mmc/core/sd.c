@@ -138,6 +138,12 @@ static int mmc_decode_csd(struct mmc_card *card)
 			csd->erase_size = UNSTUFF_BITS(resp, 39, 7) + 1;
 			csd->erase_size <<= csd->write_blkbits - 9;
 		}
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		if (UNSTUFF_BITS(resp, 13, 1)) {
+			mmc_card_set_readonly(card);
+		}
+#endif
+
 		break;
 	case 1:
 		/*
@@ -1156,7 +1162,13 @@ out:
 static int mmc_sd_suspend(struct mmc_host *host)
 {
 	int err;
-
+	if (!(host->caps & MMC_CAP_AGGRESSIVE_PM)) {
+		mmc_claim_host(host);
+		mmc_release_host(host);
+		pm_runtime_disable(&host->card->dev);
+		pm_runtime_set_suspended(&host->card->dev);
+		return 0;
+	}
 	err = _mmc_sd_suspend(host);
 	if (!err) {
 		pm_runtime_disable(&host->card->dev);

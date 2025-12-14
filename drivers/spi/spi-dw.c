@@ -246,7 +246,6 @@ static irqreturn_t interrupt_transfer(struct dw_spi *dws)
 		int_error_stop(dws, "interrupt_transfer: fifo overrun/underrun");
 		return IRQ_HANDLED;
 	}
-
 	dw_reader(dws);
 	if (dws->rx_end == dws->rx) {
 		spi_mask_intr(dws, SPI_INT_TXEI);
@@ -276,7 +275,6 @@ static irqreturn_t dw_spi_irq(int irq, void *dev_id)
 		spi_mask_intr(dws, SPI_INT_TXEI);
 		return IRQ_HANDLED;
 	}
-
 	return dws->transfer_handler(dws);
 }
 
@@ -305,11 +303,36 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 
 	dws->dma_mapped = 0;
 	spin_lock_irqsave(&dws->buf_lock, flags);
-	dws->tx = (void *)transfer->tx_buf;
-	dws->tx_end = dws->tx + transfer->len;
-	dws->rx = transfer->rx_buf;
-	dws->rx_end = dws->rx + transfer->len;
-	dws->len = transfer->len;
+	if (master->can_dma && master->can_dma(master, spi, transfer)) {
+		if (0 == (transfer->len % sizeof(u32))) {
+			transfer->bits_per_word = 32;
+			dws->n_bytes = 4;
+			dws->dma_width = 4;
+		}
+		else if (0 == (transfer->len % sizeof(u16))) {
+			transfer->bits_per_word = 16;
+			dws->n_bytes = 2;
+			dws->dma_width = 2;
+		}
+		dws->len = transfer->len / (dws->n_bytes ? dws->n_bytes : (transfer->bits_per_word / 8));
+		dws->rx_end = dws->rx = 0;
+		dws->tx_end = dws->tx = 0;
+		if (transfer->tx_buf) {
+			dws->tx = (void *)transfer->tx_buf;
+			dws->tx_end = dws->tx + transfer->len;
+		}
+		if (transfer->rx_buf) {
+			dws->rx = transfer->rx_buf;
+			dws->rx_end = dws->rx + transfer->len;
+		}
+	} else {
+		dws->len = transfer->len;
+		dws->tx = (void *)transfer->tx_buf;
+		dws->tx_end = dws->tx + transfer->len;
+		dws->rx = transfer->rx_buf;
+		dws->rx_end = dws->rx + transfer->len;
+	}
+
 	spin_unlock_irqrestore(&dws->buf_lock, flags);
 
 	spi_enable_chip(dws, 0);
@@ -331,7 +354,15 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 		dws->n_bytes = 2;
 		dws->dma_width = 2;
 	} else {
+#if defined (CONFIG_APB_SPI_DW_DMA)
+		/* Using dma transfers on this branch requires 4-byte alignment transfers. */
+		if (!master->can_dma || !master->can_dma(master, spi, transfer) || (transfer->len % sizeof(u32))) {
+			dev_err(&dws->master->dev, "can_dma ptr=0x%lX, transfer len=%d\n", (ulong)master->can_dma, transfer->len);
+			return -EINVAL;
+		}
+#else
 		return -EINVAL;
+#endif
 	}
 	/* Default SPI mode is SCPOL = 0, SCPH = 0 */
 	cr0 = ((transfer->bits_per_word - 1) << SPI_DFS_32_OFFSET)
@@ -343,7 +374,7 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 	 * Adjust transfer mode if necessary. Requires platform dependent
 	 * chipselect mechanism.
 	 */
-	if (chip->cs_control) {
+	if (master->can_dma && master->can_dma(master, spi, transfer)) {
 		if (dws->rx && dws->tx)
 			chip->tmode = SPI_TMOD_TR;
 		else if (dws->rx)
@@ -353,9 +384,17 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 
 		cr0 &= ~SPI_TMOD_MASK;
 		cr0 |= (chip->tmode << SPI_TMOD_OFFSET);
+	} else {
+		chip->tmode = SPI_TMOD_TR;
+		cr0 &= ~SPI_TMOD_MASK;
+		cr0 |= (chip->tmode << SPI_TMOD_OFFSET);
 	}
 
 	dw_writel(dws, DW_SPI_CTRL0, cr0);
+	if (master->can_dma && master->can_dma(master, spi, transfer)) {
+		if (SPI_TMOD_RO == chip->tmode)
+			dw_writel(dws, DW_SPI_CTRL1, dws->len - 1);
+	}
 
 	/* Check if current transfer is a DMA transaction */
 	if (master->can_dma && master->can_dma(master, spi, transfer))
@@ -381,15 +420,32 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 		/* Set the interrupt mask */
 		imask |= SPI_INT_TXEI | SPI_INT_TXOI |
 			 SPI_INT_RXUI | SPI_INT_RXOI;
-		spi_umask_intr(dws, imask);
 
 		dws->transfer_handler = interrupt_transfer;
+
+		spi_umask_intr(dws, imask);
 	}
 
 	spi_enable_chip(dws, 1);
 
 	if (dws->dma_mapped) {
 		ret = dws->dma_ops->dma_transfer(dws, transfer);
+
+		#ifdef SPI_DEBUG_LOG
+			int i;
+			for (i = 0; i < dws->len; i++) {
+				if (dws->tx) {
+					ax_printk(30, "spi_wifi", AX_KERN_ERR, "%s ========= dws->tx[%d]:0x%x",__func__, i, *(char *)(dws->tx + i));
+					ax_printk(30, "spi_wifi", AX_KERN_ERR, "\n");
+				}
+			}
+			for (i = 0; i < dws->len; i++) {
+				if (dws->rx) {
+					ax_printk(30, "spi_wifi", AX_KERN_ERR, "%s ========= dws->rx[%d]:0x%x",__func__, i, *(char *)(dws->rx + i));
+					ax_printk(30, "spi_wifi", AX_KERN_ERR, "\n");
+				}
+			}
+		#endif
 		return ret;
 	}
 
@@ -631,6 +687,8 @@ int dw_spi_resume_host(struct dw_spi *dws)
 {
 	int ret;
 
+	dws->current_freq = 0;
+	dws->fifo_len = 0;
 	dws->cur_rx_sample_dly = 0;
 	spi_hw_init(&dws->master->dev, dws);
 	ret = spi_controller_resume(dws->master);

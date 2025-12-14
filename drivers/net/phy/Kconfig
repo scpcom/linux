@@ -226,6 +226,13 @@ config AXERA_EPHY
 	tristate "AXERA EPHYs"
 	help
 	Currently has a driver for the axera
+
+config AXERA_PHY_CHANGELINK_DELAY_CHECK
+	tristate "AXERA PHY CHANGELINK DELAY CHECK"
+	default n
+	help
+	Currently has a driver for delay check changelink state
+
 config AMD_PHY
 	tristate "AMD PHYs"
 	---help---

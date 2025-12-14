@@ -103,6 +103,7 @@ struct ax_mipi_dsi {
 	struct mipi_dsi_priv dsi_priv;
 	struct drm_encoder encoder;
 	struct drm_crtc *crtc;
+	bool status;
 };
 
 #endif /* end _AX_MIPI_DSI_H_ */

@@ -287,6 +287,7 @@ struct dw_spi_mmio {
 	void           *priv;
 	struct reset_control *rstc;
 	struct reset_control *prstc;
+	void __iomem *peri_sys_glb_base;
 	int spi_id;
 };
 

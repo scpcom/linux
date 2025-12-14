@@ -45,20 +45,32 @@
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "Axera Audio";
 		simple-audio-card,widgets =
-			"Microphone", "Mic Jack",
-			"Headphone", "Headphone Jack";
+			"Microphone", "Mic Jack";
 		simple-audio-card,routing =
-			"Headphone Jack", "DIFFERENTIAL OUT",
 			"AMIC", "Mic Jack";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		simple-audio-card,dai-link@0 {
 			format = "i2s";
+			bitclock-master = <&codec_m6>;
+			frame-master = <&codec_m6>;
+			capture-only;
 			cpu {
-				sound-dai = <&i2s_mst0>;
+				sound-dai = <&i2s_inner_slv0>;
+			};
+			codec_m6: codec {
+				sound-dai = <&audio_codec>;
+				system-clock-frequency = <12288000>;
+			};
+		};
+		simple-audio-card,dai-link@1 {
+			format = "i2s";
+			playback-only;
+			cpu {
+				sound-dai = <&i2s_inner_mst0>;
 			};
 			codec {
-				sound-dai = <&es8311>;
+				sound-dai = <&audio_codec>;
 				system-clock-frequency = <12288000>;
 			};
 		};
@@ -114,10 +126,19 @@
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
 	status = "okay";
-	es8311: es8311@19 {
-		compatible = "ambarella,es8311";
-		reg = <0x19>;
-		#sound-dai-cells = <0>;
+};
+
+&i2c4 {
+	#address-cells = <0x1>;
+	#size-cells = <0x0>;
+	status = "okay";
+	ax_gpio_ext: gpio-axera@20 {
+		compatible = "axera,gpio-ext";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		nr-gpios = <16>;
+		status = "okay";
 	};
 };
 
@@ -254,6 +275,60 @@
 		spi-tx-bus-width = <4>;
 		spi-rx-bus-width = <4>;
 	};
+};
+
+&audio_codec {
+	gpio-mic-rp = <&ax_gpio1 7 0>; /* GPIO1_A7 */
+	gpio-mic-rn = <&ax_gpio1 6 0>; /* GPIO1_A6 */
+	gpio-mic-ln = <&ax_gpio1 5 0>; /* GPIO1_A5 */
+	gpio-mic-lp = <&ax_gpio1 4 0>; /* GPIO1_A4 */
+	gpio-pa-speaker = <&ax_gpio_ext 2 0>;
+	gpio-pa-lineout = <&ax_gpio_ext 15 0>;
+	status = "okay";
+};
+
+&i2s_inner_mst0 {
+	status = "okay";
+	/*i2s - pad0*/
+	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
+	i2s-m-aec-sclk-sel = <0>;     /*21*/
+	i2s-inner-codec-en = <1>;     /*20*/
+	i2s-exter-codec-en = <0>;     /*19*/
+	i2s-m-exter-codec-en = <0>;   /*18*/
+	i2s-exter-codec-mst = <0>;    /*17*/
+	i2s-m-exter-codec-mst = <0>;  /*16*/
+	iis-out-tdm-en = <0>;         /*15*/
+	iis-m-out-tdm-en = <0>;       /*14*/
+	i2s-m-rx0-sel = <0>;          /*13*/
+	i2s-m-rx1-sel = <0>;          /*12-11*/
+	i2s-s-rx0-sel = <0>;          /*10-9*/
+	i2s-s-rx1-sel = <2>;          /*8-7*/
+	i2s-s-sclk-sel = <0>;         /*6-5*/
+	tdm-m-rx-sel = <0>;           /*4-3*/
+	tdm-s-rx-sel = <0>;           /*2-1*/
+	tdm-s-sclk-sel = <0>;         /*0*/
+};
+
+&i2s_inner_slv0 {
+	status = "okay";
+	/*i2s - pad0*/
+	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
+	i2s-m-aec-sclk-sel = <0>;     /*21*/
+	i2s-inner-codec-en = <1>;     /*20*/
+	i2s-exter-codec-en = <0>;     /*19*/
+	i2s-m-exter-codec-en = <0>;   /*18*/
+	i2s-exter-codec-mst = <0>;    /*17*/
+	i2s-m-exter-codec-mst = <0>;  /*16*/
+	iis-out-tdm-en = <0>;         /*15*/
+	iis-m-out-tdm-en = <0>;       /*14*/
+	i2s-m-rx0-sel = <0>;          /*13*/
+	i2s-m-rx1-sel = <0>;          /*12-11*/
+	i2s-s-rx0-sel = <0>;          /*10-9*/
+	i2s-s-rx1-sel = <2>;          /*8-7*/
+	i2s-s-sclk-sel = <0>;         /*6-5*/
+	tdm-m-rx-sel = <0>;           /*4-3*/
+	tdm-s-rx-sel = <0>;           /*2-1*/
+	tdm-s-sclk-sel = <0>;         /*0*/
 };
 
 &i2s_mst0 {
@@ -418,6 +493,8 @@
 &panel_dsi {
 	status = "okay";
 	reset-gpio = <&ax_gpio1 0 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_txd_gpio1_a0_pins>;
 	prepare-delay-ms = <0>;
 	unprepare-delay-ms = <0>;
 	enable-delay-ms = <0>;

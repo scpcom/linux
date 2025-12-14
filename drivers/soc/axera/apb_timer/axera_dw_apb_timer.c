@@ -63,7 +63,13 @@ static inline void apbt_writel_relaxed(struct axera_dw_apb_timer *timer, u32 val
 
 static void apbt_eoi(struct axera_dw_apb_timer *timer, unsigned int channel_id)
 {
+	u32 ctrl;
+
 	apbt_readl_relaxed(timer, APBTMR_N_EOI(channel_id));
+	ctrl = apbt_readl(timer, APBTMR_N_CONTROL(channel_id));
+	ctrl |= APBTMR_CONTROL_INT;
+	ctrl &= ~APBTMR_CONTROL_ENABLE;
+	apbt_writel(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 }
 
 static irqreturn_t dw_apb_timer_irq(int irq, void *data)
@@ -71,6 +77,7 @@ static irqreturn_t dw_apb_timer_irq(int irq, void *data)
 	int channel_id;
 	struct axera_dw_apb_timer *dw_timer;
 	struct axera_irq_data *irq_data;
+
 
 	irq_data = (struct axera_irq_data*)data;
 
@@ -92,7 +99,7 @@ static int apbt_set_oneshot(struct axera_dw_apb_timer *timer, unsigned int chann
 	ctrl = apbt_readl(timer, APBTMR_N_CONTROL(channel_id));
 
 	ctrl &= ~APBTMR_CONTROL_ENABLE;
-	ctrl |= APBTMR_CONTROL_MODE_PERIODIC;
+	ctrl &= ~APBTMR_CONTROL_MODE_PERIODIC;
 
 	apbt_writel(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 
@@ -110,10 +117,12 @@ static int apbt_next_event(unsigned long delta,
 
 	/* Disable timer */
 	ctrl = apbt_readl_relaxed(timer, APBTMR_N_CONTROL(channel_id));
+	ctrl |= APBTMR_CONTROL_INT;
 	ctrl &= ~APBTMR_CONTROL_ENABLE;
 	apbt_writel_relaxed(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 	/* write new count */
 	apbt_writel_relaxed(timer, delta, APBTMR_N_LOAD_COUNT(channel_id));
+	ctrl &= ~APBTMR_CONTROL_INT;
 	ctrl |= APBTMR_CONTROL_ENABLE;
 	apbt_writel_relaxed(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 
@@ -128,7 +137,7 @@ static void dw_apb_timer_start(struct axera_dw_apb_timer *timer, unsigned int ch
 	apbt_writel(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 	apbt_writel(timer, ~0, APBTMR_N_LOAD_COUNT(channel_id));
 	/* enable, mask interrupt */
-	ctrl |= APBTMR_CONTROL_MODE_PERIODIC;
+	ctrl &= ~APBTMR_CONTROL_MODE_PERIODIC;
 	ctrl |= (APBTMR_CONTROL_ENABLE | APBTMR_CONTROL_INT);
 	apbt_writel(timer, ctrl, APBTMR_N_CONTROL(channel_id));
 }

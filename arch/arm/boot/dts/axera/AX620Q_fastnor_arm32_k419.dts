@@ -508,15 +508,10 @@
 	status = "okay";
 };
 
-&pwm_setting {
+&deb_gpio_lp {
+	lp-status = <41 1>;/* use db_gpio41 as wakeup source */
 	status = "okay";
 };
-
-&deb_gpio_lp_nor {
-	lp-num = <0x29>; /* use db_gpio41 as wakeup source */
-	status = "okay";
-};
-
 
 &i2c0 {
 	status = "okay";

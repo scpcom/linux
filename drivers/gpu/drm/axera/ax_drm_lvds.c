@@ -185,34 +185,28 @@ static void lvds_dphy_clear(struct ax_lvds *ax_lvds)
 
 static void ax_lvds_encoder_disable(struct drm_encoder *encoder)
 {
-	struct ax_lvds *ax_lvds =
-	    encoder_to_ax_lvds(encoder);
+	struct ax_lvds *ax_lvds = encoder_to_ax_lvds(encoder);
 
 	DRM_DEBUG_DRIVER("enter, [encoder:%d:%s]\n", encoder->base.id,
 			 encoder->name);
 
 	lvds_dphy_clear(ax_lvds);
 	ax_lvds_clk_unprepare(ax_lvds);
+	ax_lvds->status = false;
+
 }
 
 static void ax_lvds_encoder_enable(struct drm_encoder *encoder)
 {
-#if 0
-	struct ax_lvds *ax_lvds =
-	    encoder_to_ax_lvds(encoder);
-
-	DRM_DEBUG_DRIVER("enter, [encoder:%d:%s]\n", encoder->base.id,
-			 encoder->name);
-#endif
-
+	struct ax_lvds *ax_lvds = encoder_to_ax_lvds(encoder);
+	ax_lvds->status = true;
 }
 
 static void ax_lvds_encoder_mode_set(struct drm_encoder *encoder,
 				     struct drm_display_mode *mode,
 				     struct drm_display_mode *adjusted_mode)
 {
-	struct ax_lvds *ax_lvds =
-	    encoder_to_ax_lvds(encoder);
+	struct ax_lvds *ax_lvds = encoder_to_ax_lvds(encoder);
 	struct ax_crtc *ax_crtc = to_ax_crtc(encoder->crtc);
 	struct ax_disp_mode *ax_mode = &ax_crtc->mode;
 	int ret;
@@ -240,6 +234,7 @@ static void ax_lvds_encoder_mode_set(struct drm_encoder *encoder,
 	} else if (LVDS_JEIDA_18 == ax_lvds->fmt_out) {
 		ax_mode->fmt_out = AX_DISP_OUT_FMT_RGB666;
 	}
+	ax_lvds->clock = clk;
 
 	DRM_DEBUG_DRIVER("done, type: %d, fmt_out: %d\n", ax_mode->type,
 			 ax_mode->fmt_out);
@@ -369,30 +364,29 @@ static int ax_lvds_bind(struct device *dev, struct device *master, void *data)
 		return -ENODEV;
 	}
 
-	ax_lvds =
-	    devm_kzalloc(&pdev->dev, sizeof(*ax_lvds), GFP_KERNEL);
+	ax_lvds = devm_kzalloc(dev, sizeof(*ax_lvds), GFP_KERNEL);
 	if (!ax_lvds) {
 		DRM_ERROR("alloc lvds failed\n");
 		return -ENOMEM;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	ax_lvds->regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	ax_lvds->regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(ax_lvds->regs))
 		return PTR_ERR(ax_lvds->regs);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	ax_lvds->dphytx_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	ax_lvds->dphytx_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(ax_lvds->dphytx_regs))
 		return PTR_ERR(ax_lvds->dphytx_regs);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	ax_lvds->comm_sys_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	ax_lvds->comm_sys_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(ax_lvds->comm_sys_regs))
 		return PTR_ERR(ax_lvds->comm_sys_regs);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	ax_lvds->dispc_sys_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	ax_lvds->dispc_sys_regs = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(ax_lvds->dispc_sys_regs))
 		return PTR_ERR(ax_lvds->dispc_sys_regs);
 
@@ -486,7 +480,7 @@ static int ax_lvds_bind(struct device *dev, struct device *master, void *data)
 		ax_lvds->fmt_out = LVDS_VESA_24;
 	}
 
-	platform_set_drvdata(pdev, ax_lvds);
+	dev_set_drvdata(dev, ax_lvds);
 
 	return 0;
 
@@ -505,11 +499,10 @@ static void ax_lvds_unbind(struct device *dev, struct device *master,
 			     void *data)
 {
 	struct ax_lvds *ax_lvds;
-	struct platform_device *pdev = to_platform_device(dev);
+
+	ax_lvds = (struct ax_lvds *)dev_get_drvdata(dev);
 
 	DRM_INFO("lvds unbind\n");
-
-	ax_lvds = (struct ax_lvds *)platform_get_drvdata(pdev);
 
 	if (ax_lvds->panel)
 		drm_panel_detach(ax_lvds->panel);
@@ -552,6 +545,44 @@ static int ax_lvds_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int ax_lvds_suspend(struct device *dev)
+{
+	struct ax_lvds *ax_lvds = (struct ax_lvds *)dev_get_drvdata(dev);
+	if (ax_lvds->status) {
+		lvds_dphy_clear(ax_lvds);
+		ax_lvds_clk_unprepare(ax_lvds);
+		reset_control_assert(ax_lvds->lvds_prst_ctrl);
+		reset_control_assert(ax_lvds->dphytx_pll_rst_ctrl);
+		reset_control_assert(ax_lvds->dphytx_pll_div7_rst_ctrl);
+	}
+
+	return 0;
+}
+
+static int ax_lvds_resume(struct device *dev)
+{
+	int ret;
+	struct ax_lvds *ax_lvds = (struct ax_lvds *)dev_get_drvdata(dev);
+	if (ax_lvds->status) {
+		reset_control_deassert(ax_lvds->lvds_prst_ctrl);
+		reset_control_deassert(ax_lvds->dphytx_pll_rst_ctrl);
+		reset_control_deassert(ax_lvds->dphytx_pll_div7_rst_ctrl);
+
+		ret = ax_lvds_clk_prepare(ax_lvds);
+		if (ret)
+			DRM_ERROR("lvds encoder clk prepare failed, ret = %d\n", ret);
+
+		lvds_dphy_config(ax_lvds->clock, ax_lvds);
+
+		writel(DISPC_SYSGLB_LVDS_CLK_SEL_BIT, ax_lvds->dispc_sys_regs + DISPC_SYSGLB_LVDS_CLK_SEL_CLR);
+		ax_lvds_bridge_enable(&ax_lvds->bridge);
+	}
+
+	return 0;
+}
+#endif
+
 static const struct of_device_id ax_lvds_drm_dt_ids[] = {
 	{
 	 .compatible = "axera,lvds",
@@ -561,16 +592,21 @@ static const struct of_device_id ax_lvds_drm_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, ax_lvds_drm_dt_ids);
 
+static const struct dev_pm_ops ax_lvds_pm_ops = {
+	.suspend_noirq = ax_lvds_suspend,
+	.resume_noirq = ax_lvds_resume,
+};
+
 struct platform_driver ax_lvds_platform_driver = {
 	.probe = ax_lvds_probe,
 	.remove = ax_lvds_remove,
 	.driver = {
-		   .name = "lvds-drv",
+		   .name = "ax-lvds-drv",
 		   .of_match_table = of_match_ptr(ax_lvds_drm_dt_ids),
+		   .pm = &ax_lvds_pm_ops,
 		   },
 };
 
-
-MODULE_AUTHOR("madandan@axera-tech.com");
+MODULE_AUTHOR("Axera Inc.");
 MODULE_DESCRIPTION("Axera lvds driver");
 MODULE_LICENSE("GPL v2");

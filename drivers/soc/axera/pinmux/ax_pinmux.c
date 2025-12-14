@@ -55,17 +55,29 @@ static int ax_get_board_id(void)
 	return board_id;
 }
 
+static int ax_pinmux_sleep_mode_en(void)
+{
+	void __iomem *regs = NULL;
+
+	regs = ioremap(PIN_BASE_G6, 0x100);
+	writel(BIT(PIN_GROUP_SLEEP_EN_SHIFT), regs + PIN_GROUP_SLEEP_EN_OFFECT);
+	iounmap((void *)regs);
+	return 0;
+}
+
 static int ax_pinmux_index_conv(int index)
 {
 	int ret;
 
 	switch (index) {
+	//case AX630C_DEMO_DDR3_V1_0:
 	case AX630C_DEMO_LP4_V1_0:
 	case AX630C_DEMO_LP4_V1_1:
 		/* fall through */
 	case AX630C_DEMO_V1_1:
 		ret = AX630C_DEMO_V1_0;
 		break;
+	case AX620Q_LP4_MINION_BOARD:
 	case AX620Q_LP4_DEMO_V1_1:
 		ret = AX620Q_LP4_DEMO_V1_0;
 		break;
@@ -110,13 +122,11 @@ static int ax_pin_init(struct platform_device *pdev)
 		    DPHY_REG_LEN ? 1 : 0;
 		offset = ax620E_pinmux_tbl[index].data[i] - base_reg;
 		if (!base_reg || offset >= REG_REMAP_SIZE) {
-			base_reg = ax620E_pinmux_tbl[index].data[i];
+			base_reg = ax620E_pinmux_tbl[index].data[i] & (~0xfff);
 			offset = ax620E_pinmux_tbl[index].data[i] - base_reg;
 			if (reg)
 				iounmap(reg);
-			reg =
-			    ioremap(ax620E_pinmux_tbl[index].data[i],
-				    REG_REMAP_SIZE);
+			reg = ioremap(base_reg, REG_REMAP_SIZE);
 			if (!reg) {
 				pr_err("%s:ioremap(pinmux) failed\n", __func__);
 				ret = - ENOMEM;
@@ -147,6 +157,7 @@ static int ax_pinmux_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	ax_pinmux_sleep_mode_en();
 	ret = ax_pin_init(pdev);
 	if (ret)
 		pr_err("err: ax_pin_init failed!\n");

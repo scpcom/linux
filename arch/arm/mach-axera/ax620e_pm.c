@@ -28,6 +28,7 @@
 #include <linux/proc_fs.h>
 #include "ax620e_pm.h"
 #include "ax620e_pm_reg.h"
+#include <linux/ax_timestamp.h>
 
 #define func_2_iram	__aligned(4)
 
@@ -75,6 +76,7 @@ static void __iomem *comm_cpu_glb_base;
 static void __iomem *pllc_glb_base;
 static void __iomem *dpll_ctrl_glb_base;
 static void __iomem *ddr_sys_glb_base;
+static void __iomem *sleep_stage_addr;
 static struct proc_dir_entry *pll_choose_root;
 static pgd_t *pm_idmap_pgd;
 static unsigned int a64_warmreset_a32_code[] = {
@@ -92,10 +94,12 @@ extern void ax620e_cpu_sleep_enter(void);
 
 #define PLL_CHOOSE_ROOT_NAME	"ax_proc/pll_choose"
 #define PLL_STATE 	"pll_always_on"
-#define TIMER32_COUNT_PER_SEC		24000000
+#define TIMER32_COUNT_PER_SEC		32768
 #define SYS_PWR_STATE_PER_GRP_MAX	8
 #define SYS_PWR_STATE_LEN		4
 #define SYS_PWR_STATE_MASK		0xF
+#define SLEEP_STAGE_STORE_ADDR	0x4200
+
 static inline int pmu_get_module_state(void *pmu_base, MODULES_ENUM module, unsigned int *state)
 {
 	int i;
@@ -209,8 +213,8 @@ static void ax620e_pmu_init(void __iomem *pmu_base)
 {
 	writel(0, pmu_base + PMU_GLB_PWR_WAIT0_ADDR);
 	writel(0, pmu_base + PMU_GLB_PWR_WAIT1_ADDR);
-	writel(0x05050505, pmu_base + PMU_GLB_PWR_WAITON0_ADDR);
-	writel(0x05050505, pmu_base + PMU_GLB_PWR_WAITON1_ADDR);
+	writel(0x0, pmu_base + PMU_GLB_PWR_WAITON0_ADDR);
+	writel(0x0, pmu_base + PMU_GLB_PWR_WAITON1_ADDR);
 	writel(0xFFFF, pmu_base + PMU_GLB_INT_CLR_SET_ADDR);
 }
 
@@ -272,6 +276,7 @@ static void ax620e_chip_top_init(void)
 	writel((A64_WARMRST_A32_ADDR & 0xFFFFFFFF), comm_cpu_glb_base + CA53_CFG_RVBARADDR1_L);
 
 	writel(0x0, iram_base + PLL_ALWAYS_ON_ADDR);
+	*((volatile unsigned long long*)(iram_base + WAKEUP_START_TIMESTAMP_ADDR)) = 0x0;
 }
 
 static int ax620e_chip_lpmode_enter(unsigned long arg)
@@ -281,6 +286,9 @@ static int ax620e_chip_lpmode_enter(unsigned long arg)
 	flush_cache_all();
 
 	cpu_switch_mm(pm_idmap_pgd, &init_mm);
+	local_flush_bp_all();
+	local_flush_tlb_all();
+
 	sleep_fn = (void (*)(void))(IRAM_BASE_PHY_ADDR +
 							(unsigned int)ax620e_cpu_sleep_enter -
 							(unsigned int)ax620e_slp_cpu_resume);
@@ -357,14 +365,13 @@ static void flash_sys_sleep(slp_state_t state)
 		writel(BITS_FLASH_SYS_CLK_EB_1, flash_sys_glb_base + FLASH_SYS_CLK_EB_1_ADDR);
 
 		writel(BIT_FLASH_LPC_DATA_BUS_FRC_WORK, flash_sys_glb_base + FLASH_SYS_LPC_DATA_CLR_ADDR);
-		writel(BIT_PMU_GLB_RST_FRC_SW_FLASH_SET, pmu_glb_base + PMU_GLB_RST_FRC_SW_SET_ADDR);
-		writel(BIT_PMU_GLB_RST_FRC_EN_FLASH_SET, pmu_glb_base + PMU_GLB_RST_FRC_EN_SET_ADDR);
 
 		writel(BIT_FLASH_LPC_SLP_EN_SET, flash_sys_glb_base + FLASH_SYS_LPC_SET_ADDR);
 
 		pmu_module_sleep_en(pmu_glb_base, MODULE_FLASH, SLP_EN_SET);
 
 		while (!(ret = pmu_get_module_state(pmu_glb_base, MODULE_FLASH, &pwr_state)) && (pwr_state != PWR_STATE_OFF));
+		pr_info("flash sleep state is 0x%x\r\n", pwr_state);
 		break;
 	case SLP_EXIT:
 		pmu_module_sleep_en(pmu_glb_base, MODULE_FLASH, SLP_EN_CLR);
@@ -638,12 +645,12 @@ static void peri_sys_sleep(slp_state_t state)
 	switch (state) {
 	case SLP_ENTER:
 
-		/* in order to enable wdt0 during deep sleep, we set periph sys clk frc en here. */
+		/* in order to enable wdt2 during deep sleep, we set periph sys clk frc en here. */
 		val = readl(pmu_glb_base + PMU_GLB_CLK_FRC_EN_ADDR);
 		val |= BIT_PMU_GLB_PERIPH_SYS_CLK_FRC_EN;
 		writel(val, pmu_glb_base + PMU_GLB_CLK_FRC_EN_ADDR);
 
-		/* in order to enable wdt0 during deep sleep, we set periph sys clk frc sw here. */
+		/* in order to enable wdt2 during deep sleep, we set periph sys clk frc sw here. */
 		val = readl(pmu_glb_base + PMU_GLB_CLK_FRC_SW_ADDR);
 		val |= BIT_PMU_GLB_PERIPH_SYS_CLK_FRC_EN;
 		writel(val, pmu_glb_base + PMU_GLB_CLK_FRC_SW_ADDR);
@@ -655,6 +662,9 @@ static void peri_sys_sleep(slp_state_t state)
 		peri_sys_clk_eb_3_reserve = readl(periph_sys_glb_base + PERIPH_SYS_CLK_EB_3_ADDR);
 		peri_sys_clk_div_0_reserve = readl(periph_sys_glb_base + PERIPH_SYS_CLK_DIV_0_ADDR);
 
+		/* in order to enable wdt2 during deep sleep, set lpc bypass here */
+		writel(BIT_PERIPH_SYS_LPC_BP_CLK_EB_SET, periph_sys_glb_base + PERIPH_SYS_LPC_SET_ADDR);
+
 		writel(BIT_PERIPH_SYS_LPC_DATA_BUS_FRC_WORK_CLR ,periph_sys_glb_base + PERIPH_SYS_LPC_DATA_CLR_ADDR);
 
 		/* lpc_cfg_bus_idle_en & lpc_data_bus_idle_en */
@@ -663,13 +673,12 @@ static void peri_sys_sleep(slp_state_t state)
 		writel(BIT_PERIPH_SYS_LPC_DATA_IDLE_EN_SET, periph_sys_glb_base + PERIPH_SYS_LPC_SET_ADDR);
 		writel(BIT_PERIPH_SYS_LPC_SW_RST_CLR, periph_sys_glb_base + PERIPH_SYS_SW_RST_1_CLR_ADDR);
 
-		writel(BITS_PERIPH_SYS_CLK_EB_0, periph_sys_glb_base + PERIPH_SYS_CLK_EB_0_ADDR);
+		/* dont't clr clk_periph_24m and clk_wdt2_eb */
+		writel(BITS_PERIPH_SYS_CLK_EB_0, periph_sys_glb_base + PERIPH_SYS_CLK_EB_0_CLR_ADDR);
 		writel(BITS_PERIPH_SYS_CLK_EB_1, periph_sys_glb_base + PERIPH_SYS_CLK_EB_1_ADDR);
 		writel(BITS_PERIPH_SYS_CLK_EB_2, periph_sys_glb_base + PERIPH_SYS_CLK_EB_2_ADDR);
 		writel(BITS_PERIPH_SYS_CLK_EB_3, periph_sys_glb_base + PERIPH_SYS_CLK_EB_3_ADDR);
 
-		/* in order to enable wdt0 during deep sleep, set lpc bypass here */
-		writel(BIT_PERIPH_SYS_LPC_BP_CLK_EB_SET, periph_sys_glb_base + PERIPH_SYS_LPC_SET_ADDR);
 		writel(BIT_PERIPH_SYS_LPC_SLP_EN_SET, periph_sys_glb_base + PERIPH_SYS_LPC_SET_ADDR);
 
 		pmu_module_sleep_en(pmu_glb_base, MODULE_PERIPH, SLP_EN_SET);
@@ -732,43 +741,72 @@ static void other_sys_sleep(void)
 	val |= BIT_DDRC_RF_AUTO_SLP_EN;
 	writel(val, ddrc_base + DDRC_DDRMC_CFG22_ADDR);
 
+	writel(AX_KERNEL_SLEEP_STAGE_00, sleep_stage_addr);
 	flash_sys_sleep(SLP_ENTER);
+
+	writel(AX_KERNEL_SLEEP_STAGE_01, sleep_stage_addr);
 	isp_sys_sleep(SLP_ENTER);
+
+	writel(AX_KERNEL_SLEEP_STAGE_02, sleep_stage_addr);
 	mm_sys_sleep(SLP_ENTER);
+
+	writel(AX_KERNEL_SLEEP_STAGE_03, sleep_stage_addr);
 	npu_sys_sleep(SLP_ENTER);
+
+	writel(AX_KERNEL_SLEEP_STAGE_04, sleep_stage_addr);
 	vpu_sys_sleep(SLP_ENTER);
+
+	writel(AX_KERNEL_SLEEP_STAGE_05, sleep_stage_addr);
+	ax_sys_sleeptimestamp(AX_ID_KERNEL, AX_SUB_ID_SUSPEND_END);
+	ax_sys_sleeptimestamp_print();
 	peri_sys_sleep(SLP_ENTER);
+	writel(AX_KERNEL_SLEEP_STAGE_06, sleep_stage_addr);
 
 	/* check flash isp mm npu vpu peri status */
 	while(readl(pmu_glb_base + PMU_GLB_PWR_STATE_ADDR) != 0x55555500);
 	copy_again();
+	writel(AX_KERNEL_SLEEP_STAGE_07, sleep_stage_addr);
 }
 
 static void other_sys_wakeup(void)
 {
+	ax_sys_sleeptimestamp(AX_ID_KERNEL, AX_SUB_ID_RESUME_START);
+	writel(AX_KERNEL_WAKEUP_STAGE_15, sleep_stage_addr);
 	peri_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_16, sleep_stage_addr);
 	flash_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_17, sleep_stage_addr);
 	npu_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_18, sleep_stage_addr);
 	isp_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_19, sleep_stage_addr);
 	mm_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_1A, sleep_stage_addr);
 	vpu_sys_sleep(SLP_EXIT);
+	writel(AX_KERNEL_WAKEUP_STAGE_1B, sleep_stage_addr);
+}
+
+static void clk_aux_disabled(void)
+{
+	writel(0x10, comm_sys_glb_base + COMMON_SYS_AUX_CFG1_CLR_ADDR);
+}
+
+static void clk_aux_enabled(void)
+{
+	writel(0x10, comm_sys_glb_base + COMMON_SYS_AUX_CFG1_SET_ADDR);
 }
 
 int ax620e_suspend_enter(suspend_state_t state)
 {
 	int ret;
 
-	unsigned int val;
-
 	/* eic riscv en clr */
 	writel(0x0, comm_sys_glb_base + EIC_RISCV_EN);
 
 	writel(BIT_COMMON_SYS_EIC_MASK_ENABLE_SET, comm_sys_glb_base + COMMON_SYS_EIC_MASK_ENABLE_SET_ADDR);
 
-	/* gpio lp eic enable */
-	val = readl(comm_sys_glb_base + COMMON_SYS_EIC_EN_SET_ADDR);
-	val |= BIT_COMMON_GPIO_LP_EIC_EN_SET;
-	writel(val, comm_sys_glb_base + COMMON_SYS_EIC_EN_SET_ADDR);
+	if (IS_ENABLED(CONFIG_CLK_AUX_SUSPEND_DISABLE))
+		clk_aux_disabled();
 
 	other_sys_sleep();
 
@@ -777,6 +815,9 @@ int ax620e_suspend_enter(suspend_state_t state)
 		pr_warn("ax620e sleep occurs some unexpected\n");
 
 	other_sys_wakeup();
+
+	if (IS_ENABLED(CONFIG_CLK_AUX_SUSPEND_DISABLE))
+		clk_aux_enabled();
 
 	return 0;
 }
@@ -884,14 +925,22 @@ static int ax620e_pm_setup_idmap(unsigned long start, unsigned long end)
 static inline void timer32_wakeup_config(unsigned int wait_count)
 {
 	unsigned long long val = 0;
+	unsigned long long delta_stamp = 0;
+	unsigned int delta = 0;
+	unsigned long long wakeup_start = 0;
+	unsigned long long sleep_end = 0;
+
+
 	if (__raw_readl((void *)TIMER_EB_ADDR) == 0)
 		return;
 
 	val = __raw_readl((void *)TIMER_COUNT_ADDR);
-	if(val > 150000)
-		val = 150000;
-	if (val != 0)
-		wait_count = (val * 24000);	//wait_count = ms * 24M/1000, if wait_count > 150s, then set it to 150s.
+	if (val != 0) {
+		val *= 1000;
+		val *= TIMER32_COUNT_PER_SEC;	//wait_count = ms * 1000 * 32K / 1000000.
+		do_div(val, 1000000);
+		wait_count = val;
+	}
 
 flag1:
 	__raw_writel(0, (void *)TIMER32_BASE_PHY_ADDR + TIMER32_CMR_START);//stop compare
@@ -920,9 +969,9 @@ flag1:
 	val &= ~(BIT_COMMON_SYS_TIMER32_SW_RST | BIT_COMMON_SYS_TIMER32_SW_PRST);
 	__raw_writel(val, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_SW_RST_0_ADDR);
 
-	/* select 24M */
+	/* select 32K */
 	val = __raw_readl((void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_CLK_MUX1_ADDR);
-	val |= BIT_COMMON_SYS_CLK_TIMER32_SEL_24M;
+	val &= ~BIT_COMMON_SYS_CLK_TIMER32_SEL_24M;
 	__raw_writel(val, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_CLK_MUX1_ADDR);
 
 	/*clk channel enable */
@@ -934,6 +983,25 @@ flag1:
 	val = __raw_readl((void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_CLK_EB_1_ADDR);
 	val |= BIT_COMMON_SYS_PCLK_TMR32_EB;
 	__raw_writel(val, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_CLK_EB_1_ADDR);
+
+	/* sleep end timer64 value */
+	sleep_end = *((volatile unsigned long long*)TIMER64_CNT_LOW_ADDR);
+
+	wakeup_start = *((volatile unsigned long long*)WAKEUP_START_TIMESTAMP_ADDR);
+
+	delta_stamp = sleep_end - wakeup_start;
+	if (delta_stamp > 0) {
+		do_div(delta_stamp, 24);
+		delta_stamp *= TIMER32_COUNT_PER_SEC;
+		do_div(delta_stamp, 1000000);
+		delta = delta_stamp;
+		if (wait_count > delta)
+			wait_count = wait_count - delta;
+	}
+
+	/* when the timer32 wait count < 10ms, we directly set it to 10ms in case of the timer32 interrupt block sleep. */
+	if (wait_count < TIMER32_COUNT_PER_SEC / 100)
+		wait_count = TIMER32_COUNT_PER_SEC / 100;
 
 	val = __raw_readl((void *)TIMER32_BASE_PHY_ADDR + TIMER32_CNT_CCVR);
 	val += wait_count;
@@ -950,28 +1018,52 @@ flag1:
 	__raw_writel(BIT_TIMER32_INTR_EN, (void *)TIMER32_BASE_PHY_ADDR + TIMER32_INTR_CTRL);
 }
 
+static inline void reg_mask_set(void *addr, unsigned int mask_data, unsigned int bits_set)
+{
+	unsigned int reg_data;
+	reg_data = __raw_readl(addr);
+	reg_data &= ~(mask_data);
+	reg_data |= bits_set;
+	__raw_writel(reg_data, addr);
+}
+
 static void noinline func_2_iram ddr_sys_sleep_in_iram(slp_state_t state)
 {
-	unsigned int val;
+	unsigned int val = 0;
 	unsigned int pwr_state = 0;
-
+	unsigned char type;
+	type = __raw_readl((void *)IRAM_CHIP_TYPE_ADDR);
 	switch (state) {
 	case SLP_ENTER:
-		__raw_writel(BIT_DDR_SYS_CLKG_BYPASS_DDRC_REF_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CLKG_BYPASS_CLR_ADDR);
-		__raw_writel(BIT_DDR_SYS_CLKG_BYPASS_AXI_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CLKG_BYPASS_CLR_ADDR);
-		__raw_writel(BIT_DDR_SYS_CLKG_BYPASS_DDRPHY_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CLKG_BYPASS_CLR_ADDR);
-		__raw_writel(BIT_DDR_SYS_CLKG_BYPASS_DDRC_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CLKG_BYPASS_CLR_ADDR);
-
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_08, (void*)SLEEP_STAGE_STORE_ADDR);
+		if(IRAM_CHIP_TYPE_Q == type) {
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG7_ADDR, 0, D_DDRIOMUX_CKE_OE | D_DDRIOMUX_CKE_OUT);
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG6_ADDR, D_DDRIOMUX_CKE_IE, D_DDRIOMUX_CKE_SEL);
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG9_ADDR, 0, D_DDRIOMUX_CLK_OE | D_DDRIOMUX_CLK_OUT);
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG8_ADDR, D_DDRIOMUX_CLK_IE, D_DDRIOMUX_CLK_SEL);
+			reg_mask_set((void *)D_DDRMC_TMG18_F0_ADDR, D_DDRMC_CA_CS_CLK_OE, 0);
+			reg_mask_set((void *)D_DDRMC_TMG18_F1_ADDR, D_DDRMC_CA_CS_CLK_OE, 0);
+			reg_mask_set((void *)D_DDRMC_CFG18_ADDR, D_DDRMC_AUTO_GATE_EN_PHY, 0);
+		}
 		__raw_writel(BIT_DDR_SYS_AXICLK_OFF_HW_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_AXICLK_OFF_SET_ADDR);
 		__raw_writel(BIT_DDR_SYS_CORECLK_OFF_HW_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CORECLK_OFF_SET_ADDR);
 
-		__raw_writel(BIT_DDR_SYS_LPC_DATA_BUS_IDLE_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LPC_DATA_SET_ADDR);
-		//writel(BIT_DDR_SYS_SLP_IGNORE_CPU_EN_CLR, DDR_SYS_SLP_IGNORE_CPU_CLR_ADDR);
-		__raw_writel(BIT_DDR_SYS_SLP_IGNORE_CPU_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_SLP_IGNORE_CPU_SET_ADDR);
-
-
+		//ddr sys go into light sleep
 		__raw_writel(BIT_COMMON_SYS_COMMON2_DDR_BUS_IDLE_SW, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_COMMON2_DDR_BUS_IDLE_SW_ADDR);
 		__raw_writel(BIT_COOMON_SYS_COMMON2_DDR_BUS_IDLE_MASK, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_COMMON2_DDR_BUS_IDLE_MASK_ADDR);
+		__raw_writel(BIT_DDR_SYS_SLP_IGNORE_CPU_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_SLP_IGNORE_CPU_SET_ADDR);
+		__raw_writel(1, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_LIGHT_SLEEP_FRC_ADDR);
+		__raw_writel(1, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_LIGHT_SLEEP_SW_ADDR);
+
+		//wait ddr sys go into light sleep
+		while((__raw_readl((void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LP_DDRC_ADDR) & BITS_DDR_SYS_LP_DDRC_STATE) != DDR_SYS_LP_DDRC_ENTER_LIGHT_SLP);
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_09, (void*)SLEEP_STAGE_STORE_ADDR);
+
+		if(IRAM_CHIP_TYPE_Q == type) {
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG7_ADDR, D_DDRIOMUX_CKE_OUT, 0);
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG9_ADDR, D_DDRIOMUX_CLK_OUT, 0);
+		}
+		__raw_writel(BIT_DDR_SYS_LPC_DATA_BUS_FORCE_IDLE_SET_LSB, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LPC_DATA_SET_ADDR);
 
 		/* enable pmu ddr and loop state till off */
 		__raw_writel(1 << MODULE_DDR, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_SLP_EN_SET_ADDR);
@@ -981,8 +1073,10 @@ static void noinline func_2_iram ddr_sys_sleep_in_iram(slp_state_t state)
 			if (pwr_state == PWR_STATE_OFF)
 				break;
 		}
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_0A, (void*)SLEEP_STAGE_STORE_ADDR);
 		break;
 	case SLP_EXIT:
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_10, (void*)SLEEP_STAGE_STORE_ADDR);
 		/* wakeup pmu ddr sys loop state till on */
 		__raw_writel(1 << MODULE_DDR, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_SLP_EN_CLR_ADDR);
 		__raw_writel(1 << MODULE_DDR, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_WAKUP_SET_ADDR);
@@ -992,62 +1086,31 @@ static void noinline func_2_iram ddr_sys_sleep_in_iram(slp_state_t state)
 			if (pwr_state == PWR_STATE_ON)
 				break;
 		}
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_11, (void*)SLEEP_STAGE_STORE_ADDR);
+
+		__raw_writel(BIT_DDR_SYS_LPC_DATA_BUS_FORCE_IDLE_CLR_LSB, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LPC_DATA_CLR_ADDR);
 		__raw_writel(1 << MODULE_DDR, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_WAKUP_CLR_ADDR);
 
-		/* ddr sys self config */
-		__raw_writel(BIT_DDR_SYS_LPC_DATA_BUS_IDLE_EN_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LPC_DATA_CLR_ADDR);
-
-		__raw_writel(BIT_DDR_SYS_DDRC_WAKEUP_SW_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDRC_WAKEUP_SET_ADDR);
-		__raw_writel(BIT_DDR_SYS_DPLL_LPC_OFF_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDR_DEEP_SLEEP_LATCH_CLR_ADDR);
-
+		//cpu will close dpll. TODO and wait 1ms
 		while((__raw_readl((void *)DPLL_BASE_PHY_ADDR + DDR_SYS_PLL_RDY_STS_ADDR) & BIT_DDR_STS_DPLL_RSY) != 0x1);
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_12, (void*)SLEEP_STAGE_STORE_ADDR);
 
-		__raw_writel(BIT_DDR_SYS_DDRC_WAKEUP_SW_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDRC_WAKEUP_CLR_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT0_CFG0_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN_PORT0;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT0_CFG0_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT1_CFG0_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN_PORT1;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT1_CFG0_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT2_CFG0_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN_PORT2;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT2_CFG0_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT3_CFG0_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN_PORT3;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT3_CFG0_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT4_CFG0_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN_PORT4;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_PORT4_CFG0_ADDR);
-
-		val = __raw_readl((void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_CFG22_ADDR);
-		val |= BIT_DDRC_RF_AUTO_SLP_EN;
-		__raw_writel(val, (void *)DDRC_GLB_BASE_PHY_ADDR + DDRC_DDRMC_CFG22_ADDR);
-
-		__raw_writel(BITS_DDR_SYS_DDR_AXI_LP_REQ_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDR_AXI_SET_ADDR);
-		__raw_writel(BIT_DDR_SYS_DDRC_SLP_SW_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDRC_SLP_SET_ADDR);
-
-		while((__raw_readl((void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LP_DDRC_ADDR) & BITS_DDR_SYS_LP_DDRC_STATE) != DDR_SYS_LP_DDRC_ENTER_LIGHT_SLP);
-
-		__raw_writel(BIT_DDR_SYS_DDRPHY_PD_LATCH_CLR_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDR_DEEP_SLP_LATCH_CLR_SET_ADDR);
-
-		__raw_writel(BITS_DDR_SYS_DDR_AXI_LP_REQ_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDR_AXI_CLR_ADDR);
-		__raw_writel(BIT_DDR_SYS_DDRC_SLP_SW_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_DDRC_SLP_CLR_ADDR);
-		//writel(BIT_DDR_SYS_DDRC_WAKEUP_SW_SET, DDR_SYS_DDRC_WAKEUP_SET_ADDR);
-
+		//ddr sys exit light sleep
+		if(IRAM_CHIP_TYPE_Q == type) {
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG9_ADDR, 0, D_DDRIOMUX_CLK_OUT);
+			reg_mask_set((void *)D_DDRPHYB_AC_CFG7_ADDR, 0, D_DDRIOMUX_CKE_OUT);
+			reg_mask_set((void *)D_DDRMC_CFG18_ADDR, 0, D_DDRMC_AUTO_GATE_EN_PHY);
+		}
+		__raw_writel(0, (void *)PMU_GLB_BASE_PHY_ADDR + PMU_GLB_LIGHT_SLEEP_SW_ADDR);
 		while((__raw_readl((void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_LP_DDRC_ADDR) & 0xf) != DDR_SYS_LP_DDRC_EXIT_LIGHT_SLP);
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_13, (void*)SLEEP_STAGE_STORE_ADDR);
 
 		__raw_writel(BIT_DDR_SYS_AXICLK_OFF_HW_EN_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_AXICLK_OFF_CLR_ADDR);
 		__raw_writel(BIT_DDR_SYS_CORECLK_OFF_HW_EN_CLR, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_CORECLK_OFF_CLR_ADDR);
 
-		__raw_writel(BIT_DDR_SYS_SLP_IGNORE_CPU_EN_SET, (void *)DDR_SYS_GLB_BASE_PHY_ADDR + DDR_SYS_SLP_IGNORE_CPU_SET_ADDR);
-
 		__raw_writel(0, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_COMMON2_DDR_BUS_IDLE_SW_ADDR);
 		__raw_writel(0, (void *)COMMON_SYS_GLB_PHY_BASE + COMMON_SYS_COMMON2_DDR_BUS_IDLE_MASK_ADDR);
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_14, (void*)SLEEP_STAGE_STORE_ADDR);
 		break;
 	default:
 
@@ -1065,9 +1128,11 @@ static void noinline func_2_iram cpu_sys_sleep_in_iram(slp_state_t state)
 	unsigned int common_clk_mux_0_reserve;
 	unsigned int common_clk_mux_2_reserve;
 	unsigned int val;
+	unsigned long long timer64_val = 0;
 
 	switch (state) {
 	case SLP_ENTER:
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_0B, (void*)SLEEP_STAGE_STORE_ADDR);
 		/* backup cpu clk regs to iram backup address */
 		cpu_clk_mux_0_reserve = __raw_readl((void *)CPU_SYS_GLB_BASE_PHY_ADDR + CPU_SYS_CLK_MUX_0_ADDR);
 		cpu_clk_eb_0_reserve = __raw_readl((void *)CPU_SYS_GLB_BASE_PHY_ADDR + CPU_SYS_CLK_EB_0_ADDR);
@@ -1142,14 +1207,23 @@ static void noinline func_2_iram cpu_sys_sleep_in_iram(slp_state_t state)
 			__raw_writel(0x7e, (void *)PLLC_GLB_REG_BASE + PLL_GRP_PLL_RE_OPEN_CLR_ADDR);
 			__raw_writel(0x0, (void *)DPLL_CTRL_GLB_BASE_ADDR + DPLL_PLL_RE_OPEN_ADDR);
 		}
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_0C, (void*)SLEEP_STAGE_STORE_ADDR);
 		timer32_wakeup_config(TIMER32_COUNT_PER_SEC); /* default 1s */
+		__raw_writel(AX_KERNEL_SLEEP_STAGE_0D, (void*)SLEEP_STAGE_STORE_ADDR);
 		break;
 	case SLP_EXIT:
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_0E, (void*)SLEEP_STAGE_STORE_ADDR);
+		/* wakeup timer64 start */
+		*((volatile unsigned long long*)WAKEUP_START_TIMESTAMP_ADDR) = 0x0;
+		timer64_val = *((volatile unsigned long long*)TIMER64_CNT_LOW_ADDR);
+		*((volatile unsigned long long*)WAKEUP_START_TIMESTAMP_ADDR) = timer64_val;
+
 		if (__raw_readl((void*)PLL_ALWAYS_ON_ADDR) == 0x0) {
 			/* set pll clock gating eb */
 			__raw_writel(0x7e, (void *)PLLC_GLB_REG_BASE + PLL_GRP_PLL_RE_OPEN_SET_ADDR);
 			__raw_writel(0x1, (void *)DPLL_CTRL_GLB_BASE_ADDR + DPLL_PLL_RE_OPEN_ADDR);
 		}
+
 		/* cpu sys wakeup and clock restore */
 		cpu_clk_mux_0_reserve = __raw_readl((void *)CPU_CLK_MUX_0_BAK_ADDR);
 		cpu_clk_eb_0_reserve = __raw_readl((void *)CPU_CLK_EB_0_BAK_ADDR);
@@ -1182,6 +1256,7 @@ static void noinline func_2_iram cpu_sys_sleep_in_iram(slp_state_t state)
 		__raw_writel(0x0, (void *)GTMR_BASE_PHY_ADDR + GTMR_CNTCVU);
 		__raw_writel(GTMR_FREQ, (void *)GTMR_BASE_PHY_ADDR + GTMR_CNTFID0);
 		__raw_writel(BITS_ENABLE_GTMR, (void *)GTMR_BASE_PHY_ADDR + GTMR_CNTCR);
+		__raw_writel(AX_KERNEL_WAKEUP_STAGE_0F, (void*)SLEEP_STAGE_STORE_ADDR);
 		break;
 	default:
 
@@ -1191,7 +1266,6 @@ static void noinline func_2_iram cpu_sys_sleep_in_iram(slp_state_t state)
 static void noinline cpu_sys_sleep_in_iram_end(void) {}
 
 static DEFINE_MUTEX(pll_state_mutex);
-
 
 static int pll_state_show(struct seq_file *m, void *v)
 {
@@ -1210,17 +1284,14 @@ ssize_t pll_state_write(struct file *file, const char __user * buffer, size_t co
 {
 	char kbuf[32] = { 0 };
 
-	if (count > 32) {
+	if (count > 32)
 		return -1;
-	}
 
-	if (copy_from_user(kbuf, buffer, count)) {
+	if (copy_from_user(kbuf, buffer, count))
 		return -EFAULT;
-	}
 
-	if (sscanf(kbuf, "%d", (unsigned int*)&pll_state) != 1) {
+	if (sscanf(kbuf, "%d", (unsigned int*)&pll_state) != 1)
 		return -1;
-	}
 
 	mutex_lock(&pll_state_mutex);
 	if (pll_state) {
@@ -1387,6 +1458,12 @@ int ax620e_suspend_init(struct device_node *np)
 		goto iomap_err;
 	}
 
+	sleep_stage_addr = ioremap(SLEEP_STAGE_STORE_ADDR, 0x4);
+	if (NULL == sleep_stage_addr) {
+		pr_err("%s: could not map sleep_stage_addr\n", __func__);
+		goto iomap_err;
+	}
+
 	ret = axera_get_resource_byname(np, "iram_base", &iram_res);
 	if (ret)
 		goto iomap_err;
@@ -1453,6 +1530,7 @@ int ax620e_suspend_init(struct device_node *np)
 	return 0;
 
 iomap_err:
+
 	if (comm_cpu_glb_base)
 		iounmap(comm_cpu_glb_base);
 
@@ -1503,6 +1581,9 @@ iomap_err:
 
 	if (ddr_sys_glb_base)
 		iounmap(ddr_sys_glb_base);
+
+	if (sleep_stage_addr)
+		iounmap(sleep_stage_addr);
 
 	return -1;
 }

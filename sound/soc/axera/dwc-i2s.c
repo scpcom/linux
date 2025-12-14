@@ -30,6 +30,23 @@
 #include <linux/of_device.h>
 #include <linux/reset.h>
 
+static const struct snd_pcm_hardware axera_pcm_hardware = {
+	.info = SNDRV_PCM_INFO_INTERLEAVED |
+		SNDRV_PCM_INFO_MMAP |
+		SNDRV_PCM_INFO_MMAP_VALID,
+	.buffer_bytes_max = SIZE_MAX,
+	.period_bytes_min = 256,
+	.period_bytes_max = 65536,  /*  get  from dma_get_max_seg_size(dma_dev);*/
+	.periods_min = 2,
+	.periods_max = UINT_MAX,
+	.fifo_size = 0,
+};
+
+static struct snd_dmaengine_pcm_config axera_dmaengine_pcm_config = {
+	.prepare_slave_config = snd_dmaengine_pcm_prepare_slave_config,
+	.pcm_hardware = &axera_pcm_hardware,
+	.prealloc_buffer_size = 256 * 1024,
+};
 
 static inline void i2s_write_reg(void __iomem *io_base, int reg, u32 val)
 {
@@ -78,7 +95,7 @@ static inline void i2s_disable_irqs(struct dw_i2s_dev *dev, u32 stream,
 			i2s_write_reg(dev->i2s_base, IMR(i), irq | 0x30);
 		}
 	} else {
-		for (i = 0; i < (chan_nr / 2); i++) {
+		for (i = 0; i < (chan_nr); i++) {
 			irq = i2s_read_reg(dev->i2s_base, IMR(i));
 			i2s_write_reg(dev->i2s_base, IMR(i), irq | 0x03);
 		}
@@ -89,16 +106,21 @@ static inline void i2s_enable_irqs(struct dw_i2s_dev *dev, u32 stream,
 				   int chan_nr)
 {
 	u32 i, irq;
-
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		for (i = 0; i < (chan_nr / 2); i++) {
 			irq = i2s_read_reg(dev->i2s_base, IMR(i));
-			i2s_write_reg(dev->i2s_base, IMR(i), irq & ~0x30);
+			if (dev->use_pio)
+				i2s_write_reg(dev->i2s_base, IMR(i), irq & ~I2S_TX_OVER_EMPTY_MASK);
+			else
+				i2s_write_reg(dev->i2s_base, IMR(i), irq & ~I2S_TX_OVER_MASK);
 		}
 	} else {
-		for (i = 0; i < (chan_nr / 2); i++) {
+		for (i = 0; i < (chan_nr); i++) {
 			irq = i2s_read_reg(dev->i2s_base, IMR(i));
-			i2s_write_reg(dev->i2s_base, IMR(i), irq & ~0x03);
+			if (dev->use_pio)
+				i2s_write_reg(dev->i2s_base, IMR(i), irq & ~I2S_RX_OVER_AVA_MASK);
+			else
+				i2s_write_reg(dev->i2s_base, IMR(i), irq & ~I2S_RX_OVER_MASK);
 		}
 	}
 }
@@ -109,13 +131,12 @@ static irqreturn_t i2s_irq_handler(int irq, void *dev_id)
 	bool irq_valid = false;
 	u32 isr[4];
 	int i;
-	for (i = 0; i < 1; i++)
+	for (i = 0; i < 2; i++)
 		isr[i] = i2s_read_reg(dev->i2s_base, ISR(i));
 
 	i2s_clear_irqs(dev, SNDRV_PCM_STREAM_PLAYBACK);
 	i2s_clear_irqs(dev, SNDRV_PCM_STREAM_CAPTURE);
-
-	for (i = 0; i < 1; i++) {
+	for (i = 0; i < 2; i++) {
 		/*
 		 * Check if TX fifo is empty. If empty fill FIFO with samples
 		 * NOTE: Only two channels supported
@@ -136,13 +157,13 @@ static irqreturn_t i2s_irq_handler(int irq, void *dev_id)
 
 		/* Error Handling: TX */
 		if (isr[i] & ISR_TXFO) {
-			//dev_err(dev->dev, "TX overrun (ch_id=%d)\n", i);
+			dev_err(dev->dev, "TX overrun (ch_id=%d)\n", i);
 			irq_valid = true;
 		}
 
 		/* Error Handling: RX */
 		if (isr[i] & ISR_RXFO) {
-			//dev_err(dev->dev, "RX overrun (ch_id=%d)\n", i);
+			dev_err(dev->dev, "RX overrun (ch_id=%d)\n", i);
 			irq_valid = true;
 		}
 	}
@@ -228,9 +249,8 @@ static int dw_i2s_startup(struct snd_pcm_substream *substream,
 	else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		dma_data = &dev->capture_dma_data;
 
-	pr_info("%s, %d\n", __func__, __LINE__);
+	dev_dbg(dev->dev, "%s, %d\n", __func__, __LINE__);
 	snd_soc_dai_set_dma_data(cpu_dai, substream, (void *)dma_data);
-
 	return 0;
 }
 
@@ -301,7 +321,7 @@ static int dw_i2s_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	dma_data->maxburst = 1;
+	dma_data->maxburst = 8;
 
 	config->chan_nr = params_channels(params);
 
@@ -329,7 +349,7 @@ static int dw_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	config->sample_rate = params_rate(params);
 
-	pr_info("%s, %d, sample_rate: %u, data_width: %u, dev->ccr: %u\n",
+	dev_dbg(dev->dev, "%s, %d, sample_rate: %u, data_width: %u, dev->ccr: %u\n",
 		__func__, __LINE__, config->sample_rate, config->data_width, dev->ccr);
 	if (dev->capability & DW_I2S_MASTER) {
 		if (dev->i2s_clk_cfg) {
@@ -342,7 +362,7 @@ static int dw_i2s_hw_params(struct snd_pcm_substream *substream,
 			u32 bitclk = config->sample_rate *
 					config->data_width * 2;
 
-			pr_info("%s, set rate bitclk: %u\n", __func__, bitclk);
+			dev_dbg(dev->dev, "%s, set rate bitclk: %u\n", __func__, bitclk);
 
 			clk_disable(dev->clk);
 			ret = clk_set_rate(dev->clk, bitclk);
@@ -388,8 +408,7 @@ static int dw_i2s_trigger(struct snd_pcm_substream *substream,
 {
 	struct dw_i2s_dev *dev = snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
-
-	pr_info("%s, %d, cmd: %d\n", __func__, __LINE__, cmd);
+	dev_dbg(dev->dev, "%s, %d, cmd: %d\n", __func__, __LINE__, cmd);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -416,7 +435,7 @@ static int dw_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 	struct dw_i2s_dev *dev = snd_soc_dai_get_drvdata(cpu_dai);
 	int ret = 0;
 
-	pr_info("%s, fmt: 0x%x\n", __func__, fmt);
+	dev_dbg(dev->dev, "%s, fmt: 0x%x\n", __func__, fmt);
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
 		if (dev->capability & DW_I2S_SLAVE)
@@ -487,7 +506,7 @@ static int dw_i2s_suspend(struct snd_soc_dai *dai)
 #ifdef I2S_CLK_RESET
 		ret = clk_set_rate(dev->clk, 24576000);
 		if (ret) {
-			pr_info("Can't set I2S clock rate: %d\n", ret);
+			dev_err(dev->dev, "Can't set I2S clock rate: %d\n", ret);
 			return ret;
 		}
 #endif
@@ -507,13 +526,13 @@ static int dw_i2s_resume(struct snd_soc_dai *dai)
 		if (dev->i2s_clk_cfg) {
 			ret = dev->i2s_clk_cfg(&dev->config);
 			if (ret < 0) {
-				pr_info( "runtime audio clk config fail\n");
+				dev_err(dev->dev,  "runtime audio clk config fail\n");
 				return ret;
 			}
 		} else {
 			ret = clk_set_rate(dev->clk, dev->bit_rate);
 			if (ret) {
-				pr_info("Can't set I2S clock rate: %d\n", ret);
+				dev_err(dev->dev, "Can't set I2S clock rate: %d\n", ret);
 				return ret;
 			}
 		}
@@ -744,6 +763,7 @@ static int dw_i2s_probe(struct platform_device *pdev)
 	unsigned long clk_val;
 	struct device_node *np = pdev->dev.of_node;
 	const struct of_device_id *of_id;
+	u32 size = 0;
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -753,9 +773,9 @@ static int dw_i2s_probe(struct platform_device *pdev)
 	if (!of_id)
 		return -EINVAL;
 	dev->intr_type = (enum dw_intr_type)of_id->data;
-	pr_info("dev->intr_type = %d\n", dev->intr_type);
+	dev_dbg(dev->dev, "dev->intr_type = %d\n", dev->intr_type);
 	dev->hdmi_i2s = of_get_property(np, "hdmi-i2s", NULL) ? 1 : 0;
-	pr_info("%s, hdmi_i2s: %d\n", __func__, dev->hdmi_i2s);
+	dev_dbg(&pdev->dev, "%s, hdmi_i2s: %d\n", __func__, dev->hdmi_i2s);
 	if (dev->hdmi_i2s) {
 		dev->rst = devm_reset_control_get_optional(&pdev->dev, "rst");
 		if (IS_ERR(dev->rst))
@@ -778,13 +798,13 @@ static int dw_i2s_probe(struct platform_device *pdev)
 
 	dev->i2s_pclk = devm_clk_get(&pdev->dev, "i2s_pclk");
 	if (IS_ERR(dev->i2s_pclk)) {
-		pr_err("get i2s_pclk failed\n");
+		dev_err(&pdev->dev, "get i2s_pclk failed\n");
 		return PTR_ERR(dev->i2s_pclk);
 	}
 
 	ret = clk_prepare_enable(dev->i2s_pclk);
 	if (ret < 0) {
-		pr_err("i2s_pclk prepare failed\n");
+		dev_err(&pdev->dev, "i2s_pclk prepare failed\n");
 		return ret;
 	}
 
@@ -799,7 +819,7 @@ static int dw_i2s_probe(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	dev->i2s_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(dev->i2s_base)) {
-		pr_err("remap i2s base failed\n");
+		dev_err(&pdev->dev, "remap i2s base failed\n");
 		return PTR_ERR(dev->i2s_base);
 	}
 
@@ -809,7 +829,7 @@ static int dw_i2s_probe(struct platform_device *pdev)
 	if (dev->pinmux_res) {
 		ret = ax_config_mapping(dev);
 		if (ret) {
-			pr_err("ax_config_mapping failed\n");
+			dev_err(&pdev->dev, "ax_config_mapping failed\n");
 			return ret;
 		}
 	}
@@ -823,7 +843,7 @@ static int dw_i2s_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
-	pr_info("dw_i2s_probe get irq is %d\n", irq);
+	dev_dbg(&pdev->dev, "dw_i2s_probe get irq is %d\n", irq);
 	dev->i2s_reg_comp1 = I2S_COMP_PARAM_1;
 	dev->i2s_reg_comp2 = I2S_COMP_PARAM_2;
 
@@ -841,27 +861,27 @@ static int dw_i2s_probe(struct platform_device *pdev)
 		ret = dw_configure_dai_by_dt(dev, dw_i2s_dai, res);
 	}
 	if (ret < 0) {
-		pr_err("configure dai failed\n");
+		dev_err(&pdev->dev, "configure dai failed\n");
 		return ret;
 	}
 
 	dev->i2s_mclk = devm_clk_get(&pdev->dev, "i2s_mclk");
 	if (IS_ERR(dev->i2s_mclk)) {
-		pr_info("i2s_mclk not configured\n");
+		dev_err(&pdev->dev, "i2s_mclk not configured\n");
 	} else {
 		ret = clk_prepare_enable(dev->i2s_mclk);
 		if (ret < 0) {
-			pr_err("i2s_mclk prepare failed\n");
+			dev_err(&pdev->dev, "i2s_mclk prepare failed\n");
 			return ret;
 		}
 		clk_val = clk_get_rate(dev->i2s_mclk);
-		pr_info("IIS get i2s_mclk: %lu\n", clk_val);
+		dev_dbg(&pdev->dev, "IIS get i2s_mclk: %lu\n", clk_val);
 
 		if (clk_set_rate(dev->i2s_mclk, 12288000)) {
-			pr_err("%s set i2s_mclk rate clk failed\n", __func__);
+			dev_err(&pdev->dev, "%s set i2s_mclk rate clk failed\n", __func__);
 		}
 		clk_val = clk_get_rate(dev->i2s_mclk);
-		pr_info("IIS get i2s_mclk: %lu\n", clk_val);
+		dev_dbg(&pdev->dev, "IIS get i2s_mclk: %lu\n", clk_val);
 	}
 
 	if (dev->capability & DW_I2S_MASTER) {
@@ -875,13 +895,13 @@ static int dw_i2s_probe(struct platform_device *pdev)
 		dev->clk = devm_clk_get(&pdev->dev, clk_id);
 
 		if (IS_ERR(dev->clk)) {
-			pr_err("get i2s clk failed\n");
+			dev_err(&pdev->dev, "get i2s clk failed\n");
 			return PTR_ERR(dev->clk);
 		}
 
 		ret = clk_prepare_enable(dev->clk);
 		if (ret < 0) {
-			pr_err("i2s clk prepare failed\n");
+			dev_err(&pdev->dev, "i2s clk prepare failed\n");
 			return ret;
 		}
 	}
@@ -895,23 +915,32 @@ static int dw_i2s_probe(struct platform_device *pdev)
 	}
 
 	if (!pdata) {
-		if (irq >= 0) {
-			ret = dw_pcm_register(pdev);
-			dev->use_pio = true;
+		dev->use_pio = false;
+		ret = of_property_read_u32(dev->dev->of_node, "dma-buffer", &size);
+		if (ret != 0) {
+			dev_info(&pdev->dev, "dma will be default 256k\n");
 		} else {
-			ret = devm_snd_dmaengine_pcm_register(&pdev->dev, NULL,
-					0);
-			dev->use_pio = false;
+			axera_dmaengine_pcm_config.prealloc_buffer_size = size * 1024;
 		}
 
+		ret = devm_snd_dmaengine_pcm_register(&pdev->dev, &axera_dmaengine_pcm_config,
+				0);
 		if (ret) {
-			dev_err(&pdev->dev, "could not register pcm: %d\n",
-					ret);
-			goto err_clk_disable;
+			if (irq < 0) {
+				dev_err(&pdev->dev, " dw_i2s_probe get irq is %d\n",irq);
+				goto err_clk_disable;
+			}
+			ret = dw_pcm_register(pdev);
+			if (ret) {
+				dev_err(&pdev->dev, "could not register pcm: %d\n",
+						ret);
+				goto err_clk_disable;
+			}
+			dev->use_pio = true;
 		}
 	}
 	pm_runtime_enable(&pdev->dev);
-	pr_info("IIS probe OK\n");
+	dev_dbg(&pdev->dev, "IIS probe OK\n");
 	return 0;
 
 err_clk_disable:

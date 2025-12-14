@@ -21,13 +21,6 @@
 	.arm
 ENTRY(ax620e_slp_cpu_resume)
 
-	@eic en clr
-	ldr r0, =COMMON_SYS_GLB_PHY_BASE
-	ldr r1, =EIC_EN_CLR
-	add r0, r0, r1
-	ldr r1, =EIC_EN_MASK_ALL
-	str r1, [r0]
-
 	@eic mask clr
 	ldr r0, =COMMON_SYS_GLB_PHY_BASE
 	ldr r1, =COMMON_SYS_EIC_MASK_ENABLE_CLR_ADDR
@@ -156,7 +149,6 @@ ENTRY(ax620e_cpu_do_sleep)
 	orr r1, r1, #1
 #endif
 	blx r1
-	@b .
 
 	dsb
 	isb

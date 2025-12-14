@@ -30,6 +30,7 @@
 		axera_memory_dump@0 {
 			compatible = "axera_memory_dump";
 			reg = <0x0 0x480f0000 0x0 0x3000>;
+			dump_ranges = <0x0 0x40001000 0x0 0x80000000>;
 			no-map;
 		};
 		atf_reserved: atf_memreserved {
@@ -218,8 +219,8 @@
 	status = "okay";
 };
 
-&deb_gpio_lp_emmc {
-	lp-num = <0xB>; /* use db_gpio11 as wakeup source */
+&deb_gpio_lp {
+	lp-status = <11 1>; /* use db_gpio11 as wakeup source */
 	status = "okay";
 };
 
@@ -309,7 +310,7 @@
 	cdns,phy-input-delay-mmc-highspeed = <2>;
 	cdns,phy-input-delay-mmc-ddr = <2>;
 	cdns,phy-dll-delay-sdclk = <45>;
-	cdns,phy-dll-delay-sdclk-hsmmc = <23>;
+	cdns,phy-dll-delay-sdclk-hsmmc = <31>;
 	cdns,phy-dll-delay-strobe = <18>;
 	fixed-emmc-driver-type = <4>;
 	status = "okay";
@@ -765,6 +766,8 @@
 	enable-delay-ms = <0>;
 	disable-delay-ms = <150>;
 	reset-gpio = <&ax_gpio1 0 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_txd_gpio1_a0_pins>;
 
 	dsi,format = <MIPI_DSI_FMT_RGB888>;
 	dsi,lanes = <4>;

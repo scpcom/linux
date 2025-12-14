@@ -133,6 +133,10 @@
 #define ACLK_SD_EB_SET          (0x1 << 3)
 #endif
 
+#define EMMC_BASE_ADDR  0x01b40000
+#define SD_BASE_ADDR    0x104e0000
+#define SDIO_BASE_ADDR  0x104d0000
+
 extern bool __clk_is_enabled(struct clk *clk);
 extern unsigned int __clk_get_enable_count(struct clk *clk);
 
@@ -155,6 +159,7 @@ struct sdhci_axera_priv {
 	struct reset_control *cardrst;
 	int hw_reset_gpio;
 	int sdio_voltage_sw;
+	unsigned long io_addr;
 	struct sdhci_cdns_phy_param phy_params[];
 };
 
@@ -452,13 +457,22 @@ static void sdhci_axera_voltage_switch(struct sdhci_host *host)
 	u32 val;
 	void __iomem *addr = NULL;
 	struct sdhci_axera_priv *priv = sdhci_axera_priv(host);
-	u16 ctrl;
+
 	if (!mmc_host_support_uhs(host->mmc))
 		return;
 
 	if ((host->mmc->caps2 & MMC_CAP2_NO_MMC) && (host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
 		pr_debug("sd voltage switch\n");
-		mdelay(15);
+
+		if(host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
+			addr = ioremap(PIN_MUX_G9_PINCTRL_CLR, 0x4);
+			writel(GENMASK(8, 7), addr);
+			iounmap(addr);
+			pr_debug("%s voltage switch to 3.3V\n", host->hw_name);
+			return;
+		}
+
+		usleep_range(15000, 15500);
 
 		//enbale pinmux for vdet
 		addr = ioremap(CLK_EB_1, 0x4);
@@ -472,12 +486,7 @@ static void sdhci_axera_voltage_switch(struct sdhci_host *host)
 		iounmap(addr);
 		pr_debug("vdet val: %x\n", val);
 
-		if (((val >> 0) & BIT(0))) { //3.3v
-			addr = ioremap(PIN_MUX_G9_PINCTRL_CLR, 0x4);
-			writel(GENMASK(8, 7), addr);
-			iounmap(addr);
-			pr_debug("%s voltage switch to 3.3V\n", host->hw_name);
-		} else { //1.8v
+		if (!(val & BIT(0))) { //1.8v
 			addr = ioremap(PIN_MUX_G9_PINCTRL_SET, 0x4);
 			writel(GENMASK(8, 7), addr);
 			iounmap(addr);
@@ -486,45 +495,43 @@ static void sdhci_axera_voltage_switch(struct sdhci_host *host)
 	}
 
 	if ((host->mmc->caps2 & MMC_CAP2_NO_MMC) && (host->mmc->caps2 & MMC_CAP2_NO_SD)) {
-		pr_info("sdio voltage switch\n");
+		pr_debug("sdio voltage switch\n");
 
 		if (!gpio_is_valid(priv->sdio_voltage_sw)) {
 			pr_err("no sdio voltage gpio\n");
 			return;
 		}
-		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
-		if (ctrl & SDHCI_CTRL_VDD_180) {
-			pr_info("switch to 1.8v\n");
-			gpio_direction_output(priv->sdio_voltage_sw, 1);
-		} else {
-			pr_info("switch to 3.3v\n");
-			gpio_direction_output(priv->sdio_voltage_sw, 0);
-		}
 
-		mdelay(15);
-
-		//enbale pinmux for vdet
-		addr = ioremap(CLK_EB_1, 0x4);
-		val = readl(addr);
-		writel(val | (1 << 16), addr);
-		iounmap(addr);
-
-		/* CMD & DATA pad switch to 1.8V */
-		addr = ioremap(PIN_MUX_G12_VDET_RO0, 0x4);
-		val = readl(addr);
-		iounmap(addr);
-		pr_info("vdet val: %x\n", val);
-
-		if (((val >> 0) & BIT(0))) { //3.3v
+		if (host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
 			addr = ioremap(PIN_MUX_G12_PINCTRL_CLR, 0x4);
 			writel(GENMASK(8, 7), addr);
 			iounmap(addr);
 			pr_debug("%s voltage switch to 3.3V\n", host->hw_name);
-		} else { //1.8v
-			addr = ioremap(PIN_MUX_G12_PINCTRL_SET, 0x4);
-			writel(GENMASK(8, 7), addr);
+
+			gpio_direction_output(priv->sdio_voltage_sw, 0);
+		} else {
+			pr_info("sdio switch to 1.8v\n");
+			gpio_direction_output(priv->sdio_voltage_sw, 1);
+			usleep_range(15000, 15500);
+
+			//enbale pinmux for vdet
+			addr = ioremap(CLK_EB_1, 0x4);
+			val = readl(addr);
+			writel(val | (1 << 16), addr);
 			iounmap(addr);
-			pr_info("%s voltage switch to 1.8V\n", host->hw_name);
+
+			/* CMD & DATA pad switch to 1.8V */
+			addr = ioremap(PIN_MUX_G12_VDET_RO0, 0x4);
+			val = readl(addr);
+			iounmap(addr);
+			pr_debug("vdet val: %x\n", val);
+
+			if (!(val & BIT(0))) { //1.8v
+				addr = ioremap(PIN_MUX_G12_PINCTRL_SET, 0x4);
+				writel(GENMASK(8, 7), addr);
+				iounmap(addr);
+				pr_info("%s voltage switch to 1.8V\n", host->hw_name);
+			}
 		}
 	}
 
@@ -684,6 +691,7 @@ void ax_set_mmc_clk(struct sdhci_host *host)
 {
 	void __iomem *addr = NULL;
 	int clk_sel = 0, div = 0;
+	struct sdhci_axera_priv *priv = sdhci_axera_priv(host);
 
 	if (!(host->mmc->caps2 & MMC_CAP2_NO_MMC)) {
 		pr_info("set emmc clk to 200M\n");
@@ -707,7 +715,7 @@ void ax_set_mmc_clk(struct sdhci_host *host)
 		iounmap(addr);
 	}
 
-	if (!(host->mmc->caps2 & MMC_CAP2_NO_SD)) {
+	if (priv->io_addr == SD_BASE_ADDR) {
 		pr_info("set sd clk to 200M\n");
 		clk_sel = 0x3; //source npll_400m
 		div = 0x1; //200M supply card
@@ -729,7 +737,7 @@ void ax_set_mmc_clk(struct sdhci_host *host)
 		iounmap(addr);
 	}
 
-	if (!(host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
+	if (priv->io_addr == SDIO_BASE_ADDR) {
 		pr_info("set sdio clk to 200M\n");
 		clk_sel = 0x3; //source npll_400m
 		div = 0x1; //200M supply card
@@ -765,41 +773,47 @@ static void set_mmc_div(struct sdhci_axera_priv *priv, int enable)
 				 host->mmc->caps2 & MMC_CAP2_HS400_ES) {
 			addr = ioremap(CPU_SYS_GLB, 0x2020);
 			if (enable) {
-				writel(0x1, addr + CPU_SYS_GLB_CLK_DIV0_SET);
-				writel(0x40, addr + CPU_SYS_GLB_CLK_DIV0_SET);
+				writel(CLK_EMMC_CLK_CARD_DIV(0x1), addr + CPU_SYS_GLB_CLK_DIV0_SET);
+				writel(EMMC_CLK_DIV_UPDATE, addr + CPU_SYS_GLB_CLK_DIV0_SET);
+				udelay(2);
+				writel(EMMC_CLK_DIV_UPDATE, addr + CPU_SYS_GLB_CLK_DIV0_CLR);
 			} else {
-				writel(0x3f, addr + CPU_SYS_GLB_CLK_DIV0_CLR);
-				writel(0x40, addr + CPU_SYS_GLB_CLK_DIV0_SET);
-				mdelay(1);
-				writel(0x40, addr + CPU_SYS_GLB_CLK_DIV0_CLR);
+				writel(CLK_EMMC_CLK_CARD_DIV(0x3f), addr + CPU_SYS_GLB_CLK_DIV0_CLR);
+				writel(EMMC_CLK_DIV_UPDATE, addr + CPU_SYS_GLB_CLK_DIV0_SET);
+				udelay(2);
+				writel(EMMC_CLK_DIV_UPDATE, addr + CPU_SYS_GLB_CLK_DIV0_CLR);
 			}
 			iounmap(addr);
 		}
 	}
 
-	if (!(host->mmc->caps2 & MMC_CAP2_NO_SD)) {
+	if (priv->io_addr == SD_BASE_ADDR) {
 		addr = ioremap(FLASH_SYS_GLB_BASE, 0x8020);
 		if (enable) {
 			writel(CLK_SD_CLK_CARD_DIV(0x1), addr + FLASH_SYS_GLB_CLK_DIV0_SET);
 			writel(SD_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV0_SET);
+			udelay(2);
+			writel(SD_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV0_CLR);
 		} else {
 			writel(CLK_SD_CLK_CARD_DIV(0x3f), addr + FLASH_SYS_GLB_CLK_DIV0_CLR);
 			writel(SD_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV0_SET);
-			mdelay(1);
+			udelay(2);
 			writel(SD_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV0_CLR);
 		}
 		iounmap(addr);
 	}
 
-	if (!(host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
+	if (priv->io_addr == SDIO_BASE_ADDR) {
 		addr = ioremap(FLASH_SYS_GLB_BASE, 0x8020);
 		if (enable) {
 			writel(CLK_SDIO_CLK_CARD_DIV(0x1), addr + FLASH_SYS_GLB_CLK_DIV1_SET);
 			writel(SDIO_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV1_SET);
+			udelay(2);
+			writel(SDIO_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV1_CLR);
 		} else {
 			writel(CLK_SDIO_CLK_CARD_DIV(0x3f), addr + FLASH_SYS_GLB_CLK_DIV1_CLR);
 			writel(SDIO_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV1_SET);
-			mdelay(1);
+			udelay(2);
 			writel(SDIO_CLK_DIV_UPDATE, addr + FLASH_SYS_GLB_CLK_DIV1_CLR);
 		}
 		iounmap(addr);
@@ -859,7 +873,7 @@ static int axera_prepare_clk(struct sdhci_axera_priv *priv, bool prepare)
 		if (!(priv->host->mmc->caps2 & MMC_CAP2_NO_MMC)) {
 			ax_set_mmc_clk(priv->host);
 		}
-		if (!(priv->host->mmc->caps2 & MMC_CAP2_NO_SD)) {
+		if (priv->io_addr == SD_BASE_ADDR) {
 			pr_info("enable sd clk\n");
 			// set pck & ack
 			addr = ioremap(FLASH_SYS_GLB_BASE, 0x8020);
@@ -867,7 +881,7 @@ static int axera_prepare_clk(struct sdhci_axera_priv *priv, bool prepare)
 			iounmap(addr);
 			ax_set_mmc_clk(priv->host);
 		}
-		if (!(priv->host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
+		if (priv->io_addr == SDIO_BASE_ADDR) {
 			pr_info("enable sdio clk\n");
 			// set pck & ack
 			addr = ioremap(FLASH_SYS_GLB_BASE, 0x8020);
@@ -883,7 +897,7 @@ static int axera_prepare_clk(struct sdhci_axera_priv *priv, bool prepare)
 			writel(BIT(2), addr + CPU_SYS_GLB_CLK_EB0_CLR);
 			iounmap(addr);
 		}
-		if (!(priv->host->mmc->caps2 & MMC_CAP2_NO_SD)) {
+		if (priv->io_addr == SD_BASE_ADDR) {
 			pr_info("disable sd clk\n");
 			set_mmc_div(priv, false);
 			addr = ioremap(FLASH_SYS_GLB_BASE, 0x8020);
@@ -893,7 +907,7 @@ static int axera_prepare_clk(struct sdhci_axera_priv *priv, bool prepare)
 			writel(PCLK_SD_EB_SET | ACLK_SD_EB_SET, addr + FLASH_SYS_GLB_CLK_EB1_CLR);
 			iounmap(addr);
 		}
-		if (!(priv->host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
+		if (priv->io_addr == SDIO_BASE_ADDR) {
 			pr_info("disable sdio clk\n");
 			set_mmc_div(priv, false);
 			//close clk_sdio_card_eb
@@ -949,6 +963,7 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	static u16 version = 3 << SDHCI_SPEC_VER_SHIFT;
+	struct resource *res;
 
 	dev_info(dev, "axera sdhci probe\n");
 
@@ -965,8 +980,10 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
 	}
 
 	pltfm_host = sdhci_priv(host);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	priv = sdhci_pltfm_priv(pltfm_host);
+	priv->io_addr = res->start;
 	priv->hrs_addr = host->ioaddr;
 	priv->pdev = pdev;
 	priv->host = host;
@@ -983,6 +1000,15 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
 	if (ret)
 		goto free;
 
+	if (priv->io_addr == SD_BASE_ADDR) {
+		host->mmc->caps &= ~MMC_CAP_AGGRESSIVE_PM;
+		host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
+	}
+	else if ((priv->io_addr == EMMC_BASE_ADDR) && (host->mmc->pm_caps & MMC_PM_KEEP_POWER)) {
+		dev_info(&pdev->dev, "emmc pm_caps=0x%x\n", host->mmc->pm_caps);
+		host->quirks2 |= SDHCI_QUIRK2_HOST_OFF_CARD_ON;
+		host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
+	}
 	ret = axera_get_clk_reset(pdev, priv);
 
 	if (ret)
@@ -1112,9 +1138,6 @@ static int sdhci_axera_resume(struct device *dev)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_axera_priv *priv = sdhci_pltfm_priv(pltfm_host);
 	int ret;
-	ret = axera_clk_reset_control(priv, DEASSERT);
-	if (ret)
-		goto disable_clk;
 
 	ret = axera_prepare_clk(priv, true);
 	if (ret)
@@ -1142,7 +1165,6 @@ int sdhci_axera_suspend(struct device *dev)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_axera_priv *priv = sdhci_pltfm_priv(pltfm_host);
 	int ret;
-
 	if (host->tuning_mode != SDHCI_TUNING_MODE_3)
 		mmc_retune_needed(host->mmc);
 
@@ -1151,7 +1173,7 @@ int sdhci_axera_suspend(struct device *dev)
 		return ret;
 
 	axera_prepare_clk(priv, false);
-	axera_clk_reset_control(priv, ASSERT);
+
 	return 0;
 }
 #endif

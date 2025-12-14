@@ -34,6 +34,10 @@
 
 #define cls_dev_to_mmc_host(d)	container_of(d, struct mmc_host, class_dev)
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+static struct gpio_desc *card_detect_gpio_desc;
+#endif
+
 static DEFINE_IDA(mmc_host_ida);
 
 static void mmc_host_classdev_release(struct device *dev)
@@ -231,8 +235,14 @@ int mmc_of_parse(struct mmc_host *host)
 					     &cd_debounce_delay_ms))
 			cd_debounce_delay_ms = 200;
 
-		if (device_property_read_bool(dev, "broken-cd"))
+		if (device_property_read_bool(dev, "broken-cd")) {
 			host->caps |= MMC_CAP_NEEDS_POLL;
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+			card_detect_gpio_desc = devm_gpiod_get_index(host->parent, "detect", 0, GPIOD_IN);
+			if (IS_ERR(card_detect_gpio_desc))
+				pr_err("card detect gpio is not request in polling mode.");
+#endif
+		}
 
 		ret = mmc_gpiod_request_cd(host, "cd", 0, true,
 					   cd_debounce_delay_ms * 1000,
@@ -456,7 +466,7 @@ static ssize_t power_control_store(struct device *dev,
 		ret = -EINVAL;
 		goto out;
 	}
-
+	host->pm_flags |= MMC_PM_KEEP_POWER;
 	ret = n;
 out:
 	return ret;
@@ -466,26 +476,56 @@ static DEVICE_ATTR_WO(power_control);
 static ssize_t card_present_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
-	int present;
+	int present = 0;
 	struct mmc_host *host = container_of(dev, struct mmc_host, class_dev);
 
-	present = host->ops->get_cd(host);
+	if (host->caps & MMC_CAP_NEEDS_POLL) {
+		if (card_detect_gpio_desc)
+			present = gpiod_get_value_cansleep(card_detect_gpio_desc) ? 0 : 1;
+	} else {
+		present = host->ops->get_cd(host);
+	}
 
 	return sprintf(buf, "%d\n", present);
 }
-
 static DEVICE_ATTR_RO(card_present);
-static struct attribute *sd_attrs[] = {
+
+unsigned int mmc_debug_enable = 0;
+static ssize_t mmc_ax_debug_enable_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	return sprintf(buf, "%d\n", mmc_debug_enable);
+}
+
+static ssize_t mmc_ax_debug_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+
+	if (sysfs_streq(buf, "1")) {
+		mmc_debug_enable = 1;
+	} else if (sysfs_streq(buf, "0")) {
+		mmc_debug_enable = 0;
+	} else {
+		dev_err(dev, "unsupported command:%s\n", buf);
+		return -EINVAL;
+	}
+	return n;
+}
+static DEVICE_ATTR_RW(mmc_ax_debug_enable);
+
+static struct attribute *mmc_attrs[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_power_control.attr,
 	&dev_attr_card_present.attr,
+	&dev_attr_mmc_ax_debug_enable.attr,
 	NULL,
 };
-static const struct attribute_group sd_attr_group = {
-	.attrs = sd_attrs,
+static const struct attribute_group mmc_attr_group = {
+	.attrs = mmc_attrs,
 };
-static const struct attribute_group *sd_attr_groups[] = {
-	&sd_attr_group,
+
+static const struct attribute_group *mmc_attr_groups[] = {
+	&mmc_attr_group,
 	NULL,
 };
 #endif
@@ -506,7 +546,7 @@ int mmc_add_host(struct mmc_host *host)
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
 	if (!(host->caps2 & MMC_CAP2_NO_SD)) {
-		host->class_dev.groups = sd_attr_groups;
+		host->class_dev.groups = mmc_attr_groups;
 	}
 #endif
 

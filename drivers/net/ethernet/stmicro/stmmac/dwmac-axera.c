@@ -545,22 +545,27 @@ int axera_dwmac_config_dt(
 	}
 
 	//ephy clock
-	eqos->ephy_clk = devm_clk_get(&pdev->dev, "ephy_clk");
-	if (IS_ERR(eqos->ephy_clk)) {
-		dev_warn(&pdev->dev, "can't get ephy_clk\n");
-		eqos->ephy_clk = NULL;
+	if (eqos->phy_interface == PHY_INTERFACE_MODE_RMII &&
+		!eqos->out_rmii_mode ) {
+			;
 	} else {
-		if (clk_set_rate(eqos->ephy_clk, EPHY_CLK_25M)) {
-			dev_warn(&pdev->dev, "emac phy clk set fail: %s\n",
-				 "ephy_clk");
+		eqos->ephy_clk = devm_clk_get(&pdev->dev, "ephy_clk");
+		if (IS_ERR(eqos->ephy_clk)) {
+			dev_warn(&pdev->dev, "can't get ephy_clk\n");
+			eqos->ephy_clk = NULL;
+		} else {
+			if (clk_set_rate(eqos->ephy_clk, EPHY_CLK_25M)) {
+				dev_warn(&pdev->dev, "emac phy clk set fail: %s\n",
+					"ephy_clk");
+			}
+
+			rc = clk_prepare_enable(eqos->ephy_clk);
+			if (rc)
+				dev_warn(&pdev->dev, "enable ephy_clk failed\n");
+
+			dev_info(&pdev->dev, "emac phy clock: %ldMHz\n",
+			clk_get_rate(eqos->ephy_clk) / 1000000);
 		}
-
-		rc = clk_prepare_enable(eqos->ephy_clk);
-		if (rc)
-			dev_warn(&pdev->dev, "enable ephy_clk failed\n");
-
-		dev_info(&pdev->dev, "emac phy clock: %ldMHz\n",
-		 clk_get_rate(eqos->ephy_clk) / 1000000);
 	}
 
 	/* rgmii tx clock */
@@ -598,14 +603,16 @@ int axera_dwmac_config_dt(
 		iounmap(addr);
 
 		/* phy clock, 50MHz not necessary*/
-		eqos->rmii_phy_clk = devm_clk_get(&pdev->dev, "rmii_phy_clk");
-		if (IS_ERR(eqos->rmii_phy_clk)) {
-			dev_warn(&pdev->dev, "Cannot set phy-clk\n");
-			eqos->rmii_phy_clk = NULL;
-		} else {
-			rc = clk_prepare_enable(eqos->rmii_phy_clk);
-			if (rc == 0) {
-				dev_dbg(&pdev->dev, "set rmii_phy_clk ok\n");
+		if (eqos->out_rmii_mode) {
+			eqos->rmii_phy_clk = devm_clk_get(&pdev->dev, "rmii_phy_clk");
+			if (IS_ERR(eqos->rmii_phy_clk)) {
+				dev_warn(&pdev->dev, "Cannot set phy-clk\n");
+				eqos->rmii_phy_clk = NULL;
+			} else {
+				rc = clk_prepare_enable(eqos->rmii_phy_clk);
+				if (rc == 0) {
+					dev_dbg(&pdev->dev, "set rmii_phy_clk ok\n");
+				}
 			}
 		}
 	}

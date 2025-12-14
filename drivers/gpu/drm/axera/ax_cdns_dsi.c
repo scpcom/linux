@@ -25,6 +25,7 @@
 
 #include <linux/phy/phy.h>
 #include "ax_mipi_dsi.h"
+#include <linux/ax_display_hal.h>
 
 #define IP_CONF				0x0
 #define SP_HS_FIFO_DEPTH(x)		(((x) & GENMASK(30, 26)) >> 26)
@@ -661,11 +662,17 @@ static void cdns_dsi_bridge_disable(struct drm_bridge *bridge)
 static void cdns_dsi_hs_init(struct cdns_dsi *dsi)
 {
 	u32 status;
-	/* Activate the PLL and wait until it's locked. */
-	writel(PLL_LOCKED, dsi->regs + MCTL_MAIN_STS_CLR);
+	u32 val;
 
-	WARN_ON_ONCE(readl_poll_timeout(dsi->regs + MCTL_MAIN_STS, status,
-					status & PLL_LOCKED, 100, 100));
+	val = readl(dsi->regs + MCTL_MAIN_STS);
+
+	if (val & PLL_LOCKED) {
+		/* Activate the PLL and wait until it's locked. */
+		writel(PLL_LOCKED, dsi->regs + MCTL_MAIN_STS_CLR);
+
+		WARN_ON_ONCE(readl_poll_timeout(dsi->regs + MCTL_MAIN_STS, status,
+						status & PLL_LOCKED, 100, 100));
+	}
 }
 
 static void cdns_dsi_init_link(struct cdns_dsi *dsi)
@@ -712,7 +719,7 @@ static void cdns_dsi_init_link(struct cdns_dsi *dsi)
 	dsi->link_initialized = true;
 }
 
-static void cdns_dsi_bridge_enable(struct drm_bridge *bridge)
+void cdns_dsi_bridge_enable(struct drm_bridge *bridge)
 {
 	struct cdns_dsi_input *input = bridge_to_cdns_dsi_input(bridge);
 	struct cdns_dsi *dsi = input_to_dsi(input);
@@ -724,6 +731,9 @@ static void cdns_dsi_bridge_enable(struct drm_bridge *bridge)
 	int nlanes;
 	struct cdns_dphy_cfg dphy_cfg;
 	u16 blkline_event_pck_len, blkeol_pck_len;
+
+	if (ax_display_get_bootlogo_mode() == AX_DISP_OUT_MODE_DSI_DPI_VIDEO)
+		return;
 
 	if (WARN_ON(pm_runtime_get_sync(dsi->base.dev) < 0))
 		return;
@@ -1099,27 +1109,47 @@ static const struct mipi_dsi_host_ops cdns_dsi_ops = {
 	.transfer = cdns_dsi_transfer,
 };
 
-static int __maybe_unused cdns_dsi_resume(struct device *dev)
+void cdns_dsi_resume(struct device *dev)
 {
 	struct cdns_dsi *dsi = dev_get_drvdata(dev);
 	reset_control_deassert(dsi->dsi_p_rst);
-	clk_prepare_enable(dsi->dsi_p_clk);
+	reset_control_deassert(dsi->dsi_txpix_rst);
+	reset_control_deassert(dsi->dsi_txesc_rst);
+	reset_control_deassert(dsi->dsi_sys_rst);
+	reset_control_deassert(dsi->dphy2dsi_rst);
+	reset_control_deassert(dsi->dsi_rx_esc_rst);
+	clk_prepare_enable(dsi->comm_dphytx_tlb_clk);
+	clk_prepare_enable(dsi->dsi_txesc_clk);
+	clk_prepare_enable(dsi->pll_ref_clk);
+	clk_prepare_enable(dsi->dphytx_esc_clk);
 	clk_prepare_enable(dsi->dsi_sys_clk);
-
-	return 0;
+	clk_prepare_enable(dsi->dsi_hs_clk);
+	clk_prepare_enable(dsi->dsi_p_clk);
 }
+EXPORT_SYMBOL_GPL(cdns_dsi_resume);
 
-static int __maybe_unused cdns_dsi_suspend(struct device *dev)
+void cdns_dsi_suspend(struct device *dev)
 {
 	struct cdns_dsi *dsi = dev_get_drvdata(dev);
-
-	clk_disable_unprepare(dsi->dsi_sys_clk);
 	clk_disable_unprepare(dsi->dsi_p_clk);
+	clk_disable_unprepare(dsi->dsi_sys_clk);
+	clk_disable_unprepare(dsi->dsi_txesc_clk);
+	clk_disable_unprepare(dsi->dsi_hs_clk);
+	clk_disable_unprepare(dsi->pll_ref_clk);
+	clk_disable_unprepare(dsi->dphytx_esc_clk);
+	clk_disable_unprepare(dsi->comm_dphytx_tlb_clk);
+
 	reset_control_assert(dsi->dsi_p_rst);
+	reset_control_assert(dsi->dsi_txpix_rst);
+	reset_control_assert(dsi->dsi_txesc_rst);
+	reset_control_assert(dsi->dsi_sys_rst);
+	reset_control_assert(dsi->dphy2dsi_rst);
+	reset_control_assert(dsi->dsi_rx_esc_rst);
+	reset_control_assert(dsi->dphytx_rst);
 
 	dsi->link_initialized = false;
-	return 0;
 }
+EXPORT_SYMBOL_GPL(cdns_dsi_suspend);
 
 static unsigned long cdns_dphy_ref_get_wakeup_time_ns(struct cdns_dphy *dphy)
 {
@@ -1139,9 +1169,6 @@ static const struct of_device_id cdns_dphy_of_match[] = {
 	{ .compatible = "axera,dphy", .data = &ref_dphy_ops },
 	{ /* sentinel */ },
 };
-
-static UNIVERSAL_DEV_PM_OPS(cdns_dsi_pm_ops, cdns_dsi_suspend, cdns_dsi_resume,
-			    NULL);
 
 static int cdns_dsi_drm_probe(struct platform_device *pdev)
 {
@@ -1241,12 +1268,14 @@ static int cdns_dsi_drm_probe(struct platform_device *pdev)
 	if (IS_ERR(dsi->dphy2dsi_rst))
 		return PTR_ERR(dsi->dphy2dsi_rst);
 
-	reset_control_deassert(dsi->dsi_p_rst);
-	reset_control_deassert(dsi->dsi_txpix_rst);
-	reset_control_deassert(dsi->dsi_txesc_rst);
-	reset_control_deassert(dsi->dsi_sys_rst);
-	reset_control_deassert(dsi->dphy2dsi_rst);
-	reset_control_deassert(dsi->dsi_rx_esc_rst);
+	if (ax_display_get_bootlogo_mode() != AX_DISP_OUT_MODE_DSI_DPI_VIDEO) {
+		reset_control_deassert(dsi->dsi_p_rst);
+		reset_control_deassert(dsi->dsi_txpix_rst);
+		reset_control_deassert(dsi->dsi_txesc_rst);
+		reset_control_deassert(dsi->dsi_sys_rst);
+		reset_control_deassert(dsi->dphy2dsi_rst);
+		reset_control_deassert(dsi->dsi_rx_esc_rst);
+	}
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -1260,10 +1289,12 @@ static int cdns_dsi_drm_probe(struct platform_device *pdev)
 	dsi->dphy->regs = dsi->dphytx_regs;
 	dsi->dphy->power_regs =dsi->comm_sys_regs;
 
-	ret = clk_prepare_enable(dsi->dsi_p_clk);
-	if (ret) {
-		DRM_ERROR("enable dsi p clk failed\n");
-		goto err_remove_dphy;
+	if (ax_display_get_bootlogo_mode() != AX_DISP_OUT_MODE_DSI_DPI_VIDEO) {
+		ret = clk_prepare_enable(dsi->dsi_p_clk);
+		if (ret) {
+			DRM_ERROR("enable dsi p clk failed\n");
+			goto err_remove_dphy;
+		}
 	}
 
 	val = readl(dsi->regs + ID_REG);
@@ -1287,16 +1318,17 @@ static int cdns_dsi_drm_probe(struct platform_device *pdev)
 	input->id = CDNS_DPI_INPUT;
 	input->bridge.funcs = &cdns_dsi_bridge_funcs;
 	input->bridge.of_node = pdev->dev.of_node;
-
-	/* Mask all interrupts before registering the IRQ handler. */
-	writel(0, dsi->regs + MCTL_MAIN_STS_CTL);
-	writel(0, dsi->regs + MCTL_DPHY_ERR_CTL1);
-	writel(0, dsi->regs + CMD_MODE_STS_CTL);
-	writel(0, dsi->regs + DIRECT_CMD_STS_CTL);
-	writel(0, dsi->regs + DIRECT_CMD_RD_STS_CTL);
-	writel(0, dsi->regs + VID_MODE_STS_CTL);
-	writel(0, dsi->regs + TVG_STS_CTL);
-	writel(0, dsi->regs + DPI_IRQ_EN);
+	if (ax_display_get_bootlogo_mode() != AX_DISP_OUT_MODE_DSI_DPI_VIDEO) {
+		/* Mask all interrupts before registering the IRQ handler. */
+		writel(0, dsi->regs + MCTL_MAIN_STS_CTL);
+		writel(0, dsi->regs + MCTL_DPHY_ERR_CTL1);
+		writel(0, dsi->regs + CMD_MODE_STS_CTL);
+		writel(0, dsi->regs + DIRECT_CMD_STS_CTL);
+		writel(0, dsi->regs + DIRECT_CMD_RD_STS_CTL);
+		writel(0, dsi->regs + VID_MODE_STS_CTL);
+		writel(0, dsi->regs + TVG_STS_CTL);
+		writel(0, dsi->regs + DPI_IRQ_EN);
+	}
 
 	ret = devm_request_irq(&pdev->dev, irq, cdns_dsi_interrupt, 0,
 			       dev_name(&pdev->dev), dsi);

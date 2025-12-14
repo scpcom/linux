@@ -373,7 +373,7 @@ static int panel_send_dsi_cmds(struct mipi_dsi_device *dsi, u8 *data, int len)
 		               16, 1, &data[i], cmd_len + 3, false);
 
 		if (delay)
-			msleep(delay);
+			mdelay(delay);
 	}
 
 	return 0;
@@ -442,16 +442,18 @@ static int panel_simple_suspend(struct device *dev)
 static int panel_simple_unprepare(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
-	int ret;
 
 	/* Unpreparing when already unprepared is a no-op */
 	if (!p->prepared)
 		return 0;
 
-	pm_runtime_mark_last_busy(panel->dev);
-	ret = pm_runtime_put_autosuspend(panel->dev);
-	if (ret < 0)
-		return ret;
+	if (p->reset_gpio) {
+		gpiod_set_value(p->reset_gpio, 0);
+	}
+
+	if (p->desc->delay.unprepare)
+		msleep(p->desc->delay.unprepare);
+
 	p->prepared = false;
 
 	return 0;
@@ -571,6 +573,11 @@ static int panel_simple_prepare(struct drm_panel *panel)
 	struct panel_desc_dsi *desc_dsi;
 	int ret;
 
+	if ((ax_display_get_bootlogo_mode() == AX_DISP_OUT_MODE_DSI_DPI_VIDEO)
+	   && (desc->connector_type == DRM_MODE_CONNECTOR_DSI)) {
+		p->prepared = true;
+	}
+
   	/* Preparing when already prepared is a no-op */
 	if (p->prepared)
 		return 0;
@@ -585,11 +592,8 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		tp2803_mode_sel();
 	}
 
-	ret = pm_runtime_get_sync(panel->dev);
-	if (ret < 0) {
-		pm_runtime_put_autosuspend(panel->dev);
-		return ret;
-	}
+	if (p->desc->delay.prepare)
+		msleep(p->desc->delay.prepare);
 
 	if (desc->connector_type == DRM_MODE_CONNECTOR_DSI) {
 		desc_dsi = to_desc_dsi(desc);
@@ -724,15 +728,11 @@ static int panel_simple_probe(struct device *dev, struct panel_desc *desc)
 	if (IS_ERR(panel->supply))
 		dev_info(dev, "%pOF: panel without regulator power\n", dev->of_node);
 
-	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable", GPIOD_OUT_LOW);
-	if (IS_ERR(panel->enable_gpio))
-		dev_err(dev, "%pOF: panel without enable_gpio\n", dev->of_node);
-
-	panel->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
+	panel->reset_gpio = devm_gpiod_get_optional(dev, "reset", 0);
 	if (IS_ERR(panel->reset_gpio))
 		DRM_WARN("%pOF: panel without reset_gpio\n", dev->of_node);
 	else
-		gpiod_direction_output(panel->reset_gpio, 0);
+		gpiod_direction_output(panel->reset_gpio, 1);
 
 	panel->orientation = DRM_MODE_PANEL_ORIENTATION_NORMAL;
 
@@ -970,6 +970,8 @@ static int panel_dsi_dts_parse(struct device *dev, struct panel_desc_dsi *desc_d
 
 	of_property_read_u32(dev->of_node, "enable-delay-ms", &desc_dsi->desc.delay.enable);
 	of_property_read_u32(dev->of_node, "disable-delay-ms", &desc_dsi->desc.delay.disable);
+	of_property_read_u32(dev->of_node, "prepare-delay-ms", &desc_dsi->desc.delay.prepare);
+	of_property_read_u32(dev->of_node, "unprepare-delay-ms", &desc_dsi->desc.delay.unprepare);
 
 	return 0;
 }

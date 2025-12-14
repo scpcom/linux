@@ -47,8 +47,14 @@
 #define STMMAC_CHAN0	0	/* Always supported and default for all chips */
 
 /* These need to be power of two, and >= 4 */
+#ifdef CONFIG_DWMAC_AXERA_DMA_BUF_CUT
+#define DMA_TX_SIZE 128
+#define DMA_RX_SIZE 128
+#else
 #define DMA_TX_SIZE 1024
 #define DMA_RX_SIZE 512
+#endif
+
 #define STMMAC_GET_ENTRY(x, size)	((x + 1) & (size - 1))
 
 #undef FRAME_FILTER_DEBUG

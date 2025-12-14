@@ -16,7 +16,7 @@
 #include <linux/types.h>
 #include <linux/of_device.h>
 #include "spi-dw.h"
-
+#include <asm/cacheflush.h>
 #ifdef CONFIG_AXERA_DMA_PER
 #include <linux/soc/axera/ax_boardinfo.h>
 #include "../dma/axera-dma-per/axera-dma-per.h"
@@ -41,7 +41,7 @@ static int ax_dma_per_lli_addr_invalid(phys_addr_t lli_paddr)
 	phys_addr_t ddr_start = 0x40000000;
 	phys_addr_t ddr_end;
 
-	if (AX620Q_CHIP == ax_get_chip_type()) {
+	if (AX630C_CHIP != ax_get_chip_type()) {
 		ddr_end = 0x4FFFFFFF;
 		#ifdef CONFIG_PHYS_ADDR_T_64BIT
 		printk("620Q mem whole space [0x%llX:0x%llX]\n", ddr_start, ddr_end);
@@ -154,6 +154,7 @@ static int dw_spi_dma_init(struct dw_spi *dws)
 		goto free_rxchan;
 	dws->master->dma_tx = dws->txchan;
 
+	of_dma_configure(&dws->master->dev, dws->master->dev.of_node, true);
 	dws->dma_inited = 1;
 	return 0;
 
@@ -167,12 +168,15 @@ static void dw_spi_dma_exit(struct dw_spi *dws)
 {
 	if (!dws->dma_inited)
 		return;
+	if (dws->txchan) {
+		dmaengine_terminate_sync(dws->txchan);
+		dma_release_channel(dws->txchan);
+	}
 
-	dmaengine_terminate_sync(dws->txchan);
-	dma_release_channel(dws->txchan);
-
-	dmaengine_terminate_sync(dws->rxchan);
-	dma_release_channel(dws->rxchan);
+	if (dws->rxchan) {
+		dmaengine_terminate_sync(dws->rxchan);
+		dma_release_channel(dws->rxchan);
+	}
 }
 
 static irqreturn_t dma_transfer(struct dw_spi *dws)
@@ -378,7 +382,9 @@ static struct dma_async_tx_descriptor *dw_spi_dma_prepare_rx(struct dw_spi *dws,
 
 static int dw_spi_dma_setup(struct dw_spi *dws, struct spi_transfer *xfer)
 {
-	u16 dma_ctrl = 0;
+	u16 imr, dma_ctrl;
+	if (!xfer->tx_buf && !xfer->rx_buf)
+		return -EINVAL;
 	dw_writel(dws, DW_SPI_DMARDLR, 0xf);
 	dw_writel(dws, DW_SPI_DMATDLR, 0x10);
 
@@ -389,10 +395,13 @@ static int dw_spi_dma_setup(struct dw_spi *dws, struct spi_transfer *xfer)
 	dw_writel(dws, DW_SPI_DMACR, dma_ctrl);
 
 	/* Set the interrupt mask */
-	spi_umask_intr(dws, SPI_INT_TXOI | SPI_INT_RXUI | SPI_INT_RXOI);
+	imr = SPI_INT_TXOI;
+	if (xfer->rx_buf)
+		imr |= SPI_INT_RXUI | SPI_INT_RXOI;
+	spi_umask_intr(dws, imr);
 
+	reinit_completion(&dws->master->xfer_completion);
 	dws->transfer_handler = dma_transfer;
-
 	return 0;
 }
 
@@ -405,33 +414,46 @@ static int dw_spi_dma_transfer(struct dw_spi *dws, struct spi_transfer *xfer)
 	txdesc = dw_spi_dma_prepare_tx(dws, xfer);
 	/* Prepare the RX dma transfer */
 	rxdesc = dw_spi_dma_prepare_rx(dws, xfer);
-	/* rx must be started before tx due to spi instinct */
+
 	if (rxdesc) {
-		set_bit(RX_BUSY, &dws->dma_chan_busy);
 		dmaengine_submit(rxdesc);
-		dma_async_issue_pending(dws->rxchan);
+		set_bit(RX_BUSY, &dws->dma_chan_busy);
 #ifdef AX_SPI_DMA_REG_DUMP
 		rx_submit = 1;
-#endif
 		spi_dma_rx_start_cnt++;
+#endif
+		/* rx must be started before tx due to spi instinct */
+		dma_async_issue_pending(dws->rxchan);
+		if (!xfer->tx_buf) {
+			dw_writel(dws, DW_SPI_DR, 0xffffffff);
+		}
 	}
-
 	if (txdesc) {
-		set_bit(TX_BUSY, &dws->dma_chan_busy);
 		dmaengine_submit(txdesc);
-		dma_async_issue_pending(dws->txchan);
+		set_bit(TX_BUSY, &dws->dma_chan_busy);
 #ifdef AX_SPI_DMA_REG_DUMP
 		tx_submit = 1;
-#endif
 		spi_dma_tx_start_cnt++;
+#endif
+		dma_async_issue_pending(dws->txchan);
 	}
-
 	ret = dw_spi_dma_wait(dws, xfer->len, dws->current_freq);
 	if (ret)
 		return ret;
+	/* If xfer->rx_sg.sgl->length is not 64-byte aligned, the cacheline invalidate operation will flush
+	 * this cacheline to the DDR, resulting in overwriting the valid data.
+	 * Solution: Align xfer->rx_sg.sgl->length up the length of the cacheline (64B), then set the invalidate flag bit, and consider the cacheline to be invalid.
+	 */
+	if (rxdesc)
+		dma_sync_single_for_cpu(&dws->master->dev, ALIGN_DOWN(xfer->rx_sg.sgl->dma_address + xfer->rx_sg.sgl->length, cache_line_size()), cache_line_size(), DMA_FROM_DEVICE);
+
 	dw_writel(dws, DW_SPI_SSIENR, 0);
 	dw_writel(dws, DW_SPI_DMACR, 0);
 	dw_writel(dws, DW_SPI_SSIENR, 1);
+#ifdef AX_SPI_DMA_REG_DUMP
+	tx_submit = 0;
+	rx_submit = 0;
+#endif
 	return 0;
 }
 

@@ -102,18 +102,18 @@ int axera_spi_prepare_clk(struct dw_spi_mmio *dwsmmio, bool prepare, int spi_id)
 			clk_disable_unprepare(dwsmmio->clk);
 	}
 #else
-	void __iomem *addr = NULL;
-	addr = ioremap(PERI_SYS_GLB_BASE, 0x100);
 	pr_debug("%s prepare:%d\n",__func__, prepare);
-	if (prepare) {
-		writel(BIT(6 + spi_id), addr + PERI_SYS_GLB_CLK_EB0_SET);
-		writel(BIT(2 + spi_id), addr + PERI_SYS_GLB_CLK_EB3_SET);
-	} else {
-		writel(BIT(6 + spi_id), addr + PERI_SYS_GLB_CLK_EB0_CLR);
-		writel(BIT(2 + spi_id), addr + PERI_SYS_GLB_CLK_EB3_CLR);
-	}
-	iounmap(addr);
 
+	if (IS_ERR(dwsmmio->peri_sys_glb_base))
+		return -1;
+
+	if (prepare) {
+		writel(BIT(6 + spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB0_SET);
+		writel(BIT(2 + spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB3_SET);
+	} else {
+		writel(BIT(6 + spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB0_CLR);
+		writel(BIT(2 + spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB3_CLR);
+	}
 #endif
 	return 0;
 }
@@ -127,7 +127,6 @@ static int dw_spi_mmio_probe(struct platform_device *pdev)
 	struct resource *mem;
 	int ret;
 	int num_cs;
-	void __iomem *addr = NULL;
 
 	dwsmmio = devm_kzalloc(&pdev->dev, sizeof(struct dw_spi_mmio),
 			GFP_KERNEL);
@@ -154,10 +153,13 @@ static int dw_spi_mmio_probe(struct platform_device *pdev)
 	dws->max_freq = 208000000;
 	/* default chip design is open , now to close. */
 	dwsmmio->spi_id = get_spi_id(pdev);
-	addr = ioremap(PERI_SYS_GLB_BASE, 0x100);
-	writel(BIT(6 + dwsmmio->spi_id), addr + PERI_SYS_GLB_CLK_EB0_CLR);
-	writel(BIT(2 + dwsmmio->spi_id), addr + PERI_SYS_GLB_CLK_EB3_CLR);
-	iounmap(addr);
+	dwsmmio->peri_sys_glb_base = ioremap(PERI_SYS_GLB_BASE, 0x100);
+	if (!dwsmmio->peri_sys_glb_base) {
+		pr_err("clk base ioremap failed.\n");
+		return -EBUSY;
+	}
+	writel(BIT(6 + dwsmmio->spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB0_CLR);
+	writel(BIT(2 + dwsmmio->spi_id), dwsmmio->peri_sys_glb_base + PERI_SYS_GLB_CLK_EB3_CLR);
 #ifdef SPI_USING_CLK_FRAME
 	dwsmmio->clk = devm_clk_get(&pdev->dev, "apb_ssi_clk");
 	if (IS_ERR(dwsmmio->clk))
@@ -236,6 +238,8 @@ out:
 	axera_spi_prepare_clk(dwsmmio, false, dwsmmio->spi_id);
 	reset_control_assert(dwsmmio->rstc);
 	reset_control_assert(dwsmmio->prstc);
+	if (dwsmmio->peri_sys_glb_base)
+		iounmap(dwsmmio->peri_sys_glb_base);
 	return ret;
 }
 
@@ -247,6 +251,8 @@ static int dw_spi_mmio_remove(struct platform_device *pdev)
 	axera_spi_prepare_clk(dwsmmio, false, dwsmmio->spi_id);
 	reset_control_assert(dwsmmio->rstc);
 	reset_control_assert(dwsmmio->prstc);
+	if (dwsmmio->peri_sys_glb_base)
+		iounmap(dwsmmio->peri_sys_glb_base);
 
 	return 0;
 }

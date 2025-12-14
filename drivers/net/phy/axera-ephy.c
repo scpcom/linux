@@ -107,6 +107,7 @@ static void ax_ephy_power_down(struct phy_device *phydev)
 	phy_write(phydev, 0x12, 0x4824);	/* Disable APS */
 
 	phy_write(phydev, 0x1f, 0x0600);	/* Switch to Page 6 */
+	phy_write(phydev, 0x19, 0x000c);
 	phy_write(phydev, 0x1c, 0x8880);	/* PHYAFE PDCW optimization */
 
 	phy_write(phydev, 0x1f, 0x0000);	/* Switch to Page 0 */
@@ -587,10 +588,7 @@ static ssize_t ephy_store_adc(struct device *dev,
 		break;
 	case 2:
 		pr_info("adc mode: rx enhance\n");
-		phy_write(phydev, 0x1f, 0x0600);	/* Switch to Page 6 */
-		phy_write(phydev, 0x10, 0x556e);	/* Adc gain optimization */
-		//phy_write(phydev, 0x12, 0x8400);	/* Adc gain optimization */
-		//phy_write(phydev, 0x14, 0x1088);	/* Adc gain optimization */
+		ax_ephy_afe_rx_set(phydev);
 		break;
 	default:
 		pr_info("adc mode:0-1-2\n");

@@ -49,7 +49,6 @@ static const char * const mem_sleep_labels[] = {
 };
 const char *mem_sleep_states[PM_SUSPEND_MAX];
 
-#ifdef CONFIG_AXERA_SLEEP_STATE
 unsigned long k_suspend_time = 0;
 unsigned long k_wakeup_time = 0;
 unsigned long k_suspend_wakeup_times = 0;
@@ -64,7 +63,6 @@ unsigned long k_suspend_wakeup_min_duration = (unsigned long)-1;
 EXPORT_SYMBOL_GPL(k_suspend_wakeup_min_duration);
 unsigned long k_suspend_wakeup_average_duration = 0;
 EXPORT_SYMBOL_GPL(k_suspend_wakeup_average_duration);
-#endif
 
 suspend_state_t mem_sleep_current = PM_SUSPEND_TO_IDLE;
 suspend_state_t mem_sleep_default = PM_SUSPEND_MAX;
@@ -631,9 +629,7 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
-#ifdef CONFIG_AXERA_SLEEP_STATE
 	k_suspend_time = ktime_to_ms(ktime_get());
-#endif
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -641,7 +637,6 @@ int pm_suspend(suspend_state_t state)
 	} else {
 		suspend_stats.success++;
 	}
-#ifdef CONFIG_AXERA_SLEEP_STATE
 	k_wakeup_time = ktime_to_ms(ktime_get());
 	k_suspend_wakeup_times++;
 	k_suspend_wakeup_duration = (k_wakeup_time - k_suspend_time);
@@ -653,7 +648,6 @@ int pm_suspend(suspend_state_t state)
 		k_suspend_wakeup_min_duration = k_suspend_wakeup_duration;
 	}
 	k_suspend_wakeup_average_duration = (k_suspend_wakeup_total_duration / k_suspend_wakeup_times);
-#endif
 	pr_info("suspend exit\n");
 	return error;
 }

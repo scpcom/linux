@@ -30,7 +30,7 @@
 #include "dwc3-axera.h"
 #endif
 
-#define DWC3_ALIGN_FRAME(d)	(((d)->frame_number + (d)->interval) \
+#define DWC3_ALIGN_FRAME(d, n)	(((d)->frame_number + (d)->interval * (n)) \
 					& ~((d)->interval - 1))
 
 /**
@@ -1261,9 +1261,12 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep)
 		 * here and stop, unmap, free and del each of the linked
 		 * requests instead of what we do now.
 		 */
-		if (req->trb)
-			memset(req->trb, 0, sizeof(struct dwc3_trb));
-		dwc3_gadget_del_and_unmap_request(dep, req, ret);
+		 if (ret != -EAGAIN) {
+			if (req->trb)
+				memset(req->trb, 0, sizeof(struct dwc3_trb));
+
+			dwc3_gadget_del_and_unmap_request(dep, req, ret);
+		}
 		return ret;
 	}
 
@@ -1280,15 +1283,29 @@ static int __dwc3_gadget_get_frame(struct dwc3 *dwc)
 
 static void __dwc3_gadget_start_isoc(struct dwc3_ep *dep)
 {
-	if (list_empty(&dep->pending_list)) {
-		dev_info(dep->dwc->dev, "%s: ran out of requests\n",
-				dep->name);
+	int i;
+	int ret;
+	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
+	if (list_empty(&dep->pending_list) && list_empty(&dep->started_list)) {
 		dep->flags |= DWC3_EP_PENDING_REQUEST;
 		return;
 	}
 
-	dep->frame_number = DWC3_ALIGN_FRAME(dep);
-	__dwc3_gadget_kick_transfer(dep);
+	for(i = 0; i < 50; i += 1) {
+		int future_interval = i + 1;
+		if (desc->bInterval < 3) {
+			future_interval += 3 - desc->bInterval;
+		}
+		dep->frame_number = DWC3_ALIGN_FRAME(dep, future_interval);
+		ret = __dwc3_gadget_kick_transfer(dep);
+		if (ret != -EAGAIN) {
+			break;
+		}
+	}
+
+	if (ret == -EAGAIN) {
+		dwc3_stop_active_transfer(dep, true, true);
+	}
 }
 
 static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
@@ -2388,6 +2405,12 @@ static void dwc3_gadget_endpoint_transfer_in_progress(struct dwc3_ep *dep,
 	}
 
 	dwc3_gadget_ep_cleanup_completed_requests(dep, event, status);
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+		list_empty(&dep->started_list) &&
+		(list_empty(&dep->pending_list) || status == -EXDEV)) {
+			stop = true;
+	}
 
 	if (stop)
 		dwc3_stop_active_transfer(dep, true, true);

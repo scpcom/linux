@@ -167,6 +167,7 @@ struct axi_dma_desc {
 	u32				period_len;
 	atomic_t			descs_allocated;
 	int				high_perf;
+	int				cur_llp_index;
 };
 
 struct axi_dma_hw_info {
@@ -218,7 +219,6 @@ struct ax_dma_per_chip {
 	struct ax_dma_per_info	*axdma;
 	struct dma_pool		*desc_pool;
 	struct kmem_cache	*desc_kmem;
-	struct tasklet_struct	tasklet;
 	spinlock_t		lock;
 };
 

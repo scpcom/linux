@@ -61,9 +61,6 @@ static int source_set_flag;
 struct ax_gpio {
 	struct gpio_chip chip;
 	struct device *dev;
-#ifdef CONFIG_PM_SLEEP
-	u32 ctx[32];
-#endif
 	struct irq_chip init_irq_chip;
 	void __iomem *base;
 	spinlock_t lock;
@@ -310,6 +307,7 @@ static void ax_irq_enable(struct irq_data *data)
 	spin_lock_irqsave(&ax_gpio->lock, flags);
 	val = ax_gpio_read(chip, offset);
 	val |= GPIO_INTEN;
+	val &= (~GPIO_INTMASK);
 	ax_gpio_write(chip, offset, val);
 	spin_unlock_irqrestore(&ax_gpio->lock, flags);
 }
@@ -323,6 +321,7 @@ static void ax_irq_disable(struct irq_data *data)
 	struct ax_gpio *ax_gpio = gpiochip_get_data(chip);
 	spin_lock_irqsave(&ax_gpio->lock, flags);
 	val = ax_gpio_read(chip, offset);
+	val |= GPIO_INTMASK;
 	val &= (~GPIO_INTEN);
 	ax_gpio_write(chip, offset, val);
 	spin_unlock_irqrestore(&ax_gpio->lock, flags);
@@ -384,7 +383,7 @@ static int ax_gpio_set_config(struct gpio_chip *chip, unsigned int offset,
 	return 0;
 }
 
-static int ax_gpio_get_direction (struct gpio_chip *chip, unsigned int offset)
+static int ax_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 {
 	unsigned int val;
 	unsigned long flags;
@@ -396,7 +395,7 @@ static int ax_gpio_get_direction (struct gpio_chip *chip, unsigned int offset)
 	return val ? 0:1;
 }
 
-static void ax_assert_reset(void *data)
+static void __attribute__((unused)) ax_assert_reset(void *data)
 {
 	struct ax_gpio *gpio = data;
 
@@ -509,31 +508,11 @@ static int ax_gpio_probe(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int ax_gpio_suspend(struct device *dev)
 {
-	struct ax_gpio *ax_gpio = dev_get_drvdata(dev);
-	int i;
-	unsigned long flags;
-
-	spin_lock_irqsave(&ax_gpio->lock, flags);
-	for (i = 0; i < ax_gpio->chip.ngpio; i++)
-		ax_gpio->ctx[i] = ax_gpio_read(&ax_gpio->chip, i);
-	spin_unlock_irqrestore(&ax_gpio->lock, flags);
-	ax_gpio_clk(ax_gpio->gpio_clk_id, false);
-
 	return 0;
 }
 
 static int ax_gpio_resume(struct device *dev)
 {
-	struct ax_gpio *ax_gpio = dev_get_drvdata(dev);
-	int i;
-	unsigned long flags;
-
-	ax_gpio_clk(ax_gpio->gpio_clk_id, true);
-	spin_lock_irqsave(&ax_gpio->lock, flags);
-	for (i = 0; i < ax_gpio->chip.ngpio; i++)
-		ax_gpio_write(&ax_gpio->chip, i, ax_gpio->ctx[i]);
-	spin_unlock_irqrestore(&ax_gpio->lock, flags);
-
 	return 0;
 }
 #endif

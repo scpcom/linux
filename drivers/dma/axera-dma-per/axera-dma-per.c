@@ -32,9 +32,7 @@ static int ax_dma_per_chan_clk_en(struct axi_dma_chan *chan, char en)
 {
 	int ret = 0;
 	static unsigned int using;
-	unsigned long flags;
 
-	spin_lock_irqsave(&chan->chip->lock, flags);
 	if (en) {
 		if (!using) {
 			ret |= clk_prepare_enable(chan->chip->clk);
@@ -48,7 +46,6 @@ static int ax_dma_per_chan_clk_en(struct axi_dma_chan *chan, char en)
 			}
 		}
 	}
-	spin_unlock_irqrestore(&chan->chip->lock, flags);
 	return ret;
 }
 
@@ -303,8 +300,7 @@ static int dma_chan_pause(struct dma_chan *dchan)
 	axi_dma_reg_set(chan->chip, AX_DMAPER_CTRL, 1, chan->id,
 			AX_DMAPER_CHN_SUSPEND_EN_MASK);
 	do {
-		if (axi_dma_ioread32(chan->chip, AX_DMAPER_STA) &
-		    (BIT(chan->id) << AX_DMAPER_CHN_SUSPEND_STA_MASK))
+		if (axi_dma_ioread32(chan->chip, AX_DMAPER_STA) & BIT(chan->id))
 			break;
 		udelay(1);
 	} while (--timeout);
@@ -436,12 +432,20 @@ static void vchan_desc_put(struct virt_dma_desc *vdesc)
 static size_t dma_get_residue(struct axi_dma_chan *chan,
 			      struct virt_dma_desc *vdesc)
 {
+	unsigned long flags;
 	struct axi_dma_hw_desc *hw_desc;
 	struct axi_dma_desc *desc = vd_to_axi_desc(vdesc);
 	u64 completed_length, len = 0, llp, i;
 	int count = atomic_read(&desc->descs_allocated);
 
-	llp = read_chan_llp(chan);
+	if (chan->cyclic) {
+		spin_lock_irqsave(&chan->vc.lock, flags);
+		llp = desc->hw_desc[desc->cur_llp_index].llp;
+		spin_unlock_irqrestore(&chan->vc.lock, flags);
+	} else {
+		llp = read_chan_llp(chan);
+	}
+
 	for (i = 0; i < count; i++) {
 		hw_desc = &desc->hw_desc[i];
 		if (hw_desc->llp == llp) {
@@ -582,7 +586,10 @@ static int axi_dma_set_hw_desc(struct axi_dma_chan *chan,
 	hw_desc->lli = axi_desc_get(chan, desc, &hw_desc->llp);
 	if (unlikely(!hw_desc->lli))
 		return -ENOMEM;
-	hw_desc->lli->ctrl.ioc = 0;
+	if (chan->cyclic)
+		hw_desc->lli->ctrl.ioc = 1;
+	else
+		hw_desc->lli->ctrl.ioc = 0;
 	hw_desc->lli->ctrl.endian = 0;
 	hw_desc->lli->ctrl.dst_osd = 0xf;
 	hw_desc->lli->ctrl.src_osd = 0xf;
@@ -696,10 +703,6 @@ static struct dma_async_tx_descriptor *dma_chan_prep_cyclic(struct dma_chan *dch
 			desc->length += hw_desc->len;
 			len -= xfer_len;
 			src_addr += xfer_len;
-			/* Set end-of-link to the linked descriptor, so that cyclic
-			 * callback function can be triggered during interrupt.
-			 */
-			set_desc_last(hw_desc);
 		} while (len);
 	}
 
@@ -711,7 +714,7 @@ static struct dma_async_tx_descriptor *dma_chan_prep_cyclic(struct dma_chan *dch
 		write_desc_llp(hw_desc, llp);
 		llp = hw_desc->llp;
 	} while (total_segments);
-
+	desc->cur_llp_index = 0;
 #ifdef AX_DMA_PERIPHERAL_DEBUG
 	axi_chan_list_dump_lli(chan, desc);
 #endif
@@ -906,6 +909,7 @@ static int dma_chan_terminate_all(struct dma_chan *dchan)
 	chan->is_paused = false;
 	axi_chan_irq_disable(chan);
 	axi_chan_irq_mask_set(chan, 0);
+	chan->vc.cyclic = NULL;
 	vchan_get_all_descriptors(&chan->vc, &head);
 	chan->cyclic = false;
 	spin_unlock_irqrestore(&chan->vc.lock, flags);
@@ -930,41 +934,40 @@ static void axi_chan_block_xfer_complete(struct axi_dma_chan *chan, u32 status)
 	if (chan->id < AX_DMA_PER_MAX_CHANNELS)
 		dmachan_completed_cnt[chan->id]++;
 	spin_lock_irqsave(&chan->vc.lock, flags);
-	axi_chan_disable(chan);
-	/* The completed descriptor currently is in the head of vc list */
-	vd = vchan_next_desc(&chan->vc);
-	if (unlikely(!vd)) {
-		spin_unlock_irqrestore(&chan->vc.lock, flags);
-		return;
-	}
 	if (chan->cyclic) {
 		if (chan->id < AX_DMA_PER_MAX_CHANNELS)
 			dmachan_cyclic[chan->id]++;
+		vd = vchan_next_desc(&chan->vc);
+		if (unlikely(!vd)) {
+			spin_unlock_irqrestore(&chan->vc.lock, flags);
+			return;
+		}
 		desc = vd_to_axi_desc(vd);
 		if (desc) {
-			count = atomic_read(&desc->descs_allocated);
 			len = 0;
-			llp = read_chan_llp(chan);
+			count = atomic_read(&desc->descs_allocated);
+			llp = desc->hw_desc[desc->cur_llp_index++].llp;
+			if (desc->cur_llp_index == count)
+				desc->cur_llp_index = 0;
 			for (i = 0; i < count; i++) {
 				hw_desc = &desc->hw_desc[i];
 				len += hw_desc->len;
 				if (hw_desc->llp == llp) {
 					desc->completed_blocks = i + 1;
-
 					if ((len % desc->period_len) == 0)
 						vchan_cyclic_callback(vd);
-					/* start next lli */
-					write_chan_llp(chan,
-						       hw_desc->lli->data.llp);
-					axi_chan_enable(chan);
-					mb();
-					axi_chan_start(chan);
-					mb();
 					break;
 				}
 			}
 		}
 	} else {
+		axi_chan_disable(chan);
+		/* The completed descriptor currently is in the head of vc list */
+		vd = vchan_next_desc(&chan->vc);
+		if (unlikely(!vd)) {
+			spin_unlock_irqrestore(&chan->vc.lock, flags);
+			return;
+		}
 		if (chan->id < AX_DMA_PER_MAX_CHANNELS)
 			dmachan_start_callback[chan->id]++;
 		/* Remove the completed descriptor from issued list before completing */
@@ -980,9 +983,8 @@ static void axi_chan_block_xfer_complete(struct axi_dma_chan *chan, u32 status)
 	spin_unlock_irqrestore(&chan->vc.lock, flags);
 }
 
-static void ax_dma_tasklet(unsigned long data)
+static void ax_dma_tasklet(struct ax_dma_per_chip *chip)
 {
-	struct ax_dma_per_chip *chip = (struct ax_dma_per_chip *)data;
 	struct ax_dma_per_info *axdma = chip->axdma;
 	u32 status, chn_status, i;
 
@@ -994,8 +996,6 @@ static void ax_dma_tasklet(unsigned long data)
 			axi_chan_block_xfer_complete(&axdma->chans[i], chn_status);
 		}
 	}
-
-	enable_irq(chip->irq);
 }
 
 static irqreturn_t ax_dma_per_interrupt(int irq, void *dev_id)
@@ -1007,12 +1007,9 @@ static irqreturn_t ax_dma_per_interrupt(int irq, void *dev_id)
 #endif
 	dev_dbg(chip->dev, "dma per glb irq status %d\n",
 		axi_dma_irq_read(chip));
-	tasklet_schedule(&chip->tasklet);
-	/*
-	 * Just disable the interrupts. We'll turn them back on in the
-	 * softirq handler.
-	 */
 	disable_irq_nosync(irq);
+	ax_dma_tasklet(chip);
+	enable_irq(irq);
 	return IRQ_HANDLED;
 }
 
@@ -1061,7 +1058,7 @@ static int parse_device_properties(struct ax_dma_per_chip *chip)
 	return 0;
 }
 
-static int ax_probe(struct platform_device *pdev)
+static int ax_dma_per_probe(struct platform_device *pdev)
 {
 	struct ax_dma_per_chip *chip;
 	struct resource *mem;
@@ -1097,32 +1094,32 @@ static int ax_probe(struct platform_device *pdev)
 	chip->regs = devm_ioremap_resource(chip->dev, mem);
 	if (IS_ERR_OR_NULL(chip->regs)) {
 		dev_err(chip->dev, "devm_ioremap_resource regs\n");
-		return PTR_ERR(chip->regs);
+		return -ENOMEM;
 	}
 	chip->paddr = mem->start;
 
 	chip->rst = devm_reset_control_get_optional(&pdev->dev, "dmaper-arst");
 	if (IS_ERR_OR_NULL(chip->rst)) {
 		dev_err(chip->dev, "get rst fail\n");
-		return PTR_ERR(chip->rst);
+		return -EINVAL;
 	}
 
 	chip->prst = devm_reset_control_get_optional(&pdev->dev, "dmaper-prst");
 	if (IS_ERR_OR_NULL(chip->prst)) {
 		dev_err(chip->dev, "get prst fail\n");
-		return PTR_ERR(chip->prst);
+		return -EINVAL;
 	}
 
 	chip->clk = devm_clk_get(chip->dev, "dmaper-aclk");
 	if (IS_ERR_OR_NULL(chip->clk)) {
 		dev_err(chip->dev, "get clk fail\n");
-		return PTR_ERR(chip->clk);
+		return -EINVAL;
 	}
 
 	chip->pclk = devm_clk_get(chip->dev, "dmaper-pclk");
 	if (IS_ERR_OR_NULL(chip->pclk)) {
 		dev_err(chip->dev, "get pclk fail\n");
-		return PTR_ERR(chip->pclk);
+		return -EINVAL;
 	}
 
 	ret = parse_device_properties(chip);
@@ -1135,7 +1132,7 @@ static int ax_probe(struct platform_device *pdev)
 	chip->req_regs = ioremap(mem->start, resource_size(mem));
 	if (IS_ERR_OR_NULL(chip->req_regs)) {
 		dev_err(chip->dev, "devm_ioremap_resource req_regs\n");
-		return PTR_ERR(chip->req_regs);
+		return -ENOMEM;
 	}
 	chip->req_paddr = mem->start;
 
@@ -1198,7 +1195,6 @@ static int ax_probe(struct platform_device *pdev)
 		goto err_disable;
 	}
 #endif
-	tasklet_init(&chip->tasklet, ax_dma_tasklet, (unsigned long)chip);
 #ifdef CONFIG_AX_RISCV_LOAD_ROOTFS
 	chip->en = 0;
 #endif
@@ -1246,7 +1242,7 @@ err_ioremap:
 	return ret;
 }
 
-static int ax_remove(struct platform_device *pdev)
+static int ax_dma_per_remove(struct platform_device *pdev)
 {
 	struct ax_dma_per_chip *chip = platform_get_drvdata(pdev);
 	struct ax_dma_per_info *axdma = chip->axdma;
@@ -1292,9 +1288,9 @@ static const struct of_device_id ax_dma_per_of_id_table[] = {
 
 MODULE_DEVICE_TABLE(of, ax_dma_per_of_id_table);
 
-static struct platform_driver ax_driver = {
-	.probe = ax_probe,
-	.remove = ax_remove,
+static struct platform_driver ax_dma_per_driver = {
+	.probe = ax_dma_per_probe,
+	.remove = ax_dma_per_remove,
 	.driver = {
 		   .name = AX_DMA_PER_DRV,
 		   .of_match_table = of_match_ptr(ax_dma_per_of_id_table),
@@ -1304,14 +1300,14 @@ static struct platform_driver ax_driver = {
 
 static int __init ax_dma_per_init(void)
 {
-	return platform_driver_register(&ax_driver);
+	return platform_driver_register(&ax_dma_per_driver);
 }
 
 subsys_initcall_sync(ax_dma_per_init);
 
 static void __exit ax_dma_per_exit(void)
 {
-	platform_driver_unregister(&ax_driver);
+	platform_driver_unregister(&ax_dma_per_driver);
 }
 
 module_exit(ax_dma_per_exit);

@@ -264,6 +264,16 @@ int i2c_recover_bus(struct i2c_adapter *adap)
 }
 EXPORT_SYMBOL_GPL(i2c_recover_bus);
 
+int i2c_recover_bus_lock(struct i2c_adapter *adap)
+{
+	int ret = 0;
+	i2c_lock_bus(adap, I2C_LOCK_SEGMENT);
+	ret = i2c_recover_bus(adap);
+	i2c_unlock_bus(adap, I2C_LOCK_SEGMENT);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i2c_recover_bus_lock);
+
 static void i2c_gpio_init_pinctrl_recovery(struct i2c_adapter *adap)
 {
 	struct i2c_bus_recovery_info *bri = adap->bus_recovery_info;

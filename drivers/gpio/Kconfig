@@ -202,6 +202,7 @@ config GPIO_LP_AXERA
 	bool "AXERA DEB GPIO LP driver"
 	help
 		axera deb gpio lp wakeup source.
+	default y
 
 config GPIO_EIC_SPRD
 	tristate "Spreadtrum EIC support"

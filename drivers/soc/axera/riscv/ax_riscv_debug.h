@@ -13,5 +13,6 @@
 
 int ax_riscv_debug_init(void);
 int ax_riscv_debug_deinit(void);
+extern int riscv_debug_log_print(void);
 
 #endif //__AX_RISCV_DEBUG_H__

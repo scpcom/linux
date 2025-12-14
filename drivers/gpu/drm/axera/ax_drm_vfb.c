@@ -128,65 +128,6 @@ static int vfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		return -ENOMEM;
 	}
 
-	/*
-	 * Now that we checked it we alter var. The reason being is that the video
-	 * mode passed in might not work but slight changes to it might make it
-	 * work. This way we let the user know what is acceptable.
-	 */
-	switch (var->bits_per_pixel) {
-	case 1:
-	case 8:
-		var->red.offset = 0;
-		var->red.length = 8;
-		var->green.offset = 0;
-		var->green.length = 8;
-		var->blue.offset = 0;
-		var->blue.length = 8;
-		var->transp.offset = 0;
-		var->transp.length = 0;
-		break;
-	case 16:		/* RGBA 5551 */
-		if (var->transp.length) {
-			var->red.offset = 0;
-			var->red.length = 5;
-			var->green.offset = 5;
-			var->green.length = 5;
-			var->blue.offset = 10;
-			var->blue.length = 5;
-			var->transp.offset = 15;
-			var->transp.length = 1;
-		} else {	/* RGB 565 */
-			var->red.offset = 0;
-			var->red.length = 5;
-			var->green.offset = 5;
-			var->green.length = 6;
-			var->blue.offset = 11;
-			var->blue.length = 5;
-			var->transp.offset = 0;
-			var->transp.length = 0;
-		}
-		break;
-	case 24:		/* RGB 888 */
-		var->red.offset = 0;
-		var->red.length = 8;
-		var->green.offset = 8;
-		var->green.length = 8;
-		var->blue.offset = 16;
-		var->blue.length = 8;
-		var->transp.offset = 0;
-		var->transp.length = 0;
-		break;
-	case 32:		/* RGBA 8888 */
-		var->red.offset = 0;
-		var->red.length = 8;
-		var->green.offset = 8;
-		var->green.length = 8;
-		var->blue.offset = 16;
-		var->blue.length = 8;
-		var->transp.offset = 24;
-		var->transp.length = 8;
-		break;
-	}
 	var->red.msb_right = 0;
 	var->green.msb_right = 0;
 	var->blue.msb_right = 0;

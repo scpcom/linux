@@ -41,6 +41,8 @@ struct ax_lvds {
 	struct clk *dphytx_ref_clk;
 	struct clk *comm_dphytx_tlb_clk;
 	int fmt_out;
+	int clock;
+	bool status;
 };
 
 #endif /* __AX_LVDS_H */

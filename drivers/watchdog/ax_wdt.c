@@ -17,6 +17,9 @@
 #include <linux/workqueue.h>
 #include <linux/irq.h>
 #include <linux/cpumask.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#include <linux/poll.h>
 
 #define WDOG_CONTROL_REG_EN                 0x00
 #define WDOG_CONTROL_WDT_EN                 0x01
@@ -45,10 +48,10 @@ struct ax_wdt {
 	void __iomem *regs;
 	void __iomem *common;
 	int irq;
+	int suspend_status;
 	u32 timeout;
 	u32 udelay_time;
-	u32 keep_alive_rate;
-	u32 suspend_timeout;
+	u32 keep_alive;
 	u32 rate;
 	u32 clk_set[3];
 	u32 aclk[3];
@@ -56,8 +59,11 @@ struct ax_wdt {
 	u32 arst[3];
 	u32 prst[3];
 	struct watchdog_device wdd;
+	struct proc_dir_entry *pfile;
 	int clk;
 	int clk_wdt_select;
+	char proc_name[32];
+	struct mutex lock;
 	/* Save/restore */
 };
 
@@ -67,6 +73,8 @@ enum {
 	REG_SHIFT
 };
 
+static struct ax_wdt * g_ax_wdt[2];
+
 #define to_ax_wdt(wdd)	container_of(wdd, struct ax_wdt, wdd)
 
 static inline int ax_wdt_is_enabled(struct ax_wdt *ax_wdt)
@@ -74,12 +82,29 @@ static inline int ax_wdt_is_enabled(struct ax_wdt *ax_wdt)
 	return readl(ax_wdt->regs + WDOG_CONTROL_REG_EN) & WDOG_CONTROL_WDT_EN;
 }
 
+static int ax_wdt_ping(struct watchdog_device *wdd)
+{
+	struct ax_wdt *ax_wdt = to_ax_wdt(wdd);
+	writel(WDOG_COUNTER_RESTART_KICK_VALUE, ax_wdt->regs +
+	       WDOG_COUNTER_RESTART_REG);
+	udelay(ax_wdt->udelay_time);
+	writel(0, ax_wdt->regs + WDOG_COUNTER_RESTART_REG);
+	return 0;
+}
+
 static void ax_clk_set_rate(struct ax_wdt *ax_wdt, unsigned long int rate)
 {
-	if (rate == AX_WDT_CLK_32K)
+	if (rate == AX_WDT_CLK_32K) {
+		ax_wdt->udelay_time = AX_PING_DELAY_US;
 		writel(BIT(ax_wdt->clk_set[REG_SHIFT]), ax_wdt->common + ax_wdt->clk_set[CLR_CLR]);
-	else
+	} else {
+		ax_wdt->udelay_time = 1;
 		writel(BIT(ax_wdt->clk_set[REG_SHIFT]), ax_wdt->common + ax_wdt->clk_set[SET_SET]);
+	}
+	ax_wdt->rate = rate;
+	ax_wdt->wdd.min_timeout = DIV_ROUND_UP(0xFFFF, rate);
+	ax_wdt->wdd.max_timeout = AX_MAX_COUNT / rate;
+	ax_wdt->wdd.max_hw_heartbeat_ms = AX_MAX_COUNT / rate * 1000;
 }
 
 static void ax_wdt_reset_set(struct ax_wdt *ax_wdt, u8 en)
@@ -93,11 +118,15 @@ static void ax_wdt_reset_set(struct ax_wdt *ax_wdt, u8 en)
 	}
 }
 
-static void ax_wdt_clk_set(struct ax_wdt *ax_wdt, u8 en)
+// when clk disenable to en, 32K need delay 100us, 24M need delay 1us
+static void ax_wdt_clk_set(struct ax_wdt *ax_wdt, u8 en, u32 rate)
 {
 	if(en) {
 		writel(BIT(ax_wdt->pclk[REG_SHIFT]), ax_wdt->common + ax_wdt->pclk[SET_SET]);
 		writel(BIT(ax_wdt->aclk[REG_SHIFT]), ax_wdt->common + ax_wdt->aclk[SET_SET]);
+		if (rate == AX_WDT_CLK_32K)
+			udelay(100);
+		udelay(1);
 	} else {
 		writel(BIT(ax_wdt->aclk[REG_SHIFT]), ax_wdt->common + ax_wdt->aclk[CLR_CLR]);
 		writel(BIT(ax_wdt->pclk[REG_SHIFT]), ax_wdt->common + ax_wdt->pclk[CLR_CLR]);
@@ -106,35 +135,18 @@ static void ax_wdt_clk_set(struct ax_wdt *ax_wdt, u8 en)
 
 static int ax_wdt_clk_enable(struct ax_wdt *ax_wdt, unsigned long int rate)
 {
-	ax_wdt_clk_set(ax_wdt, 0);
+	ax_wdt_clk_set(ax_wdt, 0, rate);
 	ax_clk_set_rate(ax_wdt, rate);
-	ax_wdt_clk_set(ax_wdt, 1);
+	ax_wdt_clk_set(ax_wdt, 1, rate);
+	ax_wdt_ping(&ax_wdt->wdd);
 
-	if (likely(rate == AX_WDT_CLK_24M))
-		ax_wdt->udelay_time = 0;
-	else
-		ax_wdt->udelay_time = AX_PING_DELAY_US;
-	ax_wdt->wdd.min_timeout = DIV_ROUND_UP(0xFFFF, rate);
-	ax_wdt->wdd.max_timeout = AX_MAX_COUNT / rate;
-	ax_wdt->wdd.max_hw_heartbeat_ms = AX_MAX_COUNT / rate * 1000;
-	writel(1, ax_wdt->regs);
 	return 0;
 }
 
 static void ax_wdt_clk_disable(struct ax_wdt *ax_wdt)
 {
-	ax_wdt_clk_set(ax_wdt, 0);
+	ax_wdt_clk_set(ax_wdt, 0, ax_wdt->rate);
 	return;
-}
-
-static int ax_wdt_ping(struct watchdog_device *wdd)
-{
-	struct ax_wdt *ax_wdt = to_ax_wdt(wdd);
-	writel(WDOG_COUNTER_RESTART_KICK_VALUE, ax_wdt->regs +
-	       WDOG_COUNTER_RESTART_REG);
-	udelay(ax_wdt->udelay_time);
-	writel(0, ax_wdt->regs + WDOG_COUNTER_RESTART_REG);
-	return 0;
 }
 
 static int __ax_wdt_set_timeout(struct ax_wdt *ax_wdt, unsigned long int rate,
@@ -148,7 +160,7 @@ static int __ax_wdt_set_timeout(struct ax_wdt *ax_wdt, unsigned long int rate,
 	writel(1, ax_wdt->regs + WDOG_TIMEOUT_COUNT_CTRL_REG);
 	udelay(ax_wdt->udelay_time);
 	writel(0, ax_wdt->regs + WDOG_TIMEOUT_COUNT_CTRL_REG);
-
+	ax_wdt_ping(&ax_wdt->wdd);
 	return 0;
 }
 
@@ -190,6 +202,7 @@ static int ax_wdt_enable(struct ax_wdt *ax_wdt, bool en)
 static int ax_wdt_start(struct watchdog_device *wdd)
 {
 	struct ax_wdt *ax_wdt = to_ax_wdt(wdd);
+
 	ax_wdt_set_timeout(wdd, wdd->timeout);
 	ax_wdt_enable(ax_wdt, 1);
 
@@ -206,6 +219,9 @@ static int ax_wdt_stop(struct watchdog_device *wdd)
 static int ax_wdt_restart(struct watchdog_device *wdd,
 			  unsigned long action, void *data)
 {
+	struct ax_wdt *ax_wdt = to_ax_wdt(wdd);
+	//change clk to 24M, when reboot
+	ax_wdt_clk_enable(ax_wdt, AX_WDT_CLK_24M);
 	ax_wdt_set_timeout(wdd, 0);
 	/* wait for reset to assert... */
 	mdelay(500);
@@ -236,22 +252,13 @@ static const struct watchdog_ops ax_wdt_ops = {
 #ifdef CONFIG_PM_SLEEP
 static int ax_wdt_suspend(struct device *dev)
 {
-	int ret;
 	struct ax_wdt *ax_wdt = dev_get_drvdata(dev);
 
-	if (ax_wdt->keep_alive_rate) {
-		ax_wdt_enable(ax_wdt, 0);
-		ret = ax_wdt_clk_enable(ax_wdt, ax_wdt->keep_alive_rate);
-		if (ret) {
-			pr_err("err %d\n", ret);
-			return ret;
-		}
-		__ax_wdt_set_timeout(ax_wdt, ax_wdt->keep_alive_rate,
-				     ax_wdt->suspend_timeout);
-		ax_wdt_enable(ax_wdt, 1);
+	ax_wdt->suspend_status = readl(ax_wdt->regs + WDOG_CONTROL_REG_EN);
+	if (ax_wdt->keep_alive) {
+		__ax_wdt_set_timeout(ax_wdt, ax_wdt->rate, ax_wdt->keep_alive);
 	} else {
 		ax_wdt_enable(ax_wdt, 0);
-		ax_wdt_clk_disable(ax_wdt);
 	}
 	return 0;
 }
@@ -260,22 +267,71 @@ static int ax_wdt_resume(struct device *dev)
 {
 	struct ax_wdt *ax_wdt = dev_get_drvdata(dev);
 	struct watchdog_device *wdd = &ax_wdt->wdd;
-	int err = 0;
 
-	err = ax_wdt_clk_enable(ax_wdt, ax_wdt->rate);
-	if (err) {
-		pr_err("err %d\n", err);
-		return err;
-	}
-	if (ax_wdt->suspend_timeout)
-		ax_wdt_set_timeout(wdd, wdd->timeout);
-	ax_wdt_enable(ax_wdt, 1);
+	__ax_wdt_set_timeout(ax_wdt, ax_wdt->rate, wdd->timeout);
+	ax_wdt_enable(ax_wdt, !!ax_wdt->suspend_status);
 
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP */
-
 static SIMPLE_DEV_PM_OPS(ax_wdt_pm_ops, ax_wdt_suspend, ax_wdt_resume);
+
+int ax_wdt_set_keep_alive_timeout(int wdt_id, unsigned int timeout)
+{
+	if (IS_ERR_OR_NULL(g_ax_wdt[wdt_id]))
+		return -EINVAL;
+	mutex_lock(&g_ax_wdt[wdt_id]->lock);
+	g_ax_wdt[wdt_id]->keep_alive = timeout;
+	mutex_unlock(&g_ax_wdt[wdt_id]->lock);
+	return 0;
+}
+EXPORT_SYMBOL(ax_wdt_set_keep_alive_timeout);
+
+static ssize_t ax_wdt_write(struct file *file, const char __user * userbuf,
+			     size_t count, loff_t * data)
+{
+	char kbuf[16] = {0};
+	unsigned long value;
+	struct seq_file *seq = file->private_data;
+	struct ax_wdt *ax_wdt = (struct ax_wdt *)seq->private;
+
+	if (count > 11)
+		return -EINVAL;
+	if (copy_from_user(kbuf, userbuf, count)) {
+		pr_err("copy_from_user fail\n");
+		return -EFAULT;
+	}
+	kbuf[count] = '\0';
+	if (kstrtoul(kbuf, 0, &value) != 0) {
+		pr_err("kstrtoul fail value\n");
+		return -EINVAL;
+	}
+	mutex_lock(&ax_wdt->lock);
+	ax_wdt->keep_alive = value;
+	mutex_unlock(&ax_wdt->lock);
+
+	return count;
+}
+
+static int ax_wdt_stat_show(struct seq_file *seq, void *v)
+{
+	struct ax_wdt *ax_wdt = (struct ax_wdt *)seq->private;
+	seq_printf(seq, "suspend timeout %d suspend reboot time %d\n", ax_wdt->keep_alive,
+			ax_wdt->keep_alive * 2);
+	return 0;
+}
+
+static int ax_wdt_stat_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ax_wdt_stat_show, PDE_DATA(inode));
+}
+
+static const struct file_operations ax_wdt_proc_ops = {
+	.open = ax_wdt_stat_open,
+	.read = seq_read,
+	.release = single_release,
+	.write = ax_wdt_write,
+};
 
 static int ax_wdt_drv_probe(struct platform_device *pdev)
 {
@@ -285,6 +341,7 @@ static int ax_wdt_drv_probe(struct platform_device *pdev)
 	struct resource *mem;
 	int ret, flag;
 	const struct cpumask *mask;
+	static int id = 0;
 
 	ax_wdt = devm_kzalloc(dev, sizeof(*ax_wdt), GFP_KERNEL);
 	if (!ax_wdt) {
@@ -307,24 +364,25 @@ static int ax_wdt_drv_probe(struct platform_device *pdev)
 	ax_wdt_enable(ax_wdt, 0);
 	ret = device_property_read_u32(dev, "clock-frequency", &ax_wdt->rate);
 	if (ret) {
-		pr_err("failed to get clock frequency, set default 24MHz\n");
-		ax_wdt->rate = AX_WDT_CLK_24M;
+		ax_wdt->rate = AX_WDT_CLK_32K;
 	}
 
 	if (unlikely(ax_wdt->rate != AX_WDT_CLK_24M))
 		ax_wdt->udelay_time = AX_PING_DELAY_US;
+	else
+		ax_wdt->udelay_time = 1;
 
+	sprintf(ax_wdt->proc_name, "ax_proc/wdt%d_keep_alive", id);
+	ax_wdt->pfile = proc_create_data(ax_wdt->proc_name, 0644, NULL, &ax_wdt_proc_ops, ax_wdt);
+	if (unlikely(!ax_wdt->pfile)) {
+		pr_err("err: Create proc fail!\n");
+		goto err;
+	}
 	ret =
 	    of_property_read_u32_index(dev->of_node, "keep-alive", 0,
-				       &ax_wdt->keep_alive_rate);
+				       &ax_wdt->keep_alive);
 	if (ret)
-		ax_wdt->keep_alive_rate = 0;
-
-	ret =
-	    of_property_read_u32_index(dev->of_node, "keep-alive", 1,
-				       &ax_wdt->suspend_timeout);
-	if (ret)
-		ax_wdt->suspend_timeout = 0;
+		ax_wdt->keep_alive = 0;
 
 	ax_wdt->irq = platform_get_irq(pdev, 0);
 	ret = device_property_read_u32(dev, "cpu_flag", &flag);
@@ -339,38 +397,38 @@ static int ax_wdt_drv_probe(struct platform_device *pdev)
 		if (ret) {
 			pr_err("err %d\n", ret);
 			watchdog_unregister_device(wdd);
-			goto err;
+			goto err_proc;
 		}
 	}
 	ret = of_property_read_u32_array(dev->of_node, "clk_set", ax_wdt->clk_set, 3);
 
 	if (ret) {
 		pr_err("get clk_set err\n");
-		goto err;
+		goto err_proc;
 	}
 
 	ret = of_property_read_u32_array(dev->of_node, "aclk", ax_wdt->aclk, 3);
 	if (!ax_wdt->aclk) {
 		pr_err("get aclk err\n");
-		goto err;
+		goto err_proc;
 	}
 
 	ret = of_property_read_u32_array(dev->of_node, "pclk", ax_wdt->pclk, 3);
 	if (!ax_wdt->pclk) {
 		pr_err("get pclk err\n");
-		goto err;
+		goto err_proc;
 	}
 
 	ret = of_property_read_u32_array(dev->of_node, "arst", ax_wdt->arst, 3);
 	if (!ax_wdt->arst) {
 		pr_err("get arst err\n");
-		goto err;
+		goto err_proc;
 	}
 
 	ret = of_property_read_u32_array(dev->of_node, "prst", ax_wdt->prst, 3);
 	if (!ax_wdt->prst) {
 		pr_err("get prst err\n");
-		goto err;
+		goto err_proc;
 	}
 
 	wdd = &ax_wdt->wdd;
@@ -403,11 +461,17 @@ static int ax_wdt_drv_probe(struct platform_device *pdev)
 		pr_err("err %d\n", ret);
 		goto err_disable_clk;
 	}
+	mutex_init(&ax_wdt->lock);
+	g_ax_wdt[id] = ax_wdt;
+	id++;
 	pr_info("%s probe done!", dev_name(dev));
 	return 0;
 
 err_disable_clk:
 	ax_wdt_clk_disable(ax_wdt);
+err_proc:
+	if (ax_wdt->pfile)
+		remove_proc_entry(ax_wdt->proc_name, NULL);
 err:
 	pr_err("%s probe fail!\n", dev_name(dev));
 	return ret;
@@ -419,6 +483,8 @@ static int ax_wdt_drv_remove(struct platform_device *pdev)
 
 	watchdog_unregister_device(&ax_wdt->wdd);
 	ax_wdt_clk_disable(ax_wdt);
+	if (ax_wdt->pfile)
+		remove_proc_entry(ax_wdt->proc_name, NULL);
 	return 0;
 }
 

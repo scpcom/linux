@@ -53,6 +53,7 @@
 #define TIMER32_CMR_OFFSET	0x4
 #define TIMER32_CMR_START_OFFSET	0x10
 #define TIMER32_INTR_CTRL_OFFSET	0x1C
+#define TIMER32_INTR_STATUS_OFFSET	0x28
 
 #define PINMUX_G6_CTRL_CLR_CLR	(1 << 0)
 #define BIT_COMMON_TMR32_EIC_EN_SET	(1 << 1)
@@ -66,14 +67,20 @@
 #define BIT_TIMER32_INTR_EN	(1 << 0)
 #define BIT_TIMER32_CMR_START	(1 << 0)
 
+extern int ax_wdt_set_keep_alive_timeout(int wdt_id, unsigned int timeout);
+
 static struct proc_dir_entry *wake_timer_root;
 static unsigned int timers;
 static unsigned int timer_eb = 0;
+wait_queue_head_t wq;
+atomic_t wq_status;
 
 
 #define PROC_NODE_ROOT_NAME "ax_proc/wake_timer"
 #define PROC_TIMER_SET	"timers"
 #define PROC_EB_TIMER_SET	"enable_timers"
+
+#define TIMER32_WAKEUP_NAME "timer32_wakeup"
 
 static DEFINE_MUTEX(ax_wake_timer_mutex);
 
@@ -85,6 +92,9 @@ struct wake_timer {
 	void __iomem	*pin_g6_base;
 	void __iomem	*timer_count_addr;
 	void __iomem	*timer_eb_addr;
+	struct wakeup_source *ws;
+	int major;
+	struct class *timer32_class;
 };
 
 static struct wake_timer *wake_timer_res;
@@ -93,65 +103,24 @@ static irqreturn_t wake_int_handler(int irq, void *dev_id)
 {
 	int val = 0;
 
-	/* stop compare */
-	writel(0, wake_timer_res->tmr_base + TIMER32_CMR_START_OFFSET);
+	pm_wakeup_ws_event(wake_timer_res->ws, 0, false);
 
-	val = readl(wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
-	val |= BIT_TIMER32_INTR_EOI;// set int eoi
-	val |= BIT_TIMER32_INTR_MASK;// set int mask
-	val &= ~BIT_TIMER32_INTR_EN;// disable int
-	writel(val, wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
+	if (readl(wake_timer_res->tmr_base + TIMER32_INTR_STATUS_OFFSET)) {
+		atomic_inc(&wq_status);
+		wake_up_interruptible(&wq);
+		/* stop compare */
+		writel(0, wake_timer_res->tmr_base + TIMER32_CMR_START_OFFSET);
+
+		val = readl(wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
+		val |= BIT_TIMER32_INTR_EOI;// set int eoi
+		val |= BIT_TIMER32_INTR_MASK;// set int mask
+		val &= ~BIT_TIMER32_INTR_EN;// disable int
+		writel(val, wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
+	}
 
 	return IRQ_HANDLED;
 }
-#if 0
-static void timer_init(void)
-{
 
-	int val = 0;
-	/* need clk */
-	writel(1, wake_timer_res->sys_base + COMMON_SYS_XTAL_SLEEP_BYP_ADDR_OFFSET);
-	writel(PINMUX_G6_CTRL_CLR_CLR,wake_timer_res->pin_g6_base);
-
-	/* eic enable timer32 for wakeup */
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_EIC_EN_SET_ADDR_OFFSET);
-	val |= BIT_COMMON_TMR32_EIC_EN_SET;
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_EIC_EN_SET_ADDR_OFFSET);
-
-	/*prst and rst */
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_SW_RST_0_ADDR_OFFSET);
-	val |= (BIT_COMMON_SYS_TIMER32_SW_PRST | BIT_COMMON_SYS_TIMER32_SW_RST);
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_SW_RST_0_ADDR_OFFSET);
-
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_SW_RST_0_ADDR_OFFSET);
-	val &= ~(BIT_COMMON_SYS_TIMER32_SW_PRST | BIT_COMMON_SYS_TIMER32_SW_RST);
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_SW_RST_0_ADDR_OFFSET);
-
-	/* select 24M */
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_CLK_MUX1_ADDR_OFFSET);
-	val |= BIT_COMMON_SYS_CLK_TIMER32_SEL_24M;
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_CLK_MUX1_ADDR_OFFSET);
-
-	/*clk channel enable */
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_CLK_EB_0_ADDR_OFFSET);
-	val |= BIT_COMMON_SYS_CLK_TIMER32_EB;
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_CLK_EB_0_ADDR_OFFSET);
-
-	/* global clk enable */
-	val = readl(wake_timer_res->sys_base + COMMON_SYS_CLK_EB_1_ADDR_OFFSET);
-	val |= BIT_COMMON_SYS_PCLK_TMR32_EB;
-	writel(val, wake_timer_res->sys_base + COMMON_SYS_CLK_EB_1_ADDR_OFFSET);
-
-	/* stop compare */
-	writel(0, wake_timer_res->tmr_base + TIMER32_CMR_START_OFFSET);
-
-	val = readl(wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
-	val |= BIT_TIMER32_INTR_EOI;// set int eoi
-	val |= BIT_TIMER32_INTR_MASK;// set int mask
-	val &= ~BIT_TIMER32_INTR_EN;// disable int
-	writel(val, wake_timer_res->tmr_base + TIMER32_INTR_CTRL_OFFSET);
-}
-#endif
 static int ax_wake_timer_show(struct seq_file *m, void *v)
 {
 	mutex_lock(&ax_wake_timer_mutex);
@@ -169,6 +138,7 @@ static ssize_t ax_wake_timer_write(struct file *file, const char __user *buffer,
 					  size_t count, loff_t *ppos)
 {
 	char kbuf[32] = { 0 };
+	unsigned int wdt_times = 0;
 
 	if (count > 32) {
 		return -1;
@@ -190,6 +160,12 @@ static ssize_t ax_wake_timer_write(struct file *file, const char __user *buffer,
 	mutex_lock(&ax_wake_timer_mutex);
 
 	writel(timers, wake_timer_res->timer_count_addr);
+
+	wdt_times = DIV_ROUND_UP(timers, 2000) + 16;
+
+	pr_info("timer32 timeout is %d ms, wdt timeout is %d s, system reset timeout is %d s\r\n", timers, wdt_times, wdt_times * 2);
+
+	ax_wdt_set_keep_alive_timeout(1, wdt_times);
 
 	mutex_unlock(&ax_wake_timer_mutex);
 
@@ -257,10 +233,31 @@ static const struct file_operations ax_wake_timer_eb_fsops = {
 	.release = single_release,
 };
 
+static __poll_t timer32_poll(struct file *file, poll_table *pts)
+{
+	__poll_t mask = 0;
+
+	poll_wait(file, &wq, pts);
+
+	if (atomic_read(&wq_status)) {
+		atomic_dec(&wq_status);
+		mask = POLLIN | POLLRDNORM;
+	} else
+		mask = 0;
+
+	return mask;
+}
+
+const struct file_operations timer32_fops = {
+	.owner = THIS_MODULE,
+	.poll = timer32_poll,
+};
+
 static int axera_wake_timer_probe(struct platform_device *pdev)
 {
 	int irq;
 	int ret;
+	struct device *timer32_dev;
 
 	wake_timer_res = (struct wake_timer *)devm_kzalloc(&pdev->dev, sizeof(struct wake_timer), GFP_KERNEL);
 
@@ -305,7 +302,11 @@ static int axera_wake_timer_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-//	timer_init();
+	wake_timer_res->ws = wakeup_source_register("wake_timer");
+	if (!wake_timer_res->ws) {
+		pr_err("%s: create wake_timer wakeup source fail\n", __func__);
+		return -ENODATA;
+	}
 
 	wake_timer_root = proc_mkdir(PROC_NODE_ROOT_NAME, NULL);
 	if (wake_timer_root == NULL) {
@@ -318,6 +319,27 @@ static int axera_wake_timer_probe(struct platform_device *pdev)
 	proc_create_data(PROC_EB_TIMER_SET, 0644, wake_timer_root,
 			 &ax_wake_timer_eb_fsops, NULL);
 
+	wake_timer_res->major = register_chrdev(0, TIMER32_WAKEUP_NAME, &timer32_fops);
+	if (wake_timer_res->major < 0)
+		return -ENODEV;
+
+	wake_timer_res->timer32_class = class_create(THIS_MODULE, TIMER32_WAKEUP_NAME);
+	if (IS_ERR(wake_timer_res->timer32_class)) {
+		unregister_chrdev(wake_timer_res->major, TIMER32_WAKEUP_NAME);
+		return PTR_ERR(wake_timer_res->timer32_class);
+	}
+
+	init_waitqueue_head(&wq);
+	atomic_set(&wq_status, 0);
+
+	timer32_dev = device_create(wake_timer_res->timer32_class, NULL, MKDEV(wake_timer_res->major,0), NULL,
+			"%s", TIMER32_WAKEUP_NAME);
+	if (IS_ERR(timer32_dev)) {
+		class_destroy(wake_timer_res->timer32_class);
+		unregister_chrdev(wake_timer_res->major, TIMER32_WAKEUP_NAME);
+		return PTR_ERR(timer32_dev);
+	}
+
 	return 0;
 }
 
@@ -325,6 +347,10 @@ static int axera_wake_timer_remove(struct platform_device *pdev)
 {
 	remove_proc_entry(PROC_TIMER_SET, wake_timer_root);
 	remove_proc_entry(PROC_NODE_ROOT_NAME, NULL);
+	device_destroy(wake_timer_res->timer32_class, MKDEV(wake_timer_res->major, 0));
+	class_destroy(wake_timer_res->timer32_class);
+	unregister_chrdev(wake_timer_res->major, TIMER32_WAKEUP_NAME);
+
 	return 0;
 }
 

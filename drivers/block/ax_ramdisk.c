@@ -107,7 +107,7 @@ static int __init ax_ramdisk_init(void)
 	diskmb = disk_size / 0x100000;
 
 	spin_lock_init(&lock);
-	ramdisk = ioremap_cached(phy_addr,disk_size);
+	ramdisk = ioremap_cache(phy_addr,disk_size);
 	if (!ramdisk)
 		return -ENOMEM;
 

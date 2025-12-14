@@ -4729,12 +4729,12 @@ int stmmac_resume(struct device *dev)
 
 	netif_device_attach(ndev);
 
-	mutex_lock(&priv->lock);
-
 #ifdef CONFIG_DWMAC_AXERA
 	if (ndev->phydev)
 		phy_start(ndev->phydev);
 #endif
+
+	mutex_lock(&priv->lock);
 
 	stmmac_reset_queues_param(priv);
 

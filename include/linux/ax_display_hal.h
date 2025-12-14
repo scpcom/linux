@@ -45,6 +45,7 @@ enum {
 	AX_DISP_OUT_MODE_DSI_SDI_VIDEO,
 	AX_DISP_OUT_MODE_DSI_SDI_CMD,
 	AX_DISP_OUT_MODE_LVDS,
+	AX_DISP_OUT_MODE_BUT,
 };
 
 enum {
@@ -255,5 +256,6 @@ int ax_display_register(int index, struct ax_display_funcs *display_funs, void *
 int ax_display_unregister(int index);
 void ax_display_dpu_open(void);
 void ax_display_dpu_close(void);
-
+int ax_display_get_bootlogo_mode(void);
+void ax_display_reset_bootlogo_mode(void);
 #endif /* __AX_DISPLAY_HAL_H */

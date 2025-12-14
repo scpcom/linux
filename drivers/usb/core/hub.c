@@ -3393,7 +3393,6 @@ static int finish_port_resume(struct usb_device *udev)
 			goto retry_reset_resume;
 		}
 	}
-
 	if (status) {
 		dev_dbg(&udev->dev, "gone after usb resume? status %d\n",
 				status);

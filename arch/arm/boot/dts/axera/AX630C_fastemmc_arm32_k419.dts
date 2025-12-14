@@ -235,8 +235,8 @@
 	status = "okay";
 };
 
-&deb_gpio_lp_emmc {
-	lp-num = <0xB>; /* use db_gpio11 as wakeup source */
+&deb_gpio_lp {
+	lp-status = <11 1>; /* use db_gpio11 as wakeup source */
 	status = "okay";
 };
 
@@ -267,7 +267,7 @@
 	cdns,phy-input-delay-mmc-highspeed = <2>;
 	cdns,phy-input-delay-mmc-ddr = <2>;
 	cdns,phy-dll-delay-sdclk = <45>;
-	cdns,phy-dll-delay-sdclk-hsmmc = <23>;
+	cdns,phy-dll-delay-sdclk-hsmmc = <31>;
 	cdns,phy-dll-delay-strobe = <18>;
 	fixed-emmc-driver-type = <4>;
 	status = "okay";
@@ -278,11 +278,6 @@
 	bus-width = <4>;
 	max-frequency = <200000000>;
 	cap-sd-highspeed;
-	sd-uhs-sdr12;
-	sd-uhs-sdr25;
-	sd-uhs-sdr50;
-	sd-uhs-ddr50;
-	sd-uhs-sdr104;
 	no-sdio;
 	no-mmc;
 	disable-wp;

@@ -53,6 +53,13 @@
 #define DISPC_SYSGLB_LVDS_CLK_SEL_CLR               0x124
 /* dispc_sys_glb registers definition end */
 
+enum {
+	VIRT_STATUS_CREATED = 1,
+	VIRT_STATUS_ENABLED,
+	VIRT_STATUS_DISABLED,
+	VIRT_STATUS_DESTORY,
+};
+
 struct ax_virt_connector {
 	u32 id;
 	int state;
@@ -88,6 +95,7 @@ struct ax_virt_connector {
 	struct clk *common_nx_clk;
 	struct clk *flash_1x_clk;
 	struct clk *flash_nx_clk;
+	int clock;
 };
 
 #endif /* __AX_VIRT_CONNECTOR_H */

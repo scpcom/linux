@@ -184,38 +184,6 @@
 	status = "okay";
 };
 
-&emmc {
-	max-frequency = <200000000>;
-	/*resets = <&sysclk>;*/
-	sdhci-caps-mask = <0x2 0x03200000>;
-	bus-width = <8>;
-	no-sdio;
-	no-sd;
-	non-removable;
-	disable-wp;
-	cap-mmc-highspeed;
-//	mmc-hs200-1_8v;
-//	mmc-hs400-1_8v;
-//	mmc-hs400-enhanced-strobe;
-	cdns,phy-input-delay-sd-highspeed = <2>;
-	cdns,phy-input-delay-legacy = <4>;
-	cdns,phy-input-delay-sd-uhs-sdr12 = <1>;
-	cdns,phy-input-delay-sd-uhs-sdr25 = <2>;
-	cdns,phy-input-delay-sd-uhs-sdr50 = <1>;
-	cdns,phy-input-delay-sd-uhs-ddr50 = <2>;
-	cdns,phy-input-delay-mmc-legacy = <1>;
-	cdns,phy-input-delay-mmc-highspeed = <2>;
-	cdns,phy-input-delay-mmc-ddr = <2>;
-	cdns,phy-dll-delay-sdclk = <45>;
-	cdns,phy-dll-delay-sdclk-hsmmc = <23>;
-	cdns,phy-dll-delay-strobe = <18>;
-	fixed-emmc-driver-type = <4>;
-	clocks = <&sysclk>;
-	clock-names = "cardclk";
-	status = "disabled";
-};
-
-
 #if 1
 /* for sd */
 &sd{
@@ -517,15 +485,8 @@
 	status = "okay";
 };
 
-&i2c_slv0 {
+&i2c6 {
 	status = "okay";
-	#address-cells = <0x1>;
-	#size-cells = <0x0>;
-	i2c_slave_eeprom: i2c_slave_eeprom@55 {
-		compatible = "axera,slave-24c02";
-		reg = <0x40000055>;
-		status = "okay";
-	};
 };
 
 &ax_perf_bm {
@@ -612,10 +573,10 @@
 	status = "okay";
 };
 
-&dmac {
+&panel0 {
 	status = "disabled";
 };
 
-&panel0 {
-	status = "disabled";
+&pinctrl_ax{
+	/include/ "AX620Q_nand_arm32_k419_pinctrl.dtsi"
 };

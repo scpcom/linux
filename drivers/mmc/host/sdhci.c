@@ -47,6 +47,7 @@
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
 #define MAX_TUNING_LOOP 64
+extern unsigned int mmc_debug_enable;
 #else
 #define MAX_TUNING_LOOP 40
 #endif
@@ -2047,6 +2048,12 @@ int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 	case MMC_SIGNAL_VOLTAGE_330:
 		if (!(host->flags & SDHCI_SIGNALING_330))
 			return -EINVAL;
+
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		/* Some controller need to do more when switching */
+		if (host->ops->voltage_switch)
+			host->ops->voltage_switch(host);
+#endif
 		/* Set 1.8V Signal Enable in the Host Control2 register to 0 */
 		ctrl &= ~SDHCI_CTRL_VDD_180;
 		sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
@@ -2059,13 +2066,14 @@ int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 				return -EIO;
 			}
 		}
-		/* Wait for 5ms */
-		usleep_range(5000, 5500);
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
-		if (host->ops->voltage_switch)
-			host->ops->voltage_switch(host);
+		usleep_range(15000, 15500);
+#else
+		/* Wait for 5ms */
+		usleep_range(5000, 5500);
 #endif
+
 		/* 3.3V regulator output should be stable within 5 ms */
 		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 		if (!(ctrl & SDHCI_CTRL_VDD_180))
@@ -2758,10 +2766,19 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 		    (intmask & (SDHCI_INT_CRC | SDHCI_INT_TIMEOUT)) ==
 		     SDHCI_INT_CRC) {
 			host->cmd = NULL;
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+			pr_err("%s: command:%d, intmask:0x%x CMD CRC error, Treat data command CRC error the same as data CRC error\n", mmc_hostname(host->mmc), SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)), intmask);
+#endif
 			*intmask_p |= SDHCI_INT_DATA_CRC;
 			return;
 		}
-
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		if (host->cmd->error && mmc_debug_enable) {
+			pr_err("%s: command:%d, host->cmd->error:%d, intmask:0x%x\n", mmc_hostname(host->mmc), SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)), host->cmd->error, intmask);
+			if (SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)) != 0)
+				sdhci_dumpregs(host);
+		}
+#endif
 		sdhci_finish_mrq(host, host->cmd->mrq);
 		return;
 	}
@@ -2893,7 +2910,12 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		if (host->ops->adma_workaround)
 			host->ops->adma_workaround(host, intmask);
 	}
-
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	if (host->data->error && mmc_debug_enable) {
+		pr_err("%s: command:%d, host->data->error:%d, intmask:0x%x\n", mmc_hostname(host->mmc), SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)), host->data->error, intmask);
+		sdhci_dumpregs(host);
+	}
+#endif
 	if (host->data->error)
 		sdhci_finish_data(host);
 	else {
@@ -3181,6 +3203,9 @@ int sdhci_resume_host(struct sdhci_host *host)
 {
 	struct mmc_host *mmc = host->mmc;
 	int ret = 0;
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+	u16 ctrl_2;
+#endif
 
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if (host->ops->enable_dma)
@@ -3194,6 +3219,16 @@ int sdhci_resume_host(struct sdhci_host *host)
 		host->pwr = 0;
 		host->clock = 0;
 		mmc->ops->set_ios(mmc, &mmc->ios);
+#if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
+		if ((host->mmc->caps2 & MMC_CAP2_NO_SD) && (host->mmc->caps2 & MMC_CAP2_NO_SDIO)) { //sd & sdio use hardware tuning
+			ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+			if (MMC_SIGNAL_VOLTAGE_330 == mmc->ios.signal_voltage)
+				ctrl_2 &= ~SDHCI_CTRL_VDD_180;
+			else
+				ctrl_2 |= SDHCI_CTRL_VDD_180;
+			sdhci_writew(host, ctrl_2, SDHCI_HOST_CONTROL2);
+		}
+#endif
 	} else {
 		sdhci_init(host, (host->mmc->pm_flags & MMC_PM_KEEP_POWER));
 		mmiowb();

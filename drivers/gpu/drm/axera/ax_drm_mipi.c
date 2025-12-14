@@ -175,8 +175,8 @@ static void ax_dsi_encoder_disable(struct drm_encoder *encoder)
 	struct cdns_dsi *dsi = (struct cdns_dsi *)(dsi_priv->data);
 
 	ax_dsi_clk_unprepare(dsi);
-
-	DRM_DEBUG_DRIVER("enter, encoder = 0x%px\n", encoder);
+	ax_dsi->status = false;
+	ax_display_reset_bootlogo_mode();
 }
 
 static bool ax_dsi_encoder_mode_fixup(struct drm_encoder *encoder,
@@ -285,7 +285,12 @@ static void ax_dsi_encoder_mode_set(struct drm_encoder *encoder,
 	DRM_INFO("%s bpp = %d, nlanes = %d, lane_bps = %lld\n",
 		__func__, bpp, nlanes, lane_bps);
 
-	dsi_dphy_config(nlanes, lane_bps, dsi->dphy);
+	if (ax_display_get_bootlogo_mode() != AX_DISP_OUT_MODE_DSI_DPI_VIDEO) {
+		dsi_dphy_config(nlanes, lane_bps, dsi->dphy);
+	}
+
+	dsi->dphy->cfg.nlanes = nlanes;
+	dsi->dphy->cfg.lane_bps = lane_bps;
 
 	ax_crtc->mode.de_pol = 0;
 
@@ -303,17 +308,20 @@ static void ax_dsi_encoder_mode_set(struct drm_encoder *encoder,
 		ax_crtc->mode.fmt_out = AX_DISP_OUT_FMT_RGB888;
 	}
 
-	writel((DISPC_CLK_DISPC_GLB_SEL_416M), dsi->dispc_sys_regs + DISPC_CLK_MUX0_SET_ADDR);
-	writel((DISPC_DSI_DSI0_MODE | DISPC_DSI_DSI0_DPHY_PLL_LOCK | DISPC_DSI_PPI_C_TX_READY_HS0), dsi->dispc_sys_regs + DISPC_DSI_SET_ADDR);
-	writel(DISPC_LVDS_CLK_SEL_BIT, dsi->dispc_sys_regs + DISPC_LVDS_CLK_SEL_SET_ADDR);
-	writel(DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_BIT, dsi->dispc_sys_regs + DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_SET_ADDR);
-	udelay(100);
-	reset_control_deassert(dsi->dphytx_rst);
+	if (ax_display_get_bootlogo_mode() != AX_DISP_OUT_MODE_DSI_DPI_VIDEO) {
+		writel((DISPC_CLK_DISPC_GLB_SEL_416M), dsi->dispc_sys_regs + DISPC_CLK_MUX0_SET_ADDR);
+		writel((DISPC_DSI_DSI0_MODE | DISPC_DSI_DSI0_DPHY_PLL_LOCK | DISPC_DSI_PPI_C_TX_READY_HS0), dsi->dispc_sys_regs + DISPC_DSI_SET_ADDR);
+		writel(DISPC_LVDS_CLK_SEL_BIT, dsi->dispc_sys_regs + DISPC_LVDS_CLK_SEL_SET_ADDR);
+		writel(DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_BIT, dsi->dispc_sys_regs + DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_SET_ADDR);
+		udelay(100);
+		reset_control_deassert(dsi->dphytx_rst);
+	}
 }
 
 static void ax_dsi_encoder_mode_enable(struct drm_encoder *encoder)
 {
-
+	struct ax_mipi_dsi *ax_dsi = container_of(encoder, struct ax_mipi_dsi, encoder);
+	ax_dsi->status = true;
 }
 
 static const struct drm_encoder_helper_funcs ax_dsi_encoder_helper_funcs = {
@@ -406,15 +414,56 @@ static int ax_mipi_dsi_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+void cdns_dsi_bridge_enable(struct drm_bridge *bridge);
+void cdns_dsi_resume(struct device *dev);
+void cdns_dsi_suspend(struct device *dev);
+static int ax_mipi_dsi_suspend(struct device *dev)
+{
+	struct cdns_dsi *dsi = dev_get_drvdata(dev);
+	struct ax_mipi_dsi *ax_dsi = container_of(dsi->input.bridge.encoder, struct ax_mipi_dsi, encoder);
+	if (ax_dsi->status)
+		cdns_dsi_suspend(dev);
+	ax_display_reset_bootlogo_mode();
+
+	return 0;
+}
+
+static int ax_mipi_dsi_resume(struct device *dev)
+{
+	struct cdns_dsi *dsi = dev_get_drvdata(dev);
+	struct ax_mipi_dsi *ax_dsi = container_of(dsi->input.bridge.encoder, struct ax_mipi_dsi, encoder);
+
+	if (ax_dsi->status) {
+		cdns_dsi_resume(dev);
+		dsi_dphy_config(dsi->dphy->cfg.nlanes, dsi->dphy->cfg.lane_bps, dsi->dphy);
+		writel((DISPC_CLK_DISPC_GLB_SEL_416M), dsi->dispc_sys_regs + DISPC_CLK_MUX0_SET_ADDR);
+		writel((DISPC_DSI_DSI0_MODE | DISPC_DSI_DSI0_DPHY_PLL_LOCK | DISPC_DSI_PPI_C_TX_READY_HS0), dsi->dispc_sys_regs + DISPC_DSI_SET_ADDR);
+		writel(DISPC_LVDS_CLK_SEL_BIT, dsi->dispc_sys_regs + DISPC_LVDS_CLK_SEL_SET_ADDR);
+		writel(DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_BIT, dsi->dispc_sys_regs + DISPC_DSI_AXI2CSI_SHARE_MEM_SEL_SET_ADDR);
+		udelay(100);
+		reset_control_deassert(dsi->dphytx_rst);
+		cdns_dsi_bridge_enable(&dsi->input.bridge);
+	}
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops ax_mipi_dsi_pm_ops = {
+	.suspend_noirq = ax_mipi_dsi_suspend,
+	.resume_noirq = ax_mipi_dsi_resume,
+};
+
 struct platform_driver ax_mipi_dsi_driver = {
 	.probe = ax_mipi_dsi_probe,
 	.remove = ax_mipi_dsi_remove,
 	.driver = {
 		   .of_match_table = ax_mipi_dsi_dt_ids,
 		   .name = "mipi-dsi-drv",
+		   .pm = &ax_mipi_dsi_pm_ops,
 	},
 };
 
 MODULE_AUTHOR("zhengwanhu@axera-tech.com");
-MODULE_DESCRIPTION("Axera dw dsi driver");
+MODULE_DESCRIPTION("Axera mipi dsi driver");
 MODULE_LICENSE("GPL v2");

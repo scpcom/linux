@@ -188,7 +188,7 @@
 &i2c1 {
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
-	status = "okay";
+	status = "disabled";
 	es7243l: es7243l@16 {
 		compatible = "es7243l_MicArray_0";
 		reg = <0x16>;
@@ -199,6 +199,10 @@
 		reg = <0x9>;
 		#sound-dai-cells = <0>;
 	};
+};
+
+&i2c6 {
+	status = "okay";
 };
 
 &ax_uart0 {
@@ -506,8 +510,8 @@
 	status = "okay";
 };
 
-&deb_gpio_lp_nor {
-	lp-num = <0x29>; /* use db_gpio41 as wakeup source */
+&deb_gpio_lp {
+	lp-status = <41 1>; /* use db_gpio41 as wakeup source */
 	status = "okay";
 };
 

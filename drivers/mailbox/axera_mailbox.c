@@ -313,7 +313,17 @@ static struct platform_driver ax_mbox_driver = {
 	.probe  = ax_mbox_probe,
 	.remove = ax_mbox_remove,
 };
-module_platform_driver(ax_mbox_driver);
+static int __init ax620e_mbox_init(void)
+{
+	return platform_driver_register(&ax_mbox_driver);
+}
+core_initcall(ax620e_mbox_init);
+
+static void __exit ax620e_mbox_exit(void)
+{
+	platform_driver_unregister(&ax_mbox_driver);
+}
+module_exit(ax620e_mbox_exit);
 MODULE_AUTHOR("Axera");
 MODULE_DESCRIPTION("Axera Message Box");
 MODULE_LICENSE("GPL v2");

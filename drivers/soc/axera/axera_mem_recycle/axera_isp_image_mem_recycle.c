@@ -36,7 +36,7 @@ void ax_free_isp_image_mem(const phys_addr_t addr_start, const unsigned int size
 	}
 
 	if (!PAGE_ALIGNED(size)){
-		pr_err("%s fatal: ax_free_isp_image_mem size: 0x%08x is not page aligned, addr_start: 0x%08llx", __FUNCTION__, size, addr_start);
+		pr_err("%s fatal: ax_free_isp_image_mem size: 0x%08x is not page aligned, addr_start: 0x%08x", __FUNCTION__, size, addr_start);
 		dump_stack();
 		return;
 	}
@@ -46,7 +46,7 @@ void ax_free_isp_image_mem(const phys_addr_t addr_start, const unsigned int size
 		ret = free_reserved_area(vir_start, vir_start + size, 0xffff, "isp image");
 		pr_info("isp image memory freed pages: %ld!!!\n", ret);
 	}else{
-		pr_err("%s: invalid addr <0x%llx> size <%x>\n", __FUNCTION__, addr_start, size);
+		pr_err("%s: invalid addr <0x%x> size <%x>\n", __FUNCTION__, addr_start, size);
 	}
 }
 EXPORT_SYMBOL(ax_free_isp_image_mem);
