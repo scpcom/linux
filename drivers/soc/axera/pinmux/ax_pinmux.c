@@ -20,6 +20,10 @@ static unsigned int ax620Q_Demo_pinmux[] = {
 #include "AX620Q_DEMO_pinmux.h"
 };
 
+static unsigned int ax620Q_SLT_pinmux[] = {
+#include "AX620Q_SLT_pinmux.h"
+};
+
 static unsigned int ax630C_EVB_pinmux[] = {
 #include "AX630C_EVB_pinmux.h"
 };
@@ -35,6 +39,9 @@ static struct pinmux ax620E_pinmux_tbl[AX620E_BOARD_MAX] = {
 	[AX620Q_LP4_DEMO_V1_0] =
 	    {ax620Q_Demo_pinmux,
 	     sizeof(ax620Q_Demo_pinmux) / sizeof(unsigned int)},
+	[AX620Q_LP4_SLT_V1_0] =
+	    {ax620Q_SLT_pinmux,
+	     sizeof(ax620Q_SLT_pinmux) / sizeof(unsigned int)},
 	[AX630C_EVB_V1_0] =
 	    {ax630C_EVB_pinmux,
 	     sizeof(ax630C_EVB_pinmux) / sizeof(unsigned int)},
