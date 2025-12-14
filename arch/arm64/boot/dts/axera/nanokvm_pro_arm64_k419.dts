@@ -307,8 +307,16 @@
 
 &i2c0 {
 	status = "okay";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
 };
 
+&i2c1 {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
 
 &i2c2 {
 	status = "disabled";
@@ -454,10 +462,19 @@
 	status = "disabled";
 };
 
+&i2c6 {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
 &i2c7 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "okay";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
 
 	hynitron: hynitron@15 {
 		compatible = "hyn,8xxt";
