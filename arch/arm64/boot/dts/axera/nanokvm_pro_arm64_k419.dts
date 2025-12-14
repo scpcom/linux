@@ -734,8 +734,8 @@
 			jl2xxx,led-polarity = <JL2XXX_LED_POLARITY>;
 			jl2xxx,patch-enable = <JL2XXX_PATCH_CTRL_EN>;
 			jl2xxx,rgmii-enable = <JL2XXX_RGMII_CTRL_EN>;
-			jl2xxx,rgmii-tx-delay = <JL2XXX_RGMII_TX_DLY_2NS>;
-			jl2xxx,rgmii-rx-delay = <JL2XXX_RGMII_RX_DLY_2NS>;
+			//jl2xxx,rgmii-tx-delay = <JL2XXX_RGMII_TX_DLY_2NS>;
+			//jl2xxx,rgmii-rx-delay = <JL2XXX_RGMII_RX_DLY_2NS>;
 			jl2xxx,clk-enable = <JL2XXX_CLK_CTRL_EN>;
 			jl2xxx,fld-enable = <JL2XXX_FLD_CTRL_EN>;
 			jl2xxx,fld-delay = <JL2XXX_FLD_DELAY>;
