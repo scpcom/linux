@@ -515,6 +515,7 @@
 &spi1 {
 	status = "okay";
 	pinctrl-0 = <&vi_d0_spi_m1_mosi_pins>;
+	/delete-property/ cs-gpios;
 
 	spidev_user@0 {
 		status = "okay";
@@ -532,6 +533,7 @@
 		&emac_ptp_pps3_gpio1_a11_pins
 		&emac_ptp_pps1_gpio1_a9_pins
 		&cdtx_l1p_gpio2_a13_pins>;
+	cs-gpios = <0>, <&ax_gpio0 27 0>;
 	num-cs = <2>;
 
 	spidev_user@0 {
