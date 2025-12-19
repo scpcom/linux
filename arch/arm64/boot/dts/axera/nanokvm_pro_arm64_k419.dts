@@ -22,11 +22,13 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+/*
 		boot_logo_reserved@70000036 {
 			reg = <0x00 0x70000036 0x00 0x34bc00>;
 			id = <0x00>;
 			compatible = "boot_logo";
 		};
+*/
 		ramoops_mem@48000000 {
 			compatible = "ramoops";
 			reg = <0x0 0x48000000 0x0 0xf0000>;
@@ -839,6 +841,7 @@
 &drm0 {
 	status = "okay";
 
+/*
 	init-mode {
 		de-active = <0x00>;
 		vsync-active = <0x00>;
@@ -854,6 +857,7 @@
 		clock-frequency = <0x1c52fa0>;
 		interface-type = <0x04>;
 	};
+*/
 };
 
 &drm1 {
