@@ -237,22 +237,15 @@ typedef struct AX_WAIT {
     void *wait;
 } AX_WAIT_T;
 int AX_OSAL_SYNC_waitqueue_init(AX_WAIT_T *wait);
-unsigned int AX_OSAL_SYNC_wait_uninterruptible(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param);
 //only for linux kernel
-unsigned int AX_OSAL_SYNC_wait_interruptible(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param);
-unsigned int AX_OSAL_SYNC_wait_uninterruptible_timeout(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param,
-        unsigned long timeout);
-//only for linux kernel
-unsigned int AX_OSAL_SYNC_wait_interruptible_timeout(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param,
-        unsigned long timeout);
 void AX_OSAL_SYNC_wakeup(AX_WAIT_T *wait, void *key);
 void AX_OSAL_SYNC_wake_up_interruptible(AX_WAIT_T *osal_wait, void *key);
 void AX_OSAL_SYNC_wake_up_interruptible_all(AX_WAIT_T *wait, void *key);
 
 void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
 
-/*wait event*/
-
+/*wait event interrupt*/
+unsigned int __AX_OSAL_SYNC_wait_interruptible(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param);
 #define AX_OSAL_SYNC_wait_event_interruptible(wait, func, param) \
 		({									\
 			int __ret = 0;							\
@@ -261,7 +254,7 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
 					__ret = 0;					\
 					break;					  \
 				}\
-				__ret = AX_OSAL_SYNC_wait_interruptible(wait, (func), param);	\
+				__ret = __AX_OSAL_SYNC_wait_interruptible(wait, (func), param);	\
 				if(__ret < 0){				  \
 					if(__ret == -2) {  \
 						__ret = 0;   \
@@ -274,6 +267,8 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
 
 
 
+/*wait event interrupt*/
+unsigned int __AX_OSAL_SYNC_wait_interruptible_timeout(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param,unsigned long timeout);
 #define AX_OSAL_SYNC_wait_event_interruptible_timeout(wait, func, param, timeout) \
 	({									\
 		int __ret = timeout;						  \
@@ -288,7 +283,7 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
 			{\
 				break;					  \
 			}\
-			__ret = AX_OSAL_SYNC_wait_interruptible_timeout(wait, (func), param, __ret);	 \
+			__ret = __AX_OSAL_SYNC_wait_interruptible_timeout(wait, (func), param, __ret);	 \
 			if(__ret < 0)	\
 			{\
 				break;  \
@@ -302,6 +297,7 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
 		__ret;									 \
 	})
 
+unsigned int __AX_OSAL_SYNC_wait_uninterruptible(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param);
 #define AX_OSAL_SYNC_wait_event(wait, func, param) \
 ({                                  \
     int __ret = 0;                          \
@@ -310,13 +306,14 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
             __ret = 0;                  \
             break;                    \
         }\
-        __ret = AX_OSAL_SYNC_wait_uninterruptible(wait, (func), param);   \
+        __ret = __AX_OSAL_SYNC_wait_uninterruptible(wait, (func), param);   \
         if(__ret < 0)                 \
             break;           \
     }                                    \
     __ret;                                   \
 })
 
+unsigned int __AX_OSAL_SYNC_wait_uninterruptible_timeout(AX_WAIT_T *wait, AX_WAIT_COND_FUNC_T func, void *param,unsigned long timeout);
 #define AX_OSAL_SYNC_wait_event_timeout(wait, func, param, timeout) \
 ({                                  \
     int __ret = timeout;                          \
@@ -331,7 +328,7 @@ void AX_OSAL_SYNC_wait_destroy(AX_WAIT_T *wait);
         {\
             break;                    \
         }\
-        __ret = AX_OSAL_SYNC_wait_uninterruptible_timeout(wait, (func), param, __ret);   \
+        __ret = __AX_OSAL_SYNC_wait_uninterruptible_timeout(wait, (func), param, __ret);   \
 	if(!__ret && !func(param))  \
 	{\
         	__ret = -ETIMEDOUT;   \
@@ -380,6 +377,7 @@ void AX_OSAL_DEV_hrtimer_destroy(void *timer);
 int AX_OSAL_DEV_hrtimer_start(void *timer);
 int AX_OSAL_DEV_hrtimer_stop(void *timer);
 
+AX_TIMER_T *AX_OSAL_TMR_alloc_timers(void (*function)(void *), unsigned long data);
 int AX_OSAL_TMR_init_timers(AX_TIMER_T *timer);
 unsigned int AX_OSAL_TMR_mod_timer(AX_TIMER_T *timer, unsigned long interval);
 unsigned int AX_OSAL_TMR_del_timer(AX_TIMER_T *timer);
@@ -427,7 +425,7 @@ void *ax_os_mem_kzalloc(int id, size_t size, u32 flag);
 void ax_os_mem_kfree(int id, const void *addr);
 void *ax_os_mem_vmalloc(int id, size_t size);
 void ax_os_mem_vfree(int id, const void *addr);
-s32 ax_os_release_reserved_mem(unsigned long phy_start, size_t size, const char *s);
+s32 ax_os_release_reserved_mem(unsigned long phy_start, size_t size, char *s);
 
 //file system , only for linux kernel
 #define AX_OSAL_O_RDONLY         00
