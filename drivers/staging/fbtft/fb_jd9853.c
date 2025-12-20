@@ -105,15 +105,19 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, 0xC2, 0x06, 0x3A, 0xE7);
 	write_reg(par, 0xC4, 0x72, 0x12);
 	write_reg(par, 0xBE, 0x00);
+
 	write_reg(par, 0xDE, 0x00);
-	write_reg(par, 0x3A, 0x05);
-	write_reg(par, 0x2A, 0x00, 0x00, 0x00, 0xEF);
-	write_reg(par, 0x2B, 0x00, 0x00, 0x01, 0x3F);
-	write_reg(par, 0x35, 0x00);
-	write_reg(par, 0x11);
+
+	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
+	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS, 0x00, 0x00, 0x00, 0xEF);
+	write_reg(par, MIPI_DCS_SET_PAGE_ADDRESS, 0x00, 0x00, 0x01, 0x3F);
+	write_reg(par, MIPI_DCS_SET_TEAR_ON, 0x00);
+
+	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
 	mdelay(120);
-	write_reg(par, 0x29);
+	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
 	mdelay(20);
+
 	return 0;
 }
 
