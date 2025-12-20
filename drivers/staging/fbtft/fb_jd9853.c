@@ -15,7 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/delay.h>
-#include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 #include <video/mipi_display.h>
 
 #include "fbtft.h"
@@ -31,8 +31,8 @@ static int init_display(struct fbtft_par *par)
 {
 	par->fbtftops.reset(par);
 
-	if (par->gpio.cs)
-		gpiod_set_value(par->gpio.cs, 0);  /* Activate chip */
+	if (par->gpio.cs != -1)
+		gpio_set_value(par->gpio.cs, 0);  /* Activate chip */
 
 	// set password to access inhouse register
 	write_reg(par, 0xDF, 0x98, 0x53);
