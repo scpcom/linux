@@ -21,7 +21,7 @@
 #include "fbtft.h"
 
 #define DRVNAME		"fb_jd9853"
-#define WIDTH		240
+#define WIDTH		172
 #define HEIGHT		320
 #define TXBUFLEN	(4 * PAGE_SIZE)
 #define DEFAULT_GAMMA	"1F 1A 18 0A 0F 06 45 87 32 0A 07 02 07 05 00\n" \
@@ -119,8 +119,13 @@ static int init_display(struct fbtft_par *par)
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
+	int _dw = WIDTH;
+	int _xo = _dw < 240 ? (240 - _dw) / 2 : 0;
+	int _xs = xs + _xo;
+	int _xe = xe + _xo;
+
 	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS,
-		  (xs >> 8) & 0xFF, xs & 0xFF, (xe >> 8) & 0xFF, xe & 0xFF);
+		  (_xs >> 8) & 0xFF, _xs & 0xFF, (_xe >> 8) & 0xFF, _xe & 0xFF);
 
 	write_reg(par, MIPI_DCS_SET_PAGE_ADDRESS,
 		  (ys >> 8) & 0xFF, ys & 0xFF, (ye >> 8) & 0xFF, ye & 0xFF);
