@@ -58,8 +58,8 @@ static int init_display(struct fbtft_par *par)
 
 	//Set Panel relate register
 	//- - - SS_PANEL GS_PANEL REV_PANEL CFHR -
-    //SS_Panel: Set Source scan output direction /1:S240-> S1  0:S1 -> S240
-    //GS_Panel: Set Gate scan output direction /0:Top -> Bottom Scan (G1->G320)  1:Bottom -> Top Scan (G320 -> G1)
+	//SS_Panel: Set Source scan output direction /1:S240-> S1  0:S1 -> S240
+	//GS_Panel: Set Gate scan output direction /0:Top -> Bottom Scan (G1->G320)  1:Bottom -> Top Scan (G320 -> G1)
 	//REV_Panel: Set the display of the same data on both normally-white
 	//and normally-black panels. //0:Normal Black 1:Normal White
 	//CFHR: Set color fliter horizontial alignment order  /1:BGR  0:RGB
@@ -89,8 +89,8 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, 0xD0, 0x04, 0x06, 0x6B, 0x0F, 0x00);
 	//RAMCTRL
 	//- CR_OPTION SPI_2LAN_EN RP RM MLBIT_INV DM[1:0]
-    //CR_OPTION: for data mapping.used with EPF[1:0]
-    //SPI_2LAN_EN: Enable SPI 2 data lane when IM[3:0]=0101  //0=disable
+	//CR_OPTION: for data mapping.used with EPF[1:0]
+	//SPI_2LAN_EN: Enable SPI 2 data lane when IM[3:0]=0101  //0=disable
 	//RP : Enable DPI data path. 0=disable  1=enable
 	//RM : select data path for GRAM. 1=data from DPI/DSI  0=data from 2C/3C command
 	//MLBIT_INV: RGB data MSB/LSB reversal(only for MCU Interface RGB565,except QSPI)
