@@ -23,9 +23,6 @@
 #define DRVNAME		"fb_jd9853"
 #define WIDTH		172
 #define HEIGHT		320
-#define TXBUFLEN	(4 * PAGE_SIZE)
-#define DEFAULT_GAMMA	"1F 1A 18 0A 0F 06 45 87 32 0A 07 02 07 05 00\n" \
-			"00 25 27 05 10 09 3A 78 4D 05 18 0D 38 3A 1F"
 
 static int init_display(struct fbtft_par *par)
 {
@@ -190,42 +187,16 @@ static int set_var(struct fbtft_par *par)
 	return 0;
 }
 
-/*
- * Gamma string format:
- *  Positive: Par1 Par2 [...] Par15
- *  Negative: Par1 Par2 [...] Par15
- */
-#define CURVE(num, idx)  curves[(num) * par->gamma.num_values + (idx)]
-static int set_gamma(struct fbtft_par *par, u32 *curves)
-{
-	int i;
-
-	for (i = 0; i < par->gamma.num_curves; i++)
-		write_reg(par, 0xE0 + i,
-			  CURVE(i, 0), CURVE(i, 1), CURVE(i, 2),
-			  CURVE(i, 3), CURVE(i, 4), CURVE(i, 5),
-			  CURVE(i, 6), CURVE(i, 7), CURVE(i, 8),
-			  CURVE(i, 9), CURVE(i, 10), CURVE(i, 11),
-			  CURVE(i, 12), CURVE(i, 13), CURVE(i, 14));
-
-	return 0;
-}
-
-#undef CURVE
-
 static struct fbtft_display display = {
 	.regwidth = 8,
 	.width = WIDTH,
 	.height = HEIGHT,
-	.txbuflen = TXBUFLEN,
-	.gamma_num = 2,
-	.gamma_len = 15,
-	.gamma = DEFAULT_GAMMA,
+	.gamma_num = 0,
+	.gamma_len = 0,
 	.fbtftops = {
 		.init_display = init_display,
 		.set_addr_win = set_addr_win,
 		.set_var = set_var,
-		.set_gamma = set_gamma,
 	},
 };
 
