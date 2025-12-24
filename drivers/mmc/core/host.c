@@ -342,6 +342,12 @@ int mmc_of_parse(struct mmc_host *host)
 				"can't use fixed driver type, media is removable\n");
 	}
 
+	/* quirk for aic8800 init on ax630c */
+	if (host->caps2 & MMC_CAP2_NO_SD && host->caps2 & MMC_CAP2_NO_MMC &&
+			of_device_is_compatible(dev->of_node, "axera,sdhc")) {
+		host->f_max = 25000000;
+	}
+
 	host->dsr_req = !device_property_read_u32(dev, "dsr", &host->dsr);
 	if (host->dsr_req && (host->dsr & ~0xffff)) {
 		dev_err(host->parent,
