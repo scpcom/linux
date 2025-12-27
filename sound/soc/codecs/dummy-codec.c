@@ -96,6 +96,7 @@ static int rockchip_dummy_codec_probe(struct platform_device *pdev)
 
 static const struct of_device_id rockchip_dummy_codec_of_match[] = {
 	{ .compatible = "rockchip,dummy-codec", },
+	{ .compatible = "dummy-codec", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, rockchip_dummy_codec_of_match);
