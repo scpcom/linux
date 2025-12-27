@@ -187,6 +187,7 @@ static int set_var(struct fbtft_par *par)
 	return 0;
 }
 
+#if defined (CONFIG_APB_SPI_DW_DMA)
 static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16;
@@ -239,6 +240,7 @@ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 
 	return ret;
 }
+#endif
 
 static struct fbtft_display display = {
 	.regwidth = 8,
@@ -250,7 +252,9 @@ static struct fbtft_display display = {
 		.init_display = init_display,
 		.set_addr_win = set_addr_win,
 		.set_var = set_var,
+#if defined (CONFIG_APB_SPI_DW_DMA)
 		.write_vmem = write_vmem16_bus8,
+#endif
 	},
 };
 
