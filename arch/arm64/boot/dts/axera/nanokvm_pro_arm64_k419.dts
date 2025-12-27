@@ -74,8 +74,6 @@
 		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&codec>;
 		simple-audio-card,frame-master = <&codec>;
-	/*	#address-cells = <1>;
-		#size-cells = <0>;*/
 
 		simple-audio-card,cpu {
 			sound-dai = <&i2s_slv0>;
@@ -83,102 +81,6 @@
 		codec: simple-audio-card,codec {
 			sound-dai = <&dummy_codec>;
 		};
-	/*	simple-audio-card,dai-link@0 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s_mst0>;
-			};
-			codec {
-				sound-dai = <&es7243l>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s_mst0>;
-			};
-			codec {
-				sound-dai = <&es8156>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@0 {
-			format = "i2s";
-			bitclock-master = <&codec_m2>;
-			frame-master = <&codec_m2>;
-			cpu {
-				sound-dai = <&i2s_slv0>;
-			};
-			codec_m2: codec {
-				sound-dai = <&es7243l>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			bitclock-master = <&codec_m3>;
-			frame-master = <&codec_m3>;
-			cpu {
-				sound-dai = <&i2s_slv0>;
-			};
-			codec_m3: codec {
-				sound-dai = <&es8156>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@0 {
-			format = "dsp_b";
-			cpu {
-				sound-dai = <&i2s_tdm_mst0>;
-				dai-tdm-slot-num = <2>;
-				dai-tdm-slot-width = <32>;
-				dai-tdm-slot-rx-mask = <1 1>;
-			};
-			codec {
-				sound-dai = <&es7243l>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@0 {
-			format = "dsp_b";
-			bitclock-master = <&codec_m5>;
-			frame-master = <&codec_m5>;
-			cpu {
-				sound-dai = <&i2s_tdm_slv0>;
-				dai-tdm-slot-num = <2>;
-				dai-tdm-slot-width = <32>;
-				dai-tdm-slot-rx-mask = <1 1>;
-			};
-			codec_m5: codec {
-				sound-dai = <&es7243l>;
-				system-clock-frequency = <12288000>;
-			};
-		};*/
-	/*	simple-audio-card,dai-link@0 {
-			format = "i2s";
-			bitclock-master = <&codec_m6>;
-			frame-master = <&codec_m6>;
-			capture-only;
-			cpu {
-				//sound-dai = <&i2s_inner_slv0>;
-			};
-			codec_m6: codec {
-				//sound-dai = <&audio_codec>;
-				system-clock-frequency = <12288000>;
-			};
-		};
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			playback-only;
-			cpu {
-				//sound-dai = <&i2s_inner_mst0>;
-			};
-			codec {
-				//sound-dai = <&audio_codec>;
-				system-clock-frequency = <12288000>;
-			};
-		};*/
 	};
 
 	vfb0: vfb@0 {
