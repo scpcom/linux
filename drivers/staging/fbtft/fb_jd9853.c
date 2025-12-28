@@ -187,7 +187,23 @@ static int set_var(struct fbtft_par *par)
 	return 0;
 }
 
-#if defined (CONFIG_APB_SPI_DW_DMA)
+static bool spi_can_dma(struct fbtft_par *par, void *buf, size_t len)
+{
+	struct spi_controller *master;
+	struct spi_transfer t = {
+		.tx_buf = buf,
+		.len = len,
+	};
+
+	if (!par->spi) {
+		return false;
+	}
+
+	master = par->spi->controller;
+
+	return  (master->can_dma && master->can_dma(master, par->spi, &t));
+}
+
 static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16;
@@ -222,6 +238,9 @@ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 		startbyte_size = 1;
 	}
 
+	if (!spi_can_dma(par, par->txbuf.buf, startbyte_size + min(tx_array_size, remain) * 2))
+		return fbtft_write_vmem16_bus8(par, offset, len);
+
 	while (remain) {
 		to_copy = min(tx_array_size, remain);
 		dev_dbg(par->info->device, "to_copy=%zu, remain=%zu\n",
@@ -240,7 +259,6 @@ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 
 	return ret;
 }
-#endif
 
 static struct fbtft_display display = {
 	.regwidth = 8,
@@ -252,9 +270,7 @@ static struct fbtft_display display = {
 		.init_display = init_display,
 		.set_addr_win = set_addr_win,
 		.set_var = set_var,
-#if defined (CONFIG_APB_SPI_DW_DMA)
 		.write_vmem = write_vmem16_bus8,
-#endif
 	},
 };
 
