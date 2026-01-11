@@ -173,6 +173,12 @@ config FB_TFT_ST7789V
 
 	  Say Y if you have such a display that utilizes this controller.
 
+config FB_TFT_ST7789P3
+	tristate "FB driver for the ST7789P3 LCD Controller"
+	depends on FB_TFT
+	help
+		Generic Framebuffer support for ST7789P3
+
 config FB_TFT_TINYLCD
 	tristate "FB driver for tinylcd.com display"
 	depends on FB_TFT
