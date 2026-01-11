@@ -123,6 +123,9 @@ struct dw_i2s_dev {
 	u32 slots;
 	u32 tx_mask;
 	u32 rx_mask;
+	// ### SIPEED EDIT ###
+	u32 rx0_sel;
+	// ### SIPEED EDIT END ###
 
 	/* data related to DMA transfers b/w i2s and DMAC */
 	union dw_i2s_snd_dma_data play_dma_data;

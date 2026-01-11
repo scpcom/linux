@@ -77,6 +77,13 @@ static int ax_pinmux_index_conv(int index)
 	int ret;
 
 	switch (index) {
+// ### SIPEED EDIT ###
+	case AX630C_AX631_MAIXCAM2_SOM_0_5G:
+	case AX630C_AX631_MAIXCAM2_SOM_1G:
+	case AX630C_AX631_MAIXCAM2_SOM_2G:
+	case AX630C_AX631_MAIXCAM2_SOM_4G:
+		ret = AX620Q_LP4_SLT_V1_0;
+		break;
 	//case AX630C_DEMO_DDR3_V1_0:
 	case AX630C_DEMO_LP4_V1_0:
 	case AX630C_DEMO_LP4_V1_1:
@@ -84,7 +91,7 @@ static int ax_pinmux_index_conv(int index)
 	case AX630C_DEMO_V1_1:
 		ret = AX630C_DEMO_V1_0;
 		break;
-	case AX620Q_LP4_MINION_BOARD:
+	//case AX620Q_LP4_MINION_BOARD:
 	case AX620Q_LP4_DEMO_V1_1:
 		ret = AX620Q_LP4_DEMO_V1_0;
 		break;
@@ -92,6 +99,7 @@ static int ax_pinmux_index_conv(int index)
 		ret = index;
 		break;
 	}
+// ### SIPEED EDIT END ###
 	return ret;
 }
 

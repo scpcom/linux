@@ -270,6 +270,14 @@ static void dw_i2s_config(struct dw_i2s_dev *dev, int stream)
 				      dev->fifo_th - 1);
 			i2s_write_reg(dev->i2s_base, TER(ch_reg), 1);
 		} else {
+			// ### SIPEED EDIT ###
+			if (dev->rx0_sel == 3) { // only enable rx1
+				i2s_write_reg(dev->i2s_base, RCR(1), dev->xfer_resolution);
+				i2s_write_reg(dev->i2s_base, RFCR(1), dev->fifo_th - 1);
+				i2s_write_reg(dev->i2s_base, RER(1), 1);
+				break;
+			}
+			// ### SIPEED EDIT END ###
 			i2s_write_reg(dev->i2s_base, RCR(ch_reg),
 				      dev->xfer_resolution);
 			i2s_write_reg(dev->i2s_base, RFCR(ch_reg),
@@ -940,6 +948,9 @@ static int dw_i2s_probe(struct platform_device *pdev)
 		}
 	}
 	pm_runtime_enable(&pdev->dev);
+	// ### SIPEED EDIT ###
+	of_property_read_u32(np, "i2s-s-rx0-sel", &dev->rx0_sel);
+	// ### SIPEED EDIT END ###
 	dev_dbg(&pdev->dev, "IIS probe OK\n");
 	return 0;
 

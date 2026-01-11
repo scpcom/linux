@@ -41,7 +41,7 @@ static int ax_dma_per_lli_addr_invalid(phys_addr_t lli_paddr)
 	phys_addr_t ddr_start = 0x40000000;
 	phys_addr_t ddr_end;
 
-	if (AX630C_CHIP != ax_get_chip_type()) {
+	if ((AX630C_CHIP != ax_get_chip_type()) && (AX631_CHIP != ax_get_chip_type())) {
 		ddr_end = 0x4FFFFFFF;
 		#ifdef CONFIG_PHYS_ADDR_T_64BIT
 		printk("620Q mem whole space [0x%llX:0x%llX]\n", ddr_start, ddr_end);
@@ -407,7 +407,7 @@ static int dw_spi_dma_setup(struct dw_spi *dws, struct spi_transfer *xfer)
 
 static int dw_spi_dma_transfer(struct dw_spi *dws, struct spi_transfer *xfer)
 {
-	int ret;
+	int ret, val;
 	struct dma_async_tx_descriptor *txdesc, *rxdesc;
 
 	/* Prepare the TX dma transfer */
@@ -440,6 +440,15 @@ static int dw_spi_dma_transfer(struct dw_spi *dws, struct spi_transfer *xfer)
 	ret = dw_spi_dma_wait(dws, xfer->len, dws->current_freq);
 	if (ret)
 		return ret;
+
+	/* waiting spi fifo empt and idle. */
+	if (txdesc) {
+		if (readl_poll_timeout(dws->regs + DW_SPI_SR, val,
+					(val & SR_TF_EMPT) && !(val & SR_BUSY), 0,
+					1000 * 1000)) {
+			printk("wait TX SR_TF_EMPT or SR_BUSY timeout\n");
+		}
+	}
 	/* If xfer->rx_sg.sgl->length is not 64-byte aligned, the cacheline invalidate operation will flush
 	 * this cacheline to the DDR, resulting in overwriting the valid data.
 	 * Solution: Align xfer->rx_sg.sgl->length up the length of the cacheline (64B), then set the invalidate flag bit, and consider the cacheline to be invalid.

@@ -1968,11 +1968,15 @@ void dsi_dphy_config(int lanes, unsigned long long lane_bps, struct cdns_dphy *d
 
 	board_id = ax_info_get_board_id();
 
-	if (board_id == AX630C_DEMO_LP4_V1_0 || board_id == AX630C_DEMO_LP4_V1_1 || board_id == AX630C_DEMO_V1_1 || board_id == AX620Q_LP4_DEMO_V1_1) {
+// ### SIPEED EDIT ###
+	if (board_id == AX630C_AX631_MAIXCAM2_SOM_0_5G || board_id == AX630C_AX631_MAIXCAM2_SOM_1G
+		|| board_id == AX630C_AX631_MAIXCAM2_SOM_2G || board_id == AX630C_AX631_MAIXCAM2_SOM_4G
+		|| board_id == AX630C_DEMO_LP4_V1_0 || board_id == AX630C_DEMO_LP4_V1_1 || board_id == AX630C_DEMO_V1_1 || board_id == AX620Q_LP4_DEMO_V1_1) {
 		writel(1, dphy->regs + DPHY_TX0_REG22_ADDR);
 		writel(0, dphy->regs + DPHY_TX0_REG23_ADDR);
 		writel(4, dphy->regs + DPHY_TX0_REG24_ADDR);
 	}
+// ### SIPEED EDIT ###
 	writel(1, dphy->regs + DPHY_PPI_REG_2_SET_ADDR);
 	writel(lane_mask, dphy->regs + DPHY_PPI_REG_3_SET_ADDR);
 	writel(1, dphy->regs + DPHY_MIPITX0_EN_SET_ADDR);
