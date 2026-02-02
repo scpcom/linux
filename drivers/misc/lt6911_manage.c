@@ -28,6 +28,7 @@
  * 0.0.25 - fix loopout power control issue
  * 0.0.26 - add support for 30126F
  * 0.0.27 - support poll for hdmi_status, hdmi_rx_status, hdmi_tx_status
+ * 0.0.28 - add support for LT6911D
 */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -56,6 +57,7 @@ enum {
     LT6911_CHIP_UNKNOWN,
     LT6911_CHIP_LT6911C,
     LT6911_CHIP_LT6911UXC,
+    LT6911_CHIP_LT6911D,
 } typedef chip_platform_t;
 
 enum {
@@ -1423,18 +1425,6 @@ bool i2c_device_exists(u8 device_address) {
 
 void board_version_check(void)
 {
-    // Check if the LT6911UXC I2C device exists
-    // new function
-    // if (i2c_device_exists(0x2c)) {
-    //     // LT6911C
-    //     chip_platform = LT6911_CHIP_LT6911C;
-    //     printk(KERN_INFO "Chip: LT6911C\n");
-    // } else {
-    //     // LT6911UXC
-    //     chip_platform = LT6911_CHIP_LT6911UXC;
-    //     printk(KERN_INFO "Chip: LT6911UXC\n");
-    // }
-
 #ifdef CHECK_BOARD_VERSION
     // check board version
     if (i2c_device_exists(LT86102UXE_ADDR)) {
@@ -1658,7 +1648,7 @@ int lt6911_disable_watchdog(void) {
 // function for checking the chip i2c register
 int check_chip_register(void)
 {
-    u8 chip_id[3] = {0};
+    u8 chip_id[4] = {0};
 
     lt6911_enable();
 
@@ -1681,6 +1671,19 @@ int check_chip_register(void)
         chip_platform = LT6911_CHIP_LT6911C;
         printk(KERN_INFO "Chip: LT6911C\n");
         return 1; // LT6911C
+    }
+
+    // Read the chip ID register LT6911D
+    if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x01) != 0) return -1;
+    if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x80, chip_id) < 0) return -1;
+    if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x81, chip_id + 1) < 0) return -1;
+    if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x82, chip_id + 2) < 0) return -1;
+    if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x83, chip_id + 3) < 0) return -1;
+
+    if (chip_id[0] == 0x25 && chip_id[1] == 0x10 && chip_id[2] == 0x23 && chip_id[3] == 0x01) {
+        chip_platform = LT6911_CHIP_LT6911D;
+        printk(KERN_INFO "Chip: LT6911D\n");
+        return 2; // LT6911D
     }
 
     chip_platform = LT6911_CHIP_UNKNOWN;
@@ -1759,6 +1762,26 @@ int lt6911_get_signal_state(u8 *p_state)
             // ret = -1;    // Unknown signal
             break;
         }
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x00) != 0) return -1;
+
+        // Check HDMI signal
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x84, &hdmi_signal) != 0) return -1;
+        switch (hdmi_signal) {
+            case 0x00:
+                state &= ~0x01; // HDMI signal disappear
+                break;
+            case 0x01:
+                state |= 0x01;  // HDMI signal stable
+                break;
+            case 0x02:
+                state &= ~0x02;  // Audio signal disappear
+                break;
+            case 0x03:
+                state |= 0x02;  // Audio signal stable
+                break;
+        }
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
@@ -1775,6 +1798,7 @@ int lt6911_get_csi_res(u16 *p_width, u16 *p_height)
 	u16 height;
 	u16 width;
 
+    // Getting Hactive & Vactive
     if (chip_platform == LT6911_CHIP_LT6911C) {
         // LT6911C
         if (i2c_read_byte(LT6911C_CSI_INFO_OFFSET, 0x06, val  ) != 0) return -1;
@@ -1790,6 +1814,14 @@ int lt6911_get_csi_res(u16 *p_width, u16 *p_height)
         // width
         if (i2c_read_byte(LT6911_CSI_INFO_OFFSET, 0xEA, val+2) != 0) return -1;
         if (i2c_read_byte(LT6911_CSI_INFO_OFFSET, 0xEB, val+3) != 0) return -1;
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        // LT6911D
+        // height
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8C, val  ) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8D, val+1) != 0) return -1;
+        // width
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8E, val+2) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8F, val+3) != 0) return -1;
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
@@ -1797,6 +1829,8 @@ int lt6911_get_csi_res(u16 *p_width, u16 *p_height)
 
     height = (val[0] << 8) | val[1];
     width = (val[2] << 8) | val[3];
+
+    if (chip_platform == LT6911_CHIP_LT6911D) height *= 2;
 
     *p_width = width;
     *p_height = height;
@@ -1865,7 +1899,25 @@ int lt6911_get_csi_fps(u16 *p_fps, u16 width, u16 height)
 
         clk = ((val[0] & 0x0f) << 16) | (val[1] << 8) | val[2];
         fps = (clk * 2000) / (HTotal * VTotal);
-        // fps = (clk * 2000) / (width * height);
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x88, val) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x89, val+1) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8A, val+2) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8B, val+3) != 0) return -1;
+
+        HTotal = (val[0] << 8) | val[1];
+        VTotal = (val[2] << 8) | val[3];
+        HTotal *= 2;
+
+        printk(KERN_INFO "HDMI HTotal: %d, VTotal: %d\n", HTotal, VTotal);
+        msleep(20); // ensure the fps is ready
+
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x85, val) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x86, val+1) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x87, val+2) != 0) return -1;
+
+        clk = ((val[0] & 0x0f) << 16) | (val[1] << 8) | val[2];
+        fps = (clk * 2000) / (HTotal * VTotal);
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
@@ -1880,7 +1932,7 @@ int lt6911_get_csi_fps(u16 *p_fps, u16 width, u16 height)
 
 int lt6911_get_hdcp_mode(u8 *p_hdcp)
 {
-    u8 val;
+    u8 val = 0;
 
     if (chip_platform == LT6911_CHIP_LT6911C) {
         // LT6911C not support HDCP
@@ -1891,6 +1943,12 @@ int lt6911_get_hdcp_mode(u8 *p_hdcp)
         // LT6911UXC
         // Read HDCP mode
         if (i2c_read_byte(LT6911_HDMI_INFO_OFFSET, 0xAB, &val) != 0) return -1;
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        // LT6911D not support HDCP detection
+        val = 0;
+    } else {
+        printk(KERN_ERR "Unknown chip platform\n");
+        return -1;
     }
     *p_hdcp = val;
     /*
@@ -1905,6 +1963,7 @@ int lt6911_get_hdcp_mode(u8 *p_hdcp)
 int lt6911_get_audio_sample_rate(u8 *p_sample_rate)
 {
     u8 val;
+    u8 val_buf[5];
     if (chip_platform == LT6911_CHIP_LT6911C) {
         // LT6911C
         // Read audio sample rate
@@ -1914,6 +1973,17 @@ int lt6911_get_audio_sample_rate(u8 *p_sample_rate)
         // LT6911UXC
         // Read audio sample rate
         if (i2c_read_byte(LT6911_AUDIO_INFO_OFFSET, 0xAB, &val) != 0) return -1;
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        // LT6911D
+        // Read audio sample rate
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x90, val_buf) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x91, val_buf+1) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x92, val_buf+2) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x93, val_buf+3) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x94, val_buf+4) != 0) return -1;
+        printk(KERN_INFO "HDMI Audio Sample Rate Bytes: %02x %02x %02x %02x %02x\n",
+               val_buf[0], val_buf[1], val_buf[2], val_buf[3], val_buf[4]);
+        val = val_buf[0]; // use the first byte as sample rate, not sure if it's correct
     }
 
     *p_sample_rate = val;
@@ -2060,6 +2130,64 @@ int lt6911_edid_write(u8 *edid_data, u16 edid_size)
         if (i2c_write_byte(LT6911_SYS3_OFFSET, 0x08, 0xEE) != 0) return -1;
 
         printk(KERN_INFO "EDID write completed\n");
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        printk(KERN_INFO "Writing EDID...\n");
+
+        // Start
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x01) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x59, 0x50) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x01) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        // Waiting for erasure
+        msleep(600);
+        for (i = 0; i < wr_count; i++) {
+            if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xBF) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xFF) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x20) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+            if (i != wr_count - 1) {
+                if (i2c_write_bytes(LT6911D_MANAGE_OFFSET, 0x59, edid_data+(LT6911D_WR_SIZE*i), LT6911D_WR_SIZE) != 0) return -1;
+            } else {
+                if (i2c_write_bytes(LT6911D_MANAGE_OFFSET, 0x59, version_str, LT6911D_WR_SIZE) != 0) return -1;
+            }
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+            if (i != wr_count - 1) {
+                if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+            } else {
+                if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x81) != 0) return -1;
+            }
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00+(LT6911D_WR_SIZE*i)) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+            msleep(5);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            msleep(10);
+        }
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x08) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+
+        printk(KERN_INFO "EDID write completed\n");
     } else {
         printk(KERN_ERR "Not currently supporting EDID writing outside of LT6911UXC\n");
     }
@@ -2092,6 +2220,41 @@ int lt6911_edid_read(u8 *edid_data, u16 edid_size)
             if (i2c_write_byte(LT6911_SYS_OFFSET, 0x58, 0x21) != 0) return -1;
             if (i2c_read_bytes(LT6911_SYS_OFFSET, 0x5F, edid_data+(LT6911UXC_WR_SIZE*i), LT6911UXC_WR_SIZE) != 0) return -1;
         }
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        printk(KERN_INFO "Reading EDID...\n");
+        // Read
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x01) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x59, 0x50) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+        for (i = 0; i < wr_count; i++) {
+            if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xBF) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xFF) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0x5F) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x20) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00+(LT6911D_WR_SIZE*i)) != 0) return -1;
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+            msleep(1);
+            if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+            if (i2c_read_bytes(LT6911D_MANAGE_OFFSET, 0x5F, edid_data+(LT6911D_WR_SIZE*i), LT6911D_WR_SIZE) != 0) return -1;
+            msleep(10);
+        }
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x08) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
     } else {
         printk(KERN_ERR "Not currently supporting EDID reading outside of LT6911UXC\n");
         return -1;
@@ -2181,8 +2344,56 @@ int lt6911_str_write(u8 *str, u16 len)
         if (i2c_write_byte(LT6911_SYS3_OFFSET, 0x08, 0xEE) != 0) return -1;
 
         printk(KERN_INFO "EDID write completed\n");
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        printk(KERN_INFO "Writing EDID for LT6911D...\n");
+        // LT6911D specific write sequence
+
+        // Start
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x01) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x59, 0x50) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x01) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        // Waiting for erasure
+        msleep(600);
+        if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xBF) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xFF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x20) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+        if (i2c_write_bytes(LT6911D_MANAGE_OFFSET, 0x59, str, len) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x81) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(5);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        msleep(10);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x08) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+
     } else {
-        printk(KERN_ERR "Not currently supporting EDID writing outside of LT6911UXC\n");
+        printk(KERN_ERR "Not currently supporting String writing outside of LT6911UXC/LT6911D\n");
     }
 
     return 0;
@@ -2209,6 +2420,40 @@ int lt6911_str_read(u8 *str)
         if (i2c_write_byte(LT6911_SYS_OFFSET, 0x5A, 0x80) != 0) return -1;
         if (i2c_write_byte(LT6911_SYS_OFFSET, 0x58, 0x21) != 0) return -1;
         if (i2c_read_bytes(LT6911_SYS_OFFSET, 0x5F, str, LT6911UXC_WR_SIZE) != 0) return -1;
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        printk(KERN_INFO "Reading String...\n");
+        // Read
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x01) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0xDF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x59, 0x50) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x21) != 0) return -1;
+        if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xBF) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_DATA_OFFSET, 0x03, 0xFF) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x04) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5E, 0x5F) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x20) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00+(LT6911D_WR_SIZE*i)) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_read_bytes(LT6911D_MANAGE_OFFSET, 0x5F, str, LT6911D_WR_SIZE) != 0) return -1;
+        msleep(10);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x08) != 0) return -1;
+        msleep(1);
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x58, 0x00) != 0) return -1;
+
     } else {
         printk(KERN_ERR "Not currently supporting String reading outside of LT6911UXC\n");
         return -1;
@@ -2442,6 +2687,12 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
             // fall edge detected: lt6911uxc
             schedule_work(&get_hdmi_info_work);
         }
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        // LT6911D
+        if (value == 0) {
+            // fall edge detected: lt6911d
+            schedule_work(&get_hdmi_info_work);
+        }
     } else if (chip_platform == LT6911_CHIP_LT6911C) {
         // LT6911C
         if (value == 1) {
@@ -2508,7 +2759,6 @@ static int __init lt6911_manage_init(void)
 
     // check chip register
     ret = check_chip_register();
-    // if (chip_platform != LT6911_CHIP_LT6911UXC && chip_platform != LT6911_CHIP_LT6911C) {
     if (ret < 0) {
         printk(KERN_ERR "This module only supports LT6911UXC/LT6911C chip\n");
         return -ENODEV;
