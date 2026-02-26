@@ -29,7 +29,9 @@
  * 0.0.26 - add support for 30126F
  * 0.0.27 - support poll for hdmi_status, hdmi_rx_status, hdmi_tx_status
  * 0.0.28 - add support for LT6911D
+ * 0.0.29 - add feature: Specify output status and resolution with input parameter
 */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
@@ -48,6 +50,15 @@
 #include <linux/slab.h>
 
 #include "lt6911_manage.h"
+
+static int defalt_with = -1;
+static int defalt_height = -1;
+
+// module use parameters with "insmod lt6911_manage.ko defalt_with=1920 defalt_height=1080"
+module_param(defalt_with, int, 0644);
+MODULE_PARM_DESC(defalt_with, "Default HDMI width");
+module_param(defalt_height, int, 0644);
+MODULE_PARM_DESC(defalt_height, "Default HDMI height");
 
 static int irq_number;
 static struct i2c_client *client;
@@ -2601,6 +2612,19 @@ void hdmi_change_process(u8 hdmi_state)
     }
 }
 
+void lt6911_force_resolution(u16 width, u16 height)
+{
+    snprintf(hdmi_status_buffer, sizeof(hdmi_status_buffer), "new res\n");
+    snprintf(hdmi_width_buffer, sizeof(hdmi_width_buffer), "%d\n", width);
+    snprintf(hdmi_height_buffer, sizeof(hdmi_height_buffer), "%d\n", height);
+    hdmi_status_buffer_length = strlen(hdmi_status_buffer);
+    hdmi_width_buffer_length = strlen(hdmi_width_buffer);
+    hdmi_height_buffer_length = strlen(hdmi_height_buffer);
+
+    atomic_inc(&lt6911_ctx.status);
+    wake_up_interruptible(&lt6911_ctx.wait_queue);
+}
+
 void audio_change_process(u8 audio_state)
 {
     u8 sample_rate;
@@ -2653,9 +2677,15 @@ static void get_hdmi_info_handler(struct work_struct *work)
         return;
     }
 
-    // hdmi signal
-    if (signal_state & 0x01) hdmi_change_process(1); // HDMI signal is stable
-    else                     hdmi_change_process(0); // HDMI signal is disappearing
+    if (signal_state & 0x01) {
+        if (defalt_height != -1 && defalt_with != -1) {
+            lt6911_force_resolution(defalt_with, defalt_height);
+        } else {
+            hdmi_change_process(1); // HDMI signal is stable
+        }
+    } else {
+        hdmi_change_process(0); // HDMI signal is disappearing
+    }
     // if (signal_state & 0x01) {
     //     printk(KERN_INFO "HDMI signal is stable\n"); // HDMI signal is stable
     //     msleep(1000); // Simulated processing time
@@ -2740,6 +2770,8 @@ static int __init lt6911_manage_init(void)
     int ret;
     // struct i2c_adapter *adapter;
 
+    printk(KERN_INFO "Default HDMI width: %d, height: %d\n", defalt_with, defalt_height);
+
     // init GPIO
     ret = gpio_init();
     if (ret < 0) {
@@ -2812,6 +2844,6 @@ module_init(lt6911_manage_init);
 module_exit(lt6911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.27");
+MODULE_VERSION("0.0.29");
 MODULE_AUTHOR("Z2Z-BuGu");
 MODULE_DESCRIPTION("NanoKVM-Pro HDMI Module Management");
