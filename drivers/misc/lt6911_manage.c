@@ -30,6 +30,7 @@
  * 0.0.27 - support poll for hdmi_status, hdmi_rx_status, hdmi_tx_status
  * 0.0.28 - add support for LT6911D
  * 0.0.29 - add feature: Specify output status and resolution with input parameter
+ * 0.0.30 - rename parameters and proc files, add force fps parameter
 */
 
 #include <linux/module.h>
@@ -51,18 +52,46 @@
 
 #include "lt6911_manage.h"
 
-static int defalt_with = -1;
-static int defalt_height = -1;
+static int force_width = -1;
+static int force_height = -1;
+static int force_fps = -1;
 
-// module use parameters with "insmod lt6911_manage.ko defalt_with=1920 defalt_height=1080"
-module_param(defalt_with, int, 0644);
-MODULE_PARM_DESC(defalt_with, "Default HDMI width");
-module_param(defalt_height, int, 0644);
-MODULE_PARM_DESC(defalt_height, "Default HDMI height");
+void lt6911_force_resolution(u16 width, u16 height, int fps);
+static struct work_struct get_hdmi_info_work;
+
+static int force_res_param_set(const char *val, const struct kernel_param *kp)
+{
+    int old_val = *(int *)kp->arg;
+    int ret = param_set_int(val, kp);
+    if (ret)
+        return ret;
+
+    if (old_val != -1 && *(int *)kp->arg == -1) {
+        schedule_work(&get_hdmi_info_work);
+        return 0;
+    }
+
+    if (force_width > 0 && force_height > 0)
+        lt6911_force_resolution((u16)force_width, (u16)force_height, force_fps);
+
+    return 0;
+}
+
+static const struct kernel_param_ops force_res_param_ops = {
+    .set = force_res_param_set,
+    .get = param_get_int,
+};
+
+// module use parameters with "insmod lt6911_manage.ko force_width=1920 force_height=1080 force_fps=30"
+module_param_cb(force_width, &force_res_param_ops, &force_width, 0644);
+MODULE_PARM_DESC(force_width, "Force HDMI width");
+module_param_cb(force_height, &force_res_param_ops, &force_height, 0644);
+MODULE_PARM_DESC(force_height, "Force HDMI height");
+module_param_cb(force_fps, &force_res_param_ops, &force_fps, 0644);
+MODULE_PARM_DESC(force_fps, "Force HDMI fps");
 
 static int irq_number;
 static struct i2c_client *client;
-static struct work_struct get_hdmi_info_work;
 
 enum {
     LT6911_CHIP_UNKNOWN,
@@ -2612,7 +2641,7 @@ void hdmi_change_process(u8 hdmi_state)
     }
 }
 
-void lt6911_force_resolution(u16 width, u16 height)
+void lt6911_force_resolution(u16 width, u16 height, int fps)
 {
     snprintf(hdmi_status_buffer, sizeof(hdmi_status_buffer), "new res\n");
     snprintf(hdmi_width_buffer, sizeof(hdmi_width_buffer), "%d\n", width);
@@ -2620,6 +2649,13 @@ void lt6911_force_resolution(u16 width, u16 height)
     hdmi_status_buffer_length = strlen(hdmi_status_buffer);
     hdmi_width_buffer_length = strlen(hdmi_width_buffer);
     hdmi_height_buffer_length = strlen(hdmi_height_buffer);
+    if (fps > 0) {
+        snprintf(hdmi_fps_buffer, sizeof(hdmi_fps_buffer), "%d\n", fps);
+        hdmi_fps_buffer_length = strlen(hdmi_fps_buffer);
+    } else {
+        snprintf(hdmi_fps_buffer, sizeof(hdmi_fps_buffer), "%d\n", 30);
+        hdmi_fps_buffer_length = strlen(hdmi_fps_buffer);
+    }
 
     atomic_inc(&lt6911_ctx.status);
     wake_up_interruptible(&lt6911_ctx.wait_queue);
@@ -2678,8 +2714,8 @@ static void get_hdmi_info_handler(struct work_struct *work)
     }
 
     if (signal_state & 0x01) {
-        if (defalt_height != -1 && defalt_with != -1) {
-            lt6911_force_resolution(defalt_with, defalt_height);
+        if (force_height != -1 && force_width != -1) {
+            lt6911_force_resolution(force_width, force_height, force_fps);
         } else {
             hdmi_change_process(1); // HDMI signal is stable
         }
@@ -2770,7 +2806,7 @@ static int __init lt6911_manage_init(void)
     int ret;
     // struct i2c_adapter *adapter;
 
-    printk(KERN_INFO "Default HDMI width: %d, height: %d\n", defalt_with, defalt_height);
+    printk(KERN_INFO "Force HDMI width: %d, height: %d, fps: %d\n", force_width, force_height, force_fps);
 
     // init GPIO
     ret = gpio_init();
@@ -2844,6 +2880,7 @@ module_init(lt6911_manage_init);
 module_exit(lt6911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.29");
+MODULE_VERSION("0.0.30");
 MODULE_AUTHOR("Z2Z-BuGu");
+MODULE_AUTHOR("916BGAI");
 MODULE_DESCRIPTION("NanoKVM-Pro HDMI Module Management");
