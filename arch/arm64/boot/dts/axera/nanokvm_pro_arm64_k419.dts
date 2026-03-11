@@ -123,7 +123,7 @@
 
 	extcon_usb: extcon_usb {
 		compatible = "linux,extcon-usb-gpio";
-		id-gpio = <&ax_gpio0 30 0>; /* GPIO0_A30 */
+		id-gpio = <&ax_gpio1 4 0>; /* GPIO1_A4 */
 		status = "okay";
 	};
 
