@@ -2767,7 +2767,9 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 		     SDHCI_INT_CRC) {
 			host->cmd = NULL;
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
-			pr_err("%s: command:%d, intmask:0x%x CMD CRC error, Treat data command CRC error the same as data CRC error\n", mmc_hostname(host->mmc), SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)), intmask);
+			if (mmc_debug_enable) {
+				pr_err("%s: command:%d, intmask:0x%x CMD CRC error, Treat data command CRC error the same as data CRC error\n", mmc_hostname(host->mmc), SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)), intmask);
+			}
 #endif
 			*intmask_p |= SDHCI_INT_DATA_CRC;
 			return;
