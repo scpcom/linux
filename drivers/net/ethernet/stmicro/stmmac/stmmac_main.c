@@ -2774,8 +2774,6 @@ static int stmmac_release(struct net_device *dev)
 	ax_shutdown_phy(to_platform_device(priv->device), priv->plat->bsp_priv);
 #endif
 
-	stmmac_stop_all_queues(priv);
-
 	stmmac_disable_all_queues(priv);
 
 	for (chan = 0; chan < priv->plat->tx_queues_to_use; chan++)
