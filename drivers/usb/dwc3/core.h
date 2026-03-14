@@ -1216,6 +1216,8 @@ struct dwc3 {
 
 	unsigned		dis_metastability_quirk:1;
 
+	unsigned		dis_split_quirk:1;
+
 /// SIPEED EDIT ///
 	/**
 	 * https://patches.linaro.org/project/linux-usb/list/?series=205060
