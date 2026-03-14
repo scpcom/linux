@@ -547,8 +547,9 @@ int mmc_add_host(struct mmc_host *host)
 {
 	int err;
 
-	WARN_ON((host->caps & MMC_CAP_SDIO_IRQ) &&
-		!host->ops->enable_sdio_irq);
+	err = mmc_validate_host_caps(host);
+	if (err)
+		return err;
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_AXERA)
 	if (!(host->caps2 & MMC_CAP2_NO_SD)) {
