@@ -170,6 +170,12 @@ EXPORT_SYMBOL(nmi_panic);
 extern void axera_save_memory_dump(void);
 #endif
 
+void check_panic_on_warn(const char *origin)
+{
+	if (panic_on_warn)
+		panic("%s: panic_on_warn set ...\n", origin);
+}
+
 /**
  *	panic - halt the system
  *	@fmt: The text string to print
