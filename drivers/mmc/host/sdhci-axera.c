@@ -403,7 +403,7 @@ static int sdhci_cdns_execute_tuning(struct sdhci_host *host, u32 opcode)
 		return -EIO;
 	}
 
-	dev_info(mmc_dev(host->mmc), "tuning success, tuning point found: %d\n", end_of_streak - max_streak / 2);
+	dev_dbg(mmc_dev(host->mmc), "tuning success, tuning point found: %d\n", end_of_streak - max_streak / 2);
 	return sdhci_cdns_set_tune_val(host, end_of_streak - max_streak / 2);
 }
 
