@@ -2,6 +2,8 @@
  * change log :
  * 0.0.1  - based on LT6911C code for LT7911D
  * 0.0.2  - remove LT86102 all operations
+ * 0.0.3  - fix hactive value read and add fps detection
+ *
 */
 
 #include <linux/module.h>
@@ -24,6 +26,7 @@
 #include "lt7911_manage.h"
 
 static struct work_struct get_video_info_work;
+static bool lt7911_init_done;
 
 static int force_width = -1;
 static int force_height = -1;
@@ -781,6 +784,7 @@ int gpio_init(void)
         ret = gpio_request(PWR_PIN, "LT7911_PWR");
         if (ret) {
             printk(KERN_ERR "Failed to request GPIO %d for LT7911 PWR pin\n", PWR_PIN);
+            free_irq(irq_number, NULL);
             gpio_free(INT_PIN);
             return ret;
         }
@@ -800,7 +804,6 @@ int gpio_exit(void)
     free_irq(irq_number, NULL);
 
     if (INT_PIN >= 0) {
-        free_irq(INT_PIN, NULL);
         gpio_free(INT_PIN);
     }
     if (PWR_PIN >= 0) {
@@ -1096,16 +1099,17 @@ int check_chip_register(void)
 
 int lt7911_get_signal_state(u8 *p_state)
 {
-	u8 hdmi_signal, audio_signal;
     u8 state = 0;
     u8 vactive[2];
     u8 hactive[2];
+    u16 vactive_val;
+    u16 hactive_val;
     int ret = 0;
 
     if (chip_platform == LT7911_CHIP_LT7911D) {
         // LT7911D
         // start to measure
-        if (i2c_write_byte(LT7911D_HDMI_INFO_OFFSET, 0x83, 0x11) != 0) return -1;
+        if (i2c_write_byte(LT7911D_HDMI_INFO_OFFSET, 0x83, 0x10) != 0) return -1;
         // delay 5ms
         msleep(5);
         // read HDMI signal
@@ -1113,9 +1117,12 @@ int lt7911_get_signal_state(u8 *p_state)
         if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x97, vactive+1) != 0) return -1;
         if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x8B, hactive  ) != 0) return -1;
         if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x8C, hactive+1) != 0) return -1;
+
+        vactive_val = (vactive[0] << 8) | vactive[1];
+        hactive_val = (hactive[0] << 8) | hactive[1];
+
         // check HDMI signal
-        if (vactive[0] == 0 || vactive[1] == 0 ||
-            hactive[0] == 0 || hactive[1] == 0) {
+        if (vactive_val == 0 || hactive_val == 0) {
             state &= ~0x01; // HDMI signal disappear
         } else {
             state |= 0x01;  // HDMI signal stable
@@ -1183,19 +1190,40 @@ int lt7911_get_csi_fps(u16 *p_fps, u16 width, u16 height)
 {
     u8 val[4];
     u16 HTotal, VTotal;
-    u32 clk;
-    u32 fps;
+    u32 clk = 0;
+    u32 fps = 0;
 
     if (chip_platform == LT7911_CHIP_LT7911D) {
-        // LT7911C not support fps
-        printk(KERN_ERR "LT7911D chip platform does not support FPS calculation\n");
-        fps = 0;
-        // return 0;
+        // DP video source select from DP RX
+        if (i2c_write_byte(LT7911D_HDMI_INFO_OFFSET, 0x83, 0x10) != 0) return -1;
+
+        // horizontal timing values are half of the real timing and must be x2.
+        if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x89, val) != 0) return -1;
+        if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x8A, val+1) != 0) return -1;
+        if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x9E, val+2) != 0) return -1;
+        if (i2c_read_byte(LT7911D_HDMI_INFO_OFFSET, 0x9F, val+3) != 0) return -1;
+
+        HTotal = (val[0] << 8) | val[1];
+        VTotal = (val[2] << 8) | val[3];
+        HTotal *= 2;
+
+        printk(KERN_INFO "HDMI HTotal: %d, VTotal: %d\n", HTotal, VTotal);
+        msleep(20);
+
+        if (i2c_write_byte(LT7911_SYS4_OFFSET, 0x34, 0x21) != 0) return -1;
+        msleep(10);
+
+        if (i2c_read_byte(0xB8, 0xB1, val) != 0) return -1;
+        if (i2c_read_byte(0xB8, 0xB2, val+1) != 0) return -1;
+        if (i2c_read_byte(0xB8, 0xB3, val+2) != 0) return -1;
+
+        clk = ((val[0] & 0x07) << 16) | (val[1] << 8) | val[2];
+        fps = (clk * 2000) / (HTotal * VTotal);
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
     }
-    // printk(KERN_INFO "HDMI FPS: %d, clk: %d\n", fps, clk);
+
     *p_fps = (u16)fps;
 
     return 0;
@@ -1588,6 +1616,9 @@ static void get_hdmi_info_handler(struct work_struct *work)
     u8 signal_state;
     int ret;
 
+    if (!lt7911_init_done)
+        return;
+
     if (lt7911_enable() < 0) return;
     if (lt7911_disable_watchdog() < 0) {
         printk(KERN_ERR "Failed to disable LT7911D watchdog\n");
@@ -1638,6 +1669,9 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
     // read GPIO level
     int value = gpio_get_value(INT_PIN);
 
+    if (!lt7911_init_done)
+        return IRQ_HANDLED;
+
     if (chip_platform == LT7911_CHIP_LT7911D) {
         // LT7911D
         if (value == 1) {
@@ -1685,6 +1719,9 @@ static int __init lt7911_manage_init(void)
     int ret;
     // struct i2c_adapter *adapter;
 
+    lt7911_init_done = false;
+    INIT_WORK(&get_video_info_work, get_hdmi_info_handler);
+
     printk(KERN_INFO "Force HDMI width: %d, height: %d, fps: %d\n", force_width, force_height, force_fps);
 
     board_version_check();
@@ -1719,9 +1756,6 @@ static int __init lt7911_manage_init(void)
     // init proc info buffers
     proc_buffer_init();
 
-    // init 6911 hdmi info work
-    INIT_WORK(&get_video_info_work, get_hdmi_info_handler);
-
     // read version from chip
     // if (lt7911_str_read(version_buffer) < 0) {
     //     return -EIO; // version read failed
@@ -1734,9 +1768,14 @@ static int __init lt7911_manage_init(void)
     // }
 
     // Restart Chip
+    disable_irq(irq_number);
     lt7911_pwr_ctrl(0); // Power off the LT7911
     msleep(100);
     lt7911_pwr_ctrl(1); // Power on the LT7911 first
+    msleep(100);
+    enable_irq(irq_number);
+
+    lt7911_init_done = true;
 
     printk(KERN_INFO "lt7911_manage module loaded\n");
     return 0;
@@ -1744,6 +1783,7 @@ static int __init lt7911_manage_init(void)
 
 static void __exit lt7911_manage_exit(void)
 {
+    lt7911_init_done = false;
     gpio_exit();
     i2c_unregister_device(client);
     cancel_work_sync(&get_video_info_work);
@@ -1755,7 +1795,7 @@ module_init(lt7911_manage_init);
 module_exit(lt7911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.2");
+MODULE_VERSION("0.0.3");
 MODULE_AUTHOR("Z2Z-BuGu");
 MODULE_AUTHOR("916BGAI");
 MODULE_DESCRIPTION("NanoAgent HDMI Module Management");
