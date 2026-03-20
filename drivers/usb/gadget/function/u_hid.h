@@ -22,6 +22,7 @@ struct f_hid_opts {
 	unsigned char			protocol;
 	// ### SIPEED EDIT ###
 	unsigned char			no_out_endpoint;
+	unsigned char			wakeup_on_write;
 	// ### SIPEED EDIT END ###
 	unsigned short			report_length;
 	unsigned short			report_desc_length;

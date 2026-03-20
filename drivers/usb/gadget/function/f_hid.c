@@ -55,6 +55,8 @@ struct f_hidg {
 	 *              will be used to receive reports.
 	 */
 	bool				use_out_ep;
+	/* attempt to wake up the host before write */
+	bool				wakeup_on_write;
 
 	/* recv report */
 	spinlock_t			read_spinlock;
@@ -453,9 +455,6 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *offp)
 {
 	struct f_hidg *hidg  = file->private_data;
-	// ### SIPEED EDIT ###
-	struct usb_composite_dev *cdev = hidg->func.config->cdev;
-	// ### SIPEED EDIT END ###
 	struct usb_request *req;
 	unsigned long flags;
 	ssize_t status = -ENOMEM;
@@ -464,7 +463,11 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 		return -EFAULT;
 
 	// ### SIPEED EDIT ###
-	usb_gadget_wakeup(cdev->gadget);
+	if (hidg->wakeup_on_write && hidg->func.config) {
+		struct usb_composite_dev *cdev = hidg->func.config->cdev;
+		if (cdev && cdev->gadget)
+			usb_gadget_wakeup(cdev->gadget);
+	}
 	// ### SIPEED EDIT END ###
 
 	spin_lock_irqsave(&hidg->write_spinlock, flags);
@@ -1164,6 +1167,7 @@ F_HID_OPT(subclass, 8, 255);
 F_HID_OPT(protocol, 8, 255);
 // ### SIPEED EDIT ###
 F_HID_OPT(no_out_endpoint, 8, 1);
+F_HID_OPT(wakeup_on_write, 8, 1);
 // ### SIPEED EDIT END ###
 F_HID_OPT(report_length, 16, 65535);
 
@@ -1226,6 +1230,7 @@ static struct configfs_attribute *hid_attrs[] = {
 	&f_hid_opts_attr_protocol,
 	// ### SIPEED EDIT ###
 	&f_hid_opts_attr_no_out_endpoint,
+	&f_hid_opts_attr_wakeup_on_write,
 	// ### SIPEED EDIT END ###
 	&f_hid_opts_attr_report_length,
 	&f_hid_opts_attr_report_desc,
@@ -1370,6 +1375,7 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
 		}
 	}
 	hidg->use_out_ep = !opts->no_out_endpoint;
+	hidg->wakeup_on_write = opts->wakeup_on_write;
 
 	++opts->refcnt;
 	// ### SIPEED EDIT END ###
