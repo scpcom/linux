@@ -24,7 +24,7 @@ static int hyn_check_ic(struct hyn_ts_data *ts_data)
         return -1;
     }
     hyn_fun = of_dev->data;
-    if(IS_ERR_OR_NULL(hyn_fun) || IS_ERR_OR_NULL(hyn_fun->tp_chip_init) 
+    if(IS_ERR_OR_NULL(hyn_fun) || IS_ERR_OR_NULL(hyn_fun->tp_chip_init)
         || hyn_fun->tp_chip_init(ts_data)){
         return -2;
     }
@@ -149,7 +149,7 @@ static int hyn_poweron(struct hyn_ts_data *ts_data)
         HYN_ERROR("gpio_request failed");
         goto GPIO_SET_FAILE;
     }
-    
+
     ret = gpio_direction_input(dt->irq_gpio);
     ret |= gpio_direction_output(dt->reset_gpio, 0);
     if(ret < 0){
@@ -188,7 +188,7 @@ static int hyn_input_dev_init(struct hyn_ts_data *ts_data)
     struct hyn_plat_data *dt = &ts_data->plat_data;
     struct input_dev *input_dev;
 
-    HYN_ENTER(); 
+    HYN_ENTER();
     input_dev = input_allocate_device();
     if (!input_dev) {
         HYN_ERROR("Failed to allocate memory for input device");
@@ -215,7 +215,7 @@ static int hyn_input_dev_init(struct hyn_ts_data *ts_data)
     input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 #endif
 
-	input_set_abs_params(input_dev, ABS_MT_TRACKING_ID, 0,  dt->max_touch_num, 0, 0); 
+	input_set_abs_params(input_dev, ABS_MT_TRACKING_ID, 0,  dt->max_touch_num, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, dt->x_resolution,0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, dt->y_resolution,0, 0);
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
@@ -229,7 +229,7 @@ static int hyn_input_dev_init(struct hyn_ts_data *ts_data)
 
 static void release_all_finger(struct hyn_ts_data *ts_data)
 {
-    HYN_ENTER();
+    // HYN_ENTER();
     if(ts_data->report_id_flg){
 #if HYN_MT_PROTOCOL_B_EN
         u8 i;
@@ -239,7 +239,7 @@ static void release_all_finger(struct hyn_ts_data *ts_data)
                 input_mt_slot(ts_data->input_dev, i);
                 input_report_abs(ts_data->input_dev, ABS_MT_TRACKING_ID, -1);
                 input_mt_report_slot_state(ts_data->input_dev, MT_TOOL_FINGER, false);
-            }	
+            }
         }
         input_report_key(ts_data->input_dev, BTN_TOUCH, 0);
 #else
@@ -303,7 +303,7 @@ static void hyn_irq_report_work(struct work_struct *work)
     if(hyn_fun->tp_report()){
         HYN_INFO("Ignore illegal data");
         return;
-    } 
+    }
     mutex_lock(&ts_data->mutex_report);
     if(rep_frame->report_need & REPORT_KEY){ //key
 #if KEY_USED_POS_REPORT
@@ -313,11 +313,11 @@ static void hyn_irq_report_work(struct work_struct *work)
         rep_frame->pos_info[0].pres_z = 100;
         touch_updata(0,rep_frame->key_state ? 1:0);
 #else
-        input_report_key(dev,dt->key_code[rep_frame->key_id],rep_frame->key_state ? 1:0); 
+        input_report_key(dev,dt->key_code[rep_frame->key_id],rep_frame->key_state ? 1:0);
 #endif
         if(rep_frame->key_state==0){
             reprot_state_clr = 1;
-        } 
+        }
         input_sync(dev);
         HYN_INFO2("report keyid:%d keycode:%d",rep_frame->key_id,dt->key_code[rep_frame->key_id]);
     }
@@ -377,7 +377,7 @@ static void hyn_irq_report_work(struct work_struct *work)
         hyn_gesture_report(ts_data);
         reprot_state_clr = 1;
     }
-#endif 
+#endif
     if(reprot_state_clr){
         rep_frame->report_need = REPORT_NONE;
     }
@@ -388,7 +388,7 @@ static void hyn_esdcheck_work(struct work_struct *work)
 {
 #if ESD_CHECK_EN
     int ret;
-    HYN_ENTER(); 
+    HYN_ENTER();
     if(hyn_data->esd_block_cnt==0){
         ret = hyn_fun->tp_check_esd();
         HYN_INFO("esd:%04x",ret);
@@ -442,7 +442,7 @@ static void hyn_resum(struct device *dev)
     wake_unlock(&hyn_data->tp_wakelock);
 #endif
     if(!IS_ERR_OR_NULL(dt->pinctl)){
-      pinctrl_select_state(dt->pinctl, dt->pin_active);  
+      pinctrl_select_state(dt->pinctl, dt->pin_active);
     }
     hyn_power_source_ctrl(hyn_data, 1);
     hyn_fun->tp_resum();
@@ -453,10 +453,10 @@ static void hyn_resum(struct device *dev)
     else if(hyn_data->gesture_is_enable){
         hyn_irq_set(hyn_data,DISABLE);
         ret = disable_irq_wake(hyn_data->client->irq);
-        ret |= irq_set_irq_type(hyn_data->client->irq,dt->irq_gpio_flags); 
+        ret |= irq_set_irq_type(hyn_data->client->irq,dt->irq_gpio_flags);
         if(ret < 0){
             HYN_ERROR("gesture irq_set_irq failed");
-        }  
+        }
     }
     if(hyn_data->charge_is_enable){
         hyn_fun->tp_set_workmode(CHARGE_ENTER,1);
@@ -466,7 +466,7 @@ static void hyn_resum(struct device *dev)
     }
     //compensate for lifting
     if(rep_frame->report_need & REPORT_KEY){
-        input_report_key(hyn_data->input_dev,dt->key_code[rep_frame->key_id],0); 
+        input_report_key(hyn_data->input_dev,dt->key_code[rep_frame->key_id],0);
     }
     if(rep_frame->report_need & REPORT_POS){
         release_all_finger(hyn_data);
@@ -491,10 +491,10 @@ static void hyn_suspend(struct device *dev)
     else if(hyn_data->gesture_is_enable){
         hyn_irq_set(hyn_data,DISABLE);
         ret = enable_irq_wake(hyn_data->client->irq);
-        ret |= irq_set_irq_type(hyn_data->client->irq,IRQF_TRIGGER_FALLING|IRQF_NO_SUSPEND|IRQF_ONESHOT); 
+        ret |= irq_set_irq_type(hyn_data->client->irq,IRQF_TRIGGER_FALLING|IRQF_NO_SUSPEND|IRQF_ONESHOT);
         if(ret < 0){
             HYN_ERROR("gesture irq_set_irq failed");
-        }  
+        }
         hyn_fun->tp_set_workmode(GESTURE_MODE,1);
         hyn_irq_set(hyn_data,ENABLE);
         hyn_power_source_ctrl(hyn_data, 1);
@@ -555,23 +555,40 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
     }
     {
 #if defined(CONFIG_FB)
-        int blank_value = *((int *)(((struct fb_event *)data)->data));
-        const unsigned long event_enum[2] = {FB_EARLY_EVENT_BLANK, FB_EVENT_BLANK};   
+        struct fb_event *ev_data = (struct fb_event *)data;
+        void *blank_data;
+        int blank_value;
+        const unsigned long event_enum[2] = {FB_EARLY_EVENT_BLANK, FB_EVENT_BLANK};
         const int blank_enum[2] = {FB_BLANK_POWERDOWN, FB_BLANK_UNBLANK};
 #elif defined(CONFIG_DRM)
     #if defined(CONFIG_DRM_PANEL)
-        int blank_value = *((int *)(((struct drm_panel_notifier *)data)->data));
+        struct drm_panel_notifier *ev_data = (struct drm_panel_notifier *)data;
+        void *blank_data;
+        int blank_value;
         const unsigned long event_enum[2] = {DRM_PANEL_EARLY_EVENT_BLANK, DRM_PANEL_EVENT_BLANK};
         const int blank_enum[2] = {DRM_PANEL_BLANK_POWERDOWN, DRM_PANEL_BLANK_UNBLANK};
     #else //CONFIG_DRM_PANEL
-        int blank_value = *((int *)(((struct msm_drm_notifier *)data)->data));
+        struct msm_drm_notifier *ev_data = (struct msm_drm_notifier *)data;
+        void *blank_data;
+        int blank_value;
         const unsigned long event_enum[2] = {MSM_DRM_EARLY_EVENT_BLANK, MSM_DRM_EVENT_BLANK};
         const int blank_enum[2] = {MSM_DRM_BLANK_POWERDOWN, MSM_DRM_BLANK_UNBLANK};
     #endif //CONFIG_DRM_PANEL
 #endif //CONFIG_DRM
 
+    if (event != event_enum[0] && event != event_enum[1]) {
+        return 0;
+    }
+
+    blank_data = ev_data->data;
+    if (IS_ERR_OR_NULL(blank_data) || (unsigned long)blank_data < PAGE_SIZE) {
+        return 0;
+    }
+
+    blank_value = *((int *)blank_data);
+
     HYN_INFO("notifier,event:%lu,blank:%d", event, blank_value);
-    if(hyn_data->old_fb_state == blank_value || (event != event_enum[0] && event != event_enum[1])){
+    if (hyn_data->old_fb_state == blank_value) {
         HYN_INFO("don't care");
         return 0;
     }
@@ -581,7 +598,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
     } else{
         cancel_work_sync(&hyn_data->work_resume);
         hyn_suspend(hyn_data->dev);
-    } 
+    }
 
     hyn_data->old_fb_state = blank_value;
     return 0;
@@ -670,7 +687,7 @@ static int hyn_ts_probe(struct spi_device *client)
     ts_data->rp_buf.key_id = 0xFF;
     ts_data->work_mode = NOMAL_MODE;
     ts_data->log_level = 0;
-    
+
     hyn_data = ts_data;
     ts_data->client = client;
     ts_data->dev = &client->dev;
@@ -717,7 +734,7 @@ static int hyn_ts_probe(struct spi_device *client)
         HYN_ERROR("create work queue failed");
         goto FREE_RESOURCE;
     }
-    
+
     ret = hyn_input_dev_init(ts_data);
     if(ret){
         if(!IS_ERR_OR_NULL(ts_data->input_dev)){
@@ -835,13 +852,13 @@ static int hyn_ts_remove(struct spi_device *client)
 #endif
 {
     struct hyn_ts_data *ts_data = hyn_data;
-    HYN_ENTER();    
+    HYN_ENTER();
     if(!IS_ERR_OR_NULL(ts_data)){
         if (ts_data->hyn_workqueue){
             flush_workqueue(ts_data->hyn_workqueue);
             hyn_esdcheck_switch(ts_data,DISABLE);
             destroy_workqueue(ts_data->hyn_workqueue);
-        } 
+        }
         HYN_INFO("ts_remove1");
 #if (HYN_APK_DEBUG_EN)
         hyn_tool_fs_exit();
@@ -859,7 +876,7 @@ static int hyn_ts_remove(struct spi_device *client)
             input_unregister_device(ts_data->input_dev);
         }
         HYN_INFO("ts_remove4");
-#if defined(CONFIG_FB) 
+#if defined(CONFIG_FB)
         fb_unregister_client(&ts_data->fb_notif);
 #elif defined(CONFIG_DRM)
 #if defined(CONFIG_DRM_PANEL)
@@ -875,7 +892,7 @@ static int hyn_ts_remove(struct spi_device *client)
             gpio_free(ts_data->plat_data.irq_gpio);
         if(gpio_is_valid(ts_data->plat_data.reset_gpio))
             gpio_free(ts_data->plat_data.reset_gpio);
-        HYN_INFO("ts_remove5"); 
+        HYN_INFO("ts_remove5");
         hyn_power_source_ctrl(hyn_data, 0);
         if(!IS_ERR_OR_NULL(ts_data->plat_data.vdd_ana)){
             regulator_put(ts_data->plat_data.vdd_ana);
@@ -928,7 +945,7 @@ static int __init hyn_ts_init(void)
 {
     int ret = 0;
     HYN_ENTER();
-#ifdef I2C_PORT  
+#ifdef I2C_PORT
     ret = i2c_add_driver(&hyn_ts_driver);
 #else
     ret = spi_register_driver(&hyn_ts_driver);
@@ -943,7 +960,7 @@ static int __init hyn_ts_init(void)
 static void __exit hyn_ts_exit(void)
 {
     HYN_ENTER();
-#ifdef I2C_PORT  
+#ifdef I2C_PORT
     i2c_del_driver(&hyn_ts_driver);
 #else
     spi_unregister_driver(&hyn_ts_driver);

@@ -35,6 +35,15 @@ int hyn_power_source_ctrl(struct hyn_ts_data *ts_data, int enable)
 void hyn_irq_set(struct hyn_ts_data *ts_data, u8 value)
 {
 	// HYN_ENTER();
+	if (IS_ERR_OR_NULL(ts_data)) {
+		return;
+	}
+
+	if (ts_data->gpio_irq <= 0) {
+		atomic_set(&ts_data->irq_is_disable, value);
+		return;
+	}
+
     if(atomic_read(&ts_data->irq_is_disable) != value){
         if(value ==0){
 			disable_irq(ts_data->gpio_irq);
@@ -50,7 +59,7 @@ void hyn_irq_set(struct hyn_ts_data *ts_data, u8 value)
 
 void hyn_set_i2c_addr(struct hyn_ts_data *ts_data,u8 addr)
 {
-#ifdef I2C_PORT  
+#ifdef I2C_PORT
 	ts_data->client->addr = addr;
 #endif
 }
@@ -94,7 +103,7 @@ int copy_for_updata(struct hyn_ts_data *ts_data,u8 *buf,u32 offset,u16 len)
 
 	// HYN_ENTER();
 
-	if(strlen(ts_data->fw_file_name) == 0) 
+	if(strlen(ts_data->fw_file_name) == 0)
 		return ret;
 	fp = filp_open(ts_data->fw_file_name,O_RDONLY, 0);//
 	if (IS_ERR(fp)) {
@@ -135,7 +144,7 @@ int copy_for_updata(struct hyn_ts_data *ts_data,u8 *buf,u32 offset,u16 len)
 #endif
 	return ret;
 }
-	
+
 int hyn_wait_irq_timeout(struct hyn_ts_data *ts_data,int msec)
 {
 	atomic_set(&ts_data->hyn_irq_flg,0);
@@ -153,7 +162,7 @@ int hyn_wait_irq_timeout(struct hyn_ts_data *ts_data,int msec)
 #define MAX_WROD_LEN	(64)
 int get_word(u8**sc_str, u8* ds_str)
 {
-	u8 ch,cnt = 0,nul_flg = 0; 
+	u8 ch,cnt = 0,nul_flg = 0;
 	while(1){
 		ch = **sc_str;
 		*sc_str += 1;
@@ -227,10 +236,10 @@ static int hyn_get_threshold(char *filename,char *match_string,s16 *pstore, u16 
 	off_t fsize;
 	struct file *fp;
 	loff_t pos;
-	
-	if(strlen(filename) == 0) 
+
+	if(strlen(filename) == 0)
 		return ret;
-		
+
 	fp = filp_open(filename, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		HYN_INFO("error occured while opening file %s.\n", filename);
@@ -266,12 +275,12 @@ static int hyn_get_threshold(char *filename,char *match_string,s16 *pstore, u16 
 			while(--cnt){
 				if(ptr[cnt]!= match_string[cnt]){
 					break;
-				} 
+				}
 			}
 			if(cnt == 0 && ptr[0]== match_string[0]){
 				// HYN_INFO("match %s",match_string);
 				break; //ignor idx 0,1
-			} 
+			}
 		}
 	}
 	if(i == 0){
@@ -423,9 +432,9 @@ int fac_test_log_save(char *log_name,struct hyn_ts_data *ts_data,s16 *test_data,
 	struct file *fp;
 	u8 w_buf[256],i;
 	int ret = -1;
-	if(strlen(log_name) == 0) 
+	if(strlen(log_name) == 0)
 		return ret;
-		
+
 	fp = filp_open(log_name, O_RDWR | O_CREAT, 0644);
 	if (IS_ERR(fp)) {
 		HYN_INFO("error occured while opening file %s.\n", log_name);
@@ -434,62 +443,62 @@ int fac_test_log_save(char *log_name,struct hyn_ts_data *ts_data,s16 *test_data,
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
 	{mm_segment_t old_fs;
-	old_fs = get_fs(); 
+	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	#undef hyn_fs_write
 	#define hyn_fs_write  vfs_write
 #endif
 	ret = snprintf(w_buf,sizeof(w_buf), test_ret ==0 ? "factory test pass\n":"factory test ng\n");
-	hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+	hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 	if(test_ret == FAC_GET_DATA_FAIL){
 		ret = snprintf(w_buf,sizeof(w_buf), "read fac_test data fail\n");
-		hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+		hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 	}
 	else{
 
 		if(test_item & MULTI_OPEN_TEST){
 			ret = snprintf(w_buf,sizeof(w_buf), "open high test data\n");
-			hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 			for(i = 0; i< ts_data->hw_info.fw_sensor_txnum; i++){
 				ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_rxnum,w_buf,sizeof(w_buf)-2);
 				w_buf[ret+1] = '\n';
-				hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+				hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 				test_data += ts_data->hw_info.fw_sensor_rxnum;
 			}
 
 			ret = snprintf(w_buf,sizeof(w_buf), "open low test data\n");
-			hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 			for(i = 0; i< ts_data->hw_info.fw_sensor_txnum; i++){
 				ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_rxnum,w_buf,sizeof(w_buf)-2);
 				w_buf[ret+1] = '\n';
-				hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+				hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 				test_data += ts_data->hw_info.fw_sensor_rxnum;
 			}
 		}
 
 		if(test_item & MULTI_SHORT_TEST){
 			ret = snprintf(w_buf,sizeof(w_buf), "short test data\n");
-			hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 			ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_rxnum,w_buf,sizeof(w_buf)-2);
 			w_buf[ret+1] = '\n';
-			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 			test_data += ts_data->hw_info.fw_sensor_rxnum;
 			ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_txnum,w_buf,sizeof(w_buf)-2);
 			w_buf[ret+1] = '\n';
-			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 			test_data += ts_data->hw_info.fw_sensor_txnum;
 		}
 
 		if(test_item & MULTI_SCAP_TEST){
 			ret = snprintf(w_buf,sizeof(w_buf), "scap test data\n");
-			hyn_fs_write(fp, w_buf, ret, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret, &fp->f_pos);
 			ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_rxnum,w_buf,sizeof(w_buf)-2);
 			w_buf[ret+1] = '\n';
-			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 			test_data += ts_data->hw_info.fw_sensor_rxnum;
 			ret = arry_to_string(test_data,ts_data->hw_info.fw_sensor_txnum,w_buf,sizeof(w_buf)-2);
 			w_buf[ret+1] = '\n';
-			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos); 
+			hyn_fs_write(fp, w_buf, ret+2, &fp->f_pos);
 			test_data += ts_data->hw_info.fw_sensor_txnum;
 		}
 	}

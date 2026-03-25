@@ -6,6 +6,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -35,14 +36,8 @@
 #define DRVNAME "fb_st7789p3"
 
 #define DEFAULT_GAMMA                                 \
-	"F0 05 0A 06 06 03 2B 32 43 36 11 10 2B 32\n" \
-	"F0 08 0C 0B 09 24 2B 22 43 38 15 16 2F 37"
-
-#define HSD20_IPS_GAMMA                               \
-	"D0 05 0A 09 08 05 2E 44 45 0F 17 16 2B 33\n" \
-	"D0 05 0A 09 08 05 2E 43 45 0F 16 16 2B 33"
-
-#define HSD20_IPS 0
+	"D0 0D 14 0B 0B 07 3A 44 50 08 13 13 2D 32\n" \
+	"D0 0D 14 0B 0B 07 3A 44 50 08 13 13 2D 32"
 
 /**
  * enum st7789p3_command - ST7789P3 display controller commands
@@ -89,6 +84,7 @@ enum st7789p3_command {
 
 static struct completion panel_te; /* completion for panel TE line */
 static int irq_te; /* Linux IRQ for LCD TE line */
+static u8 *frame_buf;
 
 static irqreturn_t panel_te_handler(int irq, void *data)
 {
@@ -165,209 +161,117 @@ static int init_display(struct fbtft_par *par)
 	if (rc)
 		return rc;
 
-#if 1
-	write_reg(par, 0x11);
-	mdelay(120);
-
-	write_reg(par, 0xB2, 0x0C, 0x0C, 0x00, 0x33, 0x33);
-	write_reg(par, 0xB0, 0x00, 0xE0);
-	write_reg(par, 0x36, 0x00);
-	write_reg(par, 0x3A, 0x05);
-
-	/*
-     * Write(Command, 0xB7);
-     * Write(Parameter, 0x45);
-     */
-	write_reg(par, 0xB7, 0x45);
-
-	/*
-        Write(Command , 0xBB);     
-        Write(Parameter , 0x1D);   
-    */
-	write_reg(par, 0xBB, 0x1D);
-
-	/*
-        Write(Command , 0xC0);     
-        Write(Parameter , 0x2C);   
-    */
-	write_reg(par, 0xC0, 0x2C);
-
-	/*
-        Write(Command , 0xC2);     
-        Write(Parameter , 0x01);   
-    */
-	write_reg(par, 0xC2, 0x01);
-
-	/*
-        Write(Command , 0xC3);     
-        Write(Parameter , 0x19);   
-    */
-	write_reg(par, 0xC3, 0x19);
-
-	/*
-        Write(Command , 0xC4);     
-        Write(Parameter , 0x20);   
-    */
-	write_reg(par, 0xC4, 0x20);
-
-	/*
-        Write(Command , 0xC6);     
-        Write(Parameter , 0x0F);   
-    */
-	write_reg(par, 0xC6, 0x0F);
-
-	/*
-        Write(Command , 0xD0);     
-        Write(Parameter , 0xA4);   
-        Write(Parameter , 0xA1);   
-    */
-	write_reg(par, 0xD0, 0xA4, 0xA1);
-
-	/*
-        Write(Command , 0xD6);     
-        Write(Parameter , 0xA1);   
-    */
-	write_reg(par, 0xD6, 0xA1);
-
-	/*
-        Write(Command , 0xE0);     
-        Write(Parameter , 0xD0);
-        Write(Parameter , 0x10);
-        Write(Parameter , 0x21);
-        Write(Parameter , 0x14);
-        Write(Parameter , 0x15);
-        Write(Parameter , 0x2D);
-        Write(Parameter , 0x41);
-        Write(Parameter , 0x44);
-        Write(Parameter , 0x4F);
-        Write(Parameter , 0x28);
-        Write(Parameter , 0x0E);
-        Write(Parameter , 0x0C);
-        Write(Parameter , 0x1D);
-        Write(Parameter , 0x1F);
-    */
-	write_reg(par, 0xE0, 0xD0, 0x10, 0x21, 0x14, 0x15, 0x2D, 0x41, 0x44,
-		  0x4F, 0x28, 0x0E, 0x0C, 0x1D, 0x1F);
-
-	/*
-        Write(Command , 0xE1);     
-        Write(Parameter , 0xD0);
-        Write(Parameter , 0x0F);
-        Write(Parameter , 0x1B);
-        Write(Parameter , 0x0D);
-        Write(Parameter , 0x0D);
-        Write(Parameter , 0x26);
-        Write(Parameter , 0x42);
-        Write(Parameter , 0x54);
-        Write(Parameter , 0x50);
-        Write(Parameter , 0x3E);
-        Write(Parameter , 0x1A);
-        Write(Parameter , 0x18);
-        Write(Parameter , 0x22);
-        Write(Parameter , 0x25);
-    */
-	write_reg(par, 0xE1, 0xD0, 0x0F, 0x1B, 0x0D, 0x0D, 0x26, 0x42, 0x54,
-		  0x50, 0x3E, 0x1A, 0x18, 0x22, 0x25);
-
-	/*
-        Write(Command , 0x29);  
-    */
-	write_reg(par, 0x29);
-
-	// /*
-	//        Write(Command , 0x2A);
-	//        Write(Parameter , 0x00);
-	//        Write(Parameter , 0x52);
-	//        Write(Parameter , 0x00);
-	//        Write(Parameter , 0x9D);
-	//     */
-	// write_reg(par, 0x2A, 0x00, 0x52, 0x00, 0x9D);
-	//
-	// /*
-	//        Write(Command , 0x2B);
-	//        Write(Parameter , 0x00);
-	//        Write(Parameter , 0x12);
-	//        Write(Parameter , 0x01);
-	//        Write(Parameter , 0x2D);
-	//     */
-	// write_reg(par, 0x2B, 0x00, 0x12, 0x01, 0x2D);
-	//
-	// /*
-	//        Write(Command , 0x2C);
-	//     */
-	// write_reg(par, 0x2C);
-
-	write_reg(par, 0x11);
-	mdelay(120);
-	write_reg(par, 0x29);
-#else
-	/* turn off sleep mode */
+	/* Sleep Out */
 	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
 	mdelay(120);
 
-	/* set pixel format to RGB-565 */
-	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
-	if (HSD20_IPS)
-		write_reg(par, PORCTRL, 0x05, 0x05, 0x00, 0x33, 0x33);
+	/* Porch control */
+	write_reg(par, PORCTRL, 0x0C, 0x0C, 0x00, 0x33, 0x33);
 
-	else
-		write_reg(par, PORCTRL, 0x0B, 0x0B, 0x00, 0x33, 0x33);
+	/* Display Inversion Off */
+	write_reg(par, 0x20);
 
-	/*
-	 * VGH = 13.26V
-	 * VGL = -10.43V
-	 */
-	write_reg(par, GCTRL, 0x75);
+	/* Gate control */
+	write_reg(par, GCTRL, 0x56);
 
+	/* VCOMS Setting */
+	write_reg(par, VCOMS, 0x18);
+
+	/* LCM Control */
 	write_reg(par, 0xC0, 0x2C);
 
-	/*
-	 * VDV and VRH register values come from command write
-	 * (instead of NVM)
-	 */
-	write_reg(par, VDVVRHEN, 0x01, 0xFF);
+	/* VDV and VRH Command Enable */
+	write_reg(par, VDVVRHEN, 0x01);
 
-	/*
-	 * VAP =  4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 * VAN = -4.1V + (VCOM + VCOM offset + 0.5 * VDV)
-	 */
-	if (HSD20_IPS)
-		write_reg(par, VRHS, 0x13);
-	else
-		write_reg(par, VRHS, 0x1F);
+	/* VRH Set */
+	write_reg(par, VRHS, 0x1F);
 
-	/* VCOM = 0.9V */
-	if (HSD20_IPS)
-		write_reg(par, VCOMS, 0x22);
-	else
-		write_reg(par, VCOMS, 0x28);
+	/* VDV Setting */
+	write_reg(par, VDVS, 0x20);
 
-	write_reg(par, 0xC6, 0x13);
+	/* FR Control 2 */
+	write_reg(par, 0xC6, 0x0F);
 
-	/*
-	 * AVDD = 6.8V
-	 * AVCL = -4.8V
-	 * VDS = 2.3V
-	 */
-	write_reg(par, PWCTRL1, 0xA7);
-	write_reg(par, PWCTRL1, 0xA4, 0xA1);
+	/* Power Control 1 */
+	write_reg(par, PWCTRL1, 0xA6, 0xA1);
 
 	write_reg(par, 0xD6, 0xA1);
+
+	/* Interface pixel format - 16bit 65K */
+	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, 0x55);
+
+	/* SPI2 disable - use standard single SPI */
+	write_reg(par, 0xE7, 0x00);
+
+	/* Display Inversion On */
+	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
 
 	/* TE line output is off by default when powering on */
 	if (irq_te)
 		write_reg(par, MIPI_DCS_SET_TEAR_ON, 0x00);
 
-	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);
-	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
-	mdelay(120);
+	/* Display On */
 	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
-	mdelay(200);
-	write_reg(par, MIPI_DCS_WRITE_MEMORY_START);
-	mdelay(200);
 
-#endif
+	frame_buf = kzalloc(par->info->fix.smem_len, GFP_KERNEL);
+	if (!frame_buf)
+		return -ENOMEM;
+
 	return 0;
+}
+
+static void memcpy_reverse32(u8 *dst, const u8 *src, size_t len)
+{
+	const u32 *src32 = (const u32 *)src;
+	u32 *dst32 = (u32 *)dst;
+	size_t i, count = len / 4;
+
+	for (i = 0; i < count; i++)
+		dst32[i] = swab32(src32[i]);
+}
+
+static int st7789p3_write_buf16_bus8(struct fbtft_par *par, u16 *src,
+				     size_t len)
+{
+	__be16 *txbuf16 = par->txbuf.buf;
+	size_t remain;
+	size_t to_copy;
+	size_t tx_array_size;
+	int i;
+	int ret = 0;
+	size_t startbyte_size = 0;
+
+	remain = len / 2;
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, 1);
+
+	if (!par->txbuf.buf)
+		return par->fbtftops.write(par, src, len);
+
+	tx_array_size = par->txbuf.len / 2;
+
+	if (par->startbyte) {
+		txbuf16 = par->txbuf.buf + 1;
+		tx_array_size -= 2;
+		*(u8 *)(par->txbuf.buf) = par->startbyte | 0x2;
+		startbyte_size = 1;
+	}
+
+	while (remain) {
+		to_copy = min(tx_array_size, remain);
+		for (i = 0; i < to_copy; i++)
+			txbuf16[i] = cpu_to_be16(src[i]);
+
+		src += to_copy;
+		ret = par->fbtftops.write(par, par->txbuf.buf,
+					  startbyte_size + to_copy * 2);
+		if (ret < 0)
+			return ret;
+		remain -= to_copy;
+	}
+
+	return ret;
 }
 
 /*
@@ -383,7 +287,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	struct device *dev = par->info->device;
 	int ret;
 
-	dev_err(dev, "write_vmem len: %d\n", len);
+	dev_dbg(dev, "write_vmem len: %zu\n", len);
 	if (irq_te) {
 		enable_irq(irq_te);
 		reinit_completion(&panel_te);
@@ -395,33 +299,11 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 		disable_irq(irq_te);
 	}
 
-	switch (par->pdata->display.buswidth) {
-	case 8:
-		ret = fbtft_write_vmem16_bus8(par, offset, len);
-		break;
-	case 9:
-		ret = fbtft_write_vmem16_bus9(par, offset, len);
-		break;
-	case 16:
-		ret = fbtft_write_vmem16_bus16(par, offset, len);
-		break;
-	default:
-		dev_err(dev, "Unsupported buswidth %d\n",
-			par->pdata->display.buswidth);
-		ret = 0;
-		break;
-	}
-	// switch (par->pdata->display.buswidth) {
-	// case 8:
-	// case 16:
-	// 	ret = fbtft_write_vmem16_bus16(par, offset, len);
-	// 	break;
-	// default:
-	// 	dev_err(dev, "Unsupported buswidth %d\n",
-	// 		par->pdata->display.buswidth);
-	// 	ret = 0;
-	// 	break;
-	// }
+	memcpy_reverse32(frame_buf + offset,
+			 par->info->screen_buffer + offset, len);
+
+	ret = st7789p3_write_buf16_bus8(par, (u16 *)(frame_buf + offset),
+					len);
 
 	return ret;
 }
@@ -530,15 +412,14 @@ static int blank(struct fbtft_par *par, bool on)
 	return 0;
 }
 
-#if 0
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	if (par->info->var.rotate == 0 || par->info->var.rotate == 180) {
-		xs += 35;
-		xe += 35;
-	} else {
-		ys += 35;
-		ye += 35;
+	if (par->info->var.rotate == 180) {
+		ys += 36;
+		ye += 36;
+	} else if (par->info->var.rotate == 90) {
+		xs += 36;
+		xe += 36;
 	}
 
 	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS, (xs >> 8) & 0xFF, xs & 0xFF,
@@ -552,52 +433,9 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 
 static struct fbtft_display display = {
 	.regwidth = 8,
-	.width = 170,
-	.height = 320,
-	.gamma_num = 2,
-	.gamma_len = 14,
-	.gamma = DEFAULT_GAMMA,
-	.fbtftops = {
-		.init_display = init_display,
-		.write_vmem = write_vmem,
-		.set_var = set_var,
-		.set_gamma = set_gamma,
-		.blank = blank,
-		.set_addr_win = set_addr_win,
-	},
-};
-#else
-static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
-{
-	// if (par->info->var.rotate == 0 || par->info->var.rotate == 180) {
-	// 	xs += 82;
-	// 	xe += 157;
-	// } else {
-	// 	ys += 18;
-	// 	ye += 301;
-	// }
-	// xs = 82;
-	// xe = 157;
-	// ys = 18;
-	// ye = 301;
-	xs = 18;
-	xe = 301;
-	ys = 82;
-	ye = 157;
-
-	write_reg(par, MIPI_DCS_SET_COLUMN_ADDRESS, (xs >> 8) & 0xFF, xs & 0xFF,
-		  (xe >> 8) & 0xFF, xe & 0xFF);
-
-	write_reg(par, MIPI_DCS_SET_PAGE_ADDRESS, (ys >> 8) & 0xFF, ys & 0xFF,
-		  (ye >> 8) & 0xFF, ye & 0xFF);
-
-	write_reg(par, MIPI_DCS_WRITE_MEMORY_START);
-}
-
-static struct fbtft_display display = {
-	.regwidth = 8,
-	.width = 76,
+	.width = 240,
 	.height = 284,
+	.txbuflen = 32 * 1024,
 	.gamma_num = 2,
 	.gamma_len = 14,
 	.gamma = DEFAULT_GAMMA,
@@ -610,7 +448,6 @@ static struct fbtft_display display = {
 		.set_addr_win = set_addr_win,
 	},
 };
-#endif
 
 FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7789p3", &display);
 

@@ -45,20 +45,62 @@
 		#sound-dai-cells = <0>;
 	};
 
-	sound {
+	// sound_lt7911d: sound-lt7911d {
+	// 	status = "okay";
+	// 	compatible = "simple-audio-card";
+	// 	simple-audio-card,name = "Lontium Lt7911D";
+	// 	simple-audio-card,format = "i2s";
+	// 	simple-audio-card,bitclock-master = <&lt7911d_codec>;
+	// 	simple-audio-card,frame-master = <&lt7911d_codec>;
+
+	// 	simple-audio-card,cpu {
+	// 		sound-dai = <&i2s_slv0>;
+	// 	};
+
+	// 	lt7911d_codec: simple-audio-card,codec {
+	// 		sound-dai = <&dummy_codec>;
+	// 	};
+	// };
+
+	sound_mic: sound-mic {
 		status = "okay";
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "Lontium Lt7911D";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,bitclock-master = <&lt7911d_codec>;
-		simple-audio-card,frame-master = <&lt7911d_codec>;
+		simple-audio-card,name = "Axera Audio";
+		simple-audio-card,widgets =
+			"Microphone", "Mic Jack";
+		simple-audio-card,routing =
+			"AMIC", "Mic Jack";
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		simple-audio-card,cpu {
-			sound-dai = <&i2s_slv0>;
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			bitclock-master = <&codec_m6>;
+			frame-master = <&codec_m6>;
+			capture-only;
+
+			cpu {
+				sound-dai = <&i2s_inner_slv0>;
+			};
+
+			codec_m6: codec {
+				sound-dai = <&audio_codec>;
+				system-clock-frequency = <12288000>;
+			};
 		};
 
-		lt7911d_codec: simple-audio-card,codec {
-			sound-dai = <&dummy_codec>;
+		simple-audio-card,dai-link@1 {
+			format = "i2s";
+			playback-only;
+
+			cpu {
+				sound-dai = <&i2s_inner_mst0>;
+			};
+
+			codec {
+				sound-dai = <&audio_codec>;
+				system-clock-frequency = <12288000>;
+			};
 		};
 	};
 
@@ -107,6 +149,15 @@
 		status = "disabled";
 	};
 
+	backlight: backlight {
+		status = "okay";
+		compatible = "pwm-backlight";
+		pwms = <&pwm1 3 462963>;
+		brightness-levels = <0 101>;
+		num-interpolated-steps = <100>;
+		default-brightness-level = <100>;
+	};
+
 	aic_bsp {
 		compatible = "aicsemi,aic_bsp";
 		reset-gpio = <&ax_gpio0 21 0>; // GPIO0_A21
@@ -115,10 +166,26 @@
 		status = "okay";
 	};
 };
+
 &i2c1 {
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
 	status = "okay";
+
+	hynitron: hynitron@15 {
+		compatible = "hyn,8xxt";
+		reg = <0x15>;
+
+		irq-gpio = <&ax_gpio0 2 0>;
+		reset-gpio = <&ax_gpio0 4 0>;
+		max-touch-number = <5>;
+
+		display-coords = <0 0 283 239>;
+		pos-swap = <1>;
+		posx-reverse = <1>;
+		posy-reverse = <0>;
+		status = "okay";
+	};
 };
 
 &ax_uart0 {
@@ -231,53 +298,54 @@
 };
 
 &spi0 {
-       status = "disabled";
-       /* create /dev/spidev0.0 node */
-       spidev_user@0 {
-               status = "okay";
-               compatible = "axera,spidev";
-               reg = <0>;
-               spi-max-frequency = <26000000>;
-       };
+	status = "disabled";
+	/* create /dev/spidev0.0 node */
+	spidev_user@0 {
+		status = "okay";
+		compatible = "axera,spidev";
+		reg = <0>;
+		spi-max-frequency = <26000000>;
+	};
 };
 
 &spi1 {
-       status = "disabled";
-       /* create /dev/spidev1.0 node */
-       spidev_user@0 {
-               status = "okay";
-               compatible = "axera,spidev";
-               reg = <0>;
-               spi-max-frequency = <26000000>;
-       };
+	status = "disabled";
+	/* create /dev/spidev1.0 node */
+	spidev_user@0 {
+		status = "okay";
+		compatible = "axera,spidev";
+		reg = <0>;
+		spi-max-frequency = <26000000>;
+	};
 };
 
 &spi2 {
-       status = "disabled";
-       /* create /dev/spidev2.0 node */
-       spidev_user@0 {
-               status = "okay";
-               compatible = "axera,spidev";
-               reg = <0>;
-               spi-max-frequency = <26000000>;
-       };
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_txd_gpio0_a30_pins>,
+				<&rgmii_txen_spi_m2_cs1_m_pins>,
+				<&rgmii_txclk_spi_m2_sclk_m_pins>,
+				<&rgmii_txd0_spi_m2_mosi_m_pins>,
+				<&uart1_rxd_gpio0_a31_pins>;
+
+	cs-gpios = <&ax_gpio1 21 0>;
+
+	st7789p3: st7789p3@1{
+		compatible = "sitronix,st7789p3";
+		reg = <1>;
+		status = "okay";
+		spi-max-frequency = <80000000>;
+		rotate = <90>;
+		fps = <60>;
+		buswidth = <8>;
+		dc-gpios = <&ax_gpio0 30 1>;
+		reset-gpios = <&ax_gpio0 31 0>;
+		debug = <0>;
+	};
 };
 
 &spi4 {
-	status = "okay";
-	spi_nand@0 {
-		compatible = "spi-nand";
-		reg = <0>;
-		rx-sample-delay-ns = <4>;
-		spi-max-frequency = <50000000>;
-	};
-	/*spi_flash@0 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "jedec,spi-nor";
-		reg = <0>;
-		spi-max-frequency = <50000000>;
-	};*/
+	status = "disabled";
 };
 
 &audio_codec {
@@ -285,13 +353,12 @@
 	gpio-mic-rn = <&ax_gpio1 6 0>; /* GPIO1_A6 */
 	gpio-mic-ln = <&ax_gpio1 5 0>; /* GPIO1_A5 */
 	gpio-mic-lp = <&ax_gpio1 4 0>; /* GPIO1_A4 */
-	gpio-pa-speaker = <&ax_gpio1 12 0>;
-	mic_type = "amic"; /* mic_type = "dmic"; */
-	status = "disabled";
+	gpio-pa-speaker = <&ax_gpio1 0 0>;
+	status = "okay";
 };
 
 &i2s_inner_mst0 {
-	status = "disabled";
+	status = "okay";
 	dma-buffer = <256>;
 	/*i2s - pad0*/
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
@@ -314,8 +381,7 @@
 };
 
 &i2s_inner_slv0 {
-	status = "disabled";
-	dma-buffer = <256>;
+	status = "okay";
 	/*i2s - pad0*/
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
 	i2s-m-aec-sclk-sel = <0>;     /*21*/
@@ -359,7 +425,7 @@
 };
 
 &i2s_slv0 {
-	status = "okay";
+	status = "disabled";
 	/*i2s - pad0*/
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
 	i2s-m-aec-sclk-sel = <0>;     /*21*/
@@ -491,15 +557,17 @@
 #endif
 
 &pwm0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm1 {
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&ephy_rstn_pwm7_m_pins>;
 };
 
 &pwm2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &deb_gpio_lp {
