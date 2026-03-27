@@ -192,6 +192,10 @@
 	status = "okay";
 };
 
+&ax_uart3 {
+	status = "okay";
+};
+
 &wdt0 {
 	status = "okay";
 };
@@ -354,6 +358,7 @@
 	gpio-mic-ln = <&ax_gpio1 5 0>; /* GPIO1_A5 */
 	gpio-mic-lp = <&ax_gpio1 4 0>; /* GPIO1_A4 */
 	gpio-pa-speaker = <&ax_gpio1 0 0>;
+	mic_type = "amic"; /* mic_type = "dmic"; */
 	status = "okay";
 };
 
@@ -382,6 +387,7 @@
 
 &i2s_inner_slv0 {
 	status = "okay";
+	dma-buffer = <256>;
 	/*i2s - pad0*/
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
 	i2s-m-aec-sclk-sel = <0>;     /*21*/
