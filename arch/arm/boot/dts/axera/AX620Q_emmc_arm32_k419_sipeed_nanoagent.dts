@@ -45,62 +45,37 @@
 		#sound-dai-cells = <0>;
 	};
 
-	// sound_lt7911d: sound-lt7911d {
-	// 	status = "okay";
-	// 	compatible = "simple-audio-card";
-	// 	simple-audio-card,name = "Lontium Lt7911D";
-	// 	simple-audio-card,format = "i2s";
-	// 	simple-audio-card,bitclock-master = <&lt7911d_codec>;
-	// 	simple-audio-card,frame-master = <&lt7911d_codec>;
+	sound_lt7911d: sound-lt7911d {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "Lontium Lt7911D";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&lt7911d_codec>;
+		simple-audio-card,frame-master = <&lt7911d_codec>;
 
-	// 	simple-audio-card,cpu {
-	// 		sound-dai = <&i2s_slv0>;
-	// 	};
+		simple-audio-card,cpu {
+			sound-dai = <&i2s_inner_slv0>;
+		};
 
-	// 	lt7911d_codec: simple-audio-card,codec {
-	// 		sound-dai = <&dummy_codec>;
-	// 	};
-	// };
+		lt7911d_codec: simple-audio-card,codec {
+			sound-dai = <&dummy_codec>;
+		};
+	};
 
-	sound_mic: sound-mic {
+	sound_spk: sound-spk {
 		status = "okay";
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "Axera Audio";
-		simple-audio-card,widgets =
-			"Microphone", "Mic Jack";
-		simple-audio-card,routing =
-			"AMIC", "Mic Jack";
-		#address-cells = <1>;
-		#size-cells = <0>;
+		simple-audio-card,format = "i2s";
+		simple-audio-card,playback-only;
 
-		simple-audio-card,dai-link@0 {
-			format = "i2s";
-			bitclock-master = <&codec_m6>;
-			frame-master = <&codec_m6>;
-			capture-only;
-
-			cpu {
-				sound-dai = <&i2s_inner_slv0>;
-			};
-
-			codec_m6: codec {
-				sound-dai = <&audio_codec>;
-				system-clock-frequency = <12288000>;
-			};
+		simple-audio-card,cpu {
+			sound-dai = <&i2s_inner_mst0>;
 		};
 
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			playback-only;
-
-			cpu {
-				sound-dai = <&i2s_inner_mst0>;
-			};
-
-			codec {
-				sound-dai = <&audio_codec>;
-				system-clock-frequency = <12288000>;
-			};
+		simple-audio-card,codec {
+			sound-dai = <&audio_codec>;
+			system-clock-frequency = <12288000>;
 		};
 	};
 
@@ -369,7 +344,7 @@
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
 	i2s-m-aec-sclk-sel = <0>;     /*21*/
 	i2s-inner-codec-en = <1>;     /*20*/
-	i2s-exter-codec-en = <0>;     /*19*/
+	i2s-exter-codec-en = <1>;     /*19*/
 	i2s-m-exter-codec-en = <0>;   /*18*/
 	i2s-exter-codec-mst = <0>;    /*17*/
 	i2s-m-exter-codec-mst = <0>;  /*16*/
@@ -377,12 +352,13 @@
 	iis-m-out-tdm-en = <0>;       /*14*/
 	i2s-m-rx0-sel = <0>;          /*13*/
 	i2s-m-rx1-sel = <0>;          /*12-11*/
-	i2s-s-rx0-sel = <0>;          /*10-9*/
+	i2s-s-rx0-sel = <1>;          /*10-9*/
 	i2s-s-rx1-sel = <2>;          /*8-7*/
-	i2s-s-sclk-sel = <0>;         /*6-5*/
+	i2s-s-sclk-sel = <1>;         /*6-5*/
 	tdm-m-rx-sel = <0>;           /*4-3*/
 	tdm-s-rx-sel = <0>;           /*2-1*/
 	tdm-s-sclk-sel = <0>;         /*0*/
+	hdmi-i2s;
 };
 
 &i2s_inner_slv0 {
@@ -392,7 +368,7 @@
 	i2s-m-aec-cycle-sel = <0>;    /*23-22*/
 	i2s-m-aec-sclk-sel = <0>;     /*21*/
 	i2s-inner-codec-en = <1>;     /*20*/
-	i2s-exter-codec-en = <0>;     /*19*/
+	i2s-exter-codec-en = <1>;     /*19*/
 	i2s-m-exter-codec-en = <0>;   /*18*/
 	i2s-exter-codec-mst = <0>;    /*17*/
 	i2s-m-exter-codec-mst = <0>;  /*16*/
@@ -400,12 +376,13 @@
 	iis-m-out-tdm-en = <0>;       /*14*/
 	i2s-m-rx0-sel = <0>;          /*13*/
 	i2s-m-rx1-sel = <0>;          /*12-11*/
-	i2s-s-rx0-sel = <0>;          /*10-9*/
+	i2s-s-rx0-sel = <1>;          /*10-9*/
 	i2s-s-rx1-sel = <2>;          /*8-7*/
-	i2s-s-sclk-sel = <0>;         /*6-5*/
+	i2s-s-sclk-sel = <1>;         /*6-5*/
 	tdm-m-rx-sel = <0>;           /*4-3*/
 	tdm-s-rx-sel = <0>;           /*2-1*/
 	tdm-s-sclk-sel = <0>;         /*0*/
+	hdmi-i2s;
 };
 
 &i2s_mst0 {
