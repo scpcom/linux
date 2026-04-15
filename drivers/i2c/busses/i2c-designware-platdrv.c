@@ -187,6 +187,9 @@ static void i2c_dw_configure_master(struct dw_i2c_dev *dev)
 	dev->mode = DW_IC_MASTER;
 
 	switch (t->bus_freq_hz) {
+	case 50000:
+		dev->master_cfg |= DW_IC_CON_SPEED_STD;
+		break;
 	case 100000:
 		dev->master_cfg |= DW_IC_CON_SPEED_STD;
 		break;
@@ -339,7 +342,7 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	/*
 	 * Only standard mode at 100kHz, fast mode at 400kHz,
 	 * fast mode plus at 1MHz and high speed mode at 3.4MHz are supported.
-	 */
+
 	if (t->bus_freq_hz != 100000 && t->bus_freq_hz != 400000 &&
 	    t->bus_freq_hz != 1000000 && t->bus_freq_hz != 3400000) {
 		dev_err(&pdev->dev,
@@ -348,6 +351,7 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto exit_reset;
 	}
+	 */
 
 	ret = i2c_dw_probe_lock_support(dev);
 	if (ret)

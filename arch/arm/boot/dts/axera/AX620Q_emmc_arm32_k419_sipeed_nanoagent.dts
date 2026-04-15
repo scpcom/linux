@@ -127,10 +127,41 @@
 	backlight: backlight {
 		status = "okay";
 		compatible = "pwm-backlight";
-		pwms = <&pwm1 3 462963>;
-		brightness-levels = <0 101>;
-		num-interpolated-steps = <100>;
-		default-brightness-level = <100>;
+		pwms = <&pwm1 2 462963>;
+		brightness-levels = <
+			  0   1   2   3   4   5   6   7
+			  8   9  10  11  12  13  14  15
+			 16  17  18  19  20  21  22  23
+			 24  25  26  27  28  29  30  31
+			 32  33  34  35  36  37  38  39
+			 40  41  42  43  44  45  46  47
+			 48  49  50  51  52  53  54  55
+			 56  57  58  59  60  61  62  63
+			 64  65  66  67  68  69  70  71
+			 72  73  74  75  76  77  78  79
+			 80  81  82  83  84  85  86  87
+			 88  89  90  91  92  93  94  95
+			 96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <255>;
 	};
 
 	aic_bsp {
@@ -143,9 +174,9 @@
 };
 
 &i2c1 {
+	status = "okay";
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
-	status = "okay";
 
 	hynitron: hynitron@15 {
 		compatible = "hyn,8xxt";
@@ -155,9 +186,9 @@
 		reset-gpio = <&ax_gpio0 4 0>;
 		max-touch-number = <5>;
 
-		display-coords = <0 0 283 239>;
-		pos-swap = <1>;
-		posx-reverse = <1>;
+		display-coords = <0 0 239 283>;
+		pos-swap = <0>;
+		posx-reverse = <0>;
 		posy-reverse = <0>;
 		status = "okay";
 	};
@@ -188,10 +219,7 @@
 	non-removable;
 	disable-wp;
 	cap-mmc-hw-reset;
-	/* AX630C use GPIO2_A23 */
 	hw-reset = <&ax_gpio2 23 0>;
-	/* AX620Q use GPIO1_A0 */
-	/* hw-reset = <&ax_gpio1 0 0>; */
 	cap-mmc-highspeed;
 	mmc-hs200-1_8v;
 	cdns,phy-input-delay-sd-highspeed = <2>;
@@ -216,16 +244,12 @@
 	bus-width = <4>;
 	max-frequency = <200000000>;
 	cap-sd-highspeed;
-	sd-uhs-sdr25;
-	sd-uhs-sdr12;
-	sd-uhs-sdr50;
-	sd-uhs-ddr50;
-	no-1-8-v;
-	no-sd;
+	no-sdio;
 	no-mmc;
 	disable-wp;
 	broken-cd;
-	cdns,phy-input-delay-sd-highspeed = <4>;
+
+	cdns,phy-input-delay-sd-highspeed = <2>;
 	cdns,phy-input-delay-legacy = <3>;
 	cdns,phy-input-delay-sd-uhs-sdr12 = <3>;
 	cdns,phy-input-delay-sd-uhs-sdr25 = <2>;
@@ -245,21 +269,20 @@
 	sd-uhs-sdr12;
 	sd-uhs-sdr50;
 	sd-uhs-ddr50;
-	//sd-uhs-sdr104;
+	no-1-8-v;
 	no-sd;
 	no-mmc;
 	disable-wp;
-	vol-sw-gpio = <&ax_gpio0 17 0>;
-
-	cdns,phy-input-delay-sd-highspeed = <2>;
+	broken-cd;
+	cdns,phy-input-delay-sd-highspeed = <4>;
 	cdns,phy-input-delay-legacy = <3>;
 	cdns,phy-input-delay-sd-uhs-sdr12 = <3>;
 	cdns,phy-input-delay-sd-uhs-sdr25 = <2>;
-	cdns,phy-input-delay-sd-uhs-sdr50 = <0>;
-	cdns,phy-input-delay-sd-uhs-ddr50 = <0>;
+	cdns,phy-input-delay-sd-uhs-sdr50 = <1>;
+	cdns,phy-input-delay-sd-uhs-ddr50 = <1>;
 	cdns,phy-dll-delay-sdclk = <0>;
 
-	status = "disabled";
+	status = "okay";
 };
 
 
@@ -301,23 +324,23 @@
 &spi2 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart1_txd_gpio0_a30_pins>,
-				<&rgmii_txen_spi_m2_cs1_m_pins>,
+	pinctrl-0 = <&ephy_rstn_spi_m2_cs0_m_pins>,
 				<&rgmii_txclk_spi_m2_sclk_m_pins>,
 				<&rgmii_txd0_spi_m2_mosi_m_pins>,
+				<&rgmii_txd1_gpio1_a19_pins>,
 				<&uart1_rxd_gpio0_a31_pins>;
 
-	cs-gpios = <&ax_gpio1 21 0>;
+	cs-gpios = <&ax_gpio1 27 0>;
 
-	st7789p3: st7789p3@1{
+	st7789p3: st7789p3@0{
 		compatible = "sitronix,st7789p3";
-		reg = <1>;
+		reg = <0>;
 		status = "okay";
 		spi-max-frequency = <80000000>;
-		rotate = <90>;
+		rotate = <0>;
 		fps = <60>;
 		buswidth = <8>;
-		dc-gpios = <&ax_gpio0 30 1>;
+		dc-gpios = <&ax_gpio1 19 1>;
 		reset-gpios = <&ax_gpio0 31 0>;
 		debug = <0>;
 	};
@@ -546,7 +569,7 @@
 &pwm1 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&ephy_rstn_pwm7_m_pins>;
+	pinctrl-0 = <&uart1_txd_pwm06_pins>;
 };
 
 &pwm2 {
@@ -560,12 +583,29 @@
 
 &i2c0 {
 	status = "okay";
+	#address-cells = <0x1>;
+	#size-cells = <0x0>;
+
+	lt7911d: lt7911d@2b {
+		compatible = "lontium,lt7911d";
+		reg = <0x2b>;
+		irq-gpio = <&ax_gpio1 29 0>;    /* GPIO1_A29 */
+		reset-gpio = <&ax_gpio1 28 0>;  /* GPIO1_A28 */
+		status = "okay";
+	};
+
+	accelerometer: accelerometer@19 {
+		compatible = "silan,sc7a20";
+		reg = <0x19>;
+		status = "okay";
+	};
 };
 
 &i2c_slv0 {
 	status = "okay";
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
+
 	i2c_slave_eeprom: i2c_slave_eeprom@55 {
 		compatible = "axera,slave-24c02";
 		reg = <0x40000055>;
@@ -616,8 +656,9 @@
 &vpp {
 	status = "okay";
 };
+
 &axera_rtc_pwr {
-        status = "okay";
+	status = "okay";
 };
 
 &drm0 {
