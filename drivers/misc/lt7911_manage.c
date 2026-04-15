@@ -3,6 +3,7 @@
  * 0.0.1  - based on LT6911C code for LT7911D
  * 0.0.2  - remove LT86102 all operations
  * 0.0.3  - fix hactive value read and add fps detection
+ * 0.0.4  - support dt parse for GPIO and I2C
  *
 */
 
@@ -12,7 +13,6 @@
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
@@ -22,6 +22,8 @@
 #include <linux/wait.h>
 #include <linux/atomic.h>
 #include <linux/slab.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 #include "lt7911_manage.h"
 
@@ -67,19 +69,16 @@ MODULE_PARM_DESC(force_fps, "Force HDMI fps");
 
 static int irq_number;
 static struct i2c_client *client;
+static int i2c_bus_num = -1;
+static u8 lt7911_i2c_addr;
+static bool dt_cfg_valid;
 
 enum {
     LT7911_CHIP_UNKNOWN,
     LT7911_CHIP_LT7911D,
 } typedef chip_platform_t;
 
-enum {
-    BOARD_VERSION_UNKNOWN,
-    BOARD_VERSION_NanoAgent,
-} typedef board_version_t;
-
 static chip_platform_t chip_platform = LT7911_CHIP_UNKNOWN;
-static board_version_t board_version = BOARD_VERSION_UNKNOWN;
 
 static int INT_PIN;
 static int PWR_PIN;
@@ -709,49 +708,9 @@ int lt7911_pwr_ctrl(int pwr_en)
     return 0;
 }
 
-static void write_device_register(unsigned long phys_addr, unsigned int offset, unsigned int value) {
-    void __iomem *base;
-
-    //  Map the device register
-    base = ioremap(phys_addr, REG_REMAP_SIZE);
-    if (!base) {
-        printk("Failed to map device memory\n");
-        return;
-    }
-
-    // Write to the register
-    iowrite32(value, base + offset);
-    // printk("Wrote 0x%x to register at offset 0x%x\n", value, offset);
-
-    // Unmap the device register
-    iounmap(base);
-}
-
-void pinmux_register_init(void)
-{
-    if (board_version == BOARD_VERSION_NanoAgent) {
-        // Initialize pinmux for NanoAgent
-        // add pull up
-        write_device_register(0x104F0000, 0x9C, 0x00060083);    // INT GPIO1_A14
-        write_device_register(0x104F0000, 0xA8, 0x00060003);    // RST GPIO1_A15
-    } else {
-        printk(KERN_ERR "Unsupported board version\n");
-    }
-}
-
 int gpio_init(void)
 {
     int ret;
-
-    if (board_version == BOARD_VERSION_NanoAgent) {
-        INT_PIN = NANO_AGENT_INT_PIN;
-        PWR_PIN = NANO_AGENT_PWR_PIN;
-    } else {
-        INT_PIN = -1;
-        PWR_PIN = -1;
-        printk(KERN_ERR "Unsupported board version\n");
-        return -1;
-    }
 
     // Initialize GPIO for LT7911 INT pin
     // init GPIO Interrupt
@@ -789,8 +748,6 @@ int gpio_init(void)
             return ret;
         }
     }
-
-    pinmux_register_init();
 
     // Setup for version detect
     lt7911_pwr_ctrl(1); // Power on the LT7911
@@ -849,7 +806,7 @@ bool i2c_device_exists(u8 device_address) {
     int ret;
 
     // 获取 I2C 适配器
-    f_adapter = i2c_get_adapter(I2C_BUS);
+    f_adapter = i2c_get_adapter(i2c_bus_num);
     if (!f_adapter) {
         printk("Failed to get I2C adapter\n");
         return false;
@@ -873,11 +830,49 @@ bool i2c_device_exists(u8 device_address) {
     return exists;
 }
 
-void board_version_check(void)
+static int lt7911_dt_parse(struct i2c_client *i2c)
 {
-    // default board version
-    board_version = BOARD_VERSION_NanoAgent;
-    printk(KERN_INFO "Board: NanoAgent\n");
+    struct device_node *np;
+    u32 reg = 0;
+    int irq_gpio;
+    int reset_gpio;
+
+    if (!i2c) {
+        printk(KERN_ERR "lt7911: invalid i2c client\n");
+        return -EINVAL;
+    }
+
+    np = i2c->dev.of_node;
+    if (!np) {
+        printk(KERN_ERR "lt7911: dts node not found\n");
+        return -ENODEV;
+    }
+
+    irq_gpio = of_get_named_gpio(np, "irq-gpio", 0);
+    reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+    if (!gpio_is_valid(irq_gpio) || !gpio_is_valid(reset_gpio)) {
+        printk(KERN_ERR "lt7911: invalid irq-gpio/reset-gpio in dts\n");
+        of_node_put(np);
+        return -EINVAL;
+    }
+
+    if (of_property_read_u32(np, "reg", &reg)) {
+        printk(KERN_ERR "lt7911: missing reg in dts\n");
+        of_node_put(np);
+        return -EINVAL;
+    }
+    lt7911_i2c_addr = (u8)(reg & 0x7F);
+
+    i2c_bus_num = i2c->adapter ? i2c->adapter->nr : -1;
+
+    INT_PIN = irq_gpio;
+    PWR_PIN = reset_gpio;
+    dt_cfg_valid = true;
+
+    printk(KERN_INFO "lt7911: config bus=%d addr=0x%02x irq_gpio=%d reset_gpio=%d\n",
+           i2c_bus_num, lt7911_i2c_addr, INT_PIN, PWR_PIN);
+
+    return 0;
 }
 
 // I2C write function
@@ -1686,45 +1681,23 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-int i2c_init(void)
-{
-    struct i2c_adapter *adapter;
-
-    adapter = i2c_get_adapter(I2C_BUS);
-    if (!adapter) {
-        printk(KERN_ERR "Failed to get I2C adapter\n");
-        free_irq(irq_number, NULL);
-        gpio_free(INT_PIN);
-        return -1;
-    }
-    // printk(KERN_INFO "I2C adapter %d obtained\n", I2C_BUS);
-
-    // struct i2c_client *client = to_i2c_client(dev);
-    client = i2c_new_dummy(adapter, LT7911_ADDR);
-    if (!client) {
-        printk(KERN_ERR "Failed to create I2C device\n");
-        free_irq(irq_number, NULL);
-        gpio_free(INT_PIN);
-        return -1;
-    }
-
-    // free the adapter after use
-    i2c_put_adapter(adapter);
-
-    return 0;
-}
-
-static int __init lt7911_manage_init(void)
+static int lt7911_manage_probe(struct i2c_client *i2c,
+                               const struct i2c_device_id *id)
 {
     int ret;
-    // struct i2c_adapter *adapter;
 
+    client = i2c;
     lt7911_init_done = false;
     INIT_WORK(&get_video_info_work, get_hdmi_info_handler);
 
     printk(KERN_INFO "Force HDMI width: %d, height: %d, fps: %d\n", force_width, force_height, force_fps);
 
-    board_version_check();
+    ret = lt7911_dt_parse(i2c);
+    if (ret < 0) {
+        printk(KERN_ERR "lt7911: dts parse failed\n");
+        return ret;
+    }
+
     // init GPIO
     ret = gpio_init();
     if (ret < 0) {
@@ -1732,24 +1705,18 @@ static int __init lt7911_manage_init(void)
         return -ENODEV;
     }
 
-
-    // Init I2C
-    ret = i2c_init();
-    if (ret < 0) {
-        printk(KERN_ERR "Failed to initialize I2C\n");
-        return -ENODEV;
-    }
-
     // check chip register
     ret = check_chip_register();
     if (ret < 0) {
         printk(KERN_ERR "This module only supports LT7911 chip\n");
+        gpio_exit();
         return -ENODEV;
     }
 
     // create proc info files
     if (proc_info_init() < 0) {
         printk(KERN_ERR "Failed to create proc info files\n");
+        gpio_exit();
         return -ENOMEM;
     }
 
@@ -1781,21 +1748,55 @@ static int __init lt7911_manage_init(void)
     return 0;
 }
 
-static void __exit lt7911_manage_exit(void)
+static int lt7911_manage_remove(struct i2c_client *i2c)
 {
     lt7911_init_done = false;
-    gpio_exit();
-    i2c_unregister_device(client);
     cancel_work_sync(&get_video_info_work);
     proc_info_exit();
+    gpio_exit();
+    client = NULL;
     printk(KERN_INFO "GPIO-I2C interrupt module unloaded\n");
+
+    return 0;
+}
+
+static const struct of_device_id lt7911_of_match[] = {
+    { .compatible = "lontium,lt7911d" },
+    { }
+};
+MODULE_DEVICE_TABLE(of, lt7911_of_match);
+
+static const struct i2c_device_id lt7911_i2c_id[] = {
+    { "lt7911d", 0 },
+    { }
+};
+MODULE_DEVICE_TABLE(i2c, lt7911_i2c_id);
+
+static struct i2c_driver lt7911_manage_driver = {
+    .driver = {
+        .name = "lt7911_manage",
+        .of_match_table = of_match_ptr(lt7911_of_match),
+    },
+    .probe = lt7911_manage_probe,
+    .remove = lt7911_manage_remove,
+    .id_table = lt7911_i2c_id,
+};
+
+static int __init lt7911_manage_init(void)
+{
+    return i2c_add_driver(&lt7911_manage_driver);
+}
+
+static void __exit lt7911_manage_exit(void)
+{
+    i2c_del_driver(&lt7911_manage_driver);
 }
 
 module_init(lt7911_manage_init);
 module_exit(lt7911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.3");
+MODULE_VERSION("0.0.4");
 MODULE_AUTHOR("Z2Z-BuGu");
 MODULE_AUTHOR("916BGAI");
 MODULE_DESCRIPTION("NanoAgent HDMI Module Management");
