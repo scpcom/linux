@@ -36,8 +36,8 @@
 #define DRVNAME "fb_st7789p3"
 
 #define DEFAULT_GAMMA                                 \
-	"D0 0D 14 0B 0B 07 3A 44 50 08 13 13 2D 32\n" \
-	"D0 0D 14 0B 0B 07 3A 44 50 08 13 13 2D 32"
+	"F0 05 0E 08 0A 17 39 54 4E 37 12 12 31 37\n" \
+	"F0 10 14 0D 0B 05 39 44 4D 38 14 14 2E 35"
 
 /**
  * enum st7789p3_command - ST7789P3 display controller commands
@@ -165,6 +165,9 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
 	mdelay(120);
 
+	/* Interface pixel format - 16bit 65K */
+	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, MIPI_DCS_PIXEL_FMT_16BIT);
+
 	/* Porch control */
 	write_reg(par, PORCTRL, 0x0C, 0x0C, 0x00, 0x33, 0x33);
 
@@ -172,10 +175,10 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, 0x20);
 
 	/* Gate control */
-	write_reg(par, GCTRL, 0x56);
+	write_reg(par, GCTRL, 0x05);
 
 	/* VCOMS Setting */
-	write_reg(par, VCOMS, 0x18);
+	write_reg(par, VCOMS, 0x21);
 
 	/* LCM Control */
 	write_reg(par, 0xC0, 0x2C);
@@ -184,24 +187,21 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, VDVVRHEN, 0x01);
 
 	/* VRH Set */
-	write_reg(par, VRHS, 0x1F);
-
-	/* VDV Setting */
-	write_reg(par, VDVS, 0x20);
+	write_reg(par, VRHS, 0x15);
 
 	/* FR Control 2 */
 	write_reg(par, 0xC6, 0x0F);
 
 	/* Power Control 1 */
-	write_reg(par, PWCTRL1, 0xA6, 0xA1);
+	write_reg(par, PWCTRL1, 0xA7);
+	write_reg(par, PWCTRL1, 0xA4, 0xA1);
 
 	write_reg(par, 0xD6, 0xA1);
 
-	/* Interface pixel format - 16bit 65K */
-	write_reg(par, MIPI_DCS_SET_PIXEL_FORMAT, 0x55);
+	write_reg(par, 0xE0, 0xF0, 0x05, 0x0E, 0x08, 0x0A, 0x17, 0x39, 0x54, 0x4E, 0x37, 0x12, 0x12, 0x31, 0x37);
+	write_reg(par, 0xE1, 0xF0, 0x10, 0x14, 0x0D, 0x0B, 0x05, 0x39, 0x44, 0x4D, 0x38, 0x14, 0x14, 0x2E, 0x35);
 
-	/* SPI2 disable - use standard single SPI */
-	write_reg(par, 0xE7, 0x00);
+	write_reg(par, 0xE4, 0x23, 0x00, 0x00);
 
 	/* Display Inversion On */
 	write_reg(par, MIPI_DCS_ENTER_INVERT_MODE);

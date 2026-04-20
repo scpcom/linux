@@ -189,7 +189,7 @@
 		display-coords = <0 0 239 283>;
 		pos-swap = <0>;
 		posx-reverse = <0>;
-		posy-reverse = <0>;
+		posy-reverse = <1>;
 		status = "okay";
 	};
 };
@@ -338,7 +338,7 @@
 		status = "okay";
 		spi-max-frequency = <80000000>;
 		rotate = <0>;
-		fps = <60>;
+		fps = <0>;
 		buswidth = <8>;
 		dc-gpios = <&ax_gpio1 19 1>;
 		reset-gpios = <&ax_gpio0 31 0>;
