@@ -22,7 +22,7 @@
 0x02304090, 0x00000083,  /* PadName = UART3_RXD            Fuction = UART3_RXD */
 0x104F0008, 0x0000000f,  /* SLEEP_CTRL */
 0x104F0004, 0x00000201,  /* SLEEP_CTRL */
-0x104F0060, 0x00040083,  /* PadName = GPIO1_A27            Fuction = SPI_m2_CS0_M */
+0x104F0060, 0x00060083,  /* PadName = GPIO1_A27            Fuction = GPIO1_A27 */
 0x104F006C, 0x00060003,  /* PadName = EPHY_LED0            Fuction = GPIO1_A28 */
 0x104F0078, 0x00060003,  /* PadName = EPHY_LED1            Fuction = GPIO1_A29 */
 0x104F00CC, 0x00040003,  /* PadName = GPIO1_A18            Fuction = SPI_m2_MOSI_M */
