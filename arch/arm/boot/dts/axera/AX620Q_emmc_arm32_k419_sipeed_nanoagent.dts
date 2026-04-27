@@ -658,7 +658,7 @@
 };
 
 &axera_rtc_pwr {
-	status = "okay";
+	status = "disabled";
 };
 
 &drm0 {
@@ -670,11 +670,11 @@
 };
 
 &crtc0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &crtc1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &vo0 {
