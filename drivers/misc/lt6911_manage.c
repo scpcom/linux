@@ -31,6 +31,7 @@
  * 0.0.28 - add support for LT6911D
  * 0.0.29 - add feature: Specify output status and resolution with input parameter
  * 0.0.30 - rename parameters and proc files, add force fps parameter
+ * 0.0.31 - fix LT6911D issue
 */
 
 #include <linux/module.h>
@@ -1649,6 +1650,10 @@ int i2c_read_bytes(u8 offset, u8 reg, u8 *data, u8 len)
 
 int lt6911_enable(void) {
     // Enable the LT6911 by writing to the appropriate register
+    if (chip_platform == LT6911_CHIP_LT6911D) {
+        return 0; // LT6911D does not require enable
+    }
+
     if (i2c_write_byte(LT6911_SYS_OFFSET, 0xEE, 0x01) != 0) {
         printk(KERN_ERR "Failed to enable LT6911UXC\n");
         return -1;
@@ -1658,6 +1663,10 @@ int lt6911_enable(void) {
 
 int lt6911_disable(void) {
     // Disable the LT6911UXC by writing to the appropriate register
+    if (chip_platform == LT6911_CHIP_LT6911D) {
+        return 0; // LT6911D does not require disable
+    }
+
     if (i2c_write_byte(LT6911_SYS_OFFSET, 0xEE, 0x00) != 0) {
         printk(KERN_ERR "Failed to disable LT6911UXC\n");
         return -1;
@@ -1674,10 +1683,9 @@ int lt6911_disable_watchdog(void) {
             return -1;
         }
     } else if (chip_platform == LT6911_CHIP_LT6911C) {
-        // LT6911C
-        printk(KERN_ERR "LT6911C chip platform unsupported\n");
-        // can't be returned
-        // return -1;
+        // LT6911C does not require watchdog disable
+    } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        // LT6911D does not require watchdog disable
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
@@ -1803,24 +1811,31 @@ int lt6911_get_signal_state(u8 *p_state)
             break;
         }
     } else if (chip_platform == LT6911_CHIP_LT6911D) {
+        u8 audio_fs_h, audio_fs_l;
+        u16 hactive_val, vactive_val, audio_fs;
 
-        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0xEE, 0x00) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8C, &hactive[0]) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8D, &hactive[1]) != 0) return -1;
+        hactive_val = ((hactive[0] << 8) | hactive[1]) * 2;
 
-        // Check HDMI signal
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x84, &hdmi_signal) != 0) return -1;
-        switch (hdmi_signal) {
-            case 0x00:
-                state &= ~0x01; // HDMI signal disappear
-                break;
-            case 0x01:
-                state |= 0x01;  // HDMI signal stable
-                break;
-            case 0x02:
-                state &= ~0x02;  // Audio signal disappear
-                break;
-            case 0x03:
-                state |= 0x02;  // Audio signal stable
-                break;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8E, &vactive[0]) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8F, &vactive[1]) != 0) return -1;
+        vactive_val = (vactive[0] << 8) | vactive[1];
+
+        if (hactive_val != 0 || vactive_val != 0) {
+            state |= 0x01;  // HDMI signal stable
+        } else {
+            state &= ~0x01; // HDMI signal disappear
+        }
+
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x90, &audio_fs_h) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x91, &audio_fs_l) != 0) return -1;
+        audio_fs = (audio_fs_h << 8) | audio_fs_l;
+
+        if (audio_fs != 0) {
+            state |= 0x02;  // Audio signal stable
+        } else {
+            state &= ~0x02; // Audio signal disappear
         }
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
@@ -1857,11 +1872,11 @@ int lt6911_get_csi_res(u16 *p_width, u16 *p_height)
     } else if (chip_platform == LT6911_CHIP_LT6911D) {
         // LT6911D
         // height
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8C, val  ) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8D, val+1) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8E, val  ) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8F, val+1) != 0) return -1;
         // width
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8E, val+2) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8F, val+3) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8C, val+2) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x8D, val+3) != 0) return -1;
     } else {
         printk(KERN_ERR "Unknown chip platform\n");
         return -1;
@@ -1870,29 +1885,12 @@ int lt6911_get_csi_res(u16 *p_width, u16 *p_height)
     height = (val[0] << 8) | val[1];
     width = (val[2] << 8) | val[3];
 
-    if (chip_platform == LT6911_CHIP_LT6911D) height *= 2;
+    if (chip_platform == LT6911_CHIP_LT6911D) width *= 2;
 
     *p_width = width;
     *p_height = height;
 
     res_type = check_res(width, height);
-
-    // switch (res_type)
-    // {
-    // case NORMAL_RES:
-    //     printk("[hdmi] get res : %d * %d\n", width, height);
-    //     break;
-    // case NEW_RES:
-    //     printk("[hdmi] get new res : %d * %d\n", width, height);
-    //     // write_res_to_file(width, height);
-    //     break;
-    // case UNSUPPORT_RES:
-    //     printk("[hdmi] get unsupport res : %d * %d\n", width, height);
-    //     break;
-    // case UNKNOWN_RES:
-    //     printk("[hdmi] get unknown res : %d * %d\n", width, height);
-    //     break;
-    // }
 
 	return res_type;
 }
@@ -2000,33 +1998,29 @@ int lt6911_get_hdcp_mode(u8 *p_hdcp)
     return 0;
 }
 
-int lt6911_get_audio_sample_rate(u8 *p_sample_rate)
+int lt6911_get_audio_sample_rate(u16 *p_sample_rate)
 {
     u8 val;
-    u8 val_buf[5];
+    u8 val_buf[2];
     if (chip_platform == LT6911_CHIP_LT6911C) {
         // LT6911C
         // Read audio sample rate
         if (i2c_read_byte(LT6911C_AUDIO_INFO_OFFSET, 0x55, &val) != 0) return -1;
-        // return 0;
+        *p_sample_rate = val;
     } else if (chip_platform == LT6911_CHIP_LT6911UXC) {
         // LT6911UXC
         // Read audio sample rate
         if (i2c_read_byte(LT6911_AUDIO_INFO_OFFSET, 0xAB, &val) != 0) return -1;
+        *p_sample_rate = val;
     } else if (chip_platform == LT6911_CHIP_LT6911D) {
         // LT6911D
         // Read audio sample rate
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x90, val_buf) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x91, val_buf+1) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x92, val_buf+2) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x93, val_buf+3) != 0) return -1;
-        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x94, val_buf+4) != 0) return -1;
-        printk(KERN_INFO "HDMI Audio Sample Rate Bytes: %02x %02x %02x %02x %02x\n",
-               val_buf[0], val_buf[1], val_buf[2], val_buf[3], val_buf[4]);
-        val = val_buf[0]; // use the first byte as sample rate, not sure if it's correct
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x90, &val_buf[0]) != 0) return -1;
+        if (i2c_read_byte(LT6911D_MANAGE_OFFSET, 0x91, &val_buf[1]) != 0) return -1;
+        *p_sample_rate = (val_buf[0] << 8) | val_buf[1];
+    } else {
+        return -1;
     }
-
-    *p_sample_rate = val;
     return 0;
 }
 
@@ -2401,7 +2395,7 @@ int lt6911_str_write(u8 *str, u16 len)
         msleep(1);
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
-        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x81) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x01) != 0) return -1;
         msleep(1);
@@ -2441,7 +2435,7 @@ int lt6911_str_write(u8 *str, u16 len)
 
 int lt6911_str_read(u8 *str)
 {
-    int i;
+    int i = 0;
     // Read String data from LT6911UXC
     if (chip_platform == LT6911_CHIP_LT6911UXC) {
         printk(KERN_INFO "Reading String...\n");
@@ -2482,7 +2476,7 @@ int lt6911_str_read(u8 *str)
         msleep(1);
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x00) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5B, 0x00) != 0) return -1;
-        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x80) != 0) return -1;
+        if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5C, 0x81) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5D, 0x00+(LT6911D_WR_SIZE*i)) != 0) return -1;
         if (i2c_write_byte(LT6911D_MANAGE_OFFSET, 0x5A, 0x10) != 0) return -1;
         msleep(1);
@@ -2511,10 +2505,9 @@ void hdmi_change_process(u8 hdmi_state)
     int hdmi_type;
 	u16 height = 0;
 	u16 width = 0;
-	// u16 height = 2560;
-	// u16 width = 1080;
     u16 fps = 0;
     u8 hdcp_mode;
+
     if (hdmi_state == 1) {
         // HDMI signal is stable
         printk(KERN_INFO "HDMI signal is stable\n");
@@ -2663,7 +2656,7 @@ void lt6911_force_resolution(u16 width, u16 height, int fps)
 
 void audio_change_process(u8 audio_state)
 {
-    u8 sample_rate;
+    u16 sample_rate;
     int ret;
     // Handle audio change events
     switch (audio_state)
@@ -2699,7 +2692,7 @@ static void get_hdmi_info_handler(struct work_struct *work)
 
     if (lt6911_enable() < 0) return;
     if (lt6911_disable_watchdog() < 0) {
-        printk(KERN_ERR "Failed to disable LT6911UXC watchdog\n");
+        printk(KERN_ERR "Failed to disable watchdog\n");
         lt6911_disable();
         return;
     }
@@ -2722,19 +2715,10 @@ static void get_hdmi_info_handler(struct work_struct *work)
     } else {
         hdmi_change_process(0); // HDMI signal is disappearing
     }
-    // if (signal_state & 0x01) {
-    //     printk(KERN_INFO "HDMI signal is stable\n"); // HDMI signal is stable
-    //     msleep(1000); // Simulated processing time
-    // } else {
-    //     printk(KERN_INFO "HDMI signal is disappearing\n"); // HDMI signal is disappearing
-    // }
 
     // audio signal
     if (signal_state & 0x02) audio_change_process(1); // Audio signal is stable
     else                     audio_change_process(0); // Audio signal is disappearing
-    // not to check sample rate go higher or lower
-    // else if (signal_state & 0x04) audio_change_process(1); // Audio sample rate go higher
-    // else                          audio_change_process(1); // Audio sample rate go lower
 
     if (lt6911_disable() < 0) return;
 
@@ -2880,7 +2864,7 @@ module_init(lt6911_manage_init);
 module_exit(lt6911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.30");
+MODULE_VERSION("0.0.31");
 MODULE_AUTHOR("Z2Z-BuGu");
 MODULE_AUTHOR("916BGAI");
 MODULE_DESCRIPTION("NanoKVM-Pro HDMI Module Management");
