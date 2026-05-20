@@ -24,7 +24,7 @@
 0x104F0004, 0x00000201,  /* SLEEP_CTRL */
 0x104F0060, 0x00060083,  /* PadName = GPIO1_A27            Fuction = GPIO1_A27 */
 0x104F006C, 0x00060003,  /* PadName = EPHY_LED0            Fuction = GPIO1_A28 */
-0x104F0078, 0x00060003,  /* PadName = EPHY_LED1            Fuction = GPIO1_A29 */
+0x104F0078, 0x00060083,  /* PadName = EPHY_LED1            Fuction = GPIO1_A29 */
 0x104F00CC, 0x00040003,  /* PadName = GPIO1_A18            Fuction = SPI_m2_MOSI_M */
 0x104F00D8, 0x00060003,  /* PadName = GPIO1_A19            Fuction = GPIO1_A19 */
 0x104F00E4, 0x00040003,  /* PadName = GPIO1_A20            Fuction = SPI_m2_SCLK_M */
