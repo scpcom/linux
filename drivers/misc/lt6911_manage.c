@@ -32,6 +32,7 @@
  * 0.0.29 - add feature: Specify output status and resolution with input parameter
  * 0.0.30 - rename parameters and proc files, add force fps parameter
  * 0.0.31 - fix LT6911D issue
+ * 0.0.32 - add chip_id proc file
 */
 
 #include <linux/module.h>
@@ -173,6 +174,7 @@ static struct proc_dir_entry *proc_hdmi_tx_status_file;
 static struct proc_dir_entry *proc_hdmi_edid_file;
 static struct proc_dir_entry *proc_hdmi_edid_snapshot_file;
 static struct proc_dir_entry *proc_version_file;
+static struct proc_dir_entry *proc_chip_id_file;
 // static char buffer[128];
 // static int buffer_length;
 static char hdmi_status_buffer[16];
@@ -714,6 +716,28 @@ ssize_t proc_version_write(struct file *file, const char __user *user_buffer, si
     return count;
 }
 
+static const char *lt6911_chip_id_name(void)
+{
+    switch (chip_platform) {
+    case LT6911_CHIP_LT6911C:
+        return "lt6911c\n";
+    case LT6911_CHIP_LT6911D:
+        return "lt6911d\n";
+    case LT6911_CHIP_LT6911UXC:
+        return "lt6911uxc\n";
+    case LT6911_CHIP_UNKNOWN:
+    default:
+        return "unknown\n";
+    }
+}
+
+ssize_t proc_chip_id_read(struct file *file, char __user *user_buffer, size_t count, loff_t *offset)
+{
+    const char *chip_id = lt6911_chip_id_name();
+
+    return simple_read_from_buffer(user_buffer, count, offset, chip_id, strlen(chip_id));
+}
+
 static int proc_open(struct inode *inode, struct file *file)
 {
     struct lt6911_priv_data *priv;
@@ -831,6 +855,11 @@ static const struct file_operations proc_version_fops = {
     .write = proc_version_write,
 };
 
+static const struct file_operations proc_chip_id_fops = {
+    .owner = THIS_MODULE,
+    .read = proc_chip_id_read,
+};
+
 void proc_buffer_init(void)
 {
     // hdmi_status_buffer = "disappear"
@@ -858,6 +887,12 @@ int proc_info_init(void)
     // create proc dir
     proc_lt6911_dir = proc_mkdir(PROC_LT6911_DIR, NULL);
     if (!proc_lt6911_dir) {
+        goto err;
+    }
+
+    // create proc chip id file
+    proc_chip_id_file = proc_create(PROC_CHIP_ID, 0444, proc_lt6911_dir, &proc_chip_id_fops); // R
+    if (!proc_chip_id_file) {
         goto err;
     }
 
@@ -966,6 +1001,7 @@ err:
     if (proc_hdmi_edid_file) remove_proc_entry(PROC_HDMI_EDID, proc_lt6911_dir);
     if (proc_hdmi_edid_snapshot_file) remove_proc_entry(PROC_HDMI_EDID_SNAPSHOT, proc_lt6911_dir);
     if (proc_version_file) remove_proc_entry(PROC_VERSION, proc_lt6911_dir);
+    if (proc_chip_id_file) remove_proc_entry(PROC_CHIP_ID, proc_lt6911_dir);
 
     if (proc_lt6911_dir) remove_proc_entry(PROC_LT6911_DIR, NULL);
     return -1;
@@ -987,6 +1023,7 @@ int proc_info_exit(void)
     if (proc_hdmi_edid_file) remove_proc_entry(PROC_HDMI_EDID, proc_lt6911_dir);
     if (proc_hdmi_edid_snapshot_file) remove_proc_entry(PROC_HDMI_EDID_SNAPSHOT, proc_lt6911_dir);
     if (proc_version_file) remove_proc_entry(PROC_VERSION, proc_lt6911_dir);
+    if (proc_chip_id_file) remove_proc_entry(PROC_CHIP_ID, proc_lt6911_dir);
 
     if (proc_lt6911_dir) remove_proc_entry(PROC_LT6911_DIR, NULL);
     return 0;
@@ -2864,7 +2901,7 @@ module_init(lt6911_manage_init);
 module_exit(lt6911_manage_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.0.31");
+MODULE_VERSION("0.0.32");
 MODULE_AUTHOR("Z2Z-BuGu");
 MODULE_AUTHOR("916BGAI");
 MODULE_DESCRIPTION("NanoKVM-Pro HDMI Module Management");

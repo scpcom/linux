@@ -97,6 +97,13 @@ config FB_TFT_JD9853
 
 	  Say Y if you have such a display that utilizes this controller.
 
+config FB_TFT_JD9853_HKC_2_01
+	tristate "FB driver for the JD9853 HKC 2.01 LCD panel"
+	depends on FB_TFT
+	help
+	  Framebuffer support for HKC2.01 QD020KS011-1 240x296 panels
+	  using the JD9853 LCD controller.
+
 config FB_TFT_PCD8544
 	tristate "FB driver for the PCD8544 LCD Controller"
 	depends on FB_TFT

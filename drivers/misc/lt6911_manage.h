@@ -82,5 +82,6 @@
 #define PROC_HDMI_EDID              "edid"
 #define PROC_HDMI_EDID_SNAPSHOT     "edid_snapshot"
 #define PROC_VERSION                "version"
+#define PROC_CHIP_ID                "chip_id"
 
 #endif /* __LT6911_MANAGE_H */

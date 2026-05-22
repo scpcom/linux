@@ -45,19 +45,19 @@
 		#sound-dai-cells = <0>;
 	};
 
-	sound_lt7911d: sound-lt7911d {
+	sound_lt7911exc: sound-lt7911exc {
 		status = "okay";
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "Lontium Lt7911D";
+		simple-audio-card,name = "Lontium Lt7911EXC";
 		simple-audio-card,format = "i2s";
-		simple-audio-card,bitclock-master = <&lt7911d_codec>;
-		simple-audio-card,frame-master = <&lt7911d_codec>;
+		simple-audio-card,bitclock-master = <&lt7911exc_codec>;
+		simple-audio-card,frame-master = <&lt7911exc_codec>;
 
 		simple-audio-card,cpu {
 			sound-dai = <&i2s_inner_slv0>;
 		};
 
-		lt7911d_codec: simple-audio-card,codec {
+		lt7911exc_codec: simple-audio-card,codec {
 			sound-dai = <&dummy_codec>;
 		};
 	};
@@ -88,7 +88,7 @@
 
 	extcon_usb: extcon_usb {
 		compatible = "linux,extcon-usb-gpio";
-		id-gpio = <&ax_gpio2 11 0>; /* GPIO2_A11 */
+		id-gpio = <&ax_gpio2 13 0>; /* GPIO2_A13 */
 		status = "okay";
 	};
 
@@ -166,9 +166,9 @@
 
 	aic_bsp {
 		compatible = "aicsemi,aic_bsp";
-		reset-gpio = <&ax_gpio0 21 0>; // GPIO0_A21
+		reset-gpio = <&ax_gpio1 28 0>; // GPIO1_A28
 		pinctrl-names = "default";
-		pinctrl-0 = <&ephy_led1_gpio1_a29_pins>;
+		pinctrl-0 = <&ephy_led0_gpio1_a28_pins>;
 		status = "okay";
 	};
 };
@@ -186,7 +186,7 @@
 		reset-gpio = <&ax_gpio0 4 0>;
 		max-touch-number = <5>;
 
-		display-coords = <0 0 239 283>;
+		display-coords = <0 0 239 295>;
 		pos-swap = <0>;
 		posx-reverse = <0>;
 		posy-reverse = <1>;
@@ -328,20 +328,37 @@
 				<&rgmii_txclk_spi_m2_sclk_m_pins>,
 				<&rgmii_txd0_spi_m2_mosi_m_pins>,
 				<&rgmii_txd1_gpio1_a19_pins>,
-				<&uart1_rxd_gpio0_a31_pins>;
+				<&uart1_rxd_gpio0_a31_pins>,
+				<&ephy_led1_gpio1_a29_pins>;
 
 	cs-gpios = <&ax_gpio1 27 0>;
 
 	st7789p3: st7789p3@0{
 		compatible = "sitronix,st7789p3";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 		spi-max-frequency = <80000000>;
 		rotate = <0>;
 		fps = <0>;
 		buswidth = <8>;
 		dc-gpios = <&ax_gpio1 19 1>;
 		reset-gpios = <&ax_gpio0 31 0>;
+		debug = <0>;
+	};
+
+	jd9853_hkc_2_01: jd9853-hkc-2-01@0{
+		compatible = "jadard,jd9853-hkc-2.01";
+		reg = <0>;
+		status = "okay";
+		spi-max-frequency = <80000000>;
+		spi-cpol;
+		spi-cpha;
+		rotate = <0>;
+		fps = <60>;
+		buswidth = <8>;
+		dc-gpios = <&ax_gpio1 19 1>;
+		reset-gpios = <&ax_gpio0 31 0>;
+		te-gpios = <&ax_gpio1 29 1>;
 		debug = <0>;
 	};
 };
@@ -355,7 +372,6 @@
 	gpio-mic-rn = <&ax_gpio1 6 0>; /* GPIO1_A6 */
 	gpio-mic-ln = <&ax_gpio1 5 0>; /* GPIO1_A5 */
 	gpio-mic-lp = <&ax_gpio1 4 0>; /* GPIO1_A4 */
-	gpio-pa-speaker = <&ax_gpio1 0 0>;
 	mic_type = "amic"; /* mic_type = "dmic"; */
 	status = "okay";
 };
@@ -586,11 +602,11 @@
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
 
-	lt7911d: lt7911d@2b {
-		compatible = "lontium,lt7911d";
-		reg = <0x2b>;
-		irq-gpio = <&ax_gpio1 29 0>;    /* GPIO1_A29 */
-		reset-gpio = <&ax_gpio1 28 0>;  /* GPIO1_A28 */
+	lt7911exc: lt7911exc@41 {
+		compatible = "lontium,lt7911exc";
+		reg = <0x41>;
+		irq-gpio = <&ax_gpio1 0 0>;    /* GPIO1_A0 */
+		reset-gpio = <&ax_gpio1 1 0>;  /* GPIO1_A1 */
 		status = "okay";
 	};
 

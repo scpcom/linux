@@ -100,8 +100,10 @@ static int ax_pinmux_index_conv(int index)
 		break;
 	//case AX620Q_LP4_MINION_BOARD:
 	case AX620Q_LP4_DEMO_V1_1:
+	case AX620Q_LP4_NANOAGENT_256M:
 		ret = AX620Q_LP4_DEMO_V1_0;
 		break;
+	case AX620QF_LP4_NANOAGENT_256M:
 	case AX620QE_LP4_NANOAGENT_512M:
 		ret = AX620QZ_DEMO_LP4_V1_0;
 		break;
