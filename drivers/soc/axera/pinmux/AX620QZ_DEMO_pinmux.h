@@ -16,8 +16,8 @@
 0x02304048, 0x00000083,  /* PadName = UART0_RXD            Fuction = UART0_RXD */
 0x02304054, 0x00030003,  /* PadName = UART1_TXD            Fuction = PWM06 */
 0x02304060, 0x00060083,  /* PadName = UART1_RXD            Fuction = GPIO0_A31 */
-0x0230406C, 0x00060003,  /* PadName = UART2_TXD            Fuction = GPIO1_A0 */
-0x02304078, 0x00060083,  /* PadName = UART2_RXD            Fuction = GPIO1_A1 */
+0x0230406C, 0x00060083,  /* PadName = UART2_TXD            Fuction = GPIO1_A0 */
+0x02304078, 0x00060003,  /* PadName = UART2_RXD            Fuction = GPIO1_A1 */
 0x02304084, 0x00000083,  /* PadName = UART3_TXD            Fuction = UART3_TXD */
 0x02304090, 0x00000083,  /* PadName = UART3_RXD            Fuction = UART3_RXD */
 0x104F0008, 0x0000000f,  /* SLEEP_CTRL */
@@ -54,9 +54,9 @@
 0x104F2048, 0x00000083,  /* PadName = SDIO_DAT3            Fuction = SDIO_DAT3 */
 0x0230A008, 0x0000000f,  /* SLEEP_CTRL */
 0x0230A004, 0x00000201,  /* SLEEP_CTRL */
-0x0230A00C, 0x00000003,  /* PadName = CDTX_L0N             Fuction = CDTX_L0N */
+0x0230A00C, 0x00060083,  /* PadName = CDTX_L0N             Fuction = GPIO2_A10 */
 0x0230A018, 0x00060083,  /* PadName = CDTX_L0P             Fuction = GPIO2_A11 */
-0x0230A024, 0x00000003,  /* PadName = CDTX_L1N             Fuction = CDTX_L1N */
+0x0230A024, 0x00060083,  /* PadName = CDTX_L1N             Fuction = GPIO2_A12 */
 0x0230A030, 0x00000003,  /* PadName = CDTX_L1P             Fuction = CDTX_L1P */
 0x0230A03C, 0x00000003,  /* PadName = CDTX_L2N             Fuction = CDTX_L2N */
 0x0230A048, 0x00000003,  /* PadName = CDTX_L2P             Fuction = CDTX_L2P */
