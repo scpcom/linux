@@ -519,7 +519,9 @@ config LT6911_MANAGE
 	default n
 
 config LT7911_MANAGE
-	tristate "NanoKVM-Pro LT7911UXC HDMI Module Management"
+	tristate "NanoKVM-Pro LT7911D HDMI Module Management"
+	depends on I2C && GPIOLIB && PROC_FS
+	select REGMAP_I2C
 	default n
 
 source "drivers/misc/c2port/Kconfig"

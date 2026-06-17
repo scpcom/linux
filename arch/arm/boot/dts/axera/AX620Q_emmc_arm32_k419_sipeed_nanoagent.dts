@@ -12,7 +12,7 @@
 /dts-v1/;
 #include "AX620E.dtsi"
 / {
-	model = "NanoAgent";
+	model = "NanoKVM-Go";
 	memory@40000000 {
 		device_type = "memory";
 		reg = <0x0 0x40000000 0x0 0x40000000>;
@@ -161,7 +161,7 @@
 			232 233 234 235 236 237 238 239
 			240 241 242 243 244 245 246 247
 			248 249 250 251 252 253 254 255>;
-		default-brightness-level = <255>;
+		default-brightness-level = <125>;
 	};
 
 	aic_bsp {
@@ -189,7 +189,7 @@
 		display-coords = <0 0 239 295>;
 		pos-swap = <0>;
 		posx-reverse = <0>;
-		posy-reverse = <1>;
+		posy-reverse = <0>;
 		status = "okay";
 	};
 };
@@ -336,7 +336,7 @@
 	st7789p3: st7789p3@0{
 		compatible = "sitronix,st7789p3";
 		reg = <0>;
-		status = "disabled";
+		status = "okay";
 		spi-max-frequency = <80000000>;
 		rotate = <0>;
 		fps = <0>;
@@ -349,7 +349,7 @@
 	jd9853_hkc_2_01: jd9853-hkc-2-01@0{
 		compatible = "jadard,jd9853-hkc-2.01";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 		spi-max-frequency = <80000000>;
 		spi-cpol;
 		spi-cpha;
@@ -602,11 +602,19 @@
 	#address-cells = <0x1>;
 	#size-cells = <0x0>;
 
+	lt7911d: lt7911d@2b {
+		compatible = "lontium,lt7911d";
+		reg = <0x2b>;
+		irq-gpios = <&ax_gpio1 14 0>;    /* GPIO1_A14 */
+		reset-gpios = <&ax_gpio1 15 0>;  /* GPIO1_A15 */
+		status = "disabled";
+	};
+
 	lt7911exc: lt7911exc@41 {
 		compatible = "lontium,lt7911exc";
 		reg = <0x41>;
-		irq-gpio = <&ax_gpio1 0 0>;    /* GPIO1_A0 */
-		reset-gpio = <&ax_gpio1 1 0>;  /* GPIO1_A1 */
+		irq-gpios = <&ax_gpio1 0 0>;    /* GPIO1_A0 */
+		reset-gpios = <&ax_gpio1 1 0>;  /* GPIO1_A1 */
 		status = "okay";
 	};
 

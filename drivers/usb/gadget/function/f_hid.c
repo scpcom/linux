@@ -462,14 +462,6 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 	if (!access_ok(VERIFY_READ, buffer, count))
 		return -EFAULT;
 
-	// ### SIPEED EDIT ###
-	if (hidg->wakeup_on_write && hidg->func.config) {
-		struct usb_composite_dev *cdev = hidg->func.config->cdev;
-		if (cdev && cdev->gadget)
-			usb_gadget_wakeup(cdev->gadget);
-	}
-	// ### SIPEED EDIT END ###
-
 	spin_lock_irqsave(&hidg->write_spinlock, flags);
 
 #define WRITE_COND (!hidg->write_pending)
@@ -534,6 +526,12 @@ try_again:
 		ERROR(hidg->func.config->cdev, "in_ep is disabled\n");
 		status = -ESHUTDOWN;
 		goto release_write_pending;
+	}
+
+	if (hidg->wakeup_on_write && hidg->func.config) {
+		struct usb_composite_dev *cdev = hidg->func.config->cdev;
+		if (cdev && cdev->gadget)
+			usb_gadget_wakeup(cdev->gadget);
 	}
 	// ### SIPEED EDIT END ###
 
