@@ -521,6 +521,7 @@ config LT6911_MANAGE
 config LT7911_MANAGE
 	tristate "NanoKVM-Pro LT7911D HDMI Module Management"
 	depends on I2C && GPIOLIB && PROC_FS
+	select FW_LOADER
 	select REGMAP_I2C
 	default n
 

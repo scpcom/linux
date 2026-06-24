@@ -9,12 +9,14 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/err.h>
+#include <linux/firmware.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/math64.h>
+#include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
@@ -40,6 +42,10 @@
 #define LT7911EXC_INT_VIDEO_READY	0x01
 #define LT7911EXC_INT_AUDIO_OFF		0x02
 #define LT7911EXC_INT_AUDIO_READY	0x03
+#define LT7911EXC_FW_NAME			"Lontium/lt7911exc_fw.bin"
+#define LT7911EXC_FW_SIZE			(64 * 1024)
+#define LT7911EXC_FW_DATA_SIZE		(LT7911EXC_FW_SIZE - 4)
+#define LT7911EXC_FW_PAGE_SIZE		32
 
 #define LT7911_REG(page, reg)		(((page) << 8) | (reg))
 
@@ -58,6 +64,7 @@
 #define PROC_VIDEO_EDID				"edid"
 #define PROC_VIDEO_EDID_SNAPSHOT	"edid_snapshot"
 #define PROC_VERSION				"version"
+#define PROC_FW_UPDATE				"fw_update"
 
 enum lt7911_chip {
 	LT7911_CHIP_UNKNOWN,
@@ -114,6 +121,7 @@ struct lt7911_data {
 
 	struct mutex state_lock;
 	struct mutex exc_lock;
+	struct mutex fw_lock;
 	wait_queue_head_t wait_queue;
 	atomic_t event_seq;
 
@@ -129,6 +137,13 @@ struct lt7911_data {
 	u8 video_edid[EDID_BUFFER_SIZE];
 	u8 video_edid_snapshot[EDID_BUFFER_SIZE];
 	char version[LT7911D_WR_SIZE];
+	bool fw_busy;
+	int fw_result;
+	size_t fw_size;
+	u32 fw_crc_expected;
+	u32 fw_crc_actual;
+	char fw_status[160];
+	size_t fw_status_len;
 
 	size_t video_status_len;
 	size_t video_width_len;
@@ -391,6 +406,324 @@ static int lt7911_check_chip(struct lt7911_data *lt7911)
 		return -ENODEV;
 
 	return lt7911->ops->check_chip(lt7911);
+}
+
+static void lt7911_fw_status_update_locked(struct lt7911_data *lt7911,
+					   const char *state)
+{
+	lt7911->fw_status_len =
+		scnprintf(lt7911->fw_status, sizeof(lt7911->fw_status),
+			  "state=%s result=%d size=%zu crc_expected=0x%08x crc_actual=0x%08x firmware=%s\n",
+			  state, lt7911->fw_result, lt7911->fw_size,
+			  lt7911->fw_crc_expected, lt7911->fw_crc_actual,
+			  LT7911EXC_FW_NAME);
+}
+
+static void lt7911_fw_status_update(struct lt7911_data *lt7911,
+				    const char *state)
+{
+	mutex_lock(&lt7911->fw_lock);
+	lt7911_fw_status_update_locked(lt7911, state);
+	mutex_unlock(&lt7911->fw_lock);
+}
+
+static u32 lt7911_fw_crc32_be_byte(u32 crc, u8 data)
+{
+	int i;
+
+	crc ^= (u32)data << 24;
+	for (i = 0; i < 8; i++) {
+		if (crc & 0x80000000)
+			crc = (crc << 1) ^ 0x04c11db7;
+		else
+			crc <<= 1;
+	}
+
+	return crc;
+}
+
+static u32 lt7911_fw_crc32_custom(const u8 *data, size_t len)
+{
+	u32 crc = 0xffffffff;
+	size_t i;
+
+	for (i = 0; i < len; i += 4) {
+		crc = lt7911_fw_crc32_be_byte(crc, data[i + 3]);
+		crc = lt7911_fw_crc32_be_byte(crc, data[i + 2]);
+		crc = lt7911_fw_crc32_be_byte(crc, data[i + 1]);
+		crc = lt7911_fw_crc32_be_byte(crc, data[i + 0]);
+	}
+
+	return crc;
+}
+
+static int lt7911_fw_prepare_crc(const struct firmware *fw, u32 *crc)
+{
+	u8 *buf;
+
+	buf = kvzalloc(LT7911EXC_FW_DATA_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	memset(buf, 0xff, LT7911EXC_FW_DATA_SIZE);
+	memcpy(buf, fw->data, fw->size);
+	*crc = lt7911_fw_crc32_custom(buf, LT7911EXC_FW_DATA_SIZE);
+	kvfree(buf);
+
+	return 0;
+}
+
+static int lt7911exc_block_erase_fw(struct lt7911_data *lt7911)
+{
+	static const struct reg_sequence seq[] = {
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0xee), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x54), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x55), 0x06 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x54), 0x05 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x55), 0xd8 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5a), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5b), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5c), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x50), 0x00 },
+	};
+	int ret;
+
+	ret = regmap_multi_reg_write(lt7911->regmap, seq, ARRAY_SIZE(seq));
+	if (ret)
+		return ret;
+
+	msleep(200);
+	return 0;
+}
+
+static int lt7911exc_prog_init_fw(struct lt7911_data *lt7911, u32 addr)
+{
+	struct reg_sequence seq[] = {
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0xee), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5f), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5a),
+		  (addr >> 16) & 0xff },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5b),
+		  (addr >> 8) & 0xff },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5c), addr & 0xff },
+	};
+
+	return regmap_multi_reg_write(lt7911->regmap, seq, ARRAY_SIZE(seq));
+}
+
+static int lt7911exc_write_data_fw(struct lt7911_data *lt7911, const u8 *fw,
+				   size_t fw_size)
+{
+	size_t pages = (fw_size + LT7911EXC_FW_PAGE_SIZE - 1) /
+		       LT7911EXC_FW_PAGE_SIZE;
+	size_t num;
+	u32 addr = 0;
+	int ret;
+
+	for (num = 0; num < pages; num++) {
+		size_t offset = num * LT7911EXC_FW_PAGE_SIZE;
+		size_t page_len = fw_size - offset;
+
+		if (page_len > LT7911EXC_FW_PAGE_SIZE)
+			page_len = LT7911EXC_FW_PAGE_SIZE;
+
+		ret = lt7911exc_prog_init_fw(lt7911, addr);
+		if (ret)
+			return ret;
+
+		ret = regmap_raw_write(lt7911->regmap,
+				       LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5d),
+				       &fw[offset], page_len);
+		if (ret) {
+			dev_err(lt7911->dev, "firmware write error at page %zu\n",
+				num);
+			return ret;
+		}
+
+		if (page_len < LT7911EXC_FW_PAGE_SIZE) {
+			ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET,
+					   0x5f, 0x05);
+			if (ret)
+				return ret;
+			ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET,
+					   0x5f, 0x01);
+			if (ret)
+				return ret;
+			usleep_range(1000, 2000);
+		}
+
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x00);
+		if (ret)
+			return ret;
+
+		addr += LT7911EXC_FW_PAGE_SIZE;
+	}
+
+	return 0;
+}
+
+static int lt7911exc_write_crc_fw(struct lt7911_data *lt7911, u32 crc32)
+{
+	const u32 addr = LT7911EXC_FW_SIZE - 4;
+	u8 crc[4];
+	int ret;
+
+	crc[0] = crc32 & 0xff;
+	crc[1] = (crc32 >> 8) & 0xff;
+	crc[2] = (crc32 >> 16) & 0xff;
+	crc[3] = (crc32 >> 24) & 0xff;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x01);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5a,
+			   (addr >> 16) & 0xff);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5b,
+			   (addr >> 8) & 0xff);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5c, addr & 0xff);
+	if (ret)
+		return ret;
+
+	ret = regmap_raw_write(lt7911->regmap,
+			       LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5d),
+			       crc, sizeof(crc));
+	if (ret)
+		return ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x05);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x01);
+	if (ret)
+		return ret;
+	usleep_range(1000, 2000);
+
+	return lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x00);
+}
+
+static int lt7911exc_verify_crc_fw(struct lt7911_data *lt7911, u32 expected,
+				   u32 *actual)
+{
+	u8 crc_tmp[4];
+	int ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x01);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x7b, 0x60);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x7b, 0x40);
+	if (ret)
+		return ret;
+
+	msleep(150);
+
+	ret = lt7911_bulk_read(lt7911, 0x00, 0x22, crc_tmp, sizeof(crc_tmp));
+	if (ret)
+		return ret;
+
+	*actual = ((u32)crc_tmp[0] << 24) | ((u32)crc_tmp[1] << 16) |
+		  ((u32)crc_tmp[2] << 8) | crc_tmp[3];
+
+	return *actual == expected ? 0 : -EIO;
+}
+
+static int lt7911exc_run_fw_update(struct lt7911_data *lt7911,
+				   const struct firmware *fw,
+				   u32 expected_crc, u32 *actual_crc)
+{
+	int ret;
+	int unlock_ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x01);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_block_erase_fw(lt7911);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_write_data_fw(lt7911, fw->data, fw->size);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_write_crc_fw(lt7911, expected_crc);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911_reset(lt7911);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_verify_crc_fw(lt7911, expected_crc, actual_crc);
+
+out_unlock:
+	unlock_ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x00);
+	return ret ? ret : unlock_ret;
+}
+
+static int lt7911_fw_update_run(struct lt7911_data *lt7911)
+{
+	const struct firmware *fw = NULL;
+	size_t fw_size = 0;
+	u32 expected_crc = 0;
+	u32 actual_crc = 0;
+	int ret;
+
+	ret = request_firmware(&fw, LT7911EXC_FW_NAME, lt7911->dev);
+	if (ret) {
+		dev_err(lt7911->dev, "failed to request firmware %s: %d\n",
+			LT7911EXC_FW_NAME, ret);
+		goto out_status;
+	}
+
+	fw_size = fw->size;
+	if (!fw->size || fw->size > LT7911EXC_FW_DATA_SIZE) {
+		dev_err(lt7911->dev, "invalid firmware size: %zu\n", fw->size);
+		ret = -EINVAL;
+		goto out_release;
+	}
+
+	ret = lt7911_fw_prepare_crc(fw, &expected_crc);
+	if (ret)
+		goto out_release;
+
+	mutex_lock(&lt7911->fw_lock);
+	lt7911->fw_size = fw_size;
+	lt7911->fw_crc_expected = expected_crc;
+	lt7911->fw_crc_actual = 0;
+	lt7911->fw_result = 0;
+	lt7911_fw_status_update_locked(lt7911, "busy");
+	mutex_unlock(&lt7911->fw_lock);
+
+	disable_irq(lt7911->irq);
+	mutex_lock(&lt7911->exc_lock);
+	ret = lt7911exc_run_fw_update(lt7911, fw, expected_crc, &actual_crc);
+	mutex_unlock(&lt7911->exc_lock);
+	enable_irq(lt7911->irq);
+
+out_release:
+	release_firmware(fw);
+
+out_status:
+	mutex_lock(&lt7911->fw_lock);
+	lt7911->fw_busy = false;
+	lt7911->fw_result = ret;
+	lt7911->fw_size = fw_size;
+	lt7911->fw_crc_expected = expected_crc;
+	lt7911->fw_crc_actual = actual_crc;
+	lt7911_fw_status_update_locked(lt7911, ret ? "error" : "done");
+	mutex_unlock(&lt7911->fw_lock);
+
+	return ret;
 }
 
 static int lt7911_get_signal_state(struct lt7911_data *lt7911, u8 *state)
@@ -1010,6 +1343,64 @@ static ssize_t proc_version_write(struct file *file,
 	return count;
 }
 
+static ssize_t proc_fw_update_read(struct file *file,
+				   char __user *user_buffer, size_t count,
+				   loff_t *offset)
+{
+	struct lt7911_data *lt7911 = PDE_DATA(file_inode(file));
+	char tmp[sizeof(lt7911->fw_status)];
+	size_t len;
+
+	mutex_lock(&lt7911->fw_lock);
+	len = lt7911->fw_status_len;
+	memcpy(tmp, lt7911->fw_status, len);
+	mutex_unlock(&lt7911->fw_lock);
+
+	return simple_read_from_buffer(user_buffer, count, offset, tmp, len);
+}
+
+static ssize_t proc_fw_update_write(struct file *file,
+				    const char __user *user_buffer,
+				    size_t count, loff_t *offset)
+{
+	struct lt7911_data *lt7911 = PDE_DATA(file_inode(file));
+	char buf[16];
+	int ret;
+
+	if (lt7911->chip != LT7911_CHIP_LT7911EXC)
+		return -EOPNOTSUPP;
+
+	if (!count || count >= sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(buf, user_buffer, count))
+		return -EFAULT;
+	buf[count] = '\0';
+	if (buf[count - 1] == '\n')
+		buf[count - 1] = '\0';
+
+	if (strcmp(buf, "1") && strcmp(buf, "start"))
+		return -EINVAL;
+
+	mutex_lock(&lt7911->fw_lock);
+	if (lt7911->fw_busy) {
+		mutex_unlock(&lt7911->fw_lock);
+		return -EBUSY;
+	}
+
+	lt7911->fw_busy = true;
+	lt7911->fw_result = 0;
+	lt7911->fw_size = 0;
+	lt7911->fw_crc_expected = 0;
+	lt7911->fw_crc_actual = 0;
+	lt7911_fw_status_update_locked(lt7911, "busy");
+	mutex_unlock(&lt7911->fw_lock);
+
+	ret = lt7911_fw_update_run(lt7911);
+
+	return ret ? ret : count;
+}
+
 static const struct file_operations proc_video_power_fops = {
 	.owner = THIS_MODULE,
 	.read = proc_video_power_read,
@@ -1072,6 +1463,12 @@ static const struct file_operations proc_version_fops = {
 	.write = proc_version_write,
 };
 
+static const struct file_operations proc_fw_update_fops = {
+	.owner = THIS_MODULE,
+	.read = proc_fw_update_read,
+	.write = proc_fw_update_write,
+};
+
 static int lt7911_create_proc_file(struct lt7911_data *lt7911,
 				   const char *name, umode_t mode,
 				   const struct file_operations *fops)
@@ -1130,6 +1527,10 @@ static int lt7911_proc_init(struct lt7911_data *lt7911)
 		goto err;
 	ret = lt7911_create_proc_file(lt7911, PROC_VERSION, 0666,
 				      &proc_version_fops);
+	if (ret)
+		goto err;
+	ret = lt7911_create_proc_file(lt7911, PROC_FW_UPDATE, 0644,
+				      &proc_fw_update_fops);
 	if (ret)
 		goto err;
 
@@ -1610,9 +2011,11 @@ static int lt7911_manage_probe(struct i2c_client *client,
 	lt7911->last_height = 0xffff;
 	mutex_init(&lt7911->state_lock);
 	mutex_init(&lt7911->exc_lock);
+	mutex_init(&lt7911->fw_lock);
 	init_waitqueue_head(&lt7911->wait_queue);
 	atomic_set(&lt7911->event_seq, 0);
 	i2c_set_clientdata(client, lt7911);
+	lt7911_fw_status_update(lt7911, "idle");
 
 	dev_info(dev, "Force HDMI width: %d, height: %d, fps: %d\n",
 		 force_width, force_height, force_fps);
@@ -1663,6 +2066,7 @@ static int lt7911_manage_probe(struct i2c_client *client,
 			if (active_lt7911 == lt7911)
 				active_lt7911 = NULL;
 			mutex_unlock(&active_lock);
+			lt7911_proc_remove(lt7911);
 			return ret;
 		}
 	}
