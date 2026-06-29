@@ -46,6 +46,8 @@
 #define LT7911EXC_FW_SIZE			(64 * 1024)
 #define LT7911EXC_FW_DATA_SIZE		(LT7911EXC_FW_SIZE - 4)
 #define LT7911EXC_FW_PAGE_SIZE		32
+#define LT7911EXC_EDID_ADDR		0x60000
+#define LT7911EXC_EDID_MAX_SIZE	256
 
 #define LT7911_REG(page, reg)		(((page) << 8) | (reg))
 
@@ -487,7 +489,35 @@ static int lt7911exc_block_erase_fw(struct lt7911_data *lt7911)
 		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5b), 0x00 },
 		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5c), 0x00 },
 		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x01 },
-		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x50), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x00 },
+	};
+	int ret;
+
+	ret = regmap_multi_reg_write(lt7911->regmap, seq, ARRAY_SIZE(seq));
+	if (ret)
+		return ret;
+
+	msleep(200);
+	return 0;
+}
+
+static int lt7911exc_block_erase_at(struct lt7911_data *lt7911, u32 addr)
+{
+	struct reg_sequence seq[] = {
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0xee), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x54), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x55), 0x06 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x00 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x54), 0x05 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x55), 0xd8 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5a),
+		  (addr >> 16) & 0xff },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5b),
+		  (addr >> 8) & 0xff },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5c), addr & 0xff },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x01 },
+		{ LT7911_REG(LT7911EXC_INFO_OFFSET, 0x51), 0x00 },
 	};
 	int ret;
 
@@ -514,18 +544,17 @@ static int lt7911exc_prog_init_fw(struct lt7911_data *lt7911, u32 addr)
 	return regmap_multi_reg_write(lt7911->regmap, seq, ARRAY_SIZE(seq));
 }
 
-static int lt7911exc_write_data_fw(struct lt7911_data *lt7911, const u8 *fw,
-				   size_t fw_size)
+static int lt7911exc_write_data_at(struct lt7911_data *lt7911, u32 addr,
+				   const u8 *data, size_t len)
 {
-	size_t pages = (fw_size + LT7911EXC_FW_PAGE_SIZE - 1) /
+	size_t pages = (len + LT7911EXC_FW_PAGE_SIZE - 1) /
 		       LT7911EXC_FW_PAGE_SIZE;
 	size_t num;
-	u32 addr = 0;
 	int ret;
 
 	for (num = 0; num < pages; num++) {
 		size_t offset = num * LT7911EXC_FW_PAGE_SIZE;
-		size_t page_len = fw_size - offset;
+		size_t page_len = len - offset;
 
 		if (page_len > LT7911EXC_FW_PAGE_SIZE)
 			page_len = LT7911EXC_FW_PAGE_SIZE;
@@ -536,9 +565,9 @@ static int lt7911exc_write_data_fw(struct lt7911_data *lt7911, const u8 *fw,
 
 		ret = regmap_raw_write(lt7911->regmap,
 				       LT7911_REG(LT7911EXC_INFO_OFFSET, 0x5d),
-				       &fw[offset], page_len);
+				       &data[offset], page_len);
 		if (ret) {
-			dev_err(lt7911->dev, "firmware write error at page %zu\n",
+			dev_err(lt7911->dev, "flash write error at page %zu\n",
 				num);
 			return ret;
 		}
@@ -560,6 +589,88 @@ static int lt7911exc_write_data_fw(struct lt7911_data *lt7911, const u8 *fw,
 			return ret;
 
 		addr += LT7911EXC_FW_PAGE_SIZE;
+	}
+
+	return 0;
+}
+
+static int lt7911exc_write_data_fw(struct lt7911_data *lt7911, const u8 *fw,
+				   size_t fw_size)
+{
+	return lt7911exc_write_data_at(lt7911, 0, fw, fw_size);
+}
+
+static int lt7911exc_reset_fifo(struct lt7911_data *lt7911)
+{
+	int ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x08);
+	if (ret)
+		return ret;
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5f, 0x00);
+	if (ret)
+		return ret;
+
+	msleep(1000);
+	return 0;
+}
+
+static int lt7911exc_read_data_at(struct lt7911_data *lt7911, u32 addr,
+				  u8 *data, size_t len)
+{
+	size_t offset;
+	int ret;
+
+	ret = lt7911exc_reset_fifo(lt7911);
+	if (ret)
+		return ret;
+
+	for (offset = 0; offset < len; offset += LT7911EXC_FW_PAGE_SIZE) {
+		size_t page_len = len - offset;
+		u32 cur_addr = addr + offset;
+
+		if (page_len > LT7911EXC_FW_PAGE_SIZE)
+			page_len = LT7911EXC_FW_PAGE_SIZE;
+
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x54, 0x45);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x55, 0x03);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x56,
+				   page_len);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x57, 0x00);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x58, 0x00);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5a,
+				   (cur_addr >> 16) & 0xff);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5b,
+				   (cur_addr >> 8) & 0xff);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x5c,
+				   cur_addr & 0xff);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x51, 0x01);
+		if (ret)
+			return ret;
+		ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0x51, 0x00);
+		if (ret)
+			return ret;
+
+		ret = lt7911_bulk_read(lt7911, LT7911EXC_INFO_OFFSET, 0x5e,
+				       &data[offset], page_len);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
@@ -634,6 +745,59 @@ static int lt7911exc_verify_crc_fw(struct lt7911_data *lt7911, u32 expected,
 		  ((u32)crc_tmp[2] << 8) | crc_tmp[3];
 
 	return *actual == expected ? 0 : -EIO;
+}
+
+static int lt7911exc_read_edid(struct lt7911_data *lt7911, u8 *edid)
+{
+	int ret;
+	int unlock_ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x01);
+	if (ret)
+		return ret;
+
+	ret = lt7911exc_read_data_at(lt7911, LT7911EXC_EDID_ADDR, edid,
+				     LT7911EXC_EDID_MAX_SIZE);
+
+	unlock_ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x00);
+	return ret ? ret : unlock_ret;
+}
+
+static int lt7911exc_write_edid(struct lt7911_data *lt7911, const u8 *edid,
+				size_t len)
+{
+	u8 readback[LT7911EXC_EDID_MAX_SIZE];
+	int ret;
+	int unlock_ret;
+
+	ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x01);
+	if (ret)
+		return ret;
+
+	ret = lt7911exc_block_erase_at(lt7911, LT7911EXC_EDID_ADDR);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_write_data_at(lt7911, LT7911EXC_EDID_ADDR, edid, len);
+	if (ret)
+		goto out_unlock;
+
+	ret = lt7911exc_read_data_at(lt7911, LT7911EXC_EDID_ADDR, readback,
+				     len);
+	if (ret)
+		goto out_unlock;
+
+	if (memcmp(readback, edid, len))
+		ret = -EIO;
+
+out_unlock:
+	unlock_ret = lt7911_write(lt7911, LT7911EXC_INFO_OFFSET, 0xee, 0x00);
+	if (ret)
+		return ret;
+	if (unlock_ret)
+		return unlock_ret;
+
+	return lt7911_reset(lt7911);
 }
 
 static int lt7911exc_run_fw_update(struct lt7911_data *lt7911,
@@ -1271,18 +1435,89 @@ static ssize_t proc_audio_sample_rate_read(struct file *file,
 				       count, offset);
 }
 
+static bool lt7911_edid_checksum_valid(const u8 *edid, size_t len)
+{
+	size_t block;
+
+	if (len != 128 && len != LT7911EXC_EDID_MAX_SIZE)
+		return false;
+
+	for (block = 0; block < len; block += 128) {
+		u8 sum = 0;
+		size_t i;
+
+		for (i = 0; i < 128; i++)
+			sum += edid[block + i];
+
+		if (sum)
+			return false;
+	}
+
+	return true;
+}
+
 static ssize_t proc_video_edid_read(struct file *file,
 				    char __user *user_buffer, size_t count,
 				    loff_t *offset)
 {
-	return -EOPNOTSUPP;
+	struct lt7911_data *lt7911 = PDE_DATA(file_inode(file));
+	u8 edid[LT7911EXC_EDID_MAX_SIZE];
+	int ret;
+
+	if (lt7911->chip != LT7911_CHIP_LT7911EXC)
+		return -EOPNOTSUPP;
+
+	disable_irq(lt7911->irq);
+	mutex_lock(&lt7911->exc_lock);
+	ret = lt7911exc_read_edid(lt7911, edid);
+	mutex_unlock(&lt7911->exc_lock);
+	enable_irq(lt7911->irq);
+	if (ret)
+		return ret;
+
+	mutex_lock(&lt7911->state_lock);
+	memcpy(lt7911->video_edid, edid, sizeof(edid));
+	lt7911->video_edid_len = sizeof(edid);
+	mutex_unlock(&lt7911->state_lock);
+
+	return simple_read_from_buffer(user_buffer, count, offset, edid,
+				       sizeof(edid));
 }
 
 static ssize_t proc_video_edid_write(struct file *file,
 				     const char __user *user_buffer,
 				     size_t count, loff_t *offset)
 {
-	return -EOPNOTSUPP;
+	struct lt7911_data *lt7911 = PDE_DATA(file_inode(file));
+	u8 edid[LT7911EXC_EDID_MAX_SIZE];
+	int ret;
+
+	if (lt7911->chip != LT7911_CHIP_LT7911EXC)
+		return -EOPNOTSUPP;
+
+	if (count != 128 && count != LT7911EXC_EDID_MAX_SIZE)
+		return -EINVAL;
+
+	if (copy_from_user(edid, user_buffer, count))
+		return -EFAULT;
+
+	if (!lt7911_edid_checksum_valid(edid, count))
+		return -EINVAL;
+
+	disable_irq(lt7911->irq);
+	mutex_lock(&lt7911->exc_lock);
+	ret = lt7911exc_write_edid(lt7911, edid, count);
+	mutex_unlock(&lt7911->exc_lock);
+	enable_irq(lt7911->irq);
+	if (ret)
+		return ret;
+
+	mutex_lock(&lt7911->state_lock);
+	memcpy(lt7911->video_edid, edid, count);
+	lt7911->video_edid_len = count;
+	mutex_unlock(&lt7911->state_lock);
+
+	return count;
 }
 
 static ssize_t proc_video_edid_snapshot_read(struct file *file,
