@@ -14,7 +14,7 @@
 0x02304030, 0x00000083,  /* PadName = I2C1_SDA             Fuction = I2C1_SDA */
 0x0230403C, 0x00000083,  /* PadName = UART0_TXD            Fuction = UART0_TXD */
 0x02304048, 0x00000083,  /* PadName = UART0_RXD            Fuction = UART0_RXD */
-0x02304054, 0x00030003,  /* PadName = UART1_TXD            Fuction = PWM06 */
+0x02304054, 0x00060003,  /* PadName = UART1_TXD            Fuction = GPIO0_A30 */
 0x02304060, 0x00060083,  /* PadName = UART1_RXD            Fuction = GPIO0_A31 */
 0x0230406C, 0x00060083,  /* PadName = UART2_TXD            Fuction = GPIO1_A0 */
 0x02304078, 0x00060003,  /* PadName = UART2_RXD            Fuction = GPIO1_A1 */
