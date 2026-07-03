@@ -12,6 +12,7 @@
 #include <linux/interrupt.h>
 #include <linux/completion.h>
 #include <linux/module.h>
+#include <linux/of.h>
 
 #include <video/mipi_display.h>
 #include <linux/device.h>
@@ -153,13 +154,24 @@ static int init_tearing_effect_line(struct fbtft_par *par)
  */
 static int init_display(struct fbtft_par *par)
 {
+	struct device *dev = par->info->device;
+	bool skip_init = dev->of_node &&
+			 of_property_read_bool(dev->of_node, "skip-init");
 	int rc;
 
-	par->fbtftops.reset(par);
+	if (skip_init) {
+		dev_info(dev, "skip panel reset and init sequence\n");
+		par->fbtftops.set_gamma = NULL;
+	} else {
+		par->fbtftops.reset(par);
+	}
 
 	rc = init_tearing_effect_line(par);
 	if (rc)
 		return rc;
+
+	if (skip_init)
+		goto alloc_frame_buf;
 
 	/* Sleep Out */
 	write_reg(par, MIPI_DCS_EXIT_SLEEP_MODE);
@@ -213,6 +225,7 @@ static int init_display(struct fbtft_par *par)
 	/* Display On */
 	write_reg(par, MIPI_DCS_SET_DISPLAY_ON);
 
+alloc_frame_buf:
 	frame_buf = kzalloc(par->info->fix.smem_len, GFP_KERNEL);
 	if (!frame_buf)
 		return -ENOMEM;

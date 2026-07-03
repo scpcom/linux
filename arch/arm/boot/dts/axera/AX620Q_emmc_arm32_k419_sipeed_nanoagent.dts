@@ -343,6 +343,7 @@
 		buswidth = <8>;
 		dc-gpios = <&ax_gpio1 19 1>;
 		reset-gpios = <&ax_gpio0 31 0>;
+		skip-init;
 		debug = <0>;
 	};
 
