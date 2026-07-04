@@ -59,7 +59,9 @@ jobs:
         include: 
           - boards: n1
             archs: arm64
-          - boards: [bpi, nas5xx]
+          - boards: bpi
+            archs: armhf
+          - boards: nas5xx
             archs: armhf
     runs-on: ubuntu-latest
     needs: build-docker-image
