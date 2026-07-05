@@ -623,6 +623,8 @@ static inline unsigned long _pgprot_writecombine(pgprot_t _prot)
 }
 #define pgprot_writecombine(prot) __pgprot(_pgprot_writecombine(prot))
 
+#define pgprot_dmacoherent pgprot_writecombine
+
 /*
  * THP functions
  */
