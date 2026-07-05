@@ -1033,7 +1033,21 @@ static int aa_sock_msg_perm(const char *op, u32 request, struct socket *sock,
 static int apparmor_socket_sendmsg(struct socket *sock,
 				   struct msghdr *msg, int size)
 {
-	return aa_sock_msg_perm(OP_SENDMSG, AA_MAY_SEND, sock, msg, size);
+	int error = aa_sock_msg_perm(OP_SENDMSG, AA_MAY_SEND, sock, msg, size);
+
+	if (error)
+		return error;
+
+	/* TCP fast open carries connect() semantics in sendmsg(); mediate
+	 * the implicit connect so it cannot bypass the connect permission.
+	 */
+	if ((msg->msg_flags & MSG_FASTOPEN) && msg->msg_name &&
+	    (sk_is_tcp(sock->sk) ||
+	     (sk_is_inet(sock->sk) && sock->sk->sk_type == SOCK_STREAM &&
+	      sock->sk->sk_protocol == IPPROTO_MPTCP)))
+		error = aa_sk_perm(OP_CONNECT, AA_MAY_CONNECT, sock->sk);
+
+	return error;
 }
 
 /**
@@ -1908,6 +1922,69 @@ static int __init apparmor_nf_ip_init(void)
 }
 __initcall(apparmor_nf_ip_init);
 #endif
+
+static char nulldfa_src[] = {
+	#include "nulldfa.in"
+};
+struct aa_dfa *nulldfa;
+
+static char stacksplitdfa_src[] = {
+	#include "stacksplitdfa.in"
+};
+struct aa_dfa *stacksplitdfa;
+struct aa_policydb *nullpdb;
+
+static int __init aa_setup_dfa_engine(void)
+{
+	int error = -ENOMEM;
+
+	nullpdb = aa_alloc_pdb(GFP_KERNEL);
+	if (!nullpdb)
+		return -ENOMEM;
+
+	nulldfa = aa_dfa_unpack(nulldfa_src, sizeof(nulldfa_src),
+			    TO_ACCEPT1_FLAG(YYTD_DATA32) |
+			    TO_ACCEPT2_FLAG(YYTD_DATA32));
+	if (IS_ERR(nulldfa)) {
+		error = PTR_ERR(nulldfa);
+		goto fail;
+	}
+	nullpdb->dfa = aa_get_dfa(nulldfa);
+	nullpdb->perms = kcalloc(2, sizeof(struct aa_perms), GFP_KERNEL);
+	if (!nullpdb->perms)
+		goto fail;
+	nullpdb->size = 2;
+
+	stacksplitdfa = aa_dfa_unpack(stacksplitdfa_src,
+				      sizeof(stacksplitdfa_src),
+				      TO_ACCEPT1_FLAG(YYTD_DATA32) |
+				      TO_ACCEPT2_FLAG(YYTD_DATA32));
+	if (IS_ERR(stacksplitdfa)) {
+		error = PTR_ERR(stacksplitdfa);
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	aa_put_pdb(nullpdb);
+	aa_put_dfa(nulldfa);
+	nullpdb = NULL;
+	nulldfa = NULL;
+	stacksplitdfa = NULL;
+
+	return error;
+}
+
+static void __init aa_teardown_dfa_engine(void)
+{
+	aa_put_dfa(stacksplitdfa);
+	aa_put_dfa(nulldfa);
+	aa_put_pdb(nullpdb);
+	nullpdb = NULL;
+	stacksplitdfa = NULL;
+	nulldfa = NULL;
+}
 
 static int __init apparmor_init(void)
 {
