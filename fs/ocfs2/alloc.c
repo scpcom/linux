@@ -3649,7 +3649,6 @@ static int ocfs2_merge_rec_left(struct ocfs2_path *right_path,
 			 * So we use the new rightmost path.
 			 */
 			ocfs2_mv_path(right_path, left_path);
-			left_path = NULL;
 		} else
 			ocfs2_complete_edge_insert(handle, left_path,
 						   right_path, subtree_index);
@@ -5989,7 +5988,7 @@ bail:
 	return status;
 }
 
-/* Expects you to already be holding tl_inode->i_mutex */
+/* Expects you to already be holding tl_inode->i_rwsem */
 int __ocfs2_flush_truncate_log(struct ocfs2_super *osb)
 {
 	int status;

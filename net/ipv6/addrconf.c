@@ -693,8 +693,7 @@ static int inet6_netconf_get_devconf(struct sk_buff *in_skb,
 errout:
 	if (in6_dev)
 		in6_dev_put(in6_dev);
-	if (dev)
-		dev_put(dev);
+	dev_put(dev);
 	return err;
 }
 
@@ -3509,12 +3508,12 @@ static void addrconf_permanent_addr(struct net *net, struct net_device *dev)
 		if ((ifp->flags & IFA_F_PERMANENT) &&
 		    fixup_permanent_addr(net, idev, ifp) < 0) {
 			write_unlock_bh(&idev->lock);
-			in6_ifa_hold(ifp);
-			ipv6_del_addr(ifp);
-			write_lock_bh(&idev->lock);
 
 			net_info_ratelimited("%s: Failed to add prefix route for address %pI6c; dropping\n",
 					     idev->dev->name, &ifp->addr);
+			in6_ifa_hold(ifp);
+			ipv6_del_addr(ifp);
+			write_lock_bh(&idev->lock);
 		}
 	}
 
@@ -5469,8 +5468,7 @@ static int inet6_rtm_getaddr(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 errout_ifa:
 	in6_ifa_put(ifa);
 errout:
-	if (dev)
-		dev_put(dev);
+	dev_put(dev);
 	if (fillargs.netnsid >= 0)
 		put_net(tgt_net);
 
@@ -6978,7 +6976,9 @@ static const struct ctl_table addrconf_sysctl[] = {
 		.data		= &ipv6_devconf.rpl_seg_enabled,
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
-		.proc_handler	= proc_dointvec,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1         = SYSCTL_ZERO,
+		.extra2         = SYSCTL_ONE,
 	},
 	{
 		/* sentinel */
