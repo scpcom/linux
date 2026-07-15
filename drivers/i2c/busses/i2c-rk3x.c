@@ -1481,7 +1481,10 @@ static int rk3x_i2c_probe(struct platform_device *pdev)
 				return -EINVAL;
 			}
 
-			if (i2c->soc_data == &rv1108_soc_data && bus_nr == 2)
+			/* rv1126 i2c2 uses non-sequential write mask 20, value 4 */
+			if (i2c->soc_data == &rv1126_soc_data && bus_nr == 2)
+				value = BIT(20) | BIT(4);
+			else if (i2c->soc_data == &rv1108_soc_data && bus_nr == 2)
 				/* rv1108 i2c2 set grf offset-0x408, bit-10 */
 				value = BIT(26) | BIT(10);
 			else
