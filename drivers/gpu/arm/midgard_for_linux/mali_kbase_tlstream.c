@@ -606,7 +606,11 @@ static size_t kbasep_tlstream_write_string(
 	KBASE_DEBUG_ASSERT(max_write_size >= sizeof(string_len) + sizeof(char));
 	max_write_size -= sizeof(string_len);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	string_len = strlcpy(
+#else
+	string_len = strscpy(
+#endif
 			&buffer[pos + sizeof(string_len)],
 			string,
 			max_write_size);
