@@ -28,6 +28,9 @@
 #define _MALISW_H_
 
 #include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+#include <linux/minmax.h>
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
 #define U8_MAX          ((u8)~0U)
 #define S8_MAX          ((s8)(U8_MAX>>1))
@@ -52,7 +55,9 @@
  * As a macro it may evaluate its arguments more than once.
  * Refer to MAX macro for more details
  */
+#ifndef MIN
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
+#endif
 
 /**
  * MAX -  Return the greater of two values.
@@ -64,7 +69,9 @@
  * to retrieve the min and max of two values, consider using a conditional swap
  * instead.
  */
+#ifndef MAX
 #define MAX(x, y)	((x) < (y) ? (y) : (x))
+#endif
 
 /**
  * @hideinitializer
