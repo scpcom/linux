@@ -26,6 +26,7 @@
 #include <linux/seq_file.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
 
 #include <mali_kbase.h>
