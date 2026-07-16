@@ -2171,6 +2171,9 @@ static const struct file_operations kbase_fops = {
 	.mmap = kbase_mmap,
 	.check_flags = kbase_check_flags,
 	.get_unmapped_area = kbase_get_unmapped_area,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	.fop_flags = FOP_UNSIGNED_OFFSET,
+#endif
 };
 
 #ifndef CONFIG_MALI_BIFROST_NO_MALI
