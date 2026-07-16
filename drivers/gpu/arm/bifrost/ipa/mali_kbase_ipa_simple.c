@@ -300,7 +300,11 @@ static int kbase_simple_power_model_recalculate(struct kbase_ipa_model *model)
 	} else {
 		char tz_name[THERMAL_NAME_LENGTH];
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 		strlcpy(tz_name, model_data->tz_name, sizeof(tz_name));
+#else
+		strscpy(tz_name, model_data->tz_name, sizeof(tz_name));
+#endif
 
 		/* Release ipa.lock so that thermal_list_lock is not acquired
 		 * with ipa.lock held, thereby avoid lock ordering violation

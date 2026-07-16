@@ -130,7 +130,11 @@ static ssize_t param_string_set(struct file *file, const char __user *user_buf,
 	err = kbase_ipa_model_recalculate(model);
 	if (err < 0) {
 		ret = err;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 		strlcpy(param->addr.str, old_str, param->size);
+#else
+		strscpy(param->addr.str, old_str, param->size);
+#endif
 	}
 
 end:
