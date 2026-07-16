@@ -230,7 +230,7 @@ failed_inst_alloc:
 	return err;
 }
 
-static int exynos_gpiomem_remove(struct platform_device *pdev)
+static void exynos_gpiomem_remove(struct platform_device *pdev)
 {
 	struct device *dev = inst->dev;
 
@@ -241,7 +241,6 @@ static int exynos_gpiomem_remove(struct platform_device *pdev)
 	unregister_chrdev_region(exynos_gpiomem_devid, 1);
 
 	dev_info(dev, "GPIO mem driver removed - OK");
-	return 0;
 }
 
 static const struct of_device_id exynos_gpiomem_of_match[] = {
