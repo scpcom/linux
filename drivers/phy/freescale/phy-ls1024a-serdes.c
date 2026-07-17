@@ -376,7 +376,7 @@ static enum phy_mode ls1024a_binding_to_phy_mode(unsigned int type)
 }
 
 static struct phy *ls1024a_serdes_phy_of_xlate(
-		struct device *dev, struct of_phandle_args *args)
+		struct device *dev, const struct of_phandle_args *args)
 {
 	uint32_t addr;
 	int res;
