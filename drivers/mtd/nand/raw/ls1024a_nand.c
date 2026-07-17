@@ -1255,7 +1255,7 @@ static int comcerto_nand_probe(struct platform_device *pdev)
  * NAND Remove
  *
  *********************************************************************/
-static int comcerto_nand_remove(struct platform_device *pdev)
+static void comcerto_nand_remove(struct platform_device *pdev)
 {
 	struct comcerto_nand_info *info =
 	    (struct comcerto_nand_info *)platform_get_drvdata(pdev);
@@ -1269,7 +1269,6 @@ static int comcerto_nand_remove(struct platform_device *pdev)
 	iounmap(info->chip.legacy.IO_ADDR_R);
 	iounmap(ecc_base_addr);
 	nand_cleanup(&info->chip);
-	return 0;
 }
 
 /*********************************************************************
