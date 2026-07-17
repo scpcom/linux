@@ -2,7 +2,7 @@
 /plugin/;
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/samsung.h>
+#include "../samsung/exynos-pinctrl.h"
 
 / {
 	fragment@0 {
