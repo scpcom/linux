@@ -16,6 +16,7 @@
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 #include <linux/gpio/consumer.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
