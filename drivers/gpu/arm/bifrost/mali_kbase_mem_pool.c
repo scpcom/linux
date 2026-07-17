@@ -319,7 +319,11 @@ static unsigned long kbase_mem_pool_reclaim_count_objects(struct shrinker *s,
 	struct kbase_mem_pool *pool;
 	size_t pool_size;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	pool = container_of(s, struct kbase_mem_pool, reclaim);
+#else
+	pool = s->private_data;
+#endif
 
 	kbase_mem_pool_lock(pool);
 	if (pool->dont_reclaim && !pool->dying) {
@@ -338,7 +342,11 @@ static unsigned long kbase_mem_pool_reclaim_scan_objects(struct shrinker *s,
 	struct kbase_mem_pool *pool;
 	unsigned long freed;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	pool = container_of(s, struct kbase_mem_pool, reclaim);
+#else
+	pool = s->private_data;
+#endif
 
 	kbase_mem_pool_lock(pool);
 	if (pool->dont_reclaim && !pool->dying) {
@@ -385,6 +393,7 @@ int kbase_mem_pool_init(struct kbase_mem_pool *pool,
 	INIT_LIST_HEAD(&pool->page_list);
 
 	/* Register shrinker */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 	pool->reclaim.shrink = kbase_mem_pool_reclaim_shrink;
 #else
@@ -397,7 +406,18 @@ int kbase_mem_pool_init(struct kbase_mem_pool *pool,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0)
 	pool->reclaim.batch = 0;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	pool->reclaim = shrinker_alloc(0, "arm-bifrost-pool");
+	if (!pool->reclaim)
+		return -ENOMEM;
+
+	pool->reclaim->count_objects = kbase_mem_pool_reclaim_count_objects;
+	pool->reclaim->scan_objects = kbase_mem_pool_reclaim_scan_objects;
+	pool->reclaim->private_data = pool;
+
+	shrinker_register(pool->reclaim);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	register_shrinker(&pool->reclaim, "arm-bifrost-pool");
 #else
 	register_shrinker(&pool->reclaim);
@@ -425,7 +445,11 @@ void kbase_mem_pool_term(struct kbase_mem_pool *pool)
 
 	pool_dbg(pool, "terminate()\n");
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	unregister_shrinker(&pool->reclaim);
+#else
+	shrinker_free(pool->reclaim);
+#endif
 
 	kbase_mem_pool_lock(pool);
 	pool->max_size = 0;

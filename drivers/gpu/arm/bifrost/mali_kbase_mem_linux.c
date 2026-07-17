@@ -325,7 +325,11 @@ unsigned long kbase_mem_evictable_reclaim_count_objects(struct shrinker *s,
 	struct kbase_mem_phy_alloc *alloc;
 	unsigned long pages = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	kctx = container_of(s, struct kbase_context, reclaim);
+#else
+	kctx = s->private_data;
+#endif
 
 	mutex_lock(&kctx->jit_evict_lock);
 
@@ -364,7 +368,11 @@ unsigned long kbase_mem_evictable_reclaim_scan_objects(struct shrinker *s,
 	struct kbase_mem_phy_alloc *tmp;
 	unsigned long freed = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	kctx = container_of(s, struct kbase_context, reclaim);
+#else
+	kctx = s->private_data;
+#endif
 	mutex_lock(&kctx->jit_evict_lock);
 
 	list_for_each_entry_safe(alloc, tmp, &kctx->evict_list, evict_node) {
@@ -426,6 +434,7 @@ int kbase_mem_evictable_init(struct kbase_context *kctx)
 	mutex_init(&kctx->jit_evict_lock);
 
 	/* Register shrinker */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 	kctx->reclaim.shrink = kbase_mem_evictable_reclaim_shrink;
 #else
@@ -438,7 +447,18 @@ int kbase_mem_evictable_init(struct kbase_context *kctx)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0)
 	kctx->reclaim.batch = 0;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	kctx->reclaim = shrinker_alloc(0, "arm-bifrost");
+	if (!kctx->reclaim)
+		return -ENOMEM;
+
+	kctx->reclaim->count_objects = kbase_mem_evictable_reclaim_count_objects;
+	kctx->reclaim->scan_objects = kbase_mem_evictable_reclaim_scan_objects;
+	kctx->reclaim->private_data = kctx;
+
+	shrinker_register(kctx->reclaim);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	register_shrinker(&kctx->reclaim, "arm-bifrost");
 #else
 	register_shrinker(&kctx->reclaim);
@@ -448,7 +468,11 @@ int kbase_mem_evictable_init(struct kbase_context *kctx)
 
 void kbase_mem_evictable_deinit(struct kbase_context *kctx)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	unregister_shrinker(&kctx->reclaim);
+#else
+	shrinker_free(kctx->reclaim);
+#endif
 }
 
 /**
