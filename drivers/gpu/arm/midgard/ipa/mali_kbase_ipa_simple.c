@@ -88,6 +88,7 @@ static u32 calculate_temp_scaling_factor(s32 ts[4], s64 t)
 	return clamp(res_unclamped, (s64) 0, (s64) 10000000);
 }
 
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 static int model_static_coeff(struct kbase_ipa_model *model, u32 *coeffp)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
@@ -132,6 +133,7 @@ static int model_dynamic_coeff(struct kbase_ipa_model *model, u32 *coeffp,
 
 	return 0;
 }
+#endif
 
 static int add_params(struct kbase_ipa_model *model)
 {
@@ -216,7 +218,9 @@ struct kbase_ipa_model_ops kbase_simple_ipa_model_ops = {
 		.init = &kbase_simple_power_model_init,
 		.recalculate = &kbase_simple_power_model_recalculate,
 		.term = &kbase_simple_power_model_term,
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 		.get_dynamic_coeff = &model_dynamic_coeff,
 		.get_static_coeff = &model_static_coeff,
+#endif
 		.do_utilization_scaling_in_framework = true,
 };
