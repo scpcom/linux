@@ -1618,8 +1618,12 @@ static unsigned long kbase_get_unmapped_area(struct file *filp,
 		return -ENOMEM;
 
 	if (kbase_ctx_flag(kctx, KCTX_COMPAT))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 		return current->mm->get_unmapped_area(filp, addr, len, pgoff,
 				flags);
+#else
+		return mm_get_unmapped_area(current->mm, filp, addr, len, pgoff, flags);
+#endif
 
 	if (kbase_hw_has_feature(kctx->kbdev, BASE_HW_FEATURE_33BIT_VA)) {
 		info.high_limit = kctx->same_va_end << PAGE_SHIFT;
