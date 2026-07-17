@@ -926,7 +926,11 @@ struct kbase_mem_pool {
 	size_t              max_size;
 	spinlock_t          pool_lock;
 	struct list_head    page_list;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	struct shrinker     reclaim;
+#else
+	struct shrinker     *reclaim;
+#endif
 
 	struct kbase_mem_pool *next_pool;
 };
@@ -1384,7 +1388,11 @@ struct kbase_context {
 
 	struct kbase_mem_pool mem_pool;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	struct shrinker         reclaim;
+#else
+	struct shrinker         *reclaim;
+#endif
 	struct list_head        evict_list;
 
 	struct list_head waiting_soft_jobs;
