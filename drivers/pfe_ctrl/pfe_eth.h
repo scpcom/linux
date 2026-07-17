@@ -336,7 +336,7 @@ int pfe_eth_mdio_reset(struct mii_bus *bus);
 /** pfe_compute_csum
  *
  */
-static int inline pfe_compute_csum(struct sk_buff *skb)
+inline static int pfe_compute_csum(struct sk_buff *skb)
 {
 	struct skb_shared_info *sh;
 	unsigned int nr_frags;
