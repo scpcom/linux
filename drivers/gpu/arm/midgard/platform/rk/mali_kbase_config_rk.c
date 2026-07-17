@@ -532,8 +532,8 @@ int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev)
 	rockchip_get_opp_data(rockchip_mali_of_match, &kbdev->opp_info);
 
 	return rockchip_init_opp_table(kbdev->dev, &kbdev->opp_info,
-#else
-	return rockchip_init_opp_table(kbdev->dev, NULL,
-#endif
 				       "gpu_leakage", "mali");
+#else
+	return -ENOTSUPP;
+#endif
 }

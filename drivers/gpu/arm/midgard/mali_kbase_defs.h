@@ -67,7 +67,9 @@
 
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+#if IS_ENABLED(CONFIG_ROCKCHIP_OPP)
 #include <soc/rockchip/rockchip_opp_select.h>
+#endif
 
 #if defined(CONFIG_PM)
 #define KBASE_PM_RUNTIME 1
