@@ -153,7 +153,11 @@ struct mali_mem_os_allocator {
 	atomic_t allocated_pages;
 	size_t allocation_limit;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	struct shrinker shrinker;
+#else
+	struct shrinker *shrinker;
+#endif
 	struct delayed_work timed_shrinker;
 	struct workqueue_struct *wq;
 };

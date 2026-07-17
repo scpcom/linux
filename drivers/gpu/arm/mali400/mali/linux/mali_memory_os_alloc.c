@@ -59,6 +59,7 @@ struct mali_mem_os_allocator mali_mem_os_allocator = {
 	.allocated_pages = ATOMIC_INIT(0),
 	.allocation_limit = 0,
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
 	.shrinker.shrink = mali_mem_os_shrink,
 #else
@@ -66,6 +67,7 @@ struct mali_mem_os_allocator mali_mem_os_allocator = {
 	.shrinker.scan_objects = mali_mem_os_shrink,
 #endif
 	.shrinker.seeks = DEFAULT_SEEKS,
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	.timed_shrinker = __DELAYED_WORK_INITIALIZER(mali_mem_os_allocator.timed_shrinker, mali_mem_os_trim_pool, TIMER_DEFERRABLE),
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
@@ -801,7 +803,16 @@ _mali_osk_errcode_t mali_mem_os_init(void)
 	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &dma_attrs_wc);
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	mali_mem_os_allocator.shrinker = shrinker_alloc(0, "arm-mali400");
+	if (!mali_mem_os_allocator.shrinker)
+		return _MALI_OSK_ERR_NOMEM;
+
+	mali_mem_os_allocator.shrinker->count_objects = mali_mem_os_shrink_count;
+	mali_mem_os_allocator.shrinker->scan_objects = mali_mem_os_shrink;
+
+	shrinker_register(mali_mem_os_allocator.shrinker);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	register_shrinker(&mali_mem_os_allocator.shrinker, "arm-mali400");
 #else
 	register_shrinker(&mali_mem_os_allocator.shrinker);
@@ -813,7 +824,11 @@ _mali_osk_errcode_t mali_mem_os_init(void)
 void mali_mem_os_term(void)
 {
 	struct mali_page_node *m_page, *m_tmp;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	unregister_shrinker(&mali_mem_os_allocator.shrinker);
+#else
+	shrinker_free(mali_mem_os_allocator.shrinker);
+#endif
 	cancel_delayed_work_sync(&mali_mem_os_allocator.timed_shrinker);
 
 	if (NULL != mali_mem_os_allocator.wq) {
