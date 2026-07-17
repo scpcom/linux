@@ -608,13 +608,12 @@ fail_adap:
 	return res;
 }
 
-static int ls1024a_i2c_remove(struct platform_device *pdev)
+static void ls1024a_i2c_remove(struct platform_device *pdev)
 {
 	struct ls1024a_i2c *i2c = platform_get_drvdata(pdev);
 
 	i2c_del_adapter(&i2c->adap);
 	ls1024a_i2c_hw_deinit(i2c);
-	return 0;
 }
 
 static const struct of_device_id ls1024a_i2c_match[] = {
