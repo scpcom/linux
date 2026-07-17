@@ -38,8 +38,8 @@ if [ ! -e $bs ]; then
   echo "\n${green}Checking out SDK for ${BOARD_SHORT}${end_color}\n"
   mkdir ${BUILDDIR}
   cd ${BUILDDIR}
-  wget -N https://seafile.servator.de/sbc/odroid/build/next/linux-6.6-sbc-build.tar.gz
-  tar xzf linux-6.6-sbc-build.tar.gz
+  wget -N https://seafile.servator.de/sbc/odroid/build/next/linux-6.12-sbc-build.tar.gz
+  tar xzf linux-6.12-sbc-build.tar.gz
   # Next line is optional to speed-up clone and reduze size
   sed -i s/'git clone -b mainline-${lxmmmkb}'/'git clone --depth=100 -b sbc-${lxmmmkb}.y'/g prepare-linux.sh
   # Disable uneeded parts
