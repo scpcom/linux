@@ -1208,7 +1208,9 @@ static int kbase_open(struct inode *inode, struct file *filp)
 	}
 
 	init_waitqueue_head(&kctx->event_queue);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
 	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
+#endif
 	filp->private_data = kctx;
 	kctx->filp = filp;
 
@@ -1654,6 +1656,9 @@ static const struct file_operations kbase_fops = {
 	.check_flags = kbase_check_flags,
 #ifdef CONFIG_64BIT
 	.get_unmapped_area = kbase_get_unmapped_area,
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+	.fop_flags = FOP_UNSIGNED_OFFSET,
 #endif
 };
 
