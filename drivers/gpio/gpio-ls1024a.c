@@ -63,7 +63,7 @@ static int ls1024a_gpio_direction_input(struct gpio_chip *chip,
 	struct ls1024a_gpiochip *lschip = gpiochip_get_data(chip);
 	int res;
 
-	res = pinctrl_gpio_direction_input(chip->base + offset);
+	res = pinctrl_gpio_direction_input(chip, offset);
 	if (res)
 		return res;
 
@@ -83,7 +83,7 @@ static int ls1024a_gpio_direction_output(struct gpio_chip *chip,
 	struct ls1024a_gpiochip *lschip = gpiochip_get_data(chip);
 	int res;
 
-	res = pinctrl_gpio_direction_output(chip->base + offset);
+	res = pinctrl_gpio_direction_output(chip, offset);
 	if (res)
 		return res;
 
