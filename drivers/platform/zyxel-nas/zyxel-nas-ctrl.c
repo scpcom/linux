@@ -950,7 +950,7 @@ err:
 	return ret;
 }
 
-static int nas_ctrl_remove(struct platform_device *pdev)
+static void nas_ctrl_remove(struct platform_device *pdev)
 {
 	remove_proc_entry("htp_pin", NULL);
 	remove_proc_entry("hdd1_detect", NULL);
@@ -971,8 +971,6 @@ static int nas_ctrl_remove(struct platform_device *pdev)
 	proc_remove(nas_ctrl->drive_bays_proc_root);
 
 	unregister_chrdev_region(nas_chrdev.dev, nas_chrdev.nr_devs);
-
-	return 0;
 }
 
 static const struct of_device_id of_nas_ctrl_match[] = {
