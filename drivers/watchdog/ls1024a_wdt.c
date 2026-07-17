@@ -275,11 +275,10 @@ static int ls1024a_wdt_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ls1024a_wdt_remove(struct platform_device *pdev)
+static void ls1024a_wdt_remove(struct platform_device *pdev)
 {
 	struct ls1024a_wdt *priv = platform_get_drvdata(pdev);
 	clk_disable_unprepare(priv->clk);
-	return 0;
 }
 
 static const struct of_device_id ls1024a_wdt_of_match[] = {
