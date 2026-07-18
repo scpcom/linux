@@ -20,7 +20,7 @@
 #include <linux/ieee80211.h>
 #include <generated/uapi/linux/version.h>
 #include <net/cfg80211.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 
 #ifdef IPV6_FILTERING
 #include <linux/in6.h>

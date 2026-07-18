@@ -13,7 +13,7 @@
 #include <linux/compiler.h>
 #include <linux/ieee80211.h>
 #include <linux/gfp.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <net/mac80211_xr.h>
 #include <crypto/aes.h>
 
