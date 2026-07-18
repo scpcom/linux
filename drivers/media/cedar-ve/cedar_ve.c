@@ -2001,7 +2001,7 @@ static int ve_debugfs_release(struct inode *inode, struct file *file)
 static const struct file_operations ve_debugfs_fops = {
 	.owner = THIS_MODULE,
 	.open = ve_debugfs_open,
-	.llseek = no_llseek,
+	.llseek = noop_llseek,
 	.read = ve_debugfs_read,
 	.release = ve_debugfs_release,
 };
@@ -2238,7 +2238,7 @@ static const struct file_operations cedardev_fops = {
 	.mmap	 = cedardev_mmap,
 	.open	 = cedardev_open,
 	.release = cedardev_release,
-	.llseek	 = no_llseek,
+	.llseek	 = noop_llseek,
 	.unlocked_ioctl	= compat_cedardev_ioctl,
 	.compat_ioctl   = compat_cedardev_ioctl,
 };
