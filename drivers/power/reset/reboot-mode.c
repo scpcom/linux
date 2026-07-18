@@ -9,6 +9,7 @@
 #include <linux/kobject.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/panic_notifier.h>
 #include <linux/reboot.h>
 #include <linux/reboot-mode.h>
 #include <linux/sysfs.h>
