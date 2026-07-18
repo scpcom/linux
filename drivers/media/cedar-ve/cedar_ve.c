@@ -39,6 +39,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/scatterlist.h>
+#include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/dma.h>
