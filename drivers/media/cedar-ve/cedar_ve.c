@@ -2488,7 +2488,7 @@ static void cedardev_exit(void)
 	VE_LOGD("cedar-ve exit");
 }
 
-static int	sunxi_cedar_remove(struct platform_device *pdev)
+static void sunxi_cedar_remove(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	VE_LOGD("sunxi_cedar_remove");
@@ -2497,13 +2497,12 @@ static int	sunxi_cedar_remove(struct platform_device *pdev)
 		VE_LOGD("failed to get alias ve id\n");
 	} else if (pdev->id == 1) {
 		VE_LOGI("device ve1 just return");
-		return 0;
+		return;
 	}
 #if defined CONFIG_ARCH_SUN8IW20
        pm_runtime_disable(&pdev->dev);
 #endif
 	cedardev_exit();
-	return 0;
 }
 
 static int	sunxi_cedar_probe(struct platform_device *pdev)
