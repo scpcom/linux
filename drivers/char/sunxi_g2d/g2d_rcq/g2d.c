@@ -1046,7 +1046,7 @@ static const struct file_operations g2d_fops = {
 	.mmap = g2d_mmap,
 };
 
-static int g2d_remove(struct platform_device *pdev)
+static void g2d_remove(struct platform_device *pdev)
 {
 	__g2d_info_t *info = platform_get_drvdata(pdev);
 
@@ -1057,7 +1057,6 @@ static int g2d_remove(struct platform_device *pdev)
 	sysfs_remove_group(&g2d_dev->kobj, &g2d_attribute_group);
 
 	INFO("Driver unloaded succesfully.\n");
-	return 0;
 }
 
 static int g2d_suspend(struct platform_device *pdev, pm_message_t state)
