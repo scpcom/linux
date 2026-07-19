@@ -1119,9 +1119,16 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 }
 
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
+                                   struct cfg80211_ap_update *update)
+{
+	struct cfg80211_beacon_data *params = &update->beacon;
+#else
 static int ieee80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 				   struct cfg80211_beacon_data *params)
 {
+#endif
 	struct ieee80211_sub_if_data *sdata;
 	struct beacon_data *old;
 #ifdef PROBE_RESP_EXTRA_IE
