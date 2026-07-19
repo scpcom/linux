@@ -707,7 +707,7 @@ exit:
 	return ret;
 }
 
-static int bluesleep_remove(struct platform_device *pdev)
+static void bluesleep_remove(struct platform_device *pdev)
 {
 	BT_SLEEP_DBG();
 	/* assert bt wake */
@@ -728,8 +728,6 @@ static int bluesleep_remove(struct platform_device *pdev)
 		device_init_wakeup(&pdev->dev, false);
 		dev_pm_clear_wake_irq(&pdev->dev);
 	}
-
-	return 0;
 }
 
 static int bluesleep_resume(struct platform_device *pdev)
