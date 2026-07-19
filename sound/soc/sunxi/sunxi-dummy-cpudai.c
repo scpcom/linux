@@ -221,7 +221,7 @@ err_node_put:
 	return ret;
 }
 
-static int __exit sunxi_asoc_cpudai_dev_remove(struct platform_device *pdev)
+static void sunxi_asoc_cpudai_dev_remove(struct platform_device *pdev)
 {
 	struct sunxi_cpudai_info *sunxi_cpudai = dev_get_drvdata(&pdev->dev);
 
@@ -229,8 +229,6 @@ static int __exit sunxi_asoc_cpudai_dev_remove(struct platform_device *pdev)
 	snd_soc_unregister_component(&pdev->dev);
 	devm_kfree(&pdev->dev, sunxi_cpudai);
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static struct platform_driver sunxi_asoc_cpudai_driver = {

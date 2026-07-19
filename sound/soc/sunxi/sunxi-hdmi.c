@@ -322,16 +322,14 @@ static int sunxi_hdmi_codec_dev_probe(struct platform_device *pdev)
 				&sunxi_hdmi_codec_dai, 1);
 }
 
-static int __exit sunxi_hdmi_codec_dev_remove(struct platform_device *pdev)
+static void sunxi_hdmi_codec_dev_remove(struct platform_device *pdev)
 {
 	if (!pdev) {
 		pr_err("error:%s,line:%d\n", __func__, __LINE__);
-		return -EAGAIN;
+		return;
 	}
 
 	snd_soc_unregister_component(&pdev->dev);
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_hdmi_codec_of_match[] = {

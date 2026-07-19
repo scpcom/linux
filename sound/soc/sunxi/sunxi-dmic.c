@@ -997,7 +997,7 @@ err_devm_register_component:
 	return ret;
 }
 
-static int __exit sunxi_dmic_dev_remove(struct platform_device *pdev)
+static void sunxi_dmic_dev_remove(struct platform_device *pdev)
 {
 	struct sunxi_dmic_info *sunxi_dmic = NULL;
 	struct sunxi_dmic_mem_info *mem_info = NULL;
@@ -1007,7 +1007,7 @@ static int __exit sunxi_dmic_dev_remove(struct platform_device *pdev)
 	sunxi_dmic = platform_get_drvdata(pdev);
 	if (IS_ERR_OR_NULL(sunxi_dmic)) {
 		dev_err(&pdev->dev, "sunxi_dmic is NULL!\n");
-		return -ENOMEM;
+		return;
 	}
 
 	mem_info = &sunxi_dmic->mem_info;
@@ -1036,8 +1036,6 @@ static int __exit sunxi_dmic_dev_remove(struct platform_device *pdev)
 				resource_size(mem_info->memregion));
 
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_dmic_of_match[] = {

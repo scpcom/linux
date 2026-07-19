@@ -2623,7 +2623,7 @@ err_node_put:
 	return ret;
 }
 
-static int  __exit sunxi_internal_codec_remove(struct platform_device *pdev)
+static void sunxi_internal_codec_remove(struct platform_device *pdev)
 {
 	struct sunxi_codec_info *sunxi_codec = dev_get_drvdata(&pdev->dev);
 	struct codec_spk_config *spk_cfg = &(sunxi_codec->spk_config);
@@ -2661,8 +2661,6 @@ static int  __exit sunxi_internal_codec_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	LOG_INFO("codec remove finished");
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_internal_codec_of_match[] = {

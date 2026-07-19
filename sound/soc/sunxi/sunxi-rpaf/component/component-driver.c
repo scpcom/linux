@@ -128,21 +128,21 @@ err_prop_read_dsp_id:
 	return ret;
 }
 
-static int snd_soc_rpaf_misc_remove(struct platform_device *pdev)
+static void snd_soc_rpaf_misc_remove(struct platform_device *pdev)
 {
 	struct snd_soc_rpaf_misc_priv *rpaf_misc_priv = dev_get_drvdata(&pdev->dev);
 	int ret = 0;
 
 	if (IS_ERR_OR_NULL(rpaf_misc_priv)) {
 		dev_err(&pdev->dev, "rpaf_misc_priv is null.\n");
-			return -EFAULT;
+		return;
 	}
 
 	ret = snd_soc_rpaf_misc_deregister_device(&pdev->dev, rpaf_misc_priv->dsp_id);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "dsp_id(%d) deregister dev error(%d).\n",
 				rpaf_misc_priv->dsp_id, ret);
-		return ret;
+		return;
 	}
 
 	sysfs_remove_group(&pdev->dev.kobj, &rpaf_dev_debug_attr_group);
@@ -151,8 +151,6 @@ static int snd_soc_rpaf_misc_remove(struct platform_device *pdev)
 
 	devm_kfree(&pdev->dev, rpaf_misc_priv);
 	dev_set_drvdata(&pdev->dev, NULL);
-
-	return ret;
 }
 
 static const struct of_device_id snd_soc_rpaf_misc_ids[] = {

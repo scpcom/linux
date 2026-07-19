@@ -841,7 +841,7 @@ err_devm_kfree:
 	return ret;
 }
 
-static int __exit sunxi_card_dev_remove(struct platform_device *pdev)
+static void sunxi_card_dev_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct sunxi_card_priv *priv = snd_soc_card_get_drvdata(card);
@@ -860,8 +860,6 @@ static int __exit sunxi_card_dev_remove(struct platform_device *pdev)
 	devm_kfree(&pdev->dev, priv);
 
 	LOG_WARN("unregister card finished");
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_card_of_match[] = {

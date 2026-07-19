@@ -2222,7 +2222,7 @@ err_devm_malloc_sunxi_daudio:
 	return ret;
 }
 
-static int __exit sunxi_daudio_dev_remove(struct platform_device *pdev)
+static void sunxi_daudio_dev_remove(struct platform_device *pdev)
 {
 	struct sunxi_daudio_info *sunxi_daudio = dev_get_drvdata(&pdev->dev);
 	struct sunxi_daudio_mem_info *mem_info = &sunxi_daudio->mem_info;
@@ -2263,8 +2263,6 @@ static int __exit sunxi_daudio_dev_remove(struct platform_device *pdev)
 	reset_control_assert(clk_info->clk_rst);
 
 	devm_kfree(&pdev->dev, sunxi_daudio);
-
-	return 0;
 }
 
 static struct platform_driver sunxi_daudio_driver = {
