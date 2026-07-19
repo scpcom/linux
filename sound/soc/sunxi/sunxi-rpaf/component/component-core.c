@@ -1549,7 +1549,7 @@ static const struct file_operations snd_soc_rpaf_misc_f_ops = {
 #endif
 //	.read = snd_soc_rpaf_misc_read,
 	.write = snd_soc_rpaf_misc_write,
-	.llseek = no_llseek,
+	.llseek = noop_llseek,
 	.release = snd_soc_rpaf_misc_release,
 };
 
