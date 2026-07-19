@@ -30,7 +30,7 @@ TRACE_EVENT(tracing_mark_write,
 		),
 	TP_fast_assign(
 		__entry->pid = pid;
-		__assign_str(trace_name, name);
+		__assign_str(trace_name);
 		__entry->trace_begin = trace_begin;
 		),
 
@@ -48,7 +48,7 @@ TRACE_EVENT(display_trace_counter,
 		),
 	TP_fast_assign(
 		__entry->pid = pid;
-		__assign_str(counter_name, name);
+		__assign_str(counter_name);
 		__entry->value = value;
 		),
 	TP_printk("C|%d|%s|%d",
@@ -67,7 +67,7 @@ TRACE_EVENT(display_trace_counter2,
 		),
 	TP_fast_assign(
 		__entry->pid = pid;
-		__assign_str(counter_name, name);
+		__assign_str(counter_name);
 		__entry->id = id;
 		__entry->value = value;
 		),
