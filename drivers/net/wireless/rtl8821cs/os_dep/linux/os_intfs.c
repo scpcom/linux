@@ -1036,6 +1036,10 @@ uint rtw_max_unassoc_sta_cnt = 0;
 module_param(rtw_max_unassoc_sta_cnt, uint, 0644);
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
+
 #if CONFIG_TX_AC_LIFETIME
 static void rtw_regsty_load_tx_ac_lifetime(struct registry_priv *regsty)
 {
