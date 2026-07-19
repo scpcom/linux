@@ -520,10 +520,10 @@ static int sun50i_a100_ledc_probe(struct platform_device *pdev)
 		led->mc_cdev.num_colors = ARRAY_SIZE(led->subled_info);
 		led->mc_cdev.subled_info = led->subled_info;
 
-		num_intensity = of_property_read_variable_u32_array(child,
+		num_intensity = fwnode_property_read_u32_array(child,
 						       "allwinner,multi_intensity",
 						       intensity_value,
-						       ARRAY_SIZE(intensity_value), 0);
+						       ARRAY_SIZE(intensity_value));
 
 		if (num_intensity == led->mc_cdev.num_colors)
 			for (i = 0; i < led->mc_cdev.num_colors; i++)
