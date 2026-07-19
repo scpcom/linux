@@ -60,7 +60,7 @@ int sunxi_hdmi_codec_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
-	struct asoc_simple_priv *sndhdmi_priv = snd_soc_card_get_drvdata(card);
+	struct simple_util_priv *sndhdmi_priv = snd_soc_card_get_drvdata(card);
 	struct sunxi_hdmi_priv *sunxi_hdmi = snd_soc_component_get_drvdata(dai->component);
 
 	hdmi_para.sample_rate = params_rate(params);

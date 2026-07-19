@@ -668,7 +668,7 @@ static int sunxi_daudio_hw_params(struct snd_pcm_substream *substream,
 	struct sunxi_daudio_mem_info *mem_info = NULL;
 	struct sunxi_daudio_dts_info *dts_info = NULL;
 	struct sunxi_daudio_platform_data_info *pdata_info = NULL;
-	struct asoc_simple_priv *sndhdmi_priv =
+	struct simple_util_priv *sndhdmi_priv =
 				snd_soc_card_get_drvdata(dai->component->card);
 
 	if (IS_ERR_OR_NULL(sunxi_daudio)) {
