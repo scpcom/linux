@@ -23,6 +23,7 @@
 #endif
 #include <linux/version.h>
 #include <linux/dma-mapping.h>
+#include <linux/ptrace.h>
 #include <linux/reset.h>
 #ifndef dma_mmap_writecombine
 #define dma_mmap_writecombine dma_mmap_wc
