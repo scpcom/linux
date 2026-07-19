@@ -1594,7 +1594,7 @@ free_mem:
 	return -1;
 }
 
-static int hdmi_tx_exit(struct platform_device *pdev)
+static void hdmi_tx_exit(struct platform_device *pdev)
 {
 #ifdef CONFIG_HDMI2_CEC_SUNXI
 	cec_thread_exit();
@@ -1628,8 +1628,6 @@ static int hdmi_tx_exit(struct platform_device *pdev)
 	hdmi_drv = NULL;
 
 	hdmi_class_exit();
-
-	return 0;
 }
 
 /*NOTE:hdmi local pm, which is dependent of display pm*/
