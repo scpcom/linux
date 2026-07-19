@@ -1002,6 +1002,10 @@ uint rtw_8822c_xcap_overwrite = 1;
 module_param(rtw_8822c_xcap_overwrite, uint, 0644);
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
+
 #if CONFIG_TX_AC_LIFETIME
 static void rtw_regsty_load_tx_ac_lifetime(struct registry_priv *regsty)
 {
