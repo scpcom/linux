@@ -2787,7 +2787,11 @@ static enum work_done_result ieee80211_assoc_done(struct ieee80211_work *wk,
 	struct ieee80211_if_managed *ifmgd = &wk->sdata->u.mgd;
 	u16 status;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+	struct cfg80211_rx_assoc_resp_data resp = {
+#else
 	struct cfg80211_rx_assoc_resp resp = {
+#endif
 		.uapsd_queues = -1,
 	};
 #endif
