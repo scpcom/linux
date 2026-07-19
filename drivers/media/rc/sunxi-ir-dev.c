@@ -734,7 +734,7 @@ err0:
 	return ret;
 }
 
-static int sunxi_irrx_remove(struct platform_device *pdev)
+static void sunxi_irrx_remove(struct platform_device *pdev)
 {
 	struct sunxi_ir_rx *chip = platform_get_drvdata(pdev);
 
@@ -744,8 +744,6 @@ static int sunxi_irrx_remove(struct platform_device *pdev)
 	sunxi_irrx_hw_exit(chip);
 
 	exit_sunxi_irrx_map();
-
-	return 0;
 }
 
 #ifdef CONFIG_PM
