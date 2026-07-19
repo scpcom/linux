@@ -17,6 +17,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
@@ -57,7 +58,6 @@ struct sun8i_pwm_data {
 };
 
 struct sun8i_pwm_chip {
-	struct pwm_chip chip;
 	struct clk *clk;
 	struct reset_control *rst_clk;
 	void __iomem *base;
@@ -66,7 +66,7 @@ struct sun8i_pwm_chip {
 
 static inline struct sun8i_pwm_chip *to_sun8i_pwm_chip(struct pwm_chip *chip)
 {
-	return container_of(chip, struct sun8i_pwm_chip, chip);
+	return pwmchip_get_drvdata(chip);
 }
 
 static inline u32 sun8i_pwm_readl(struct sun8i_pwm_chip *chip,
@@ -127,7 +127,7 @@ static int sun8i_pwm_get_state(struct pwm_chip *chip,
 	else
 		state->enabled = false;
 
-	dev_dbg(chip->dev, "duty_ns=%lld period_ns=%lld polarity=%s enabled=%s.\n",
+	dev_dbg(&chip->dev, "duty_ns=%lld period_ns=%lld polarity=%s enabled=%s.\n",
 				state->duty_cycle, state->period,
 				state->polarity ? "inversed":"normal",
 				state->enabled ? "true":"false");
@@ -176,7 +176,7 @@ static int sun8i_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		sun8i_pwm_writel(pc, config, PWM_GET_CLK_OFFSET(pwm->hwpwm));
 	}
 
-	dev_dbg(chip->dev, "duty_ns=%lld period_ns=%lld c =%llu.\n",
+	dev_dbg(&chip->dev, "duty_ns=%lld period_ns=%lld c =%llu.\n",
 			duty_ns, period_ns, c);
 
 	/*
@@ -227,7 +227,7 @@ calc_end:
 			config, (entire_cycles - 1));
 	sun8i_pwm_writel(pc, config, PWM_PERIOD_REG(pwm->hwpwm));
 
-	dev_dbg(chip->dev, "active_cycles=%lu entire_cycles=%lu prescaler=%u div_m=%u\n",
+	dev_dbg(&chip->dev, "active_cycles=%lu entire_cycles=%lu prescaler=%u div_m=%u\n",
 			   active_cycles, entire_cycles, prescaler, div_m);
 
 exit:
@@ -280,7 +280,6 @@ static int sun8i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 static const struct pwm_ops sun8i_pwm_ops = {
 	.get_state = sun8i_pwm_get_state,
 	.apply = sun8i_pwm_apply,
-	.owner = THIS_MODULE,
 };
 
 static const struct sun8i_pwm_data sun8i_pwm_data_c9 = {
@@ -313,18 +312,20 @@ MODULE_DEVICE_TABLE(of, sun8i_pwm_dt_ids);
 
 static int sun8i_pwm_probe(struct platform_device *pdev)
 {
+	struct pwm_chip *chip;
 	struct sun8i_pwm_chip *pc;
+	const struct sun8i_pwm_data *data;
 	int ret;
 
-	pc = devm_kzalloc(&pdev->dev, sizeof(*pc), GFP_KERNEL);
-	if (!pc)
-		return dev_err_probe(&pdev->dev, -ENOMEM,
-				     "memory allocation failed\n");
-
-	pc->data = of_device_get_match_data(&pdev->dev);
-	if (!pc->data)
+	data = of_device_get_match_data(&pdev->dev);
+	if (!data)
 		return dev_err_probe(&pdev->dev, -ENODEV,
 				     "can't get match data\n");
+
+	chip = devm_pwmchip_alloc(&pdev->dev, data->npwm, sizeof(*pc));
+	if (IS_ERR(chip))
+		return PTR_ERR(chip);
+	pc = to_sun8i_pwm_chip(chip);
 
 	pc->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(pc->base))
@@ -354,20 +355,18 @@ static int sun8i_pwm_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	pc->chip.dev = &pdev->dev;
-	pc->chip.ops = &sun8i_pwm_ops;
-	pc->chip.npwm = pc->data->npwm;
-	pc->chip.of_xlate = of_pwm_xlate_with_flags;
-	pc->chip.base = -1;
-	pc->chip.of_pwm_n_cells = 3;
+	chip->ops = &sun8i_pwm_ops;
+	chip->of_xlate = of_pwm_xlate_with_flags;
+	//chip->base = -1;
+	//chip->of_pwm_n_cells = 3;
 
-	ret = pwmchip_add(&pc->chip);
+	ret = pwmchip_add(chip);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to add PWM chip: %d\n", ret);
 		goto err_pwm_add;
 	}
 
-	platform_set_drvdata(pdev, pc);
+	platform_set_drvdata(pdev, chip);
 
 	return 0;
 
@@ -379,15 +378,14 @@ err_clk:
 	return ret;
 }
 
-static int sun8i_pwm_remove(struct platform_device *pdev)
+static void sun8i_pwm_remove(struct platform_device *pdev)
 {
-	struct sun8i_pwm_chip *pc = platform_get_drvdata(pdev);
+	struct pwm_chip *chip = platform_get_drvdata(pdev);
+	struct sun8i_pwm_chip *pc = to_sun8i_pwm_chip(chip);
 
-	pwmchip_remove(&pc->chip);
+	pwmchip_remove(chip);
 	clk_disable_unprepare(pc->clk);
 	reset_control_assert(pc->rst_clk);
-
-	return 0;
 }
 
 static struct platform_driver sun8i_pwm_driver = {
