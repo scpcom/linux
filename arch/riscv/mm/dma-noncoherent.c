@@ -142,9 +142,6 @@ void arch_setup_dma_ops(struct device *dev, bool coherent)
 		   dev_driver_string(dev), dev_name(dev));
 
 	dev->dma_coherent = coherent;
-
-	if (iommu)
-		iommu_setup_dma_ops(dev, dma_base, dma_base + size - 1);
 }
 
 void riscv_noncoherent_supported(void)
