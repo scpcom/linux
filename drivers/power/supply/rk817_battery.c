@@ -1995,10 +1995,10 @@ static int rk817_bat_get_ac_psy(struct device *dev, void *data)
 static void rk817_bat_get_chrg_psy(struct rk817_battery_device *battery)
 {
 	if (!battery->usb_psy)
-		class_for_each_device(power_supply_class, NULL, (void *)battery,
+		power_supply_for_each_device((void *)battery,
 				      rk817_bat_get_usb_psy);
 	if (!battery->ac_psy)
-		class_for_each_device(power_supply_class, NULL, (void *)battery,
+		power_supply_for_each_device((void *)battery,
 				      rk817_bat_get_ac_psy);
 }
 
