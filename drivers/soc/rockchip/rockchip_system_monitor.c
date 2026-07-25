@@ -1332,14 +1332,16 @@ void rockchip_system_monitor_unregister(struct monitor_dev_info *info)
 }
 EXPORT_SYMBOL(rockchip_system_monitor_unregister);
 
-static int notify_dummy(struct thermal_zone_device *tz, int trip)
+static void notify_dummy(struct thermal_zone_device *tz,
+			 const struct thermal_trip *trip,
+			 bool crossed_up)
 {
-	return 0;
+	return;
 }
 
 static struct thermal_governor thermal_gov_dummy = {
 	.name		= "dummy",
-	.throttle	= notify_dummy,
+	.trip_crossed	= notify_dummy,
 };
 
 static int rockchip_system_monitor_parse_dt(struct system_monitor *monitor)
