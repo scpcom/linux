@@ -102,7 +102,7 @@ static void emit_pid_name(const char *comm, struct task_struct *task)
         }
 
         /* emit pid names, cannot use get_task_comm, as it's not exported on all kernel versions */
-        if (strlcpy(taskcomm, comm, TASK_COMM_LEN) == TASK_COMM_LEN - 1) {
+        if (strscpy(taskcomm, comm, TASK_COMM_LEN) == TASK_COMM_LEN - 1) {
             /* append ellipses if comm has length of TASK_COMM_LEN - 1 */
             strcat(taskcomm, "...");
         }
