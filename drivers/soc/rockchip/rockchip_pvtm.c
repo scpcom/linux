@@ -99,8 +99,8 @@ static int pvtm_value_show(struct seq_file *s, void *data)
 		return 0;
 	}
 
-	if (pvtm->tz && pvtm->tz->ops && pvtm->tz->ops->get_temp) {
-		ret = pvtm->tz->ops->get_temp(pvtm->tz, &cur_temp);
+	if (pvtm->tz && pvtm->tz->ops.get_temp) {
+		ret = pvtm->tz->ops.get_temp(pvtm->tz, &cur_temp);
 		if (ret)
 			dev_err(pvtm->dev, "debug failed to get temp\n");
 		else
