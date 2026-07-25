@@ -24,6 +24,8 @@
 #include <linux/soc/rockchip/pvtm.h>
 #include <linux/thermal.h>
 
+#include "../../thermal/thermal_core.h"
+
 #define wr_mask_bit(v, off, mask)	((v) << (off) | (mask) << (16 + off))
 
 #define PVTM(_id, _name, _num_rings, _start, _en, _cal, _done, _freq)	\
