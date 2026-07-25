@@ -32,7 +32,7 @@ config GATOR_WITH_MALI_SUPPORT
 choice
     prompt "Enable Mali GPU support in Gator"
     depends on GATOR
-    optional
+    default GATOR_MALI_NONE
     help
       Enable Mali GPU support in Gator
 
@@ -43,6 +43,9 @@ config GATOR_MALI_4XXMP
 config GATOR_MALI_MIDGARD
     bool "Mali-T60x, Mali-T62x, Mali-T72x or Mali-T76x"
     select GATOR_WITH_MALI_SUPPORT
+
+config GATOR_MALI_NONE
+    bool "No Mali support"
 
 endchoice
 
