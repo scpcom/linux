@@ -1462,11 +1462,9 @@ err_:
 	return ret;
 }
 
-static int rk817_platform_remove(struct platform_device *pdev)
+static void rk817_platform_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_component(&pdev->dev);
-
-	return 0;
 }
 
 static void rk817_platform_shutdown(struct platform_device *pdev)
