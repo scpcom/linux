@@ -232,14 +232,13 @@ static int meson_mx_efuse_probe(struct platform_device *pdev)
 	return PTR_ERR_OR_ZERO(nvmem);
 }
 
-static int meson_mx_efuse_remove(struct platform_device *pdev)
+static void meson_mx_efuse_remove(struct platform_device *pdev)
 {
 	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
 
 	generic_efuse_class_remove(pdev);
 
 	nvmem_unregister(nvmem);
-	return 0;
 }
 
 static struct platform_driver meson_mx_efuse_driver = {
