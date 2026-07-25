@@ -1171,7 +1171,11 @@ sip_txdoneq_process(struct esp_sip *sip, struct sip_evt_tx_report *tx_report)
                                 tx_info->status.rates[1].idx = -1;
 #endif /* HOST_RC */
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+                                ieee80211_tx_status_skb(epub->hw, skb);
+#else
                                 ieee80211_tx_status(epub->hw, skb);
+#endif
                                 matchs++;
                                 atomic_dec(&sip->pending_tx_status);
                                 STRACE_RX_TXSTATUS_INC();
@@ -1196,7 +1200,11 @@ sip_txdoneq_process(struct esp_sip *sip)
         struct esp_pub *epub = sip->epub;
         struct sk_buff *skb;
         while ((skb = skb_dequeue(&epub->txdoneq))) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+                ieee80211_tx_status_skb(epub->hw, skb);
+#else
                 ieee80211_tx_status(epub->hw, skb);
+#endif
         }
 }
 #endif
@@ -1329,7 +1337,11 @@ _exit:
 #ifndef FAST_TX_NOWAIT 
         skb_queue_tail(&sip->epub->txdoneq, skb);
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+        ieee80211_tx_status_skb(sip->epub->hw, skb);
+#else
         ieee80211_tx_status(sip->epub->hw, skb);
+#endif
 #endif
 }
 #endif /* FAST_TX_STATUS */
