@@ -271,49 +271,59 @@ static int rk3288_dfi_set_event(struct devfreq_event_dev *edev)
 	return 0;
 }
 
-static int rk3288_dfi_get_busier_ch(struct devfreq_event_dev *edev)
+static void rk3288_dfi_read_counters(struct rockchip_dfi *dfi, struct dmc_count *res)
 {
-	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
-	u32 tmp, max = 0;
-	u32 i, busier_ch = 0;
+	u32 i;
 	u32 rd_count, wr_count, total_count;
 
-	rk3288_dfi_stop_hardware_counter(edev);
-
-	/* Find out which channel is busier */
-	for (i = 0; i < RK3399_DMC_NUM_CH; i++) {
-		regmap_read(info->regmap_grf,
+	for (i = 0; i < dfi->max_channels; i++) {
+		regmap_read(dfi->regmap_grf,
 			    RK3288_GRF_SOC_STATUS(11 + i * 4), &wr_count);
-		regmap_read(info->regmap_grf,
+		regmap_read(dfi->regmap_grf,
 			    RK3288_GRF_SOC_STATUS(12 + i * 4), &rd_count);
-		regmap_read(info->regmap_grf,
+		regmap_read(dfi->regmap_grf,
 			    RK3288_GRF_SOC_STATUS(14 + i * 4), &total_count);
-		info->ch_usage[i].access = (wr_count + rd_count) * 4;
-		info->ch_usage[i].total = total_count;
-		tmp = info->ch_usage[i].access;
-		if (tmp > max) {
-			busier_ch = i;
-			max = tmp;
-		}
+		res->c[i].access = (wr_count + rd_count);
+		res->c[i].clock_cycles = total_count;
 	}
-	rk3288_dfi_start_hardware_counter(edev);
-
-	return busier_ch;
 }
 
 static int rk3288_dfi_get_event(struct devfreq_event_dev *edev,
 				struct devfreq_event_data *edata)
 {
-	struct rockchip_dfi *info = devfreq_event_get_drvdata(edev);
-	int busier_ch;
+	struct rockchip_dfi *dfi = devfreq_event_get_drvdata(edev);
+	struct dmc_count count;
+	struct dmc_count *last = &dfi->last_event_count;
+	u32 access = 0, clock_cycles = 0;
+	int i;
 	unsigned long flags;
 
 	local_irq_save(flags);
-	busier_ch = rk3288_dfi_get_busier_ch(edev);
+	rk3288_dfi_stop_hardware_counter(edev);
+	rk3288_dfi_read_counters(dfi, &count);
+	rk3288_dfi_start_hardware_counter(edev);
 	local_irq_restore(flags);
 
-	edata->load_count = info->ch_usage[busier_ch].access;
-	edata->total_count = info->ch_usage[busier_ch].total;
+	/* We can only report one channel, so find the busiest one */
+	for (i = 0; i < dfi->max_channels; i++) {
+		u32 a, c;
+
+		if (!(dfi->channel_mask & BIT(i)))
+			continue;
+
+		a = count.c[i].access - last->c[i].access;
+		c = count.c[i].clock_cycles - last->c[i].clock_cycles;
+
+		if (a > access) {
+			access = a;
+			clock_cycles = c;
+		}
+	}
+
+	edata->load_count = access * 4;
+	edata->total_count = clock_cycles;
+
+	dfi->last_event_count = count;
 
 	return 0;
 }
@@ -967,9 +977,6 @@ static __maybe_unused int rk3399_dfi_init(struct rockchip_dfi *dfi)
 	regmap_read(regmap_pmu, RK3399_PMUGRF_OS_REG2, &val);
 	dfi->ddr_type = FIELD_GET(RK3399_PMUGRF_OS_REG2_DDRTYPE, val);
 
-	dfi->channel_mask = GENMASK(1, 0);
-	dfi->max_channels = 2;
-
 	dfi->buswidth[0] = FIELD_GET(RK3399_PMUGRF_OS_REG2_BW_CH0, val) == 0 ? 4 : 2;
 	dfi->buswidth[1] = FIELD_GET(RK3399_PMUGRF_OS_REG2_BW_CH1, val) == 0 ? 4 : 2;
 
@@ -978,7 +985,8 @@ static __maybe_unused int rk3399_dfi_init(struct rockchip_dfi *dfi)
 
 	regmap_read(dfi->regmap_pmu, PMUGRF_OS_REG2, &val);
 	dfi->dram_type = READ_DRAMTYPE_INFO(val);
-	//data->ch_msk = READ_CH_INFO(val);
+	dfi->channel_mask = READ_CH_INFO(val);
+	dfi->max_channels = 2;
 
 	return 0;
 };
@@ -1069,7 +1077,9 @@ static __maybe_unused __init int px30_dfi_init(struct rockchip_dfi *dfi)
 		dfi->dram_type = READ_DRAMTYPE_INFO_V3(val_2, val_3);
 	else
 		dfi->dram_type = READ_DRAMTYPE_INFO(val_2);
-	//dfi->ch_msk = 1;
+	dfi->channel_mask = 1;
+	dfi->max_channels = 2;
+
 	dfi->clk = NULL;
 
 	desc->ops = &rockchip_dfi_ops;
@@ -1099,7 +1109,8 @@ static __maybe_unused __init int rk3288_dfi_init(struct rockchip_dfi *dfi)
 
 	regmap_read(dfi->regmap_pmu, RK3288_PMU_SYS_REG2, &val);
 	dfi->dram_type = READ_DRAMTYPE_INFO(val);
-	//data->ch_msk = READ_CH_INFO(val);
+	dfi->channel_mask = READ_CH_INFO(val);
+	dfi->max_channels = 2;
 
 	if (dfi->dram_type == DDR3)
 		regmap_write(dfi->regmap_grf, RK3288_GRF_SOC_CON4,
@@ -1140,7 +1151,9 @@ static __maybe_unused __init int rk3328_dfi_init(struct rockchip_dfi *dfi)
 
 	regmap_read(dfi->regmap_grf, RK3328_GRF_OS_REG2, &val);
 	dfi->dram_type = READ_DRAMTYPE_INFO(val);
-	//dfi->ch_msk = 1;
+	dfi->channel_mask = 1;
+	dfi->max_channels = 2;
+
 	dfi->clk = NULL;
 
 	desc->ops = &rockchip_dfi_ops;
