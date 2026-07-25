@@ -585,7 +585,7 @@ static int jpgdec_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int jpgdec_remove(struct platform_device *pdev)
+static void jpgdec_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct jpgdec_dev *dec = platform_get_drvdata(pdev);
@@ -593,8 +593,6 @@ static int jpgdec_remove(struct platform_device *pdev)
 	dev_info(dev, "remove device\n");
 	mpp_dev_remove(&dec->mpp);
 	jpgdec_procfs_remove(&dec->mpp);
-
-	return 0;
 }
 
 static void jpgdec_shutdown(struct platform_device *pdev)

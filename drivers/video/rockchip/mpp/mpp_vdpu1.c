@@ -827,7 +827,7 @@ static int vdpu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int vdpu_remove(struct platform_device *pdev)
+static void vdpu_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct vdpu_dev *dec = platform_get_drvdata(pdev);
@@ -835,8 +835,6 @@ static int vdpu_remove(struct platform_device *pdev)
 	dev_info(dev, "remove device\n");
 	mpp_dev_remove(&dec->mpp);
 	vdpu_procfs_remove(&dec->mpp);
-
-	return 0;
 }
 
 static void vdpu_shutdown(struct platform_device *pdev)

@@ -1138,7 +1138,7 @@ static int rkvdec2_free_rcbbuf(struct platform_device *pdev, struct rkvdec2_dev 
 	return 0;
 }
 
-static int rkvdec2_remove(struct platform_device *pdev)
+static void rkvdec2_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct rkvdec2_dev *dec = platform_get_drvdata(pdev);
@@ -1147,8 +1147,6 @@ static int rkvdec2_remove(struct platform_device *pdev)
 	rkvdec2_free_rcbbuf(pdev, dec);
 	mpp_dev_remove(&dec->mpp);
 	rkvdec2_procfs_remove(&dec->mpp);
-
-	return 0;
 }
 
 static void rkvdec2_shutdown(struct platform_device *pdev)

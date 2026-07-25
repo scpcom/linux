@@ -1482,7 +1482,7 @@ failed_get_irq:
 	return ret;
 }
 
-static int rkvenc_remove(struct platform_device *pdev)
+static void rkvenc_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct rkvenc_dev *enc = platform_get_drvdata(pdev);
@@ -1490,8 +1490,6 @@ static int rkvenc_remove(struct platform_device *pdev)
 	dev_info(dev, "remove device\n");
 	mpp_dev_remove(&enc->mpp);
 	rkvenc_procfs_remove(&enc->mpp);
-
-	return 0;
 }
 
 static void rkvenc_shutdown(struct platform_device *pdev)

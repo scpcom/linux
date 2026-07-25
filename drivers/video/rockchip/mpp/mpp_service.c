@@ -373,7 +373,7 @@ fail_register:
 	return ret;
 }
 
-static int mpp_service_remove(struct platform_device *pdev)
+static void mpp_service_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mpp_service *srv = platform_get_drvdata(pdev);
@@ -388,8 +388,6 @@ static int mpp_service_remove(struct platform_device *pdev)
 	mpp_remove_service(srv);
 	class_destroy(srv->cls);
 	mpp_procfs_remove(srv);
-
-	return 0;
 }
 
 static const struct of_device_id mpp_dt_ids[] = {

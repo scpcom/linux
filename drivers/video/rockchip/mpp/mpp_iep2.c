@@ -969,7 +969,7 @@ static int iep2_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int iep2_remove(struct platform_device *pdev)
+static void iep2_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct iep2_dev *iep = platform_get_drvdata(pdev);
@@ -979,8 +979,6 @@ static int iep2_remove(struct platform_device *pdev)
 	dev_info(dev, "remove device\n");
 	mpp_dev_remove(&iep->mpp);
 	iep2_procfs_remove(&iep->mpp);
-
-	return 0;
 }
 
 static void iep2_shutdown(struct platform_device *pdev)
