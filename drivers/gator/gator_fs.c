@@ -44,8 +44,10 @@ static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
         inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
         inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
         inode->i_atime = inode->i_mtime = inode->__i_ctime = current_time(inode);
+#else
+	inode_set_atime_to_ts(inode, inode_set_mtime_to_ts(inode, inode_set_ctime_to_ts(inode, current_time(inode))));
 #endif
     }
     return inode;
