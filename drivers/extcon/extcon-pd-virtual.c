@@ -365,12 +365,11 @@ static int vpd_extcon_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int vpd_extcon_remove(struct platform_device *pdev)
+static void vpd_extcon_remove(struct platform_device *pdev)
 {
 	struct virtual_pd *vpd = platform_get_drvdata(pdev);
 
 	regulator_disable(vpd->dp_pwr);
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
