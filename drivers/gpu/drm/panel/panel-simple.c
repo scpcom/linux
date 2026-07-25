@@ -489,8 +489,8 @@ int panel_simple_loader_protect(struct drm_panel *panel)
 		return err;
 	}
 
-	p->prepared = true;
-	p->enabled = true;
+	p->base.prepared = true;
+	p->base.enabled = true;
 
 	return 0;
 }
@@ -808,7 +808,7 @@ static int dcs_bl_update_status(struct backlight_device *bl)
 	struct mipi_dsi_device *dsi = p->dsi;
 	int ret;
 
-	if (!p->prepared)
+	if (!p->base.prepared)
 		return 0;
 
 	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
@@ -829,7 +829,7 @@ static int dcs_bl_get_brightness(struct backlight_device *bl)
 	u16 brightness = bl->props.brightness;
 	int ret;
 
-	if (!p->prepared)
+	if (!p->base.prepared)
 		return 0;
 
 	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
