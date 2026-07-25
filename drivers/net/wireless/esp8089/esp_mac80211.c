@@ -141,7 +141,11 @@ static int esp_op_start(struct ieee80211_hw *hw)
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0))
+static void esp_op_stop(struct ieee80211_hw *hw, bool suspend)
+#else
 static void esp_op_stop(struct ieee80211_hw *hw)
+#endif
 {
 	struct esp_pub *epub;
 
