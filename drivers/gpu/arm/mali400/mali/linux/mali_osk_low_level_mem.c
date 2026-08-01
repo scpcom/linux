@@ -41,7 +41,7 @@ void _mali_osk_mem_unmapioregion(uintptr_t phys, u32 size, mali_io_address virt)
 	iounmap((void *)virt);
 }
 
-_mali_osk_errcode_t inline _mali_osk_mem_reqregion(uintptr_t phys, u32 size, const char *description)
+inline _mali_osk_errcode_t _mali_osk_mem_reqregion(uintptr_t phys, u32 size, const char *description)
 {
 #if MALI_LICENSE_IS_GPL
 	return _MALI_OSK_ERR_OK; /* GPL driver gets the mem region for the resources registered automatically */
@@ -50,24 +50,24 @@ _mali_osk_errcode_t inline _mali_osk_mem_reqregion(uintptr_t phys, u32 size, con
 #endif
 }
 
-void inline _mali_osk_mem_unreqregion(uintptr_t phys, u32 size)
+inline void _mali_osk_mem_unreqregion(uintptr_t phys, u32 size)
 {
 #if !MALI_LICENSE_IS_GPL
 	release_mem_region(phys, size);
 #endif
 }
 
-void inline _mali_osk_mem_iowrite32_relaxed(volatile mali_io_address addr, u32 offset, u32 val)
+inline void _mali_osk_mem_iowrite32_relaxed(volatile mali_io_address addr, u32 offset, u32 val)
 {
 	__raw_writel(cpu_to_le32(val), ((u8 *)addr) + offset);
 }
 
-u32 inline _mali_osk_mem_ioread32(volatile mali_io_address addr, u32 offset)
+inline u32 _mali_osk_mem_ioread32(volatile mali_io_address addr, u32 offset)
 {
 	return ioread32(((u8 *)addr) + offset);
 }
 
-void inline _mali_osk_mem_iowrite32(volatile mali_io_address addr, u32 offset, u32 val)
+inline void _mali_osk_mem_iowrite32(volatile mali_io_address addr, u32 offset, u32 val)
 {
 	iowrite32(val, ((u8 *)addr) + offset);
 }
