@@ -19,6 +19,7 @@ jobs:
         - uses: dorny/paths-filter@v4
           id: filter
           with:
+            base: 'sbc-6.6.y'
             filters: |
               src:
               - '.github/**'
