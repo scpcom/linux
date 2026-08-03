@@ -1032,7 +1032,7 @@ static int get_message_v2(struct mvx_fw *fw,
 			break;
 		}
 
-		strlcpy(msg->error.message, fw_msg.error.message,
+		strscpy(msg->error.message, fw_msg.error.message,
 			min(sizeof(msg->error.message),
 			    sizeof(fw_msg.error.message)));
 
