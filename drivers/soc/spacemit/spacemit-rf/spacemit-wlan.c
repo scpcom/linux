@@ -161,14 +161,12 @@ static int spacemit_wlan_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int spacemit_wlan_remove(struct platform_device *pdev)
+static void spacemit_wlan_remove(struct platform_device *pdev)
 {
 	struct wlan_pwrseq *pwrseq = platform_get_drvdata(pdev);
 
 	mutex_destroy(&pwrseq->wlan_mutex);
 	pdata = NULL;
-
-	return 0;
 }
 
 static const struct of_device_id spacemit_wlan_ids[] = {
