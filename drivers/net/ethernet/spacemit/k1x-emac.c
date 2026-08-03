@@ -2776,7 +2776,7 @@ err_netdev:
 	return ret;
 }
 
-static int emac_remove(struct platform_device *pdev)
+static void emac_remove(struct platform_device *pdev)
 {
 	struct emac_priv *priv = platform_get_drvdata(pdev);
 
@@ -2788,7 +2788,6 @@ static int emac_remove(struct platform_device *pdev)
 	clk_disable_unprepare(priv->mac_clk);
 	if (priv->ref_clk_frm_soc)
 		clk_disable_unprepare(priv->phy_clk);
-	return 0;
 }
 
 static void emac_shutdown(struct platform_device *pdev)
