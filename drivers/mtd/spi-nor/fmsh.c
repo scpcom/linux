@@ -8,9 +8,9 @@
 #include "core.h"
 
 static const struct flash_info fmsh_nor_parts[] = {
-	{ "FM25Q64AI3", INFO(0xa14017, 0, 4 * 1024,  2048)
-		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_QUAD_READ |
-			      SPI_NOR_DUAL_READ) },
+	{ .name = "FM25Q64AI3", .id = SNOR_ID(0xa1, 0x40, 0x17), .size = SZ_8M,
+		.no_sfdp_flags = SECT_4K | SPI_NOR_QUAD_READ |
+			      SPI_NOR_DUAL_READ },
 };
 
 const struct spi_nor_manufacturer spi_nor_fmsh = {
