@@ -2281,7 +2281,7 @@ static void gadget_release(struct device *_dev)
 	complete(&udc->done);
 }
 
-static int mv_udc_remove(struct platform_device *pdev)
+static void mv_udc_remove(struct platform_device *pdev)
 {
 	struct mv_udc *udc;
 
@@ -2309,8 +2309,6 @@ static int mv_udc_remove(struct platform_device *pdev)
 
 	/* free dev, wait for the release() finished */
 	wait_for_completion(&udc->done);
-
-	return 0;
 }
 
 static int mv_udc_dt_parse(struct platform_device *pdev,
