@@ -1316,7 +1316,7 @@ k1x_pcie_get_features(struct dw_pcie_ep *ep)
 }
 
 static struct dw_pcie_ep_ops pcie_ep_ops = {
-	.ep_init = k1x_pcie_ep_init,
+	.init =  k1x_pcie_ep_init,
 	.raise_irq = k1x_pcie_raise_irq,
 	//.enable_irq = k1x_pcie_ep_enable_irq,
 	//.disable_irq = k1x_pcie_ep_disable_irq,
