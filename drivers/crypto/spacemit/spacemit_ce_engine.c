@@ -1857,14 +1857,13 @@ err_ioremap:
 	return -EINVAL;
 }
 
-static int crypto_engine_remove(struct platform_device *pdev)
+static void crypto_engine_remove(struct platform_device *pdev)
 {
 	struct aes_clk_reset_ctrl *ctrl = dev_get_drvdata(&pdev->dev);
 	dma_free_noncoherent(dev, SPACEMIT_AES_BUFFER_LEN, in_buffer, dma_addr_in, DMA_TO_DEVICE);
 	dma_free_noncoherent(dev, SPACEMIT_AES_BUFFER_LEN, out_buffer, dma_addr_out, DMA_FROM_DEVICE);
 	clk_disable_unprepare(ctrl->clk);
 	reset_control_assert(ctrl->reset);
-	return 0;
 }
 
 
