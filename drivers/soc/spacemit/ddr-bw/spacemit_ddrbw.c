@@ -1174,12 +1174,10 @@ static int ddraxi_mon_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ddraxi_mon_remove(struct platform_device *pdev)
+static void ddraxi_mon_remove(struct platform_device *pdev)
 {
 	struct spacemit_ddraxi_mon_data *mon_data = platform_get_drvdata(pdev);
 	mon_data = NULL;
-
-	return 0;
 }
 
 static const struct of_device_id spacemit_ddraxi_dt_match[] = {
