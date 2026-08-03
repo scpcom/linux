@@ -32,7 +32,7 @@
 #include <linux/clk.h>
 #include <linux/of.h>
 #include <linux/platform_data/k1x_ci_usb.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <dt-bindings/usb/k1x_ci_usb.h>
 #include <linux/power_supply.h>
 #include <linux/reset.h>
