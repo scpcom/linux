@@ -265,7 +265,7 @@ static int spacemit_drm_bind(struct device *dev)
 	err = drm_dev_register(drm, 0);
 	if (err < 0)
 		goto err_kms_helper_poll_fini;
-	drm_fbdev_generic_setup(drm, 32);
+	drm_fbdev_dma_setup(drm, 32);
 
 	return 0;
 
