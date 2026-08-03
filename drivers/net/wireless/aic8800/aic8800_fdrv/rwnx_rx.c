@@ -421,7 +421,11 @@ static bool rwnx_rx_data_skb(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_vif,
 	if (amsdu) {
 		int count;
 		ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+								 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL, 0);
+#else
 								 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL);
+#endif
 
 		count = skb_queue_len(&list);
 		if (count > ARRAY_SIZE(rwnx_hw->stats.amsdus_rx))
