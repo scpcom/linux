@@ -186,7 +186,7 @@ static const struct file_operations spacemit_drm_fops = {
 	.compat_ioctl	= drm_compat_ioctl,
 	.poll			= drm_poll,
 	.read			= drm_read,
-	.llseek		= no_llseek,
+	.llseek		= noop_llseek,
 	.mmap		= spacemit_gem_mmap,
 };
 
