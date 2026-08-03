@@ -898,7 +898,7 @@ err_misc:
 	return rval;
 }
 
-static int v2d_remove(struct platform_device *pdev)
+static void v2d_remove(struct platform_device *pdev)
 {
 	struct v2d_info *info = platform_get_drvdata(pdev);
 	struct device *dev = &info->pdev->dev;
@@ -931,8 +931,6 @@ static int v2d_remove(struct platform_device *pdev)
 	}
 
 	v2dInfo = NULL;
-
-	return 0;
 }
 
 static const struct of_device_id v2d_drv_match_table[] = {
