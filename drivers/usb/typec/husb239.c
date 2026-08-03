@@ -1045,12 +1045,6 @@ static int husb239_typec_switch_probe(struct husb239 *husb239)
 	return 0;
 }
 
-static enum power_supply_usb_type husb239_psy_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_C,
-	POWER_SUPPLY_USB_TYPE_PD,
-	POWER_SUPPLY_USB_TYPE_PD_PPS,
-};
-
 static const enum power_supply_property husb239_psy_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_USB_TYPE,
@@ -1136,8 +1130,9 @@ static int husb239_psy_register(struct husb239 *husb239)
 
 	psy_desc->name = psy_name;
 	psy_desc->type = POWER_SUPPLY_TYPE_USB;
-	psy_desc->usb_types = husb239_psy_usb_types;
-	psy_desc->num_usb_types = ARRAY_SIZE(husb239_psy_usb_types);
+	psy_desc->usb_types = BIT(POWER_SUPPLY_USB_TYPE_C)  |
+			      BIT(POWER_SUPPLY_USB_TYPE_PD) |
+			      BIT(POWER_SUPPLY_USB_TYPE_PD_PPS);
 	psy_desc->properties = husb239_psy_props;
 	psy_desc->num_properties = ARRAY_SIZE(husb239_psy_props);
 
