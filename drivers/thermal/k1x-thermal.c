@@ -9,6 +9,7 @@
 #include <linux/of_device.h>
 #include <linux/thermal.h>
 #include <linux/reset.h>
+#include "thermal_core.h"
 #include "thermal_hwmon.h"
 #include "k1x-thermal.h"
 
