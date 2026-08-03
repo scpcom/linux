@@ -298,9 +298,9 @@ static int check_chrg_ac_psy(struct device *dev, void *data)
 static void get_chrg_psy(void)
 {
 	if(!chrg_usb_psy)
-		class_for_each_device(power_supply_class, NULL, NULL, check_chrg_usb_psy);
+		power_supply_for_each_device(NULL, check_chrg_usb_psy);
 	if(!chrg_ac_psy)
-		class_for_each_device(power_supply_class, NULL, NULL, check_chrg_ac_psy);
+		power_supply_for_each_device(NULL, check_chrg_ac_psy);
 }
 
 static int get_charge_state(void)
