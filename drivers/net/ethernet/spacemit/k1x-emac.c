@@ -2317,7 +2317,7 @@ static int emac_mdio_deinit(struct emac_priv *priv)
 }
 
 static int emac_get_ts_info(struct net_device *dev,
-			      struct ethtool_ts_info *info)
+			      struct kernel_ethtool_ts_info *info)
 {
 	struct emac_priv *priv = netdev_priv(dev);
 
