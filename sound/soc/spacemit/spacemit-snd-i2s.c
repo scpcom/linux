@@ -460,15 +460,13 @@ static int asoc_i2s_sspa_probe(struct platform_device *pdev)
 					       &i2s_sspa_dai[dai_id], 1);
 }
 
-static int asoc_i2s_sspa_remove(struct platform_device *pdev)
+static void asoc_i2s_sspa_remove(struct platform_device *pdev)
 {
 	struct sspa_priv *priv = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
 	reset_control_assert(priv->sspa_rst);
 	snd_soc_unregister_component(&pdev->dev);
-
-	return 0;
 }
 
 #ifdef CONFIG_OF
