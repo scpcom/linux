@@ -1053,6 +1053,10 @@ static unsigned int agg_buf_sz = 16384;
 
 #define RTL_LIMITED_TSO_SIZE	(size_to_mtu(agg_buf_sz) - sizeof(struct tx_desc))
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
+
 static
 int get_registers(struct r8152 *tp, u16 value, u16 index, u16 size, void *data)
 {
