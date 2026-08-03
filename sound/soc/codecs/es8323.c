@@ -892,7 +892,7 @@ static int es8323_i2c_probe(struct i2c_client *i2c)
 		es8323->earphone_sw_gpio = -1;
 	} else {
 		ret = devm_gpio_request_one(&i2c->dev, es8323->earphone_sw_gpio,
-			GPIOF_DIR_OUT, NULL);
+			GPIOF_OUT_INIT_LOW, NULL);
 		if (ret) {
 			dev_err(&i2c->dev, "Failed to request earphone_sw_gpio\n");
 			return ret;
