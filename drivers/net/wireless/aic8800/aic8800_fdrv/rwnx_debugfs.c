@@ -16,6 +16,7 @@
 #include <linux/debugfs.h>
 #include <linux/string.h>
 #include <linux/sort.h>
+#include <linux/vmalloc.h>
 
 #include "rwnx_debugfs.h"
 #include "rwnx_msg_tx.h"

@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/firmware.h>
 #include <linux/delay.h>
+#include <linux/vmalloc.h>
 
 #include "rwnx_platform.h"
 #include "reg_access.h"
