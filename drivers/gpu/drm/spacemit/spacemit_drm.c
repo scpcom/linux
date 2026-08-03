@@ -436,10 +436,9 @@ static int spacemit_drm_probe(struct platform_device *pdev)
 	return spacemit_drm_of_component_probe(&pdev->dev, compare_of,  &drm_component_ops);
 }
 
-static int spacemit_drm_remove(struct platform_device *pdev)
+static void spacemit_drm_remove(struct platform_device *pdev)
 {
 	component_master_del(&pdev->dev, &drm_component_ops);
-	return 0;
 }
 
 static void spacemit_drm_shutdown(struct platform_device *pdev)

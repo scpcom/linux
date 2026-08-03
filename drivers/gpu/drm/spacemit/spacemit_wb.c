@@ -239,10 +239,9 @@ static int spacemit_wb_probe(struct platform_device *pdev)
 	return component_add(&pdev->dev, &spacemit_wb_component_ops);
 }
 
-static int spacemit_wb_remove(struct platform_device *pdev)
+static void spacemit_wb_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &spacemit_wb_component_ops);
-	return 0;
 }
 
 static const struct of_device_id spacemit_wb_of_match[] = {

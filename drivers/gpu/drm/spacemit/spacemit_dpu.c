@@ -999,10 +999,9 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	return component_add(dev, &dpu_component_ops);
 }
 
-static int spacemit_dpu_remove(struct platform_device *pdev)
+static void spacemit_dpu_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &dpu_component_ops);
-	return 0;
 }
 
 static int dpu_pm_suspend(struct device *dev)

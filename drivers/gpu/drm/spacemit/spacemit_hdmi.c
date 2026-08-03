@@ -1007,13 +1007,11 @@ static int spacemit_hdmi_probe(struct platform_device *pdev)
 	return component_add(&pdev->dev, &spacemit_hdmi_ops);
 }
 
-static int spacemit_hdmi_remove(struct platform_device *pdev)
+static void spacemit_hdmi_remove(struct platform_device *pdev)
 {
 	DRM_DEBUG("%s() \n", __func__);
 
 	component_del(&pdev->dev, &spacemit_hdmi_ops);
-
-	return 0;
 }
 
 static int hdmi_rt_pm_resume(struct device *dev)
