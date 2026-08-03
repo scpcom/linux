@@ -319,7 +319,7 @@ static int k1x_thermal_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int k1x_thermal_remove(struct platform_device *pdev)
+static void k1x_thermal_remove(struct platform_device *pdev)
 {
 	int i;
 	struct k1x_thermal_sensor *s = platform_get_drvdata(pdev);
@@ -332,8 +332,6 @@ static int k1x_thermal_remove(struct platform_device *pdev)
 		devm_thermal_of_zone_unregister(&pdev->dev, s->sdesc[i].tzd);
 		devm_free_irq(&pdev->dev, s->irq, s->sdesc + i);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id of_k1x_thermal_match[] = {
