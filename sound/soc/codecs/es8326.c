@@ -1701,7 +1701,7 @@ static int es8326_i2c_probe(struct i2c_client *i2c)
 		es8326->spk_ctl_gpio = -1;
 	} else {
 		ret = devm_gpio_request_one(&i2c->dev, es8326->spk_ctl_gpio,
-					    GPIOF_DIR_OUT, NULL);
+					    GPIOF_OUT_INIT_LOW, NULL);
 		if (ret) {
 			dev_err(&i2c->dev, "Failed to request spk_ctl_gpio\n");
 			return ret;
