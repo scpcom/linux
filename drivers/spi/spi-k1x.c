@@ -526,18 +526,6 @@ static void pump_transfers(struct work_struct *work)
 
 	/* Check if we can DMA this transfer */
 	if (!k1x_spi_dma_is_possible(transfer->len) && chip->enable_dma) {
-		/* reject already-mapped transfers; PIO won't always work */
-		if (message->is_dma_mapped
-				|| transfer->rx_dma || transfer->tx_dma) {
-			dev_err(&drv_data->pdev->dev,
-				"pump_transfers: mapped transfer length of "
-				"%u is greater than %d\n",
-				transfer->len, MAX_DMA_LEN);
-			message->status = -EINVAL;
-			giveback(drv_data);
-			return;
-		}
-
 		/* warn ... we force this to PIO mode */
 		dev_warn_ratelimited(&message->spi->dev,
 				     "pump_transfers: DMA disabled for transfer length %ld "
