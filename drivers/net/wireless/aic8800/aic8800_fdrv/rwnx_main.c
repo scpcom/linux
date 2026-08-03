@@ -707,8 +707,12 @@ static void rwnx_csa_finish(struct work_struct *ws)
 		cfg80211_disconnected(vif->ndev, 0, NULL, 0, 0, GFP_KERNEL);
 		#endif
 	} else {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+		wiphy_lock(vif->wdev.wiphy);
+#else
 		mutex_lock(&vif->wdev.mtx);
 		__acquire(&vif->wdev.mtx);
+#endif
 		spin_lock_bh(&rwnx_hw->cb_lock);
 		rwnx_chanctx_unlink(vif);
 		rwnx_chanctx_link(vif, csa->ch_idx, &csa->chandef);
@@ -723,8 +727,12 @@ static void rwnx_csa_finish(struct work_struct *ws)
 #else
 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef);
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+		wiphy_unlock(vif->wdev.wiphy);
+#else
 		mutex_unlock(&vif->wdev.mtx);
 		__release(&vif->wdev.mtx);
+#endif
 	}
 	rwnx_del_csa(vif);
 }
