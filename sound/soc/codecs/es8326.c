@@ -38,6 +38,8 @@ struct es8326_priv {
 	 * while enabling or disabling or during an irq.
 	 */
 	struct mutex lock;
+	u8 mic1_src;
+	u8 mic2_src;
 	u8 jack_pol;
 	u8 interrupt_src;
 	u8 interrupt_clk;
@@ -490,6 +492,9 @@ static const struct _coeff_div coeff_div_v3[] = {
 	{3072, 8000, 24576000, 0x60, 0x02, 0x10, 0x35, 0x8A, 0x1B, 0x1F, 0x7F},
 	{3250, 8000, 26000000, 0x0C, 0x18, 0x0F, 0x2D, 0x8A, 0x0A, 0x27, 0x27},
 };
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static void es8326_enable_spk(struct es8326_priv *es8326, bool enable);
+#endif
 
 static inline int get_coeff(int mclk, int rate, int array,
 				const struct _coeff_div *coeff_div)
@@ -1150,6 +1155,7 @@ static int es8326_calibrate(struct snd_soc_component *component)
 	return 0;
 }
 
+#ifndef SPACEMIT_CONFIG_CODEC_ES8326
 static void es8326_init(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
@@ -1232,6 +1238,7 @@ static void es8326_init(struct snd_soc_component *component)
 	msleep(200);
 	regmap_write(es8326->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
 }
+#endif
 
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 static int es8326_init(struct snd_soc_component *component)
@@ -1538,6 +1545,20 @@ static int es8326_probe(struct snd_soc_component *component)
 	es8326->component = component;
 	es8326->jd_inverted = device_property_read_bool(component->dev,
 							"everest,jack-detect-inverted");
+
+	ret = device_property_read_u8(component->dev, "everest,mic1-src", &es8326->mic1_src);
+	if (ret != 0) {
+		dev_dbg(component->dev, "mic1-src return %d", ret);
+		es8326->mic1_src = ES8326_ADC_AMIC;
+	}
+	dev_dbg(component->dev, "mic1-src %x", es8326->mic1_src);
+
+	ret = device_property_read_u8(component->dev, "everest,mic2-src", &es8326->mic2_src);
+	if (ret != 0) {
+		dev_dbg(component->dev, "mic2-src return %d", ret);
+		es8326->mic2_src = ES8326_ADC_DMIC;
+	}
+	dev_dbg(component->dev, "mic2-src %x", es8326->mic2_src);
 
 	ret = device_property_read_u8(component->dev, "everest,jack-pol", &es8326->jack_pol);
 	if (ret != 0) {
