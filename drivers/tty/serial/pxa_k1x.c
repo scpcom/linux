@@ -350,7 +350,8 @@ static inline void receive_chars(struct uart_pxa_port *up, int *status)
 
 static void transmit_chars(struct uart_pxa_port *up)
 {
-	struct circ_buf *xmit = &up->port.state->xmit;
+	struct tty_port *tport = &up->port.state->port;
+	unsigned char *tail;
 	int count;
 
 	if (up->port.x_char) {
@@ -359,7 +360,7 @@ static void transmit_chars(struct uart_pxa_port *up)
 		up->port.x_char = 0;
 		return;
 	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&up->port)) {
+	if (kfifo_is_empty(&tport->xmit_fifo) || uart_tx_stopped(&up->port)) {
 		spin_lock_irqsave(&up->port.lock, up->flags);
 		serial_pxa_stop_tx(&up->port);
 		spin_unlock_irqrestore(&up->port.lock, up->flags);
@@ -368,18 +369,20 @@ static void transmit_chars(struct uart_pxa_port *up)
 
 	count = up->port.fifosize / 2;
 	do {
-		serial_out(up, UART_TX, xmit->buf[xmit->tail]);
-		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+		if (kfifo_out_linear_ptr(&tport->xmit_fifo, &tail, 1) <= 0)
+			break;
+		serial_out(up, UART_TX, *tail);
+		kfifo_skip_count(&tport->xmit_fifo, 1);
 		up->port.icount.tx++;
-		if (uart_circ_empty(xmit))
+		if (kfifo_is_empty(&tport->xmit_fifo))
 			break;
 	} while (--count > 0);
 
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
 		uart_write_wakeup(&up->port);
 
 
-	if (uart_circ_empty(xmit))
+	if (kfifo_is_empty(&tport->xmit_fifo))
 	{
 		spin_lock_irqsave(&up->port.lock, up->flags);
 		serial_pxa_stop_tx(&up->port);
@@ -963,7 +966,7 @@ static void pxa_uart_transmit_dma_cb(void *data)
 {
 	struct uart_pxa_port *up = (struct uart_pxa_port *)data;
 	struct uart_pxa_dma *pxa_dma = &up->uart_dma;
-	struct circ_buf *xmit = &up->port.state->xmit;
+	struct tty_port *tport = &up->port.state->port;
 
 	if (up->from_resume) {
 		up->from_resume = false;
@@ -993,11 +996,11 @@ static void pxa_uart_transmit_dma_cb(void *data)
 		up->port.x_char = 0;
 	}
 
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS) {
+	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS) {
 		uart_write_wakeup(&up->port);
 	}
 
-	if (!uart_circ_empty(xmit)) {
+	if (!kfifo_is_empty(&tport->xmit_fifo)) {
 		tasklet_schedule(&pxa_dma->tklet);
 	}
 }
@@ -1104,10 +1107,10 @@ static void pxa_uart_dma_uninit(struct uart_pxa_port *up)
 static void uart_task_action(unsigned long data)
 {
 	struct uart_pxa_port *up = (struct uart_pxa_port *)data;
-	struct circ_buf *xmit = &up->port.state->xmit;
+	struct tty_port *tport = &up->port.state->port;
 	unsigned char *tmp = up->uart_dma.txdma_addr;
 	unsigned long flags;
-	int count = 0, c;
+	int count = 0, c, tail;
 
 	/* if the tx is stop or the uart device is suspended, just return. */
 	/* if port is shutdown,just return. */
@@ -1124,13 +1127,13 @@ static void uart_task_action(unsigned long data)
 
 	up->uart_dma.dma_status |= TX_DMA_RUNNING;
 	while (1) {
-		c = CIRC_CNT_TO_END(xmit->head, xmit->tail, UART_XMIT_SIZE);
+		c = kfifo_out_linear(&tport->xmit_fifo, &tail, UART_XMIT_SIZE);
 		if (c <= 0) {
 			break;
 		}
 
-		memcpy(tmp, xmit->buf + xmit->tail, c);
-		xmit->tail = (xmit->tail + c) & (UART_XMIT_SIZE - 1);
+		memcpy(tmp, tport->xmit_buf + tail, c);
+		kfifo_skip_count(&tport->xmit_fifo, c);
 		tmp += c;
 		count += c;
 		up->port.icount.tx += c;
