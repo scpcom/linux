@@ -392,7 +392,7 @@ static int k1x_gpio_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	gpiochip_add(&k1x_chip->chip);
+	gpiochip_add_data(&k1x_chip->chip, NULL);
 
 	/* clear all GPIO edge detects */
 	for (i = 0; i < k1x_chip->nbank; i++) {
