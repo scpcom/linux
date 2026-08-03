@@ -642,7 +642,7 @@ static struct crypto_larval *spacemit_crypto_larval_alloc(const char *name, u32 
 	larval->alg.cra_priority = -1;
 	larval->alg.cra_destroy = spacemit_crypto_larval_destroy;
 
-	strlcpy(larval->alg.cra_name, name, CRYPTO_MAX_ALG_NAME);
+	strscpy(larval->alg.cra_name, name, CRYPTO_MAX_ALG_NAME);
 	init_completion(&larval->completion);
 
 	return larval;
