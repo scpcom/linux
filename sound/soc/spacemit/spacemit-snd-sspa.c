@@ -391,14 +391,13 @@ static int spacemit_snd_sspa_pdev_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int spacemit_snd_sspa_pdev_remove(struct platform_device *pdev)
+static void spacemit_snd_sspa_pdev_remove(struct platform_device *pdev)
 {
 	struct sspa_priv *priv = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
 	reset_control_assert(priv->rst);
 	snd_soc_unregister_component(&pdev->dev);
-	return 0;
 }
 
 #ifdef CONFIG_OF
