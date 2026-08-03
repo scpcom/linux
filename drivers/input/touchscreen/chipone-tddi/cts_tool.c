@@ -1166,7 +1166,7 @@ static long cts_tool_ioctl(struct file *file, unsigned int cmd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static struct file_operations cts_tool_fops = {
     .owner = THIS_MODULE,
-    .llseek = no_llseek,
+    .llseek = noop_llseek,
     .open = cts_tool_open,
     .read = cts_tool_read,
     .write = cts_tool_write,
@@ -1174,7 +1174,7 @@ static struct file_operations cts_tool_fops = {
 };
 #else
 static struct proc_ops cts_tool_fops = {
-    .proc_lseek = no_llseek,
+    .proc_lseek = noop_llseek,
     .proc_open = cts_tool_open,
     .proc_read = cts_tool_read,
     .proc_write = cts_tool_write,
