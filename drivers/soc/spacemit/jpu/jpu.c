@@ -16,6 +16,7 @@
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 //#include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/pm_runtime.h>
