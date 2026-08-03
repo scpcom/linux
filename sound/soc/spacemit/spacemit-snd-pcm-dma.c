@@ -1363,10 +1363,9 @@ static int spacemit_snd_dma_pdev_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int spacemit_snd_dma_pdev_remove(struct platform_device *pdev)
+static void spacemit_snd_dma_pdev_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_component(&pdev->dev);
-	return 0;
 }
 
 #ifdef CONFIG_OF
