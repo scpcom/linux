@@ -703,10 +703,10 @@ static void pump_transfers(struct work_struct *work)
 	k1x_spi_write(drv_data, TOP_CTRL, top_ctrl);
 }
 
-static int k1x_spi_transfer_one_message(struct spi_master *master,
+static int k1x_spi_transfer_one_message(struct spi_controller *master,
 					   struct spi_message *msg)
 {
-	struct spi_driver_data *drv_data = spi_master_get_devdata(master);
+	struct spi_driver_data *drv_data = spi_controller_get_devdata(master);
 
 	drv_data->cur_msg = msg;
 	/* Initial message state*/
@@ -734,9 +734,9 @@ static int k1x_spi_transfer_one_message(struct spi_master *master,
 	return 0;
 }
 
-static int k1x_spi_unprepare_transfer(struct spi_master *master)
+static int k1x_spi_unprepare_transfer(struct spi_controller *master)
 {
-	struct spi_driver_data *drv_data = spi_master_get_devdata(master);
+	struct spi_driver_data *drv_data = spi_controller_get_devdata(master);
 
 	/* Disable the SSP now */
 	k1x_spi_write(drv_data, TOP_CTRL,
@@ -757,7 +757,7 @@ static int setup_cs(struct spi_device *spi, struct chip_data *chip)
 static int setup(struct spi_device *spi)
 {
 	struct chip_data *chip;
-	struct spi_driver_data *drv_data = spi_master_get_devdata(spi->master);
+	struct spi_driver_data *drv_data = spi_controller_get_devdata(spi->controller);
 	uint tx_thres, tx_hi_thres, rx_thres;
 
 	tx_thres = TX_THRESH_DFLT;
@@ -767,7 +767,7 @@ static int setup(struct spi_device *spi)
 	/* Only alloc on first setup */
 	chip = spi_get_ctldata(spi);
 	if (!chip) {
-		chip = devm_kzalloc(&spi->master->dev, sizeof(struct chip_data),
+		chip = devm_kzalloc(&spi->controller->dev, sizeof(struct chip_data),
 				GFP_KERNEL);
 		if (!chip)
 			return -ENOMEM;
@@ -823,9 +823,9 @@ static int setup(struct spi_device *spi)
 		chip->write = u32_writer;
 	}
 
-	if (spi->master->max_speed_hz != spi->max_speed_hz) {
-		spi->master->max_speed_hz = spi->max_speed_hz;
-		clk_set_rate(drv_data->clk, spi->master->max_speed_hz);
+	if (spi->controller->max_speed_hz != spi->max_speed_hz) {
+		spi->controller->max_speed_hz = spi->max_speed_hz;
+		clk_set_rate(drv_data->clk, spi->controller->max_speed_hz);
 	}
 
 	spi_set_ctldata(spi, chip);
@@ -856,7 +856,7 @@ static int k1x_spi_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct k1x_spi_master *platform_info;
-	struct spi_master *master = NULL;
+	struct spi_controller *master = NULL;
 	struct spi_driver_data *drv_data = NULL;
 	struct device_node *np = dev->of_node;
 	const struct of_device_id *id =
@@ -884,12 +884,12 @@ static int k1x_spi_probe(struct platform_device *pdev)
 			platform_info->enable_dma = 1;
 	}
 
-	master = spi_alloc_master(dev, sizeof(struct spi_driver_data));
+	master = spi_alloc_host(dev, sizeof(struct spi_driver_data));
 	if (!master) {
 		dev_err(&pdev->dev, "cannot alloc spi_master\n");
 		return -ENOMEM;
 	}
-	drv_data = spi_master_get_devdata(master);
+	drv_data = spi_controller_get_devdata(master);
 
 	iores = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (iores == NULL) {
@@ -1029,7 +1029,7 @@ static int k1x_spi_probe(struct platform_device *pdev)
 
 	/* Register with the SPI framework */
 	platform_set_drvdata(pdev, drv_data);
-	status = devm_spi_register_master(&pdev->dev, master);
+	status = devm_spi_register_controller(&pdev->dev, master);
 	if (status != 0) {
 		dev_err(&pdev->dev, "problem registering spi master\n");
 		goto out_error_clock_enabled;
@@ -1045,7 +1045,7 @@ out_error_clock_enabled:
 out_error_clk_check:
 	deinit_dvfm_constraint(drv_data);
 out_error_master_alloc:
-	spi_master_put(master);
+	spi_controller_put(master);
 	return status;
 }
 
@@ -1094,7 +1094,7 @@ static int k1x_spi_suspend(struct device *dev)
 	int status = 0;
 
 	pm_runtime_get_sync(dev);
-	status = spi_master_suspend(drv_data->master);
+	status = spi_controller_suspend(drv_data->master);
 	if (status != 0)
 		return status;
 	k1x_spi_write(drv_data, TOP_CTRL, 0);
@@ -1118,7 +1118,7 @@ static int k1x_spi_resume(struct device *dev)
 	}
 
 	/* Start the queue running */
-	status = spi_master_resume(drv_data->master);
+	status = spi_controller_resume(drv_data->master);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 	if (status != 0) {

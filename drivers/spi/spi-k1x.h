@@ -150,7 +150,7 @@ struct spi_driver_data {
 
 	/* SPI framework hookup */
 	enum k1x_ssp_type ssp_type;
-	struct spi_master *master;
+	struct spi_controller *master;
 
 	/* k1x hookup */
 	struct k1x_spi_master *master_info;

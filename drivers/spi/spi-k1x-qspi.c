@@ -1156,7 +1156,7 @@ static int k1x_qspi_check_buswidth(struct k1x_qspi *qspi, u8 width)
 static bool k1x_qspi_supports_op(struct spi_mem *mem,
 				 const struct spi_mem_op *op)
 {
-	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
+	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	int ret;
 
 	mutex_lock(&qspi->lock);
@@ -1219,7 +1219,7 @@ static bool k1x_qspi_supports_op(struct spi_mem *mem,
 static const char *k1x_qspi_get_name(struct spi_mem *mem)
 {
 
-	struct k1x_qspi *qspi = spi_master_get_devdata(mem->spi->master);
+	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	struct device *dev = qspi->dev;
 	const char *name;
 
@@ -1237,7 +1237,7 @@ static const char *k1x_qspi_get_name(struct spi_mem *mem)
 
 static int k1x_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 {
-	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
+	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	int err = 0;
 	u32 mask;
 	u32 reg;
@@ -1314,7 +1314,7 @@ static int k1x_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 
 static int k1x_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 {
-	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
+	struct k1x_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 
 	mutex_lock(&qspi->lock);
 	if (op->data.dir == SPI_MEM_DATA_OUT) {
@@ -1419,7 +1419,7 @@ static int k1x_qspi_probe(struct platform_device *pdev)
 	u32 qspi_bus_num = 0;
 	int host_irq = 0;
 
-	ctlr = spi_alloc_master(&pdev->dev, sizeof(struct k1x_qspi));
+	ctlr = spi_alloc_host(&pdev->dev, sizeof(struct k1x_qspi));
 	if (!ctlr)
 		return -ENOMEM;
 
