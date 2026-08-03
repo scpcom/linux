@@ -601,7 +601,7 @@ static int start_streaming(struct vb2_queue *q,
 	if (ret != 0 && atomic_read(&q->owned_by_drv_count) > 0) {
 		int i;
 
-		for (i = 0; i < q->num_buffers; ++i)
+		for (i = 0; i < vb2_get_num_buffers(q); ++i)
 			if (q->bufs[i]->state == VB2_BUF_STATE_ACTIVE)
 				vb2_buffer_done(q->bufs[i],
 						VB2_BUF_STATE_QUEUED);
@@ -641,7 +641,7 @@ static void stop_streaming(struct vb2_queue *q)
 	if (atomic_read(&q->owned_by_drv_count) > 0) {
 		int i;
 
-		for (i = 0; i < q->num_buffers; ++i)
+		for (i = 0; i < vb2_get_num_buffers(q); ++i)
 			if (q->bufs[i]->state == VB2_BUF_STATE_ACTIVE)
 				vb2_buffer_done(q->bufs[i],
 						VB2_BUF_STATE_ERROR);
