@@ -5649,9 +5649,16 @@ static int rtw_cfg80211_set_beacon_ies(struct net_device *net, const u8 *head,
 	return ret;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+static int cfg80211_rtw_change_beacon(struct wiphy *wiphy, struct net_device *ndev,
+		struct cfg80211_ap_update *params)
+{
+	struct cfg80211_beacon_data *info = &params->beacon;
+#else
 static int cfg80211_rtw_change_beacon(struct wiphy *wiphy, struct net_device *ndev,
 		struct cfg80211_beacon_data *info)
 {
+#endif
 	int ret = 0;
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(ndev);
 
