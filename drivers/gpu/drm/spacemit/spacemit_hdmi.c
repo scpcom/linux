@@ -763,7 +763,7 @@ static int spacemit_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct spacemit_hdmi *hdmi = connector_to_spacemit_hdmi(connector);
 	int ret;
-	struct edid *edid;
+	struct drm_edid *drm_edid;
 	uint32_t value;
 
 	DRM_DEBUG("%s() \n", __func__);
@@ -780,15 +780,15 @@ static int spacemit_hdmi_connector_get_modes(struct drm_connector *connector)
 
 	hdmi->edid_done = false;
 
-	edid = drm_do_get_edid(connector, spacemit_hdmi_get_edid_block, hdmi);
-	if (edid) {
+	drm_edid = drm_edid_read_custom(connector, spacemit_hdmi_get_edid_block, hdmi);
+	if (drm_edid) {
 		if (hdmi->edid_done) {
-			drm_connector_update_edid_property(connector, edid);
-			ret = drm_add_edid_modes(connector, edid);
+			drm_edid_connector_update(connector, drm_edid);
+			ret = drm_edid_connector_add_modes(connector);
 		} else {
 			ret = drm_add_modes_noedid(connector, 1920, 1080);
 		}
-		kfree(edid);
+		drm_edid_free(drm_edid);
 	} else {
 		DRM_INFO("%s() get edid failed\n", __func__);
 		ret = drm_add_modes_noedid(connector, 1920, 1080);
