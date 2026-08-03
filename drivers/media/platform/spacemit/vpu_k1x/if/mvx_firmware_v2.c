@@ -35,6 +35,7 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/string.h>
+#include <linux/vmalloc.h>
 #include "fw_v2/mve_protocol_def.h"
 #include "mvx_firmware_cache.h"
 #include "mvx_firmware_priv.h"

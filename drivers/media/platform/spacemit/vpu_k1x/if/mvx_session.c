@@ -40,6 +40,7 @@
 #include <linux/poll.h>
 #include <linux/sched.h>
 #include <linux/version.h>
+#include <linux/vmalloc.h>
 
 #include "mvx-v4l2-controls.h"
 #include "mvx_bitops.h"

@@ -23,6 +23,7 @@
 #include <linux/workqueue.h>
 #include <linux/timekeeping.h>
 #include <linux/pm_qos.h>
+#include <linux/vmalloc.h>
 #include <media/v4l2-event.h>
 #include <media/k1x/k1x_plat_cam.h>
 #include <media/k1x/k1x_cpp_uapi.h>

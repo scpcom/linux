@@ -40,6 +40,7 @@
 #include <linux/gfp.h>
 #include <linux/list.h>
 #include <linux/sched.h>
+#include <linux/vmalloc.h>
 #include <asm-generic/memory_model.h>
 #include "mvx_mmu.h"
 #include "mvx_log_group.h"
