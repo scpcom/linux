@@ -2462,7 +2462,7 @@ static int emac_set_link_ksettings(struct net_device *ndev,
 static void emac_get_drvinfo(struct net_device *dev,
 				struct ethtool_drvinfo *info)
 {
-	strlcpy(info->driver, DRIVER_NAME, sizeof(info->driver));
+	strscpy(info->driver, DRIVER_NAME, sizeof(info->driver));
 	info->n_stats = ARRAY_SIZE(emac_ethtool_stats);
 }
 
