@@ -1154,8 +1154,8 @@ int k1x_pcie_msi_host_init(struct dw_pcie_rp *pp)
 }
 
 static const struct dw_pcie_host_ops k1x_pcie_host_ops = {
-	.host_init = k1x_pcie_host_init,
-	.msi_host_init = k1x_pcie_msi_host_init,
+	.init = k1x_pcie_host_init,
+	.msi_init = k1x_pcie_msi_host_init,
 };
 
 static void (*k1x_pcie_irq_callback)(int);
