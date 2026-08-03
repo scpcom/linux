@@ -239,8 +239,12 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, struct rtw_chan_def *rtw_chd
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
 	if (started) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+		wiphy_lock(wdev->wiphy);
+#else
 		mutex_lock(&wdev->mtx);
 		__acquire(&wdev->mtx);
+#endif
 		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
 		cfg80211_ch_switch_started_notify(adapter->pnetdev, &chdef, alink->mlmepriv.link_id, 0, false, 0);
 		#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
@@ -259,8 +263,12 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, struct rtw_chan_def *rtw_chd
 		#else
 		cfg80211_ch_switch_started_notify(adapter->pnetdev, &chdef, 0);
 		#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+		wiphy_unlock(wdev->wiphy);
+#else
 		__release(&wdev->mtx);
 		mutex_unlock(&wdev->mtx);
+#endif
 		goto exit;
 	}
 #endif
@@ -268,8 +276,12 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, struct rtw_chan_def *rtw_chd
 	if (!rtw_cfg80211_allow_ch_switch_notify(adapter))
 		goto exit;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+	wiphy_lock(wdev->wiphy);
+#else
 	mutex_lock(&wdev->mtx);
 	__acquire(&wdev->mtx);
+#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
 	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef, alink->mlmepriv.link_id, 0);
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 2))
@@ -277,8 +289,12 @@ u8 rtw_cfg80211_ch_switch_notify(_adapter *adapter, struct rtw_chan_def *rtw_chd
 #else
 	cfg80211_ch_switch_notify(adapter->pnetdev, &chdef);
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+	wiphy_unlock(wdev->wiphy);
+#else
 	__release(&wdev->mtx);
 	mutex_unlock(&wdev->mtx);
+#endif
 
 #else
 	int freq = rtw_bch2freq(rtw_chdef->band, rtw_chdef->chan);
