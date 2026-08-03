@@ -1193,7 +1193,7 @@ static ssize_t gtp_dofwupdate_store(struct device *dev,
 		goto exit;
 	}
 
-	strlcpy(update_file_name, buf, count);
+	strscpy(update_file_name, buf, count);
 
 	ts->force_update = true;
 	retval = gup_update_proc(update_file_name);
