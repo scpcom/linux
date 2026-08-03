@@ -2332,7 +2332,7 @@ err_free:
 	return ret;
 }
 
-static int serial_pxa_remove(struct platform_device *dev)
+static void serial_pxa_remove(struct platform_device *dev)
 {
 	struct uart_pxa_port *sport = platform_get_drvdata(dev);
 
@@ -2358,8 +2358,6 @@ static int serial_pxa_remove(struct platform_device *dev)
 #endif
 	kfree(sport);
 	serial_pxa_ports[dev->id] = NULL;
-
-	return 0;
 }
 
 static struct platform_driver serial_pxa_driver = {
