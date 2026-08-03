@@ -25,6 +25,9 @@
 
 static int fw_loaded;
 
+#ifdef CONFIG_PLATFORM_SPACEMIT
+extern void spacemit_wlan_set_power(int on);
+#endif
 #ifdef CONFIG_PLATFORM_ALLWINNER
 extern void sunxi_wlan_set_power(int on);
 #endif
@@ -62,6 +65,10 @@ void *aicbsp_get_drvdata(void *args)
 
 static int aicbsp_platform_power_on(void)
 {
+#ifdef CONFIG_PLATFORM_SPACEMIT
+	spacemit_wlan_set_power(1);
+	mdelay(50);
+#endif
 #ifdef CONFIG_PLATFORM_ALLWINNER
 	sunxi_wlan_set_power(1);
 	mdelay(50);
@@ -71,6 +78,10 @@ static int aicbsp_platform_power_on(void)
 
 static void aicbsp_platform_power_off(void)
 {
+#ifdef CONFIG_PLATFORM_SPACEMIT
+	spacemit_wlan_set_power(0);
+	mdelay(100);
+#endif
 #ifdef CONFIG_PLATFORM_ALLWINNER
 	sunxi_wlan_set_power(0);
 	mdelay(100);

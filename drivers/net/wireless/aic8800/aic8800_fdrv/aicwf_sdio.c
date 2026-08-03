@@ -112,11 +112,17 @@ int aicwf_sdio_recv_pkt(struct aic_sdio_dev *sdiodev, struct sk_buff *skbbuf,
 
 static int wakeup_enable;
 static u32 hostwake_irq_num;
+#ifdef CONFIG_PLATFORM_SPACEMIT
+extern int spacemit_wlan_set_power(int on);
+extern int spacemit_wlan_get_oob_irq(void);
+extern void spacemit_sdio_detect_change(int enable_scan);
+#else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 extern int sunxi_wlan_get_oob_irq(int *, int *);
 #else
 extern int sunxi_wlan_get_oob_irq(void);
 extern int sunxi_wlan_get_oob_irq_flags(void);
+#endif
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
@@ -143,12 +149,17 @@ static int rwnx_register_hostwake_irq(struct device *dev)
 {
 	int ret = -1;
 	int irq_flags;
+#ifdef CONFIG_PLATFORM_SPACEMIT
+	hostwake_irq_num = spacemit_wlan_get_oob_irq();
+	wakeup_enable = 1;
+#else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 	hostwake_irq_num = sunxi_wlan_get_oob_irq(&irq_flags, &wakeup_enable);
 #else
 	hostwake_irq_num = sunxi_wlan_get_oob_irq();
 	irq_flags = sunxi_wlan_get_oob_irq_flags();
 	wakeup_enable = 1;
+#endif
 #endif
 
 	if (wakeup_enable) {
@@ -1109,8 +1120,10 @@ void aicwf_sdio_hal_irqhandler(struct sdio_func *func)
 			pkt = aicwf_sdio_readframes(sdiodev);
 		}
 	} else {
+	#ifndef CONFIG_PLATFORM_SPACEMIT
 	#ifndef CONFIG_PLATFORM_ALLWINNER
 		sdio_err("Interrupt but no data\n");
+	#endif
 	#endif
 	}
 

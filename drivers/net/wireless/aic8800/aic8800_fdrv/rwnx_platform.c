@@ -155,7 +155,7 @@ static int rwnx_plat_bin_fw_upload(struct rwnx_plat *rwnx_plat, u8 *fw_addr,
 #endif
 
 #ifndef CONFIG_ROM_PATCH_EN
-#if !defined(CONFIG_NANOPI_M4) && !defined(CONFIG_PLATFORM_ALLWINNER)
+#if !defined(CONFIG_NANOPI_M4) && !defined(CONFIG_PLATFORM_SPACEMIT) && !defined(CONFIG_PLATFORM_ALLWINNER)
 /**
  * rwnx_plat_bin_fw_upload_2() - Load the requested binary FW into embedded side.
  *

@@ -20,6 +20,11 @@
 #include "aic_bsp_driver.h"
 #include <linux/version.h>
 
+#ifdef CONFIG_PLATFORM_SPACEMIT
+extern int spacemit_wlan_set_power(int on);
+extern int spacemit_wlan_get_oob_irq(void);
+extern void spacemit_sdio_detect_change(int enable_scan);
+#endif
 #ifdef CONFIG_PLATFORM_ALLWINNER
 extern void sunxi_mmc_rescan_card(unsigned ids);
 extern void sunxi_wlan_set_power(int on);
@@ -314,6 +319,30 @@ static struct sdio_driver aicbsp_sdio_driver = {
 
 static int aicbsp_platform_power_on(void)
 {
+#ifdef CONFIG_PLATFORM_SPACEMIT
+
+	int ret = 0;
+	struct semaphore aic_chipup_sem;
+	bsp_dbg("%s\n", __func__);
+
+	sema_init(&aic_chipup_sem, 0);
+	ret = aicbsp_reg_sdio_notify(&aic_chipup_sem);
+	if (ret) {
+		bsp_dbg("%s aicbsp_reg_sdio_notify fail(%d)\n", __func__, ret);
+			return ret;
+	}
+	spacemit_wlan_set_power(1);
+	spacemit_sdio_detect_change(1);
+
+	if (down_timeout(&aic_chipup_sem, msecs_to_jiffies(2000)) == 0) {
+		aicbsp_unreg_sdio_notify();
+		return 0;
+	}
+
+	aicbsp_unreg_sdio_notify();
+	spacemit_wlan_set_power(0);
+	return -1;
+#else
 #ifdef CONFIG_PLATFORM_ALLWINNER
 	int ret = 0;
 	struct semaphore aic_chipup_sem;
@@ -344,10 +373,15 @@ static int aicbsp_platform_power_on(void)
 #else
 	return 0;
 #endif
+#endif
 }
 
 static void aicbsp_platform_power_off(void)
 {
+#ifdef CONFIG_PLATFORM_SPACEMIT
+	spacemit_sdio_detect_change(0);
+	spacemit_wlan_set_power(0);
+#endif
 #ifdef CONFIG_PLATFORM_ALLWINNER
 	if (aicbsp_bus_index < 0)
 		 aicbsp_bus_index = sunxi_wlan_get_bus_index();
@@ -1083,7 +1117,9 @@ static void aicwf_sdio_hal_irqhandler(struct sdio_func *func)
 			pkt = aicwf_sdio_readframes(aicdev);
 		}
 	} else {
+	#ifndef CONFIG_PLATFORM_SPACEMIT
 		bsp_err("Interrupt but no data\n");
+	#endif
 	}
 
 	if (pkt)
