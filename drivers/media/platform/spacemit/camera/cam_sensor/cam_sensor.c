@@ -1444,21 +1444,19 @@ st_err:
 	return ret;
 }
 
-static int cam_sensor_remove(struct platform_device *pdev)
+static void cam_sensor_remove(struct platform_device *pdev)
 {
 	struct cam_sensor_device *msnr_dev;
 
 	msnr_dev = platform_get_drvdata(pdev);
 	if (!msnr_dev) {
 		dev_err(&pdev->dev, "camera sensor device is NULL");
-		return 0;
+		return;
 	}
 	mutex_destroy(&msnr_dev->lock);
 	cam_snr_dev_destroy(&msnr_dev->cdev, msnr_dev->id);
 	cam_dbg("camera sensor%d removed", msnr_dev->id);
 	devm_kfree(&pdev->dev, msnr_dev);
-
-	return 0;
 }
 
 static int cam_sensor_probe(struct platform_device *pdev)

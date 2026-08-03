@@ -316,20 +316,18 @@ static int k1x_csiphy_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int k1x_csiphy_remove(struct platform_device *pdev)
+static void k1x_csiphy_remove(struct platform_device *pdev)
 {
 	struct csiphy_device *csiphy_dev;
 
 	csiphy_dev = platform_get_drvdata(pdev);
 	if (!csiphy_dev) {
 		dev_err(&pdev->dev, "csiphy device is NULL");
-		return 0;
+		return;
 	}
 
 	devm_kfree(&pdev->dev, csiphy_dev);
 	pr_debug("%s removed", dev_name(&pdev->dev));
-
-	return 0;
 }
 
 static const struct of_device_id k1x_csiphy_dt_match[] = {

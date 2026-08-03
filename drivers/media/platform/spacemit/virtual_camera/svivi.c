@@ -988,13 +988,13 @@ v4l2_dev_err:
 	return -1;
 }
 
-static int svivi_remove(struct platform_device *pdev){
+static void svivi_remove(struct platform_device *pdev){
 	struct vivi *vind;
 
 	vind = platform_get_drvdata(pdev);
 	if (!vind) {
 		dev_err(&pdev->dev, "vind is NULL");
-		return 0;
+		return;
 	}
 	vcam_info("--------- in");
 
@@ -1007,8 +1007,6 @@ static int svivi_remove(struct platform_device *pdev){
         vind->netlinkfd = NULL;
     }
     vcam_info("test_netlink_exit!!");
-
-	return 0;
 }
 
 static void svivi_pdev_release(struct device *dev)

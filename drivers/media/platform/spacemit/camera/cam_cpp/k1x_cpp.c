@@ -1381,14 +1381,14 @@ err_work:
 	return ret;
 }
 
-static int cpp_remove(struct platform_device *pdev)
+static void cpp_remove(struct platform_device *pdev)
 {
 	struct cpp_device *cpp_dev;
 
 	cpp_dev = platform_get_drvdata(pdev);
 	if (!cpp_dev) {
 		dev_err(&pdev->dev, "cpp device is NULL");
-		return 0;
+		return;
 	}
 	device_init_wakeup(&pdev->dev, false);
 	pm_runtime_disable(&pdev->dev);
@@ -1400,8 +1400,6 @@ static int cpp_remove(struct platform_device *pdev)
 	mutex_destroy(&cpp_dev->mutex);
 	devm_kfree(&pdev->dev, cpp_dev);
 	cam_dbg("%s removed", dev_name(&pdev->dev));
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
