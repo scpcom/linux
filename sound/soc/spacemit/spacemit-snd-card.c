@@ -399,11 +399,10 @@ err:
 	return ret;
 }
 
-static int asoc_simple_card_remove(struct platform_device *pdev)
+static void asoc_simple_card_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	asoc_simple_clean_reference(card);
-	return 0;
 }
 
 static const struct of_device_id asoc_simple_of_match[] = {
