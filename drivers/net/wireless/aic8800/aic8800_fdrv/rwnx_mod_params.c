@@ -1156,7 +1156,9 @@ static void rwnx_set_wiphy_params(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 			   "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
 			   __func__);
 		wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0))
 		wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
+#endif
 		wiphy_apply_custom_regulatory(wiphy, &rwnx_regdom);
 #endif
 		// Check if custom channel set shall be enabled. In such case only monitor mode is
@@ -1284,7 +1286,9 @@ void rwnx_custregd(struct rwnx_hw *rwnx_hw, struct wiphy *wiphy)
 	if (!rwnx_hw->mod_params->custregd)
 		return;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0))
 	wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
+#endif
 	wiphy->regulatory_flags |= REGULATORY_WIPHY_SELF_MANAGED;
 
 	rtnl_lock();
