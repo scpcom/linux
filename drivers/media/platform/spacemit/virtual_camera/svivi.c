@@ -350,7 +350,6 @@ static struct netlink_kernel_cfg cfg = {
     .input  = netlink_rcv_msg,
     .groups = 0,
     .flags = 0,
-    .cb_mutex = NULL,
     .bind = NULL,
 };
 
