@@ -15,7 +15,6 @@
 
 static void _suspend_save_csrs(struct suspend_context *context)
 {
-	context->scratch = csr_read(CSR_SCRATCH);
 	context->tvec = csr_read(CSR_TVEC);
 	context->ie = csr_read(CSR_IE);
 
@@ -36,7 +35,7 @@ static void _suspend_save_csrs(struct suspend_context *context)
 
 static void _suspend_restore_csrs(struct suspend_context *context)
 {
-	csr_write(CSR_SCRATCH, context->scratch);
+	csr_write(CSR_SCRATCH, 0);
 	csr_write(CSR_TVEC, context->tvec);
 	csr_write(CSR_IE, context->ie);
 
