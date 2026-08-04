@@ -55,7 +55,7 @@ jobs:
   build-image:
     strategy:
       matrix:
-        boards: [sun20i]
+        boards: [sun20i, spacemit]
         archs: [riscv64]
         include: 
           - boards: n1
