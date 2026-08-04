@@ -24,7 +24,7 @@
 #ifdef AICWF_USB_SUPPORT
 #define RWNX_80211_CMD_TIMEOUT_MS    2000//300
 #else
-#define RWNX_80211_CMD_TIMEOUT_MS    2000//500//300
+#define RWNX_80211_CMD_TIMEOUT_MS    6000//500//300
 #endif
 #endif
 
@@ -39,7 +39,7 @@
 #define RWNX_CMD_WAIT_COMPLETE(flags) \
 	(!(flags & (RWNX_CMD_FLAG_WAIT_ACK | RWNX_CMD_FLAG_WAIT_CFM)))
 
-#define RWNX_CMD_MAX_QUEUED         8
+#define RWNX_CMD_MAX_QUEUED         16
 
 #ifdef CONFIG_RWNX_FHOST
 #include "ipc_fhost.h"

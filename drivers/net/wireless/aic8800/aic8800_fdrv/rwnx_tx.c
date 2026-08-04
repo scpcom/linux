@@ -41,7 +41,9 @@ void rwnx_set_traffic_status(struct rwnx_hw *rwnx_hw,
 	} else {
 		bool uapsd = (ps_id != LEGACY_PS_ID);
 		rwnx_send_me_traffic_ind(rwnx_hw, sta->sta_idx, uapsd, available);
+#ifdef CREATE_TRACE_POINTS
 		trace_ps_traffic_update(sta->sta_idx, available, uapsd);
+#endif
 	}
 }
 
@@ -76,8 +78,9 @@ void rwnx_ps_bh_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 	struct rwnx_txq *txq;
 
 	if (enable) {
+#ifdef CREATE_TRACE_POINTS
 		trace_ps_enable(sta);
-
+#endif
 		spin_lock_bh(&rwnx_hw->tx_lock);
 		sta->ps.active = true;
 		sta->ps.sp_cnt[LEGACY_PS_ID] = 0;
@@ -100,14 +103,15 @@ void rwnx_ps_bh_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 
 		spin_unlock_bh(&rwnx_hw->tx_lock);
 
-		if (sta->ps.pkt_ready[LEGACY_PS_ID])
+		/*if (sta->ps.pkt_ready[LEGACY_PS_ID])
 			rwnx_set_traffic_status(rwnx_hw, sta, true, LEGACY_PS_ID);
 
 		if (sta->ps.pkt_ready[UAPSD_ID])
-			rwnx_set_traffic_status(rwnx_hw, sta, true, UAPSD_ID);
+			rwnx_set_traffic_status(rwnx_hw, sta, true, UAPSD_ID);*/
 	} else {
+#ifdef CREATE_TRACE_POINTS
 		trace_ps_disable(sta->sta_idx);
-
+#endif
 		spin_lock_bh(&rwnx_hw->tx_lock);
 		sta->ps.active = false;
 
@@ -125,11 +129,11 @@ void rwnx_ps_bh_enable(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 		rwnx_txq_sta_start(sta, RWNX_TXQ_STOP_STA_PS, rwnx_hw);
 		spin_unlock_bh(&rwnx_hw->tx_lock);
 
-		if (sta->ps.pkt_ready[LEGACY_PS_ID])
+		/*if (sta->ps.pkt_ready[LEGACY_PS_ID])
 			rwnx_set_traffic_status(rwnx_hw, sta, false, LEGACY_PS_ID);
 
 		if (sta->ps.pkt_ready[UAPSD_ID])
-			rwnx_set_traffic_status(rwnx_hw, sta, false, UAPSD_ID);
+			rwnx_set_traffic_status(rwnx_hw, sta, false, UAPSD_ID);*/
 
 		tasklet_schedule(&rwnx_hw->task);
 	}
@@ -168,9 +172,9 @@ void rwnx_ps_bh_traffic_req(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 	printk("sta %pM is not in Power Save mode", sta->mac_addr);
 		return;
 	}
-
+#ifdef CREATE_TRACE_POINTS
 	trace_ps_traffic_req(sta, pkt_req, ps_id);
-
+#endif
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 	/* Fw may ask to stop a service period with PS_SP_INTERRUPTED. This only
@@ -214,8 +218,12 @@ void rwnx_ps_bh_traffic_req(struct rwnx_hw *rwnx_hw, struct rwnx_sta *sta,
 	} else {
 		int i, tid;
 
-		foreach_sta_txq_prio(sta, txq, tid, i, rwnx_hw) {
-			u16 txq_len = skb_queue_len(&txq->sk_list);
+		//foreach_sta_txq_prio(sta, txq, tid, i, rwnx_hw) {
+		for (i = 0; i < NX_NB_TID_PER_STA; i++) {
+			u16 txq_len;
+			tid = nx_tid_prio[i];
+			txq = rwnx_txq_sta_get(sta, tid, rwnx_hw);
+			txq_len = skb_queue_len(&txq->sk_list);
 
 			if (txq->ps_id != ps_id)
 				continue;
@@ -287,6 +295,19 @@ u16 rwnx_select_txq(struct rwnx_vif *rwnx_vif, struct sk_buff *skb)
 	struct rwnx_txq *txq;
 	u16 netdev_queue;
 	bool tdls_mgmgt_frame = false;
+	int nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX;
+
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX_FOR_OLD_IC;
+	}
 
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
@@ -415,7 +436,7 @@ u16 rwnx_select_txq(struct rwnx_vif *rwnx_vif, struct sk_buff *skb)
 		   for AP interface, select BCMC queue
 		   (TODO: select another queue if BCMC queue is stopped) */
 		skb->priority = PRIO_STA_NULL;
-		netdev_queue = NX_BCMC_TXQ_NDEV_IDX;
+		netdev_queue = nx_bcmc_txq_ndev_idx;
 	}
 
 	BUG_ON(netdev_queue >= NX_NB_NDEV_TXQ);
@@ -446,9 +467,9 @@ static inline void rwnx_set_more_data_flag(struct rwnx_hw *rwnx_hw,
 	if (unlikely(sta->ps.active)) {
 		sta->ps.pkt_ready[txq->ps_id]--;
 		sta->ps.sp_cnt[txq->ps_id]--;
-
+#ifdef CREATE_TRACE_POINTS
 		trace_ps_push(sta);
-
+#endif
 		if (((txq->ps_id == UAPSD_ID) || (vif->wdev.iftype == NL80211_IFTYPE_MESH_POINT) || (sta->tdls.active))
 				&& !sta->ps.sp_cnt[txq->ps_id]) {
 			sw_txhdr->desc.host.flags |= TXU_CNTRL_EOSP;
@@ -481,6 +502,21 @@ static struct rwnx_sta *rwnx_get_tx_priv(struct rwnx_vif *rwnx_vif,
 	static struct rwnx_hw *rwnx_hw;
 	struct rwnx_sta *sta;
 	int sta_idx;
+	int nx_remote_sta_max = NX_REMOTE_STA_MAX;
+	int nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX;
+
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_remote_sta_max = NX_REMOTE_STA_MAX_FOR_OLD_IC;
+		nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX_FOR_OLD_IC;
+	}
 
 	rwnx_hw = rwnx_vif->rwnx_hw;
 	*tid = skb->priority;
@@ -489,8 +525,8 @@ static struct rwnx_sta *rwnx_get_tx_priv(struct rwnx_vif *rwnx_vif,
 	} else {
 		int ndev_idx = skb_get_queue_mapping(skb);
 
-		if (ndev_idx == NX_BCMC_TXQ_NDEV_IDX)
-			sta_idx = NX_REMOTE_STA_MAX + master_vif_idx(rwnx_vif);
+		if (ndev_idx == nx_bcmc_txq_ndev_idx)
+			sta_idx = nx_remote_sta_max + master_vif_idx(rwnx_vif);
 		else
 			sta_idx = ndev_idx / NX_NB_TID_PER_STA;
 
@@ -578,7 +614,7 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 	   between queue and push (because of PS) */
 	sw_txhdr->hw_queue = hw_queue;
 
-	sw_txhdr->desc.host.packet_addr = hw_queue; //use packet_addr field for hw_txq
+	sw_txhdr->desc.host.ac = hw_queue; //use ac field for hw_txq
 #ifdef CONFIG_RWNX_MUMIMO_TX
 	/* MU group is only selected during hwq processing */
 	sw_txhdr->desc.host.mumimo_info = txq->mumimo_info;
@@ -589,8 +625,9 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 		/* only for AP mode */
 		rwnx_set_more_data_flag(rwnx_hw, sw_txhdr);
 	}
-
+#ifdef CREATE_TRACE_POINTS
 	trace_push_desc(skb, sw_txhdr, flags);
+#endif
 	#if 0
 	txq->credits--;
 	#endif
@@ -607,21 +644,25 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 	rwnx_ipc_txdesc_push(rwnx_hw, &sw_txhdr->desc, skb, hw_queue, user);
 #else
 #ifdef AICWF_SDIO_SUPPORT
-	if (((sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) && ((*(skb->data+sw_txhdr->headroom) == 0xd0) || (*(skb->data+sw_txhdr->headroom) == 0x10))) || \
-		(sw_txhdr->desc.host.ethertype == 0x8e88)) {
+	if (((sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) && \
+		((*(skb->data+sw_txhdr->headroom) == 0xd0) || (*(skb->data+sw_txhdr->headroom) == 0x10) || (*(skb->data+sw_txhdr->headroom) == 0x30))) || \
+		(sw_txhdr->desc.host.ethertype == 0x8e88) || (sw_txhdr->desc.host.ethertype == 0xb488)) {
 		sw_txhdr->need_cfm = 1;
-		sw_txhdr->desc.host.status_desc_addr = ((1<<31) | rwnx_hw->sdio_env.txdesc_free_idx[0]);
+		sw_txhdr->desc.host.hostid = ((1<<31) | rwnx_hw->sdio_env.txdesc_free_idx[0]);
 		aicwf_sdio_host_txdesc_push(&(rwnx_hw->sdio_env), 0, (long)skb);
-		printk("need cfm ethertype:%8x,user_idx=%d, skb=%p\n", sw_txhdr->desc.host.ethertype, rwnx_hw->sdio_env.txdesc_free_idx[0], skb);
+		if (sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT)
+			printk("need cfm mgmt:%x,user_idx=%d, skb=%p\n", *(skb->data+sw_txhdr->headroom), rwnx_hw->sdio_env.txdesc_free_idx[0], skb);
+		else
+			printk("need cfm ethertype:%8x,user_idx=%d, skb=%p\n", sw_txhdr->desc.host.ethertype, rwnx_hw->sdio_env.txdesc_free_idx[0], skb);
 	} else {
 		sw_txhdr->need_cfm = 0;
 		if (sw_txhdr->raw_frame) {
 			sw_txhdr->desc.host.flags |= TXU_CNTRL_MGMT;
 		}
 		if (sw_txhdr->fixed_rate) {
-			sw_txhdr->desc.host.status_desc_addr = (0x01UL << 30) | sw_txhdr->rate_config;
+			sw_txhdr->desc.host.hostid = (0x01UL << 30) | sw_txhdr->rate_config;
 		} else {
-			sw_txhdr->desc.host.status_desc_addr = 0;
+			sw_txhdr->desc.host.hostid = 0;
 		}
 
 		sw_txhdr->rwnx_vif->net_stats.tx_packets++;
@@ -631,10 +672,11 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 	aicwf_frame_tx((void *)(rwnx_hw->sdiodev), skb);
 #endif
 #ifdef AICWF_USB_SUPPORT
-	if (((sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) && ((*(skb->data+sw_txhdr->headroom) == 0xd0) || (*(skb->data+sw_txhdr->headroom) == 0x10))) || \
+	if (((sw_txhdr->desc.host.flags & TXU_CNTRL_MGMT) && \
+		((*(skb->data+sw_txhdr->headroom) == 0xd0) || (*(skb->data+sw_txhdr->headroom) == 0x10) || (*(skb->data+sw_txhdr->headroom) == 0x30))) || \
 		(sw_txhdr->desc.host.ethertype == 0x8e88)) {
 		sw_txhdr->need_cfm = 1;
-		sw_txhdr->desc.host.status_desc_addr = ((1<<31) | rwnx_hw->usb_env.txdesc_free_idx[0]);
+		sw_txhdr->desc.host.hostid = ((1<<31) | rwnx_hw->usb_env.txdesc_free_idx[0]);
 		aicwf_usb_host_txdesc_push(&(rwnx_hw->usb_env), 0, (long)(skb));
 		printk("need cfm ethertype:%8x,user_idx=%d, skb=%p\n", sw_txhdr->desc.host.ethertype, rwnx_hw->usb_env.txdesc_free_idx[0], skb);
 	} else {
@@ -643,9 +685,9 @@ void rwnx_tx_push(struct rwnx_hw *rwnx_hw, struct rwnx_txhdr *txhdr, int flags)
 			sw_txhdr->desc.host.flags |= TXU_CNTRL_MGMT;
 		}
 		if (sw_txhdr->fixed_rate) {
-			sw_txhdr->desc.host.status_desc_addr = (0x01UL << 30) | sw_txhdr->rate_config;
+			sw_txhdr->desc.host.hostid = (0x01UL << 30) | sw_txhdr->rate_config;
 		} else {
-			sw_txhdr->desc.host.status_desc_addr = 0;
+			sw_txhdr->desc.host.hostid = 0;
 		}
 
 		sw_txhdr->rwnx_vif->net_stats.tx_packets++;
@@ -686,12 +728,14 @@ static void rwnx_tx_retry(struct rwnx_hw *rwnx_hw, struct sk_buff *skb,
 
 	if (!sw_retry) {
 		/* update sw desc */
+#if 0
 		sw_txhdr->desc.host.sn = cfm->sn;
 		sw_txhdr->desc.host.pn[0] = cfm->pn[0];
 		sw_txhdr->desc.host.pn[1] = cfm->pn[1];
 		sw_txhdr->desc.host.pn[2] = cfm->pn[2];
 		sw_txhdr->desc.host.pn[3] = cfm->pn[3];
 		sw_txhdr->desc.host.timestamp = cfm->timestamp;
+#endif
 		sw_txhdr->desc.host.flags |= TXU_CNTRL_RETRY;
 
 		#ifdef CONFIG_RWNX_AMSDUS_TX
@@ -992,6 +1036,177 @@ end:
 }
 #endif /* CONFIG_RWNX_AMSDUS_TX */
 
+#ifdef CONFIG_FILTER_TCP_ACK
+/* return:
+ *      0, msg buf freed by the real driver
+ *      others, skb need free by the caller,remember not use msg->skb!
+ */
+
+int intf_tx(struct rwnx_hw *priv,struct msg_buf *msg)
+{
+	struct rwnx_vif *rwnx_vif = msg->rwnx_vif;
+	struct rwnx_hw *rwnx_hw = rwnx_vif->rwnx_hw;
+	struct rwnx_txhdr *txhdr;
+	struct rwnx_sw_txhdr *sw_txhdr;
+	struct txdesc_api *desc;
+	struct rwnx_sta *sta;
+	struct rwnx_txq *txq;
+	int headroom;
+	//int max_headroom;
+	int hdr_pads;
+
+	u16 frame_len;
+	u16 frame_oft;
+	u8 tid;
+	struct sk_buff *skb=msg->skb;
+	struct ethhdr eth_t;
+
+	move_tcpack_msg(rwnx_hw,msg);
+	kfree(msg);
+
+	memcpy(&eth_t, skb->data, sizeof(struct ethhdr));
+
+	/* Get the STA id and TID information */
+	sta = rwnx_get_tx_priv(rwnx_vif, skb, &tid);
+	if (!sta)
+		goto free;
+
+	txq = rwnx_txq_sta_get(sta, tid, rwnx_hw);
+	if (txq->idx == TXQ_INACTIVE)
+		goto free;
+
+#ifdef CONFIG_RWNX_AMSDUS_TX
+	if (rwnx_amsdu_add_subframe(rwnx_hw, skb, sta, txq))
+		return NETDEV_TX_OK;
+#endif
+
+#ifdef CONFIG_BR_SUPPORT
+		 if (1) {//(check_fwstate(&padapter->mlmepriv, WIFI_STATION_STATE | WIFI_ADHOC_STATE) == _TRUE) {
+			 void *br_port = NULL;
+
+	#if (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35))
+			 br_port = rwnx_vif->ndev->br_port;
+	#else
+			 rcu_read_lock();
+			 br_port = rcu_dereference(rwnx_vif->ndev->rx_handler_data);
+			 rcu_read_unlock();
+	#endif
+
+			 if (br_port) {
+				 s32 res = aic_br_client_tx(rwnx_vif, &skb);
+				 if (res == -1) {
+					 goto free;
+				 }
+			 }
+		 }
+#endif /* CONFIG_BR_SUPPORT */
+
+
+	/* Retrieve the pointer to the Ethernet data */
+	// eth = (struct ethhdr *)skb->data;
+
+	skb_pull(skb, 14);
+	//hdr_pads	= RWNX_SWTXHDR_ALIGN_PADS((long)eth);
+	hdr_pads  = RWNX_SWTXHDR_ALIGN_PADS((long)skb->data);
+	headroom  = sizeof(struct rwnx_txhdr) + hdr_pads;
+
+	skb_push(skb, headroom);
+
+	txhdr = (struct rwnx_txhdr *)skb->data;
+	sw_txhdr = kmem_cache_alloc(rwnx_hw->sw_txhdr_cache, GFP_ATOMIC);
+	if (unlikely(sw_txhdr == NULL))
+		goto free;
+	txhdr->sw_hdr = sw_txhdr;
+	desc = &sw_txhdr->desc;
+
+	frame_len = (u16)skb->len - headroom;// - sizeof(*eth);
+
+	sw_txhdr->txq		= txq;
+	sw_txhdr->frame_len = frame_len;
+	sw_txhdr->rwnx_sta	= sta;
+	sw_txhdr->rwnx_vif	= rwnx_vif;
+	sw_txhdr->skb		= skb;
+	sw_txhdr->headroom	= headroom;
+	sw_txhdr->map_len	= skb->len - offsetof(struct rwnx_txhdr, hw_hdr);
+
+#ifdef CONFIG_RWNX_AMSDUS_TX
+	sw_txhdr->amsdu.len = 0;
+	sw_txhdr->amsdu.nb = 0;
+#endif
+	sw_txhdr->raw_frame = 0;
+	sw_txhdr->fixed_rate = 0;
+	// Fill-in the descriptor
+	memcpy(&desc->host.eth_dest_addr, eth_t.h_dest, ETH_ALEN);
+	memcpy(&desc->host.eth_src_addr, eth_t.h_source, ETH_ALEN);
+	desc->host.ethertype = eth_t.h_proto;
+	desc->host.staid = sta->sta_idx;
+	desc->host.tid = tid;
+	if (unlikely(rwnx_vif->wdev.iftype == NL80211_IFTYPE_AP_VLAN))
+		desc->host.vif_idx = rwnx_vif->ap_vlan.master->vif_index;
+	else
+		desc->host.vif_idx = rwnx_vif->vif_index;
+
+	if (rwnx_vif->use_4addr && (sta->sta_idx < NX_REMOTE_STA_MAX))
+		desc->host.flags = TXU_CNTRL_USE_4ADDR;
+	else
+		desc->host.flags = 0;
+
+	if ((rwnx_vif->tdls_status == TDLS_LINK_ACTIVE) &&
+		rwnx_vif->sta.tdls_sta &&
+		(memcmp(desc->host.eth_dest_addr.array, rwnx_vif->sta.tdls_sta->mac_addr, ETH_ALEN) == 0)) {
+		desc->host.flags |= TXU_CNTRL_TDLS;
+		rwnx_vif->sta.tdls_sta->tdls.last_tid = desc->host.tid;
+		//rwnx_vif->sta.tdls_sta->tdls.last_sn = desc->host.sn;
+	}
+
+	if (rwnx_vif->wdev.iftype == NL80211_IFTYPE_MESH_POINT) {
+		if (rwnx_vif->is_resending) {
+			desc->host.flags |= TXU_CNTRL_MESH_FWD;
+		}
+	}
+
+#ifdef CONFIG_RWNX_SPLIT_TX_BUF
+	desc->host.packet_len[0] = frame_len;
+#else
+	desc->host.packet_len = frame_len;
+#endif
+
+	txhdr->hw_hdr.cfm.status.value = 0;
+
+	if (unlikely(rwnx_prep_tx(rwnx_hw, txhdr))) {
+		kmem_cache_free(rwnx_hw->sw_txhdr_cache, sw_txhdr);
+		skb_pull(skb, headroom);
+		dev_kfree_skb_any(skb);
+		return NETDEV_TX_BUSY;
+	}
+
+	/* Fill-in TX descriptor */
+	frame_oft = sizeof(struct rwnx_txhdr) - offsetof(struct rwnx_txhdr, hw_hdr)
+				+ hdr_pads;// + sizeof(*eth);
+#if 0
+#ifdef CONFIG_RWNX_SPLIT_TX_BUF
+	desc->host.packet_addr[0] = sw_txhdr->dma_addr + frame_oft;
+	desc->host.packet_cnt = 1;
+#else
+	desc->host.packet_addr = sw_txhdr->dma_addr + frame_oft;
+#endif
+#endif
+	desc->host.hostid = sw_txhdr->dma_addr;
+
+	spin_lock_bh(&rwnx_hw->tx_lock);
+	if (rwnx_txq_queue_skb(skb, txq, rwnx_hw, false))
+		rwnx_hwq_process(rwnx_hw, txq->hwq);
+	spin_unlock_bh(&rwnx_hw->tx_lock);
+
+	return 0;//NETDEV_TX_OK
+
+free:
+	dev_kfree_skb_any(skb);
+
+	return 0;//NETDEV_TX_OK
+}
+#endif
+
 /**
  * netdev_tx_t (*ndo_start_xmit)(struct sk_buff *skb,
  *                               struct net_device *dev);
@@ -1022,7 +1237,9 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	u8 tid;
 
 	struct ethhdr eth_t;
-	memcpy(&eth_t, skb->data, sizeof(struct ethhdr));
+#ifdef CONFIG_FILTER_TCP_ACK
+	struct msg_buf *msgbuf = NULL;
+#endif
 
 	sk_pacing_shift_update(skb->sk, rwnx_hw->tcp_pacing_shift);
 	max_headroom = sizeof(struct rwnx_txhdr);
@@ -1039,6 +1256,25 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 		skb = newskb;
 	}
+
+	if(skb->priority < 3)
+		skb->priority = 0;
+
+#ifdef CONFIG_FILTER_TCP_ACK
+	if (cpu_to_le16(skb->len) <= MAX_TCP_ACK) {
+		msgbuf = intf_tcp_alloc_msg(msgbuf);
+		msgbuf->rwnx_vif = rwnx_vif;
+		msgbuf->skb = skb;
+		if (filter_send_tcp_ack(rwnx_hw,msgbuf,skb->data,cpu_to_le16(skb->len))) {
+			return NETDEV_TX_OK;
+		} else {
+			move_tcpack_msg(rwnx_hw,msgbuf);
+			kfree(msgbuf);
+		}
+	}
+#endif
+
+	memcpy(&eth_t, skb->data, sizeof(struct ethhdr));
 
 	/* Get the STA id and TID information */
 	sta = rwnx_get_tx_priv(rwnx_vif, skb, &tid);
@@ -1108,7 +1344,6 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		(memcmp(desc->host.eth_dest_addr.array, rwnx_vif->sta.tdls_sta->mac_addr, ETH_ALEN) == 0)) {
 		desc->host.flags |= TXU_CNTRL_TDLS;
 		rwnx_vif->sta.tdls_sta->tdls.last_tid = desc->host.tid;
-		rwnx_vif->sta.tdls_sta->tdls.last_sn = desc->host.sn;
 	}
 
 	if (rwnx_vif->wdev.iftype == NL80211_IFTYPE_MESH_POINT) {
@@ -1135,13 +1370,7 @@ netdev_tx_t rwnx_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	/* Fill-in TX descriptor */
 	frame_oft = sizeof(struct rwnx_txhdr) - offsetof(struct rwnx_txhdr, hw_hdr)
 				+ hdr_pads;// + sizeof(*eth);
-#ifdef CONFIG_RWNX_SPLIT_TX_BUF
-	desc->host.packet_addr[0] = sw_txhdr->dma_addr + frame_oft;
-	desc->host.packet_cnt = 1;
-#else
-	desc->host.packet_addr = sw_txhdr->dma_addr + frame_oft;
-#endif
-	desc->host.status_desc_addr = sw_txhdr->dma_addr;
+	desc->host.hostid = sw_txhdr->dma_addr;
 
 	spin_lock_bh(&rwnx_hw->tx_lock);
 	if (rwnx_txq_queue_skb(skb, txq, rwnx_hw, false))
@@ -1192,6 +1421,7 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 	struct sk_buff *skb;
 	u16 frame_len, headroom, frame_oft;
 	u8 *data;
+	int nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX;
 	struct rwnx_txq *txq;
 	bool robust;
 	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0))
@@ -1199,6 +1429,18 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 	size_t len = params->len;
 	bool no_cck = params->no_cck;
 	#endif
+
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX_FOR_OLD_IC;
+	}
 
 	headroom = sizeof(struct rwnx_txhdr);
 	frame_len = len;
@@ -1210,7 +1452,7 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 		txq = rwnx_txq_sta_get(sta, 8, rwnx_hw);
 	} else {
 		if (offchan)
-			txq = &rwnx_hw->txq[NX_OFF_CHAN_TXQ_IDX];
+			txq = &rwnx_hw->txq[nx_off_chan_txq_idx];
 		else
 			txq = rwnx_txq_vif_get(vif, NX_UNK_TXQ_TYPE);
 	}
@@ -1302,6 +1544,7 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 	/* Fill the Descriptor to be provided to the MAC SW */
 	desc = &sw_txhdr->desc;
 
+	desc->host.ethertype = 0;
 	desc->host.staid = (sta) ? sta->sta_idx : 0xFF;
 	desc->host.vif_idx = vif->vif_index;
 	desc->host.tid = 0xFF;
@@ -1327,13 +1570,7 @@ int rwnx_start_mgmt_xmit(struct rwnx_vif *vif, struct rwnx_sta *sta,
 	}
 
 	frame_oft = sizeof(struct rwnx_txhdr) - offsetof(struct rwnx_txhdr, hw_hdr);
-#ifdef CONFIG_RWNX_SPLIT_TX_BUF
-	desc->host.packet_addr[0] = sw_txhdr->dma_addr + frame_oft;
-	desc->host.packet_cnt = 1;
-#else
-	desc->host.packet_addr = sw_txhdr->dma_addr + frame_oft;
-#endif
-	desc->host.status_desc_addr = sw_txhdr->dma_addr;
+	desc->host.hostid = sw_txhdr->dma_addr;
 
 	//----------------------------------------------------------------------
 
@@ -1375,6 +1612,19 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 		return -1;
 	}
 
+#if defined(AICWF_USB_SUPPORT)
+	if (rwnx_hw->usbdev->state == USB_DOWN_ST)
+#elif defined(AICWF_SDIO_SUPPORT)
+	if (rwnx_hw->sdiodev->bus_if->state == BUS_DOWN_ST)
+#endif
+	{
+		headroom = sw_txhdr->headroom;
+		kmem_cache_free(rwnx_hw->sw_txhdr_cache, sw_txhdr);
+		skb_pull(skb, headroom);
+		consume_skb(skb);
+		return 0;
+	}
+
 	txq = sw_txhdr->txq;
 	/* don't use txq->hwq as it may have changed between push and confirm */
 	hwq = &rwnx_hw->hwq[sw_txhdr->hw_queue];
@@ -1385,11 +1635,11 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 		printk("done=%d retry_required=%d sw_retry_required=%d acknowledged=%d\n",
 					 rwnx_txst.tx_done, rwnx_txst.retry_required,
 					 rwnx_txst.sw_retry_required, rwnx_txst.acknowledged);
-
+#ifdef CREATE_TRACE_POINTS
 		trace_mgmt_cfm(sw_txhdr->rwnx_vif->vif_index,
 					   (sw_txhdr->rwnx_sta) ? sw_txhdr->rwnx_sta->sta_idx : 0xFF,
 					   rwnx_txst.acknowledged);
-
+#endif
 		/* Confirm transmission to CFG80211 */
 		cfg80211_mgmt_tx_status(&sw_txhdr->rwnx_vif->wdev,
 								(unsigned long)skb,
@@ -1409,9 +1659,9 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 		rwnx_tx_retry(rwnx_hw, skb, txhdr, sw_retry);
 		return 0;
 	}
-
+#ifdef CREATE_TRACE_POINTS
 	trace_skb_confirm(skb, txq, hwq, &txhdr->hw_hdr.cfm);
-
+#endif
 	/* STA may have disconnect (and txq stopped) when buffers were stored
 	   in fw. In this case do nothing when they're returned */
 	if (txq->idx != TXQ_INACTIVE) {
@@ -1432,7 +1682,7 @@ int rwnx_txdatacfm(void *pthis, void *host_id)
 	}
 
 	if (txhdr->hw_hdr.cfm.ampdu_size &&
-		txhdr->hw_hdr.cfm.ampdu_size < IEEE80211_MAX_AMPDU_BUF_HE)
+		txhdr->hw_hdr.cfm.ampdu_size < IEEE80211_MAX_AMPDU_BUF)
 		rwnx_hw->stats.ampdus_tx[txhdr->hw_hdr.cfm.ampdu_size - 1]++;
 
 #ifdef CONFIG_RWNX_AMSDUS_TX
@@ -1485,7 +1735,9 @@ void rwnx_txq_credit_update(struct rwnx_hw *rwnx_hw, int sta_idx, u8 tid,
 
 	if (txq->idx != TXQ_INACTIVE) {
 		//txq->credits += update;
+#ifdef CREATE_TRACE_POINTS
 		trace_credit_update(txq, update);
+#endif
 		if (txq->credits <= 0)
 			rwnx_txq_stop(txq, RWNX_TXQ_STOP_FULL);
 		else

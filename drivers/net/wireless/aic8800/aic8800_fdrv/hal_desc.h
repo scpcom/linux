@@ -7,7 +7,7 @@
  *
  * Contains the definition and structures used by HW
  *
- * Copyright (C) RivieraWaves 2011-2019
+ * Copyright (C) RivieraWaves 2011-2021
  *
  ******************************************************************************
  */
@@ -25,6 +25,7 @@
 #define N_VHT  (10 * 4 * 2 * 8)
 #define N_HE_SU (12 * 4 * 3 * 8)
 #define N_HE_MU (12 * 6 * 3 * 8)
+#define N_HE_ER (3 * 3 + 3) //RU242 + RU106
 
 /* conversion table from NL80211 to MACHW enum */
 extern const int chnl2bw[];
@@ -41,6 +42,7 @@ extern const int bw2chnl[];
 #define FORMATMOD_HE_SU           5
 #define FORMATMOD_HE_MU           6
 #define FORMATMOD_HE_ER           7
+#define FORMATMOD_HE_TB           8
 
 /* Values for navProtFrmEx */
 #define NAV_PROT_NO_PROT_BIT                 0
@@ -218,15 +220,18 @@ union rwnx_hw_txstatus {
  * @status: transmission status
  */
 struct tx_cfm_tag {
+/*
 	u16_l pn[4];
 	u16_l sn;
 	u16_l timestamp;
+*/
 	s8_l credits;
 	u8_l ampdu_size;
 #ifdef CONFIG_RWNX_SPLIT_TX_BUF
 	u16_l amsdu_size;
 #endif
 	union rwnx_hw_txstatus status;
+	u32_l hostid;
 };
 
 /**
@@ -342,6 +347,7 @@ struct rwnx_hw_txhdr {
 
 #define __MDM_MAJOR_VERSION(v)     (((v) & 0xFF000000) >> 24)
 #define __MDM_MINOR_VERSION(v)     (((v) & 0x00FF0000) >> 16)
+#define __MDM_VERSION(v)            ((__MDM_MAJOR_VERSION(v) + 2) * 10 + __MDM_MINOR_VERSION(v))
 
 
 #endif // _HAL_DESC_H_

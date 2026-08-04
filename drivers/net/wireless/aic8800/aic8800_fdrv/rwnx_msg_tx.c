@@ -19,6 +19,8 @@
 #include "rwnx_compat.h"
 #include "rwnx_cmds.h"
 #include "aicwf_txrxif.h"
+#include "rwnx_wakelock.h"
+#include "aic_bsp_export.h"
 
 const struct mac_addr mac_addr_bcst = {{0xFFFF, 0xFFFF, 0xFFFF}};
 
@@ -185,7 +187,7 @@ static inline void *rwnx_msg_zalloc(lmac_msg_id_t const id,
 	struct lmac_msg *msg;
 	gfp_t flags;
 
-	if (is_non_blocking_msg(id) && in_softirq())
+	if (in_atomic()||in_softirq())
 		flags = GFP_ATOMIC;
 	else
 		flags = GFP_KERNEL;
@@ -226,11 +228,12 @@ static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 	u8_l empty = 0;
 
 	//RWNX_DBG(RWNX_FN_ENTRY_STR);
-
+	rwnx_wakeup_lock(rwnx_hw->ws_tx);
 #ifdef AICWF_USB_SUPPORT
 	if (rwnx_hw->usbdev->state == USB_DOWN_ST) {
 		rwnx_msg_free(rwnx_hw, msg_params);
 		usb_err("bus is down\n");
+		rwnx_wakeup_unlock(rwnx_hw->ws_tx);
 		return 0;
 	}
 #endif
@@ -238,6 +241,7 @@ static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 	if (rwnx_hw->sdiodev->bus_if->state == BUS_DOWN_ST) {
 		rwnx_msg_free(rwnx_hw, msg_params);
 		sdio_err("bus is down\n");
+		rwnx_wakeup_unlock(rwnx_hw->ws_tx);
 		return 0;
 	}
 #endif
@@ -269,7 +273,7 @@ static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 
 	//nonblock = is_non_blocking_msg(msg->id);
 	nonblock = 0;
-	cmd = kzalloc(sizeof(struct rwnx_cmd), nonblock ? GFP_ATOMIC : GFP_KERNEL);
+	cmd = kzalloc(sizeof(struct rwnx_cmd), (in_softirq()||in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
 	cmd->result  = -EINTR;
 	cmd->id      = msg->id;
 	cmd->reqid   = reqid;
@@ -282,12 +286,19 @@ static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 
 	if (cfm != NULL) {
 		do {
+			if (rwnx_hw->cmd_mgr->state == RWNX_CMD_MGR_STATE_CRASHED)
+				break;
 			spin_lock_bh(&rwnx_hw->cmd_mgr->lock);
 			empty = list_empty(&rwnx_hw->cmd_mgr->cmds);
 			spin_unlock_bh(&rwnx_hw->cmd_mgr->lock);
 			if (!empty) {
-				udelay(100);
-				printk("check cmdqueue empty\n");
+				if (in_softirq()) {
+					printk("in_softirq:check cmdqueue empty\n");
+					mdelay(10);
+				} else {
+					printk("check cmdqueue empty\n");
+					msleep(50);
+				}
 			}
 		} while	(!empty);//wait for cmd queue empty
 	}
@@ -306,6 +317,7 @@ static int rwnx_send_msg(struct rwnx_hw *rwnx_hw, const void *msg_params,
 	if (!reqcfm || ret)
 		kfree(cmd);
 
+	rwnx_wakeup_unlock(rwnx_hw->ws_tx);
 	return 0;
 }
 
@@ -320,6 +332,7 @@ static int rwnx_send_msg1(struct rwnx_hw *rwnx_hw, const void *msg_params,
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
+	rwnx_wakeup_lock(rwnx_hw->ws_tx);
 	msg = container_of((void *)msg_params, struct lmac_msg, param);
 
 	//nonblock = is_non_blocking_msg(msg->id);
@@ -350,6 +363,7 @@ static int rwnx_send_msg1(struct rwnx_hw *rwnx_hw, const void *msg_params,
 		ret = cmd->result;
 
 	//return ret;
+	rwnx_wakeup_unlock(rwnx_hw->ws_tx);
 	return 0;
 }
 
@@ -843,10 +857,39 @@ int rwnx_send_arpoffload_en_req(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_v
 }
 #endif
 
+int rwnx_send_disable_agg_req(struct rwnx_hw *rwnx_hw, u8_l agg_disable, u8_l agg_disable_rx, u8_l sta_idx)
+{
+	struct mm_set_agg_disable_req *req;
+	int error;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_AGG_DISABLE_REQ message */
+	req = rwnx_msg_zalloc(MM_SET_AGG_DISABLE_REQ, TASK_MM, DRV_TASK_ID,
+							sizeof(struct mm_set_agg_disable_req));
+
+	if (!req) {
+		return -ENOMEM;
+	}
+
+	req->disable = agg_disable;
+	req->staidx = sta_idx;
+	req->disable_rx = agg_disable_rx;
+
+	/* Send the MM_SET_AGG_DISABLE_REQ message to UMAC FW */
+	error = rwnx_send_msg(rwnx_hw, req, 1, MM_SET_AGG_DISABLE_CFM, NULL);
+
+	return (error);
+};
+
 int rwnx_send_coex_req(struct rwnx_hw *rwnx_hw, u8_l disable_coexnull, u8_l enable_nullcts)
 {
 	struct mm_set_coex_req *coex_req;
 	int error;
+
+	if ((rwnx_hw->chipid == PRODUCT_ID_AIC8800DC || rwnx_hw->chipid == PRODUCT_ID_AIC8800D80 ||
+		rwnx_hw->chipid == PRODUCT_ID_AIC8800D81) && rwnx_hw->cpmode == AICBSP_CPMODE_TEST)
+		return 0;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -871,14 +914,14 @@ int rwnx_send_coex_req(struct rwnx_hw *rwnx_hw, u8_l disable_coexnull, u8_l enab
 };
 
 
-int rwnx_send_rf_config_req(struct rwnx_hw *rwnx_hw)
+int rwnx_send_rf_config_req(struct rwnx_hw *rwnx_hw, u8_l ofst, u8_l sel, u8_l *tbl, u16_l len)
 {
 	struct mm_set_rf_config_req *rf_config_req;
 	int error;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
-	/* Build the MM_SET_P2P_NOA_REQ message */
+	/* Build the MM_SET_RF_CONFIG_REQ message */
 	rf_config_req = rwnx_msg_zalloc(MM_SET_RF_CONFIG_REQ, TASK_MM, DRV_TASK_ID,
 								  sizeof(struct mm_set_rf_config_req));
 
@@ -886,23 +929,23 @@ int rwnx_send_rf_config_req(struct rwnx_hw *rwnx_hw)
 		return -ENOMEM;
 	}
 
-	rf_config_req->config_type = 0;
-	rf_config_req->offset = 0;
-	rf_config_req->def_band = 0;
-	rf_config_req->len = 48*4*4 + 32*4*4 + 32*4;
-	rf_config_req->set = 1;
-	/* Fill the message parameters */
-	// add rf param copy here!!!
+	rf_config_req->table_sel = sel;
+	rf_config_req->table_ofst = ofst;
+	rf_config_req->table_num = 16;
+	rf_config_req->deft_page = 0;
 
-	/* Send the MM_ARPOFFLOAD_EN_REQ message to UMAC FW */
+	memcpy(rf_config_req->data, tbl, len);
+
+	/* Send the MM_SET_RF_CONFIG_REQ message to UMAC FW */
 	error = rwnx_send_msg(rwnx_hw, rf_config_req, 1, MM_SET_RF_CONFIG_CFM, NULL);
 
 	return error;
-};
+}
 
 int rwnx_send_rf_calib_req(struct rwnx_hw *rwnx_hw, struct mm_set_rf_calib_cfm *cfm)
 {
 	struct mm_set_rf_calib_req *rf_calib_req;
+	xtal_cap_conf_t xtal_cap = {0,};
 	int error;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
@@ -915,11 +958,28 @@ int rwnx_send_rf_calib_req(struct rwnx_hw *rwnx_hw, struct mm_set_rf_calib_cfm *
 		return -ENOMEM;
 	}
 
-	rf_calib_req->cal_cfg_24g = 0xbf;
-	rf_calib_req->cal_cfg_5g = 0x3f;
+	if (rwnx_hw->chipid == PRODUCT_ID_AIC8800D) {
+		rf_calib_req->cal_cfg_24g = 0xbf;
+		rf_calib_req->cal_cfg_5g = 0x3f;
+	} else if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC || rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) {
+		rf_calib_req->cal_cfg_24g = 0x0f8f;
+		rf_calib_req->cal_cfg_5g = 0;
+	} else if (rwnx_hw->chipid == PRODUCT_ID_AIC8800D80 || rwnx_hw->chipid == PRODUCT_ID_AIC8800D81) {
+		rf_calib_req->cal_cfg_24g = 0x0f8f;
+		rf_calib_req->cal_cfg_5g = 0x0f0f;
+	}
 	rf_calib_req->param_alpha = 0x0c34c008;
 	rf_calib_req->bt_calib_en = 0;
 	rf_calib_req->bt_calib_param = 0x264203;
+	rf_calib_req->xtal_cap = 0;
+	rf_calib_req->xtal_cap_fine = 0;
+
+	get_userconfig_xtal_cap(&xtal_cap);
+
+	if (xtal_cap.enable) {
+		rf_calib_req->xtal_cap = xtal_cap.xtal_cap;
+		rf_calib_req->xtal_cap_fine = xtal_cap.xtal_cap_fine;
+	}
 
 	/* Send the MM_SET_RF_CALIB_REQ message to UMAC FW */
 	error = rwnx_send_msg(rwnx_hw, rf_calib_req, 1, MM_SET_RF_CALIB_CFM, cfm);
@@ -977,6 +1037,8 @@ int rwnx_send_set_stack_start_req(struct rwnx_hw *rwnx_hw, u8_l on, u8_l efuse_v
 {
 	struct mm_set_stack_start_req *req;
 	int error;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	/* Build the MM_SET_STACK_START_REQ message */
 	req = rwnx_msg_zalloc(MM_SET_STACK_START_REQ, TASK_MM, DRV_TASK_ID, sizeof(struct mm_set_stack_start_req));
@@ -1037,6 +1099,116 @@ int rwnx_send_get_fw_version_req(struct rwnx_hw *rwnx_hw, struct mm_get_fw_versi
 	return error;
 }
 
+int rwnx_send_txpwr_lvl_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_lvl_req *txpwr_lvl_req;
+	txpwr_lvl_conf_v2_t txpwr_lvl_v2_tmp;
+	txpwr_lvl_conf_v2_t *txpwr_lvl_v2;
+	int error = 0;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_LVL_REQ message */
+	txpwr_lvl_req = rwnx_msg_zalloc(MM_SET_TXPWR_IDX_LVL_REQ, TASK_MM, DRV_TASK_ID,
+								  sizeof(struct mm_set_txpwr_lvl_req));
+
+	if (!txpwr_lvl_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_lvl_v2 = &txpwr_lvl_v2_tmp;
+
+	get_userconfig_txpwr_lvl_v2(txpwr_lvl_v2);
+
+	if (txpwr_lvl_v2->enable == 0) {
+		rwnx_msg_free(rwnx_hw, txpwr_lvl_req);
+	} else {
+		struct aicbsp_feature_t feature;
+		aicbsp_get_feature(&feature);
+		if ((feature.cpmode != AICBSP_CPMODE_TEST) && (feature.chipinfo->subrev == 0)) {
+			txpwr_lvl_req->txpwr_lvl.enable          = txpwr_lvl_v2->enable;
+			txpwr_lvl_req->txpwr_lvl.dsss            = txpwr_lvl_v2->pwrlvl_11b_11ag_2g4[3]; // 11M
+			txpwr_lvl_req->txpwr_lvl.ofdmlowrate_2g4 = txpwr_lvl_v2->pwrlvl_11ax_2g4[4]; // MCS4
+			txpwr_lvl_req->txpwr_lvl.ofdm64qam_2g4   = txpwr_lvl_v2->pwrlvl_11ax_2g4[7]; // MCS7
+			txpwr_lvl_req->txpwr_lvl.ofdm256qam_2g4  = txpwr_lvl_v2->pwrlvl_11ax_2g4[9]; // MCS9
+			txpwr_lvl_req->txpwr_lvl.ofdm1024qam_2g4 = txpwr_lvl_v2->pwrlvl_11ax_2g4[11]; // MCS11
+			txpwr_lvl_req->txpwr_lvl.ofdmlowrate_5g  = 13; // unused
+			txpwr_lvl_req->txpwr_lvl.ofdm64qam_5g    = 13; // unused
+			txpwr_lvl_req->txpwr_lvl.ofdm256qam_5g   = 13; // unused
+			txpwr_lvl_req->txpwr_lvl.ofdm1024qam_5g  = 13; // unused
+		} else {
+			txpwr_lvl_req->txpwr_lvl_v2  = *txpwr_lvl_v2;
+		}
+
+		/* Send the MM_SET_TXPWR_LVL_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_lvl_req, 1, MM_SET_TXPWR_IDX_LVL_CFM, NULL);
+	}
+	return error;
+}
+
+int rwnx_send_txpwr_lvl_v3_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_lvl_req *txpwr_lvl_req;
+	txpwr_lvl_conf_v3_t txpwr_lvl_v3_tmp;
+	txpwr_lvl_conf_v3_t *txpwr_lvl_v3;
+	int error = 0;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_LVL_REQ message */
+	txpwr_lvl_req = rwnx_msg_zalloc(MM_SET_TXPWR_IDX_LVL_REQ, TASK_MM, DRV_TASK_ID,
+								  sizeof(struct mm_set_txpwr_lvl_req));
+
+	if (!txpwr_lvl_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_lvl_v3 = &txpwr_lvl_v3_tmp;
+
+	get_userconfig_txpwr_lvl_v3(txpwr_lvl_v3);
+
+	if (txpwr_lvl_v3->enable == 0) {
+		rwnx_msg_free(rwnx_hw, txpwr_lvl_req);
+	} else {
+		txpwr_lvl_req->txpwr_lvl_v3  = *txpwr_lvl_v3;
+
+		/* Send the MM_SET_TXPWR_LVL_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_lvl_req, 1, MM_SET_TXPWR_IDX_LVL_CFM, NULL);
+	}
+	return error;
+}
+
+int rwnx_send_txpwr_lvl_adj_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_lvl_adj_req *txpwr_lvl_adj_req;
+	txpwr_lvl_adj_conf_t txpwr_lvl_adj_tmp;
+	txpwr_lvl_adj_conf_t *txpwr_lvl_adj;
+	int error = 0;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_LVL_REQ message */
+	txpwr_lvl_adj_req = rwnx_msg_zalloc(MM_SET_TXPWR_LVL_ADJ_REQ, TASK_MM, DRV_TASK_ID,
+								  sizeof(struct mm_set_txpwr_lvl_adj_req));
+
+	if (!txpwr_lvl_adj_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_lvl_adj = &txpwr_lvl_adj_tmp;
+
+	get_userconfig_txpwr_lvl_adj(txpwr_lvl_adj);
+
+	if (txpwr_lvl_adj->enable == 0) {
+		rwnx_msg_free(rwnx_hw, txpwr_lvl_adj_req);
+	} else {
+		txpwr_lvl_adj_req->txpwr_lvl_adj  = *txpwr_lvl_adj;
+
+		/* Send the MM_SET_TXPWR_LVL_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_lvl_adj_req, 1, MM_SET_TXPWR_LVL_ADJ_CFM, NULL);
+	}
+	return error;
+}
 
 int rwnx_send_txpwr_idx_req(struct rwnx_hw *rwnx_hw)
 {
@@ -1047,7 +1219,7 @@ int rwnx_send_txpwr_idx_req(struct rwnx_hw *rwnx_hw)
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	/* Build the MM_SET_TXPWR_IDX_REQ message */
-	txpwr_idx_req = rwnx_msg_zalloc(MM_SET_TXPWR_IDX_REQ, TASK_MM, DRV_TASK_ID,
+	txpwr_idx_req = rwnx_msg_zalloc(MM_SET_TXPWR_IDX_LVL_REQ, TASK_MM, DRV_TASK_ID,
 								  sizeof(struct mm_set_txpwr_idx_req));
 
 	if (!txpwr_idx_req) {
@@ -1073,7 +1245,7 @@ int rwnx_send_txpwr_idx_req(struct rwnx_hw *rwnx_hw)
 		return 0;
 	} else {
 		/* Send the MM_SET_TXPWR_IDX_REQ message to UMAC FW */
-		error = rwnx_send_msg(rwnx_hw, txpwr_idx_req, 1, MM_SET_TXPWR_IDX_CFM, NULL);
+		error = rwnx_send_msg(rwnx_hw, txpwr_idx_req, 1, MM_SET_TXPWR_IDX_LVL_CFM, NULL);
 
 		return error;
 	}
@@ -1118,6 +1290,67 @@ int rwnx_send_txpwr_ofst_req(struct rwnx_hw *rwnx_hw)
 	}
 };
 
+int rwnx_send_txpwr_ofst2x_req(struct rwnx_hw *rwnx_hw)
+{
+	struct mm_set_txpwr_ofst_req *txpwr_ofst_req;
+	txpwr_ofst2x_conf_t *txpwr_ofst2x;
+	int error = 0;
+	int type, ch_grp;
+
+	RWNX_DBG(RWNX_FN_ENTRY_STR);
+
+	/* Build the MM_SET_TXPWR_OFST_REQ message */
+	txpwr_ofst_req = rwnx_msg_zalloc(MM_SET_TXPWR_OFST_REQ, TASK_MM, DRV_TASK_ID,
+										sizeof(struct mm_set_txpwr_ofst_req));
+
+	if (!txpwr_ofst_req) {
+		return -ENOMEM;
+	}
+
+	txpwr_ofst2x = &txpwr_ofst_req->txpwr_ofst2x;
+	txpwr_ofst2x->enable = 0;
+	for (type = 0; type < 3; type++) {
+		for (ch_grp = 0; ch_grp < 6; ch_grp++) {
+			if (ch_grp < 3) {
+				txpwr_ofst2x->pwrofst2x_tbl_2g4[type][ch_grp] = 0;
+			}
+			txpwr_ofst2x->pwrofst2x_tbl_5g[type][ch_grp] = 0;
+		}
+	}
+	get_userconfig_txpwr_ofst2x(txpwr_ofst2x);
+
+	if (txpwr_ofst2x->enable) {
+#if 0
+		printk("%s:enable:%d\r\n", __func__, txpwr_ofst2x->enable);
+		printk("pwrofst2x 2.4g: [0]:11b, [1]:ofdm_highrate, [2]:ofdm_lowrate\n"
+				"  chan=" "\t1-4" "\t5-9" "\t10-13");
+		for (type = 0; type < 3; type++) {
+			printk("\n  [%d] =", type);
+			for (ch_grp = 0; ch_grp < 3; ch_grp++) {
+				printk("\t%d", txpwr_ofst2x->pwrofst2x_tbl_2g4[type][ch_grp]);
+			}
+		}
+		printk("\npwrofst2x 5g: [0]:ofdm_lowrate, [1]:ofdm_highrate, [2]:ofdm_midrate\n"
+				"  chan=" "\t36-50" "\t51-64" "\t98-114" "\t115-130" "\t131-146" "\t147-166");
+		for (type = 0; type < 3; type++) {
+			printk("\n  [%d] =", type);
+			for (ch_grp = 0; ch_grp < 6; ch_grp++) {
+				printk("\t%d", txpwr_ofst2x->pwrofst2x_tbl_5g[type][ch_grp]);
+			}
+		}
+		printk("\n");
+#endif
+
+		/* Send the MM_SET_TXPWR_OFST_REQ message to UMAC FW */
+		error = rwnx_send_msg(rwnx_hw, txpwr_ofst_req, 1, MM_SET_TXPWR_OFST_CFM, NULL);
+	} else {
+		printk("%s:Do not use txpwr_ofst2x\r\n", __func__);
+		rwnx_msg_free(rwnx_hw, txpwr_ofst_req);
+	}
+
+	return error;
+}
+
 /******************************************************************************
  *    Control messages handling functions (FULLMAC only)
  *****************************************************************************/
@@ -1142,6 +1375,9 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 #endif
 	uint8_t *ht_mcs;
 	int i;
+	if ((rwnx_hw->chipid == PRODUCT_ID_AIC8800DC || rwnx_hw->chipid == PRODUCT_ID_AIC8800D80 || rwnx_hw->chipid == PRODUCT_ID_AIC8800D81)
+		&& rwnx_hw->cpmode == AICBSP_CPMODE_TEST)
+		return 0;
 
 	if (rwnx_hw->band_5g_support) {
 		ht_cap = &wiphy->bands[NL80211_BAND_5GHZ]->ht_cap;
@@ -1190,8 +1426,6 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 	#if defined(CONFIG_HE_FOR_OLD_KERNEL)
 	if (1) {
 		he_cap = &rwnx_he_capa.he_cap;
-	#else
-	{
 	#endif
 		req->he_supp = he_cap->has_he;
 		for (i = 0; i < ARRAY_SIZE(he_cap->he_cap_elem.mac_cap_info); i++) {
@@ -1211,7 +1445,6 @@ int rwnx_send_me_config_req(struct rwnx_hw *rwnx_hw)
 		}
 		req->he_ul_on = rwnx_hw->mod_params->he_ul_on;
 	}
-}
 #else
 	req->he_supp = false;
 	req->he_ul_on = false;
@@ -1239,6 +1472,10 @@ int rwnx_send_me_chan_config_req(struct rwnx_hw *rwnx_hw)
 	struct me_chan_config_req *req;
 	struct wiphy *wiphy = rwnx_hw->wiphy;
 	int i;
+
+	if ((rwnx_hw->chipid == PRODUCT_ID_AIC8800DC || rwnx_hw->chipid == PRODUCT_ID_AIC8800D80 || rwnx_hw->chipid == PRODUCT_ID_AIC8800D81)
+		&& rwnx_hw->cpmode == AICBSP_CPMODE_TEST)
+		return 0;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -1306,15 +1543,22 @@ int rwnx_send_me_set_control_port_req(struct rwnx_hw *rwnx_hw, bool opened, u8 s
 	return rwnx_send_msg(rwnx_hw, req, 1, ME_SET_CONTROL_PORT_CFM, NULL);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0))
+struct ieee80211_he_cap_elem_4_19 {
+	u8 mac_cap_info[6];
+	u8 phy_cap_info[11];
+} __packed;
+#endif
 int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *params,
 						 const u8 *mac, u8 inst_nbr, struct me_sta_add_cfm *cfm)
 {
 	struct me_sta_add_req *req;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	u8 *ht_mcs = (u8 *)&params->link_sta_params.ht_capa->mcs;
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 41) && defined(KERNEL_AOSP)) || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 20, 0)))
+	struct link_station_parameters *link_sta_params = &params->link_sta_params;
 #else
-	u8 *ht_mcs = (u8 *)&params->ht_capa->mcs;
+	struct station_parameters *link_sta_params = params;
 #endif
+	u8 *ht_mcs = (u8 *)&link_sta_params->ht_capa->mcs;
 	int i;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
@@ -1328,24 +1572,13 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 	/* Set parameters for the MM_STA_ADD_REQ message */
 	memcpy(&(req->mac_addr.array[0]), mac, ETH_ALEN);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	req->rate_set.length = params->link_sta_params.supported_rates_len;
-	for (i = 0; i < params->link_sta_params.supported_rates_len; i++)
-		req->rate_set.array[i] = params->link_sta_params.supported_rates[i];
-#else
-	req->rate_set.length = params->supported_rates_len;
-	for (i = 0; i < params->supported_rates_len; i++)
-		req->rate_set.array[i] = params->supported_rates[i];
-#endif
+	req->rate_set.length = link_sta_params->supported_rates_len;
+	for (i = 0; i < link_sta_params->supported_rates_len; i++)
+		req->rate_set.array[i] = link_sta_params->supported_rates[i];
 
 	req->flags = 0;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	if (params->link_sta_params.ht_capa) {
-		const struct ieee80211_ht_cap *ht_capa = params->link_sta_params.ht_capa;
-#else
-	if (params->ht_capa) {
-		const struct ieee80211_ht_cap *ht_capa = params->ht_capa;
-#endif
+	if (link_sta_params->ht_capa) {
+		const struct ieee80211_ht_cap *ht_capa = link_sta_params->ht_capa;
 
 		req->flags |= STA_HT_CAPA;
 		req->ht_cap.ht_capa_info = cpu_to_le16(ht_capa->cap_info);
@@ -1357,13 +1590,8 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 		req->ht_cap.asel_capa = ht_capa->antenna_selection_info;
 	}
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	if (params->link_sta_params.vht_capa) {
-		const struct ieee80211_vht_cap *vht_capa = params->link_sta_params.vht_capa;
-#else
-	if (params->vht_capa) {
-		const struct ieee80211_vht_cap *vht_capa = params->vht_capa;
-#endif
+	if (link_sta_params->vht_capa) {
+		const struct ieee80211_vht_cap *vht_capa = link_sta_params->vht_capa;
 
 		req->flags |= STA_VHT_CAPA;
 		req->vht_cap.vht_capa_info = cpu_to_le32(vht_capa->vht_cap_info);
@@ -1373,13 +1601,12 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 		req->vht_cap.tx_mcs_map = cpu_to_le16(vht_capa->supp_mcs.tx_mcs_map);
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-	if (params->link_sta_params.he_capa) {
-		const struct ieee80211_he_cap_elem *he_capa = params->link_sta_params.he_capa;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+	if (link_sta_params->he_capa) {
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(4, 20, 0)
+		const struct ieee80211_he_cap_elem_4_19 *he_capa = (const struct ieee80211_he_cap_elem_4_19 *) link_sta_params->he_capa;
 #else
-	if (params->he_capa) {
-		const struct ieee80211_he_cap_elem *he_capa = params->he_capa;
+		const struct ieee80211_he_cap_elem *he_capa = link_sta_params->he_capa;
 #endif
 		struct ieee80211_he_mcs_nss_supp *mcs_nss_supp =
 								(struct ieee80211_he_mcs_nss_supp *)(he_capa + 1);
@@ -1406,15 +1633,10 @@ int rwnx_send_me_sta_add(struct rwnx_hw *rwnx_hw, struct station_parameters *par
 	if (params->sta_flags_set & BIT(NL80211_STA_FLAG_MFP))
 		req->flags |= STA_MFP_CAPA;
 
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
-        if (params->link_sta_params.opmode_notif_used) {
-                req->flags |= STA_OPMOD_NOTIF;
-                req->opmode = params->link_sta_params.opmode_notif;
-        }
-	#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-	if (params->opmode_notif_used) {
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+	if (link_sta_params->opmode_notif_used) {
 		req->flags |= STA_OPMOD_NOTIF;
-		req->opmode = params->opmode_notif;
+		req->opmode = link_sta_params->opmode_notif;
 	}
 	#endif
 
@@ -1540,12 +1762,13 @@ int rwnx_send_me_set_ps_mode(struct rwnx_hw *rwnx_hw, u8 ps_mode)
 	return rwnx_send_msg(rwnx_hw, req, 1, ME_SET_PS_MODE_CFM, NULL);
 }
 
-int rwnx_send_me_set_lp_level(struct rwnx_hw *rwnx_hw, u8 lp_level)
+int rwnx_send_me_set_lp_level(struct rwnx_hw *rwnx_hw, u8 lp_level, u8 disable_filter)
 {
 	struct me_set_lp_level_req *req;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
+	printk("%s %d %d \n", __func__, lp_level, disable_filter);
 	/* Build the ME_SET_LP_LEVEL_REQ message */
 	req = rwnx_msg_zalloc(ME_SET_LP_LEVEL_REQ, TASK_ME, DRV_TASK_ID,
 						  sizeof(struct me_set_lp_level_req));
@@ -1554,7 +1777,7 @@ int rwnx_send_me_set_lp_level(struct rwnx_hw *rwnx_hw, u8 lp_level)
 
 	/* Set parameters for the ME_SET_LP_LEVEL_REQ message */
 	req->lp_level = lp_level;
-
+	req->disable_filter = disable_filter;
 	/* Send the ME_SET_LP_LEVEL_REQ message to FW */
 	return rwnx_send_msg(rwnx_hw, req, 1, ME_SET_LP_LEVEL_CFM, NULL);
 }
@@ -1663,6 +1886,24 @@ int rwnx_send_sm_connect_req(struct rwnx_hw *rwnx_hw,
 		rwnx_vif->last_auth_type = sme->auth_type;
 	}
 
+	rwnx_vif->sta.ssid_len = (int)sme->ssid_len;
+	memset(rwnx_vif->sta.ssid, 0, rwnx_vif->sta.ssid_len + 1);
+	memcpy(rwnx_vif->sta.ssid, sme->ssid, rwnx_vif->sta.ssid_len);
+
+	if (sme->bssid) {
+		memcpy(rwnx_vif->sta.bssid, sme->bssid, ETH_ALEN);
+	} else {
+		pr_err("%s(%d), sme->bssid null\n", __func__, __LINE__);
+	}
+
+	printk("%s drv_vif_index:%d connect to %s(%d) channel:%d auth_type:%d\r\n",
+		__func__,
+		rwnx_vif->drv_vif_index,
+		rwnx_vif->sta.ssid,
+		rwnx_vif->sta.ssid_len,
+		req->chan.freq,
+		req->auth_type);
+
 	/* Send the SM_CONNECT_REQ message to LMAC FW */
 	return rwnx_send_msg(rwnx_hw, req, 1, SM_CONNECT_CFM, cfm);
 
@@ -1709,7 +1950,7 @@ int rwnx_send_sm_external_auth_required_rsp(struct rwnx_hw *rwnx_hw,
 	rsp->vif_idx = rwnx_vif->vif_index;
 
 	/* send the SM_EXTERNAL_AUTH_REQUIRED_RSP message UMAC FW */
-	return rwnx_send_msg(rwnx_hw, rsp, 0, 0, NULL);
+	return rwnx_send_msg(rwnx_hw, rsp, 1, SM_EXTERNAL_AUTH_REQUIRED_RSP_CFM, NULL);
 }
 
 int rwnx_send_apm_start_req(struct rwnx_hw *rwnx_hw, struct rwnx_vif *vif,
@@ -1861,6 +2102,11 @@ int rwnx_send_scanu_req(struct rwnx_hw *rwnx_hw, struct rwnx_vif *rwnx_vif,
 	req->ssid_cnt = (u8)min_t(int, SCAN_SSID_MAX, param->n_ssids);
 	req->bssid = mac_addr_bcst;
 	req->no_cck = param->no_cck;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
+	if (param->duration_mandatory)
+		//req->duration = ieee80211_tu_to_usec(param->duration);
+		req->duration = 0;
+#endif
 
 #ifdef RADAR_OR_IR_DETECT
 	if (req->ssid_cnt == 0)
@@ -2772,7 +3018,7 @@ int rwnx_send_cfg_rssi_req(struct rwnx_hw *rwnx_hw, u8 vif_index, int rssi_thold
 	req->rssi_hyst = (u8)rssi_hyst;
 
 	/* Send the MM_CFG_RSSI_REQ message to LMAC FW */
-	return rwnx_send_msg(rwnx_hw, req, 0, 0, NULL);
+	return rwnx_send_msg(rwnx_hw, req, 1, MM_CFG_RSSI_CFM, NULL);
 }
 
 #ifdef CONFIG_USB_BT

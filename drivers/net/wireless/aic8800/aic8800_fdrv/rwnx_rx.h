@@ -319,8 +319,12 @@ struct hw_rxhdr {
 	u32    pattern;
 };
 
-extern const u8 legrates_lut[];
-extern u16 legrates_lut_rate[];
+struct rwnx_legrate {
+	int idx;
+	int rate;
+};
+
+extern struct rwnx_legrate legrates_lut[];
 extern u16 tx_legrates_lut_rate[];
 
 struct DHCPInfo {
@@ -344,6 +348,9 @@ struct DHCPInfo {
 
 u8 rwnx_rxdataind_aicwf(struct rwnx_hw *rwnx_hw, void *hostid, void *rx_priv);
 int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv);
+#ifdef CONFIG_USB_MSG_IN_EP
+int aicwf_process_msg_rxframes(struct aicwf_rx_priv *rx_priv);
+#endif
 
 #ifdef AICWF_ARP_OFFLOAD
 void arpoffload_proc(struct sk_buff *skb, struct rwnx_vif *rwnx_vif);
@@ -364,5 +371,7 @@ void reord_timeout_handler (struct timer_list *t);
 #endif
 
 #endif
+void rwnx_rxdata_process_amsdu(struct rwnx_hw *rwnx_hw, struct sk_buff *skb, u8 vif_idx,
+									struct sk_buff_head *list);
 
 #endif /* _RWNX_RX_H_ */

@@ -1125,7 +1125,9 @@ static bool dfs_pattern_detector_add_pulse(struct dfs_pattern_detector *dpd,
 		ps = pde->ops->add_pulse(pde, len, dpd->last_pulse_ts, pri);
 
 		if (ps != NULL) {
+#ifdef CREATE_TRACE_POINTS
 			trace_radar_detected(chain, dpd->region, pde->freq, i, ps->pri);
+#endif
 			// reset everything instead of just the channel detector
 			dfs_pattern_detector_reset(dpd);
 			return true;
@@ -1339,7 +1341,9 @@ static void rwnx_radar_process_pulse(struct work_struct *ws)
 
 		for (i = 0; i < pulses_count[chain] ; i++) {
 			struct radar_pulse *p = (struct radar_pulse *)&pulses[chain][i];
+#ifdef CREATE_TRACE_POINTS
 			trace_radar_pulse(chain, p);
+#endif
 			if (dfs_pattern_detector_add_pulse(radar->dpd[chain], chain,
 											   (s16)freq + (2 * p->freq),
 											   p->rep, (p->len * 2), now)) {
@@ -1448,9 +1452,9 @@ bool rwnx_radar_set_domain(struct rwnx_radar *radar,
 {
 	if (radar->dpd[0] == NULL)
 		return false;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_radar_set_region(region);
-
+#endif
 	return (dfs_pattern_detector_set_domain(radar->dpd[RWNX_RADAR_RIU],
 											region, RWNX_RADAR_RIU) &&
 			dfs_pattern_detector_set_domain(radar->dpd[RWNX_RADAR_FCU],
@@ -1460,7 +1464,9 @@ bool rwnx_radar_set_domain(struct rwnx_radar *radar,
 void rwnx_radar_detection_enable(struct rwnx_radar *radar, u8 enable, u8 chain)
 {
 	if (chain < RWNX_RADAR_LAST) {
+#ifdef CREATE_TRACE_POINTS
 		trace_radar_enable_detection(radar->dpd[chain]->region, enable, chain);
+#endif
 		spin_lock_bh(&radar->lock);
 		radar->dpd[chain]->enabled = enable;
 		spin_unlock_bh(&radar->lock);

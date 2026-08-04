@@ -434,6 +434,12 @@ enum mac_connection_flags {
 	REASSOCIATION = BIT(5),
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#include <linux/ieee80211.h>
+#else
+#define CONFIG_HE_FOR_OLD_KERNEL    1
+#endif
+
 #ifdef CONFIG_HE_FOR_OLD_KERNEL
 #define IEEE80211_HE_MAC_CAP2_ALL_ACK									0x02
 #define IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G				0x02
@@ -465,9 +471,6 @@ enum mac_connection_flags {
 
 #define IEEE80211_HE_PPE_THRES_MAX_LEN		25
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-#include <linux/ieee80211.h>
-#else
 struct ieee80211_he_cap_elem {
 	u8 mac_cap_info[6];
 	u8 phy_cap_info[11];
@@ -495,5 +498,4 @@ struct ieee80211_sband_iftype_data {
 };
 #endif
 
-#endif
 #endif // LMAC_MAC_H_

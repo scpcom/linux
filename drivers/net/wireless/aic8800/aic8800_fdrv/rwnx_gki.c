@@ -29,8 +29,8 @@ static bool __rwnx_cfg80211_unexpected_frame(struct net_device *dev, u8 cmd,
 	}
 
 	if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
-	    nla_put_u32(msg, NL80211_ATTR_IFINDEX, dev->ifindex) ||
-	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr))
+		nla_put_u32(msg, NL80211_ATTR_IFINDEX, dev->ifindex) ||
+		nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr))
 		goto nla_put_failure;
 
 	genlmsg_end(msg, hdr);
@@ -49,7 +49,7 @@ bool rwnx_cfg80211_rx_spurious_frame(struct net_device *dev,
 	bool ret;
 
 	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_AP &&
-		    wdev->iftype != NL80211_IFTYPE_P2P_GO)) {
+			wdev->iftype != NL80211_IFTYPE_P2P_GO)) {
 		return false;
 	}
 	ret = __rwnx_cfg80211_unexpected_frame(dev, NL80211_CMD_UNEXPECTED_FRAME,
@@ -64,8 +64,8 @@ bool rwnx_cfg80211_rx_unexpected_4addr_frame(struct net_device *dev,
 	bool ret;
 
 	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_AP &&
-		    wdev->iftype != NL80211_IFTYPE_P2P_GO &&
-		    wdev->iftype != NL80211_IFTYPE_AP_VLAN)) {
+			wdev->iftype != NL80211_IFTYPE_P2P_GO &&
+			wdev->iftype != NL80211_IFTYPE_AP_VLAN)) {
 		return false;
 	}
 	ret = __rwnx_cfg80211_unexpected_frame(dev,
@@ -98,12 +98,12 @@ void rwnx_cfg80211_notify_new_peer_candidate(struct net_device *dev, const u8 *a
 	}
 
 	if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
-	    nla_put_u32(msg, NL80211_ATTR_IFINDEX, dev->ifindex) ||
-	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr) ||
-	    (ie_len && ie &&
-	     nla_put(msg, NL80211_ATTR_IE, ie_len, ie)) ||
-	    (sig_dbm &&
-	     nla_put_u32(msg, NL80211_ATTR_RX_SIGNAL_DBM, sig_dbm)))
+		nla_put_u32(msg, NL80211_ATTR_IFINDEX, dev->ifindex) ||
+		nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr) ||
+		(ie_len && ie &&
+		 nla_put(msg, NL80211_ATTR_IE, ie_len, ie)) ||
+		(sig_dbm &&
+		 nla_put_u32(msg, NL80211_ATTR_RX_SIGNAL_DBM, sig_dbm)))
 		goto nla_put_failure;
 
 	genlmsg_end(msg, hdr);
@@ -140,11 +140,11 @@ void rwnx_cfg80211_report_obss_beacon(struct wiphy *wiphy,
 			goto nla_put_failure;
 
 		if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
-		    (freq &&
-		     nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, freq)) ||
-		    (sig_dbm &&
-		     nla_put_u32(msg, NL80211_ATTR_RX_SIGNAL_DBM, sig_dbm)) ||
-		    nla_put(msg, NL80211_ATTR_FRAME, len, frame))
+			(freq &&
+			 nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, freq)) ||
+			(sig_dbm &&
+			 nla_put_u32(msg, NL80211_ATTR_RX_SIGNAL_DBM, sig_dbm)) ||
+			nla_put(msg, NL80211_ATTR_FRAME, len, frame))
 			goto nla_put_failure;
 
 		genlmsg_end(msg, hdr);
@@ -184,7 +184,7 @@ static int rwnx_nl80211_send_chandef(struct sk_buff *msg,
 	if (nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ1, chandef->center_freq1))
 		return -ENOBUFS;
 	if (chandef->center_freq2 &&
-	    nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2, chandef->center_freq2))
+		nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2, chandef->center_freq2))
 		return -ENOBUFS;
 	return 0;
 }
@@ -216,7 +216,7 @@ void rwnx_cfg80211_ch_switch_notify(struct cfg80211_registered_device *rdev,
 		goto nla_put_failure;
 
 	if ((notif == NL80211_CMD_CH_SWITCH_STARTED_NOTIFY) &&
-	    (nla_put_u32(msg, NL80211_ATTR_CH_SWITCH_COUNT, count)))
+		(nla_put_u32(msg, NL80211_ATTR_CH_SWITCH_COUNT, count)))
 			goto nla_put_failure;
 
 	genlmsg_end(msg, hdr);
@@ -229,9 +229,19 @@ void rwnx_cfg80211_ch_switch_notify(struct cfg80211_registered_device *rdev,
 	nlmsg_free(msg);
 }
 
-void rwnx_cfg80211_ch_switch_started_notify(struct net_device *dev,
-				struct cfg80211_chan_def *chandef,
-				u8 count)
+void rwnx_cfg80211_ch_switch_started_notify(struct net_device *dev
+				, struct cfg80211_chan_def *chandef
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+				, unsigned int link_id
+#endif
+				, u8 count
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+				, bool quiet
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 94))
+				, u16 punct_bitmap
+#endif
+				)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct wiphy *wiphy = wdev->wiphy;

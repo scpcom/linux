@@ -38,7 +38,10 @@
 #include "aic_btusb.h"
 
 #define AICBT_RELEASE_NAME "202012_ANDROID"
-#define VERSION "2.1.0"
+#define VERSION            "2.1.0"
+#define DRV_RELEASE_DATE   "20240919"
+#define DRV_PATCH_LEVEL    "002"
+#define DRV_RELEASE_TAG    "aic-btusb-" DRV_RELEASE_DATE "-" DRV_PATCH_LEVEL
 
 #define SUSPNED_DW_FW 0
 
@@ -1395,7 +1398,10 @@ void firmware_info_destroy(struct usb_interface *intf)
 static struct usb_driver btusb_driver;
 
 static struct usb_device_id btusb_table[] = {
-	{USB_DEVICE_AND_INTERFACE_INFO(0xa69c, 0x8801, 0xe0, 0x01, 0x01)},
+	//{USB_DEVICE_AND_INTERFACE_INFO(0xa69c, 0x8801, 0xe0, 0x01, 0x01)},
+	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_AIC, USB_DEVICE_ID_AIC_8801, 0xff, 0xff, 0xff)},
+	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_AIC, USB_DEVICE_ID_AIC_8800D81, 0xff, 0xff, 0xff)},
+	{USB_DEVICE_AND_INTERFACE_INFO(USB_VENDOR_ID_AIC, USB_DEVICE_ID_AIC_8800D41, 0xff, 0xff, 0xff)},
 	{}
 };
 
@@ -2696,6 +2702,7 @@ static int __init btusb_init(void)
 	int err;
 
 	AICBT_INFO("AICBT_RELEASE_NAME: %s", AICBT_RELEASE_NAME);
+	AICBT_INFO("Driver Release Tag: %s", DRV_RELEASE_TAG);
 	AICBT_INFO("AicSemi Bluetooth USB driver module init, version %s", VERSION);
 #if CONFIG_BLUEDROID
 	err = btchr_init();

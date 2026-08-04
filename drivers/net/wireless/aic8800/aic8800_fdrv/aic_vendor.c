@@ -9,7 +9,9 @@
 #include <linux/rtnetlink.h>
 #include <net/netlink.h>
 #include "rwnx_version_gen.h"
+#include "rwnx_msg_tx.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
 static struct wifi_ring_buffer_status ring_buffer[] = {
 	{
 		.name            = "aicwf_ring_buffer0",
@@ -223,7 +225,7 @@ static int aicwf_vendor_get_ver(struct wiphy *wiphy, struct wireless_dev *wdev,
 		return -ENOMEM;
 
 	if (nla_put(reply, attr,
-		    payload, version)) {
+			payload, version)) {
 		wiphy_err(wiphy, "%s put version error\n", __func__);
 		goto out_put_fail;
 	}
@@ -378,6 +380,9 @@ static int aicwf_vendor_subcmd_get_feature_set(struct wiphy *wiphy, struct wirel
 	/*bit 21:WiFi mkeep_alive*/
 	feature |= WIFI_FEATURE_MKEEP_ALIVE;
 
+#if defined(AICWF_LATENCY_MODE) && defined(AICWF_SDIO_SUPPORT)
+	feature |= WIFI_FEATURE_SET_LATENCY_MODE;
+#endif
 	if (nla_put_u32(reply, ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET, feature)) {
 		wiphy_err(wiphy, "%s put u32 error\n", __func__);
 		goto out_put_fail;
@@ -611,6 +616,45 @@ static int aicwf_vendor_sub_cmd_set_mac(struct wiphy *wiphy, struct wireless_dev
 	return ret;
 }
 
+#if defined(AICWF_LATENCY_MODE) && defined(AICWF_SDIO_SUPPORT)
+static int aicwf_vendor_subcmd_set_latency_mode(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void *data, int len)
+{
+	int err = 0, rem, type;
+	u32 latency_mode;
+	const struct nlattr *iter;
+	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
+
+	nla_for_each_attr(iter, data, len, rem) {
+		type = nla_type(iter);
+		switch (type) {
+		case ANDR_WIFI_ATTRIBUTE_LATENCY_MODE:
+			latency_mode = nla_get_u32(iter);
+			printk("%s,Setting latency mode %d\n", __func__, latency_mode);
+			#ifdef AICWF_SDIO_SUPPORT
+			if (latency_mode) {
+				rwnx_send_me_set_lp_level(rwnx_hw, 0, 1);
+			} else {
+				rwnx_send_me_set_lp_level(rwnx_hw, 1, 0);
+			}
+			#endif
+			break;
+		default:
+			pr_err("%s(%d), Unknown type: %d\n", __func__, __LINE__, type);
+			return err;
+		}
+	}
+
+	return err;
+}
+#endif
+
+static int aicwf_vendor_logger_start_pkt_fate_monitoring(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void *data, int len)
+{
+	return -3;  // WIFI_ERROR_NOT_SUPPORTED
+}
+
 static const struct nla_policy
 aicwf_cfg80211_mkeep_alive_policy[MKEEP_ALIVE_ATTRIBUTE_MAX+1] = {
 	[0] = {.type = NLA_UNSPEC },
@@ -646,6 +690,7 @@ static const struct nla_policy
 aicwf_cfg80211_andr_wifi_policy[ANDR_WIFI_ATTRIBUTE_MAX + 1] = {
 	[0] = {.type = NLA_UNSPEC },
 	[ANDR_WIFI_ATTRIBUTE_COUNTRY] = { .type = NLA_STRING },
+	[ANDR_WIFI_ATTRIBUTE_LATENCY_MODE] = { .type = NLA_U32, .len = sizeof(uint32_t) },
 };
 
 static const struct nla_policy
@@ -838,17 +883,58 @@ const struct wiphy_vendor_command aicwf_vendor_cmd[] = {
 		.policy = aicwf_cfg80211_subcmd_set_mac_policy,
 		.maxattr = WIFI_VENDOR_ATTR_DRIVER_MAX,
 #endif
-    },
+	},
+	{
+		{
+			.vendor_id = BRCM_OUI,
+			.subcmd = VENDOR_NL80211_SUBCMD_SET_MAC
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = aicwf_vendor_sub_cmd_set_mac,
+		.dumpit = aicwf_dump_interface,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
+		.policy = aicwf_cfg80211_subcmd_set_mac_policy,
+		.maxattr = WIFI_VENDOR_ATTR_DRIVER_MAX,
+#endif
+	},
+#if defined(AICWF_LATENCY_MODE) && defined(AICWF_SDIO_SUPPORT)
+	{
+		{
+			.vendor_id = GOOGLE_OUI,
+			.subcmd = WIFI_SUBCMD_SET_LATENCY_MODE
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = aicwf_vendor_subcmd_set_latency_mode,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
+		.policy = aicwf_cfg80211_andr_wifi_policy,
+		.maxattr = ANDR_WIFI_ATTRIBUTE_MAX
+#endif /* LINUX_VERSION >= 5.3 */
+	},
+#endif
+	{
+		{
+			.vendor_id = GOOGLE_OUI,
+			.subcmd = LOGGER_START_PKT_FATE_MONITORING
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = aicwf_vendor_logger_start_pkt_fate_monitoring,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
+		.policy = VENDOR_CMD_RAW_DATA,
+#endif
+	},
 };
 
 static const struct nl80211_vendor_cmd_info aicwf_vendor_events[] = {
 };
+#endif
 
 int aicwf_vendor_init(struct wiphy *wiphy)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
 	wiphy->vendor_commands = aicwf_vendor_cmd;
 	wiphy->n_vendor_commands = ARRAY_SIZE(aicwf_vendor_cmd);
 	wiphy->vendor_events = aicwf_vendor_events;
 	wiphy->n_vendor_events = ARRAY_SIZE(aicwf_vendor_events);
+#endif
 	return 0;
 }

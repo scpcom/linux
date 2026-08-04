@@ -21,15 +21,41 @@ const int nx_tid_prio[NX_NB_TID_PER_STA] = {7, 6, 5, 4, 3, 0, 2, 1};
 
 static inline int rwnx_txq_sta_idx(struct rwnx_sta *sta, u8 tid)
 {
-	if (is_multicast_sta(sta->sta_idx))
-		return NX_FIRST_VIF_TXQ_IDX + sta->vif_idx;
-	else
+	if (is_multicast_sta(sta->sta_idx)) {
+#if defined(AICWF_SDIO_SUPPORT)
+		if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+			((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+			g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+
+#elif defined(AICWF_USB_SUPPORT)
+		if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+			((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+			g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+			return NX_FIRST_VIF_TXQ_IDX_FOR_OLD_IC + sta->vif_idx;
+		} else {
+			return NX_FIRST_VIF_TXQ_IDX + sta->vif_idx;
+		}
+	} else {
 		return (sta->sta_idx * NX_NB_TXQ_PER_STA) + tid;
+	}
 }
 
 static inline int rwnx_txq_vif_idx(struct rwnx_vif *vif, u8 type)
 {
-	return NX_FIRST_VIF_TXQ_IDX + master_vif_idx(vif) + (type * NX_VIRT_DEV_MAX);
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		return NX_FIRST_VIF_TXQ_IDX_FOR_OLD_IC + master_vif_idx(vif) + (type * NX_VIRT_DEV_MAX);
+	} else {
+		return NX_FIRST_VIF_TXQ_IDX + master_vif_idx(vif) + (type * NX_VIRT_DEV_MAX);
+	}
 }
 
 struct rwnx_txq *rwnx_txq_sta_get(struct rwnx_sta *sta, u8 tid,
@@ -80,7 +106,23 @@ static void rwnx_txq_init(struct rwnx_txq *txq, int idx, u8 status,
 			)
 {
 	int i;
+	int nx_first_unk_txq_idx = NX_FIRST_UNK_TXQ_IDX;
+	int nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX;
+	int nx_first_vif_txq_idx = NX_FIRST_VIF_TXQ_IDX;
 
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+			nx_first_unk_txq_idx = NX_FIRST_UNK_TXQ_IDX_FOR_OLD_IC;
+			nx_bcmc_txq_ndev_idx = NX_BCMC_TXQ_NDEV_IDX_FOR_OLD_IC;
+			nx_first_vif_txq_idx = NX_FIRST_VIF_TXQ_IDX_FOR_OLD_IC;
+	}
 	txq->idx = idx;
 	txq->status = status;
 	txq->credits = NX_TXQ_INITIAL_CREDITS;
@@ -99,15 +141,15 @@ static void rwnx_txq_init(struct rwnx_txq *txq, int idx, u8 status,
 #endif
 #ifdef CONFIG_RWNX_FULLMAC
 	txq->ps_id = LEGACY_PS_ID;
-	if (idx < NX_FIRST_VIF_TXQ_IDX) {
+	if (idx < nx_first_vif_txq_idx) {
 		int sta_idx = sta->sta_idx;
 		int tid = idx - (sta_idx * NX_NB_TXQ_PER_STA);
 	if (tid < NX_NB_TID_PER_STA)
 		txq->ndev_idx = NX_STA_NDEV_IDX(tid, sta_idx);
 	else
 		txq->ndev_idx = NDEV_NO_TXQ;
-	} else if (idx < NX_FIRST_UNK_TXQ_IDX) {
-		txq->ndev_idx = NX_BCMC_TXQ_NDEV_IDX;
+	} else if (idx < nx_first_unk_txq_idx) {
+		txq->ndev_idx = nx_bcmc_txq_ndev_idx;
 	} else {
 		txq->ndev_idx = NDEV_NO_TXQ;
 	}
@@ -137,15 +179,15 @@ void rwnx_txq_flush(struct rwnx_hw *rwnx_hw, struct rwnx_txq *txq)
 		if (sw_txhdr->desc.host.packet_cnt > 1) {
 			struct rwnx_amsdu_txhdr *amsdu_txhdr;
 			list_for_each_entry(amsdu_txhdr, &sw_txhdr->amsdu.hdrs, list) {
-				dma_unmap_single(rwnx_hw->dev, amsdu_txhdr->dma_addr,
-								 amsdu_txhdr->map_len, DMA_TO_DEVICE);
+				//dma_unmap_single(rwnx_hw->dev, amsdu_txhdr->dma_addr,
+				//				 amsdu_txhdr->map_len, DMA_TO_DEVICE);
 				dev_kfree_skb_any(amsdu_txhdr->skb);
 			}
 		}
 #endif
 		kmem_cache_free(rwnx_hw->sw_txhdr_cache, sw_txhdr);
-		dma_unmap_single(rwnx_hw->dev, sw_txhdr->dma_addr, sw_txhdr->map_len,
-						 DMA_TO_DEVICE);
+		//dma_unmap_single(rwnx_hw->dev, sw_txhdr->dma_addr, sw_txhdr->map_len,
+		//				 DMA_TO_DEVICE);
 
 #ifdef CONFIG_RWNX_FULLMAC
 	dev_kfree_skb_any(skb);
@@ -316,9 +358,22 @@ void rwnx_txq_offchan_init(struct rwnx_vif *rwnx_vif)
 {
 	struct rwnx_hw *rwnx_hw = rwnx_vif->rwnx_hw;
 	struct rwnx_txq *txq;
+	int nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX;
 
-	txq = &rwnx_hw->txq[NX_OFF_CHAN_TXQ_IDX];
-	rwnx_txq_init(txq, NX_OFF_CHAN_TXQ_IDX, RWNX_TXQ_STOP_CHAN,
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		  g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		  g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX_FOR_OLD_IC;
+	}
+
+	txq = &rwnx_hw->txq[nx_off_chan_txq_idx];
+	rwnx_txq_init(txq, nx_off_chan_txq_idx, RWNX_TXQ_STOP_CHAN,
 				  &rwnx_hw->hwq[RWNX_HWQ_VO], TID_MGT, NULL, rwnx_vif->ndev);
 }
 
@@ -333,8 +388,21 @@ void rwnx_txq_offchan_init(struct rwnx_vif *rwnx_vif)
 void rwnx_txq_offchan_deinit(struct rwnx_vif *rwnx_vif)
 {
 	struct rwnx_txq *txq;
+	int nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX;
 
-	txq = &rwnx_vif->rwnx_hw->txq[NX_OFF_CHAN_TXQ_IDX];
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		  g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		  g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX_FOR_OLD_IC;
+	}
+
+	txq = &rwnx_vif->rwnx_hw->txq[nx_off_chan_txq_idx];
 	rwnx_txq_deinit(rwnx_vif->rwnx_hw, txq);
 }
 
@@ -384,7 +452,9 @@ void rwnx_txq_tdls_vif_deinit(struct rwnx_vif *rwnx_vif)
 void rwnx_txq_add_to_hw_list(struct rwnx_txq *txq)
 {
 	if (!(txq->status & RWNX_TXQ_IN_HWQ_LIST)) {
+#ifdef CREATE_TRACE_POINTS
 		trace_txq_add_to_hw(txq);
+#endif
 		txq->status |= RWNX_TXQ_IN_HWQ_LIST;
 		list_add_tail(&txq->sched_list, &txq->hwq->list);
 		txq->hwq->need_processing = true;
@@ -402,7 +472,9 @@ void rwnx_txq_add_to_hw_list(struct rwnx_txq *txq)
 void rwnx_txq_del_from_hw_list(struct rwnx_txq *txq)
 {
 	if (txq->status & RWNX_TXQ_IN_HWQ_LIST) {
+#ifdef CREATE_TRACE_POINTS
 		trace_txq_del_from_hw(txq);
+#endif
 		txq->status &= ~RWNX_TXQ_IN_HWQ_LIST;
 		list_del(&txq->sched_list);
 	}
@@ -440,7 +512,9 @@ void rwnx_txq_start(struct rwnx_txq *txq, u16 reason)
 {
 	BUG_ON(txq == NULL);
 	if (txq->idx != TXQ_INACTIVE && (txq->status & reason)) {
+#ifdef CREATE_TRACE_POINTS
 		trace_txq_start(txq, reason);
+#endif
 		txq->status &= ~reason;
 		if (!rwnx_txq_is_stopped(txq) && rwnx_txq_skb_ready(txq))
 			rwnx_txq_add_to_hw_list(txq);
@@ -460,7 +534,9 @@ void rwnx_txq_stop(struct rwnx_txq *txq, u16 reason)
 {
 	BUG_ON(txq == NULL);
 	if (txq->idx != TXQ_INACTIVE) {
+#ifdef CREATE_TRACE_POINTS
 		trace_txq_stop(txq, reason);
+#endif
 		txq->status |= reason;
 		rwnx_txq_del_from_hw_list(txq);
 	}
@@ -492,9 +568,9 @@ void rwnx_txq_sta_start(struct rwnx_sta *rwnx_sta, u16 reason
 {
 	struct rwnx_txq *txq;
 	int tid;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_sta_start(rwnx_sta->sta_idx);
-
+#endif
 	foreach_sta_txq(rwnx_sta, txq, tid, rwnx_hw) {
 		rwnx_txq_start(txq, reason);
 	}
@@ -528,8 +604,9 @@ void rwnx_txq_sta_stop(struct rwnx_sta *rwnx_sta, u16 reason
 
 	if (!rwnx_sta)
 		return;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_sta_stop(rwnx_sta->sta_idx);
+#endif
 	foreach_sta_txq(rwnx_sta, txq, tid, rwnx_hw) {
 		rwnx_txq_stop(txq, reason);
 	}
@@ -539,7 +616,9 @@ void rwnx_txq_sta_stop(struct rwnx_sta *rwnx_sta, u16 reason
 void rwnx_txq_tdls_sta_start(struct rwnx_vif *rwnx_vif, u16 reason,
 				struct rwnx_hw *rwnx_hw)
 {
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_vif_start(rwnx_vif->vif_index);
+#endif
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 	if (rwnx_vif->sta.tdls_sta)
@@ -553,8 +632,9 @@ void rwnx_txq_tdls_sta_start(struct rwnx_vif *rwnx_vif, u16 reason,
 void rwnx_txq_tdls_sta_stop(struct rwnx_vif *rwnx_vif, u16 reason,
 				struct rwnx_hw *rwnx_hw)
 {
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_vif_stop(rwnx_vif->vif_index);
-
+#endif
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 	if (rwnx_vif->sta.tdls_sta)
@@ -613,9 +693,9 @@ void rwnx_txq_vif_start(struct rwnx_vif *rwnx_vif, u16 reason,
 						struct rwnx_hw *rwnx_hw)
 {
 	struct rwnx_txq *txq;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_vif_start(rwnx_vif->vif_index);
-
+#endif
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 #ifdef CONFIG_RWNX_FULLMAC
@@ -657,8 +737,9 @@ void rwnx_txq_vif_stop(struct rwnx_vif *rwnx_vif, u16 reason,
 					   struct rwnx_hw *rwnx_hw)
 {
 	struct rwnx_txq *txq;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_vif_stop(rwnx_vif->vif_index);
+#endif
 	spin_lock_bh(&rwnx_hw->tx_lock);
 
 #ifdef CONFIG_RWNX_FULLMAC
@@ -689,8 +770,21 @@ end:
 void rwnx_txq_offchan_start(struct rwnx_hw *rwnx_hw)
 {
 	struct rwnx_txq *txq;
+	int nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX;
 
-	txq = &rwnx_hw->txq[NX_OFF_CHAN_TXQ_IDX];
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		  g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		nx_off_chan_txq_idx = NX_OFF_CHAN_TXQ_IDX_FOR_OLD_IC;
+	}
+
+	txq = &rwnx_hw->txq[nx_off_chan_txq_idx];
 	spin_lock_bh(&rwnx_hw->tx_lock);
 	rwnx_txq_start(txq, RWNX_TXQ_STOP_CHAN);
 	spin_unlock_bh(&rwnx_hw->tx_lock);
@@ -758,8 +852,9 @@ int rwnx_txq_queue_skb(struct sk_buff *skb, struct rwnx_txq *txq,
 #ifdef CONFIG_RWNX_FULLMAC
 	if (unlikely(txq->sta && txq->sta->ps.active)) {
 		txq->sta->ps.pkt_ready[txq->ps_id]++;
+#ifdef CREATE_TRACE_POINTS
 		trace_ps_queue(txq->sta);
-
+#endif
 		if (txq->sta->ps.pkt_ready[txq->ps_id] == 1) {
 			rwnx_set_traffic_status(rwnx_hw, txq->sta, true, txq->ps_id);
 		}
@@ -778,9 +873,9 @@ int rwnx_txq_queue_skb(struct sk_buff *skb, struct rwnx_txq *txq,
 		txq->last_retry_skb = skb;
 		txq->nb_retry++;
 	}
-
+#ifdef CREATE_TRACE_POINTS
 	trace_txq_queue_skb(skb, txq, retry);
-
+#endif
 	/* Flowctrl corresponding netdev queue if needed */
 #ifdef CONFIG_RWNX_FULLMAC
 	/* If too many buffer are queued for this TXQ stop netdev queue */
@@ -788,12 +883,16 @@ int rwnx_txq_queue_skb(struct sk_buff *skb, struct rwnx_txq *txq,
 		(skb_queue_len(&txq->sk_list) > RWNX_NDEV_FLOW_CTRL_STOP)) {
 		txq->status |= RWNX_TXQ_NDEV_FLOW_CTRL;
 		netif_stop_subqueue(txq->ndev, txq->ndev_idx);
+#ifdef CREATE_TRACE_POINT
 		trace_txq_flowctrl_stop(txq);
+#endif
 	}
 #else /* ! CONFIG_RWNX_FULLMAC */
 
 	if (!retry && ++txq->hwq->len == txq->hwq->len_stop) {
+#ifdef CREATE_TRACE_POINT
 		 trace_hwq_flowctrl_stop(txq->hwq->id);
+#endif
 		 ieee80211_stop_queue(rwnx_hw->hw, txq->hwq->id);
 		 rwnx_hw->stats.queues_stops++;
 	 }
@@ -1150,9 +1249,9 @@ void rwnx_hwq_process(struct rwnx_hw *rwnx_hw, struct rwnx_hwq *hwq)
 	struct rwnx_txq *txq, *next;
 	int user, credit_map = 0;
 	bool mu_enable;
-
+#ifdef CREATE_TRACE_POINTS
 	trace_process_hw_queue(hwq);
-
+#endif
 	hwq->need_processing = false;
 
 	mu_enable = rwnx_txq_take_mu_lock(rwnx_hw);
@@ -1164,10 +1263,17 @@ void rwnx_hwq_process(struct rwnx_hw *rwnx_hw, struct rwnx_hwq *hwq)
 		struct sk_buff_head sk_list_push;
 		struct sk_buff *skb;
 		bool txq_empty;
-
+#ifdef CREATE_TRACE_POINTS
 		trace_process_txq(txq);
+#endif
 		/* sanity check for debug */
 		BUG_ON(!(txq->status & RWNX_TXQ_IN_HWQ_LIST));
+		if (txq->idx == TXQ_INACTIVE) {
+			printk("%s txq->idx == TXQ_INACTIVE \r\n", __func__);
+			rwnx_txq_del_from_hw_list(txq);
+			rwnx_txq_flush(rwnx_hw, txq);
+			continue;
+		}
 		BUG_ON(txq->idx == TXQ_INACTIVE);
 		BUG_ON(txq->credits <= 0);
 		BUG_ON(!rwnx_txq_skb_ready(txq));
@@ -1213,10 +1319,12 @@ void rwnx_hwq_process(struct rwnx_hw *rwnx_hw, struct rwnx_hwq *hwq)
 
 		/* restart netdev queue if number of queued buffer is below threshold */
 		if (unlikely(txq->status & RWNX_TXQ_NDEV_FLOW_CTRL) &&
-			skb_queue_len(&txq->sk_list) < RWNX_NDEV_FLOW_CTRL_RESTART) {
+			(skb_queue_len(&txq->sk_list) < RWNX_NDEV_FLOW_CTRL_RESTART)) {
 			txq->status &= ~RWNX_TXQ_NDEV_FLOW_CTRL;
 			netif_wake_subqueue(txq->ndev, txq->ndev_idx);
+#ifdef CREATE_TRACE_POINTS
 			trace_txq_flowctrl_restart(txq);
+#endif
 		}
 #endif /* CONFIG_RWNX_FULLMAC */
 	}

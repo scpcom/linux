@@ -19,6 +19,7 @@
 #endif
 
 #define CMD_BUF_MAX                 1536
+#define DATA_BUF_MAX                2048
 #define TXPKT_BLOCKSIZE             512
 #define MAX_AGGR_TXPKT_LEN          (1536*64)
 #define CMD_TX_TIMEOUT              5000
@@ -88,8 +89,14 @@ struct aicwf_bus {
 	u8 *cmd_buf;
 	struct completion bustx_trgg;
 	struct completion busrx_trgg;
+#ifdef CONFIG_USB_MSG_IN_EP
+	struct completion msg_busrx_trgg;
+#endif
 	struct task_struct *bustx_thread;
 	struct task_struct *busrx_thread;
+#ifdef CONFIG_USB_MSG_IN_EP
+	struct task_struct *msg_busrx_thread;
+#endif
 };
 
 struct aicwf_tx_priv {
@@ -117,6 +124,10 @@ struct aicwf_tx_priv {
 	atomic_t aggr_count;
 	u8 *head;
 	u8 *tail;
+
+	unsigned long tx_data_len;
+	ktime_t txtimebegin;
+	ktime_t txtimeend;
 };
 
 
@@ -150,7 +161,7 @@ struct recv_msdu {
 	 u8  tid;
 	 u8 forward;
 	 u16 seq_num;
-	 uint len;
+	 u32 is_amsdu;
 	 u8 *rx_data;
 	 //for pending rx reorder list
 	struct list_head reord_pending_list;
@@ -174,6 +185,12 @@ struct aicwf_rx_priv {
 	spinlock_t rxqlock;
 	struct frame_queue rxq;
 
+#ifdef CONFIG_USB_MSG_IN_EP
+	atomic_t msg_rx_cnt;
+	spinlock_t msg_rxqlock;
+	struct frame_queue msg_rxq;
+#endif
+
 #ifdef AICWF_RX_REORDER
 	spinlock_t freeq_lock;
 	struct list_head rxframes_freequeue;
@@ -181,6 +198,10 @@ struct aicwf_rx_priv {
 	spinlock_t stas_reord_lock;
 	struct recv_msdu *recv_frames;
 #endif
+
+	unsigned long rx_data_len;
+	ktime_t rxtimebegin;
+	ktime_t rxtimeend;
 };
 
 static inline int aicwf_bus_start(struct aicwf_bus *bus)
@@ -216,6 +237,9 @@ static inline void aicwf_sched_timeout(u32 millisec)
 	}
 }
 
+#ifdef CONFIG_ALIGN_8BYTES
+void rwnx_skb_align_8bytes(struct sk_buff *skb);
+#endif
 int aicwf_bus_init(uint bus_hdrlen, struct device *dev);
 void aicwf_bus_deinit(struct device *dev);
 void aicwf_tx_deinit(struct aicwf_tx_priv *tx_priv);

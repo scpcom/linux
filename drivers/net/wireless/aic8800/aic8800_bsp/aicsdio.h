@@ -30,6 +30,24 @@
 #define SDIOWIFI_BYTEMODE_ENABLE_REG    0x11
 #define SDIOWIFI_BLOCK_CNT_REG          0x12
 #define SDIOWIFI_FLOWCTRL_MASK_REG      0x7F
+#define SDIOWIFI_WR_FIFO_ADDR			    0x07
+#define SDIOWIFI_RD_FIFO_ADDR			    0x08
+
+#define SDIOWIFI_INTR_ENABLE_REG_V3         0x00
+#define SDIOWIFI_INTR_PENDING_REG_V3        0x01
+#define SDIOWIFI_INTR_TO_DEVICE_REG_V3      0x02
+#define SDIOWIFI_FLOW_CTRL_Q1_REG_V3        0x03
+#define SDIOWIFI_MISC_INT_STATUS_REG_V3     0x04
+#define SDIOWIFI_BYTEMODE_LEN_REG_V3        0x05
+#define SDIOWIFI_BYTEMODE_LEN_MSB_REG_V3    0x06
+#define SDIOWIFI_BYTEMODE_ENABLE_REG_V3     0x07
+#define SDIOWIFI_MISC_CTRL_REG_V3           0x08
+#define SDIOWIFI_FLOW_CTRL_Q2_REG_V3        0x09
+#define SDIOWIFI_CLK_TEST_RESULT_REG_V3     0x0A
+#define SDIOWIFI_RD_FIFO_ADDR_V3            0x0F
+#define SDIOWIFI_WR_FIFO_ADDR_V3            0x10
+
+#define SDIOCLK_FREE_RUNNING_BIT        (1 << 6)
 
 #define SDIOWIFI_PWR_CTRL_INTERVAL      30
 #define FLOW_CTRL_RETRY_COUNT           50
@@ -47,9 +65,23 @@ typedef enum {
 	PRIV_TYPE_CFG_DATA_CFM = 0X12
 } priv_type;
 
+struct aic_sdio_reg {
+	u8 bytemode_len_reg;
+	u8 intr_config_reg;
+	u8 sleep_reg;
+	u8 wakeup_reg;
+	u8 flow_ctrl_reg;
+	u8 register_block;
+	u8 bytemode_enable_reg;
+	u8 block_cnt_reg;
+	u8 misc_int_status_reg;
+	u8 rd_fifo_addr;
+	u8 wr_fifo_addr;
+};
+
 struct priv_dev {
 	struct rwnx_cmd_mgr cmd_mgr;
-	struct sdio_func *func;
+	struct sdio_func *func[2];
 	struct device *dev;
 	struct aicwf_bus *bus_if;
 
@@ -57,6 +89,7 @@ struct priv_dev {
 	struct aicwf_tx_priv *tx_priv;
 	u32 state;
 
+#if defined(CONFIG_SDIO_PWRCTRL)
 	//for sdio pwr ctrl
 	struct timer_list timer;
 	uint active_duration;
@@ -64,14 +97,20 @@ struct priv_dev {
 	struct task_struct *pwrctl_tsk;
 	spinlock_t pwrctl_lock;
 	struct semaphore pwrctl_wakeup_sema;
+#endif
+	u32 fw_version_uint;
+	struct aic_sdio_reg sdio_reg;
 };
 
 void *aicbsp_get_drvdata(void *args);
-int aicwf_sdio_writeb(struct priv_dev *aicdev, uint regaddr, u8 val);
+int aicwf_sdio_writeb(struct sdio_func *func, uint regaddr, u8 val);
+#if defined(CONFIG_SDIO_PWRCTRL)
 int aicwf_sdio_pwr_stctl(struct  priv_dev *aicdev, uint target);
+#endif
 int aicwf_bustx_thread(void *data);
 int aicwf_busrx_thread(void *data);
 int aicwf_process_rxframes(struct aicwf_rx_priv *rx_priv);
+uint8_t crc8_ponl_107(uint8_t *p_buffer, uint16_t cal_size);
 #endif /* AICWF_SDIO_SUPPORT */
 
 #endif /*_AICWF_SDMMC_H_*/

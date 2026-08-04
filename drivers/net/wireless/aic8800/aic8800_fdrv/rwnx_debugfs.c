@@ -1226,6 +1226,40 @@ static ssize_t rwnx_dbgfs_set_write(struct file *file,
 DEBUGFS_READ_WRITE_FILE_OPS(set);
 #endif /* CONFIG_RWNX_RADAR */
 
+static ssize_t rwnx_dbgfs_regdbg_write(struct file *file,
+					const char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct rwnx_hw *priv = file->private_data;
+	char buf[32];
+	u32 addr, val, oper;
+	size_t len = min_t(size_t, count, sizeof(buf) - 1);
+	struct dbg_mem_read_cfm mem_read_cfm;
+	int ret;
+
+	if (copy_from_user(buf, user_buf, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+
+	if (sscanf(buf, "%x %x %x", &oper, &addr, &val) > 0)
+		printk("addr=%x, val=%x,oper=%d\n", addr, val, oper);
+
+	if (oper == 0) {
+		ret = rwnx_send_dbg_mem_read_req(priv, addr, &mem_read_cfm);
+		printk("[0x%x] = [0x%x]\n", mem_read_cfm.memaddr, mem_read_cfm.memdata);
+	} else if (oper == 1) {
+		ret = rwnx_send_dbg_mem_read_req(priv, addr, &mem_read_cfm);
+		printk("before write : [0x%x] = [0x%x]\n", mem_read_cfm.memaddr, mem_read_cfm.memdata);
+		ret = rwnx_send_dbg_mem_block_write_req(priv, addr, 4, &val);
+		ret = rwnx_send_dbg_mem_read_req(priv, addr, &mem_read_cfm);
+		printk("after write : [0x%x] = [0x%x]\n", mem_read_cfm.memaddr, mem_read_cfm.memdata);
+	}
+
+	return count;
+}
+
+DEBUGFS_WRITE_FILE_OPS(regdbg);
 #ifdef CONFIG_RWNX_FULLMAC
 
 #define LINE_MAX_SZ 150
@@ -1421,6 +1455,7 @@ static ssize_t rwnx_dbgfs_rc_stats_read(struct file *file,
 	unsigned int no_samples;
 	struct st *st;
 	u8 mac[6];
+	int num;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -1429,9 +1464,9 @@ static ssize_t rwnx_dbgfs_rc_stats_read(struct file *file,
 		return 0;
 
 	/* Get the station index from MAC address */
-	sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+	num = sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 			&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-	if (mac == NULL)
+	if (num != 6)
 		return 0;
 	sta = rwnx_get_sta(priv, mac);
 	if (sta == NULL)
@@ -1555,18 +1590,21 @@ static ssize_t rwnx_dbgfs_rc_fixed_rate_idx_write(struct file *file,
 	struct rwnx_sta *sta = NULL;
 	struct rwnx_hw *priv = file->private_data;
 	u8 mac[6];
-	char buf[10];
+	char buf[20];
 	int fixed_rate_idx = -1;
+	unsigned int formatmod, mcs, nss, bwTx, gi;
 	union rwnx_rate_ctrl_info rate_config;
+	union rwnx_rate_ctrl_info *r_cfg = &rate_config;
 	int error = 0;
 	size_t len = min_t(size_t, count, sizeof(buf) - 1);
+	int num;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	/* Get the station index from MAC address */
-	sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+	num = sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 			&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-	if (mac == NULL)
+	if (num != 6)
 		return 0;
 	sta = rwnx_get_sta(priv, mac);
 	if (sta == NULL)
@@ -1576,7 +1614,13 @@ static ssize_t rwnx_dbgfs_rc_fixed_rate_idx_write(struct file *file,
 	if (copy_from_user(buf, user_buf, len))
 		return -EFAULT;
 	buf[len] = '\0';
-	sscanf(buf, "%i\n", &fixed_rate_idx);
+	sscanf(buf, "%u %u %u %u %u", &formatmod, &mcs, &nss, &bwTx, &gi);
+	printk("%u %u %u %u %u\n", formatmod, mcs, nss, bwTx, gi);
+
+	if ((formatmod > 6) || (mcs > 11) || (nss > 8) || (bwTx > 6) || (gi > 3)) {
+		printk("error parameter");
+		return len;
+	}
 
 	/* Convert rate index into rate configuration */
 	if ((fixed_rate_idx < 0) || (fixed_rate_idx >= (N_CCK + N_OFDM + N_HT + N_VHT + N_HE_SU))) {
@@ -1586,12 +1630,15 @@ static ssize_t rwnx_dbgfs_rc_fixed_rate_idx_write(struct file *file,
 		idx_to_rate_cfg(fixed_rate_idx, &rate_config, NULL);
 	}
 
+	printk("formatModTx=%u mcsIndexTx=%u bwTx=%u giAndPreTypeTx=%u\n", r_cfg->formatModTx, r_cfg->mcsIndexTx, r_cfg->bwTx, r_cfg->giAndPreTypeTx);
+
 	// Forward the request to the LMAC
 	error = rwnx_send_me_rc_set_rate(priv, sta->sta_idx, (u16)rate_config.value);
 	if (error != 0) {
 		return error;
 	}
 
+	printk("send success \n");
 	priv->debugfs.rc_config[sta->sta_idx] = (int)rate_config.value;
 	return len;
 }
@@ -1614,6 +1661,7 @@ static ssize_t rwnx_dbgfs_last_rx_read(struct file *file,
 	char hist[] = "##################################################";
 	int hist_len = sizeof(hist) - 1;
 	u8 nrx;
+	int num;
 
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
@@ -1622,9 +1670,9 @@ static ssize_t rwnx_dbgfs_last_rx_read(struct file *file,
 		return 0;
 
 	/* Get the station index from MAC address */
-	sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+	num = sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 			&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-	if (mac == NULL)
+	if (num != 6)
 		return 0;
 	sta = rwnx_get_sta(priv, mac);
 	if (sta == NULL)
@@ -1686,7 +1734,7 @@ static ssize_t rwnx_dbgfs_last_rx_read(struct file *file,
 		nss = last_rx->ht.mcs / 8;;
 		gi = last_rx->ht.short_gi;
 	} else {
-		BUG_ON((mcs = legrates_lut[last_rx->leg_rate]) == -1);
+		BUG_ON((mcs = legrates_lut[last_rx->leg_rate].idx) == -1);
 		nss = 0;
 		gi = 0;
 	}
@@ -1733,11 +1781,12 @@ static ssize_t rwnx_dbgfs_last_rx_write(struct file *file,
 	struct rwnx_sta *sta = NULL;
 	struct rwnx_hw *priv = file->private_data;
 	u8 mac[6];
+	int num;
 
 	/* Get the station index from MAC address */
-	sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+	num = sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
 		   &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-	if (mac == NULL)
+	if (num != 6)
 		return 0;
 	sta = rwnx_get_sta(priv, mac);
 	if (sta == NULL)
@@ -1862,6 +1911,7 @@ static void rwnx_rc_stat_work(struct work_struct *ws)
 			rwnx_debugfs->rc_config[sta_idx] = -1;
 
 	} else {
+		spin_lock_bh(&rwnx_hw->cb_lock);
 		/* unregister the sta */
 		if (sta->stats.rx_rate.table) {
 			kfree(sta->stats.rx_rate.table);
@@ -1870,6 +1920,7 @@ static void rwnx_rc_stat_work(struct work_struct *ws)
 		sta->stats.rx_rate.size = 0;
 		sta->stats.rx_rate.cpt  = 0;
 		sta->stats.rx_rate.rate_cnt = 0;
+		spin_unlock_bh(&rwnx_hw->cb_lock);
 
 		/* If fix rate was set for this station, save the configuration in case
 		   we reconnect to this station within RC_CONFIG_DUR msec */

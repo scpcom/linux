@@ -5,7 +5,7 @@
  *
  * @brief Shared data between both IPC modules.
  *
- * Copyright (C) RivieraWaves 2011-2019
+ * Copyright (C) RivieraWaves 2011-2021
  *
  ****************************************************************************************
  */
@@ -116,12 +116,16 @@
 /*
  * Maximum number of payload addresses and lengths present in the descriptor
  */
+#ifdef CONFIG_RWNX_SPLIT_TX_BUF
 #define NX_TX_PAYLOAD_MAX      6
+#else
+#define NX_TX_PAYLOAD_MAX      1
+#endif
 
 /*
  * Message struct/ID API version
  */
-#define MSG_API_VER  15
+#define MSG_API_VER  33
 
 /*
  ****************************************************************************************
@@ -129,35 +133,21 @@
 // c.f LMAC/src/tx/tx_swdesc.h
 /// Descriptor filled by the Host
 struct hostdesc {
-#ifdef CONFIG_RWNX_SPLIT_TX_BUF
-	/// Pointers to packet payloads
-	u32_l packet_addr[NX_TX_PAYLOAD_MAX];
-	/// Sizes of the MPDU/MSDU payloads
-	u16_l packet_len[NX_TX_PAYLOAD_MAX];
-	/// Number of payloads forming the MPDU
-	u8_l packet_cnt;
-#else
 	/// Pointer to packet payload
-	u32_l packet_addr;
 	/// Size of the payload
 	u16_l packet_len;
-#endif //(NX_AMSDU_TX)
+	u16_l flags_ext;
 
+	u32_l hostid;
 #ifdef CONFIG_RWNX_FULLMAC
 	/// Address of the status descriptor in host memory (used for confirmation upload)
-	u32_l status_desc_addr;
+	//u32_l status_desc_addr;
 	/// Destination Address
 	struct mac_addr eth_dest_addr;
 	/// Source Address
 	struct mac_addr eth_src_addr;
 	/// Ethernet Type
 	u16_l ethertype;
-	/// Buffer containing the PN to be used for this packet
-	u16_l pn[4];
-	/// Sequence Number used for transmission of this MPDU
-	u16_l sn;
-	/// Timestamp of first transmission of this MPDU
-	u16_l timestamp;
 #else /* ! CONFIG_RWNX_FULLMAC */
 #ifdef CONFIG_RWNX_AGG_TX
 	///Sequence Number for AMPDU MPDUs - for quick check if it's allowed within window
@@ -166,6 +156,7 @@ struct hostdesc {
 	/// Padding between the buffer control structure and the MPDU in host memory
 	u8_l padding;
 #endif /* CONFIG_RWNX_FULLMAC */
+	u8_l ac;
 	/// Packet TID (0xFF if not a QoS frame)
 	u8_l tid;
 	/// Interface Id

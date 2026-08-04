@@ -19,6 +19,7 @@
 #include <linux/skbuff.h>
 #include <net/cfg80211.h>
 #include <linux/slab.h>
+#include <linux/semaphore.h>
 
 #include "rwnx_mod_params.h"
 #include "rwnx_debugfs.h"
@@ -30,6 +31,10 @@
 #include "rwnx_platform.h"
 #include "rwnx_cmds.h"
 #include "rwnx_gki.h"
+#include "aic_bsp_export.h"
+#ifdef CONFIG_FILTER_TCP_ACK
+#include "aicwf_tcp_ack.h"
+#endif
 
 #ifdef AICWF_SDIO_SUPPORT
 #include "aicwf_sdio.h"
@@ -52,6 +57,14 @@
 
 #define PS_SP_INTERRUPTED  255
 #define MAC_ADDR_LEN 6
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#define IEEE80211_MAX_AMPDU_BUF                             IEEE80211_MAX_AMPDU_BUF_HE
+#define IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMER_FB         IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB
+#define IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB         IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB
+#define IEEE80211_HE_PHY_CAP3_RX_HE_MU_PPDU_FROM_NON_AP_STA IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU
+#endif
+
 /**
  * struct rwnx_bcn - Information of the beacon in used (AP mode)
  *
@@ -126,6 +139,13 @@ struct rwnx_csa {
 	struct work_struct work;
 };
 
+struct apm_probe_sta {
+	u8 sta_mac_addr[6];
+	u8 vif_idx;
+	u64 probe_id;
+	struct work_struct apmprobestaWork;
+	struct workqueue_struct *apmprobesta_wq;
+};
 /// Possible States of the TDLS link.
 enum tdls_status_tag {
 		/// TDLS link is not active (no TDLS peer connected)
@@ -181,6 +201,8 @@ struct rwnx_vif {
 	struct net_device *ndev;
 	struct net_device_stats net_stats;
 	struct rwnx_key key[6];
+	unsigned long drv_flags;
+	atomic_t drv_conn_state;
 	u8 drv_vif_index;           /* Identifier of the VIF in driver */
 	u8 vif_index;               /* Identifier of the station in FW */
 	u8 ch_index;                /* Channel context identifier */
@@ -205,6 +227,13 @@ struct rwnx_vif {
 			bool external_auth;  /* Indicate if external authentication is in progress */
 			u32 group_cipher_type;
 			u32 paired_cipher_type;
+			//connected network info start
+			char ssid[33];//ssid max is 32, but this has one spare for '\0'
+			int ssid_len;
+			u8 bssid[ETH_ALEN];
+			u32 conn_owner_nlportid;
+			bool is_roam;
+			//connected network info end
 		} sta;
 		struct {
 			u16 flags;                 /* see rwnx_ap_flags */
@@ -229,6 +258,7 @@ struct rwnx_vif {
 
 	u8_l key_has_add;
 	u8_l is_p2p_vif;
+	struct apm_probe_sta sta_probe;
 };
 
 #define RWNX_VIF_TYPE(rwnx_vif) (rwnx_vif->wdev.iftype)
@@ -337,8 +367,8 @@ struct rwnx_amsdu_stats {
 struct rwnx_stats {
 	int cfm_balance[NX_TXQ_CNT];
 	unsigned long last_rx, last_tx; /* jiffies */
-	int ampdus_tx[IEEE80211_MAX_AMPDU_BUF_HE];
-	int ampdus_rx[IEEE80211_MAX_AMPDU_BUF_HE];
+	int ampdus_tx[IEEE80211_MAX_AMPDU_BUF];
+	int ampdus_rx[IEEE80211_MAX_AMPDU_BUF];
 	int ampdus_rx_map[4];
 	int ampdus_rx_miss;
 #ifdef CONFIG_RWNX_SPLIT_TX_BUF
@@ -414,12 +444,29 @@ struct defrag_ctrl_info {
 	u16 frm_len;
 	struct sk_buff *skb;
 	struct timer_list defrag_timer;
+	struct rwnx_hw *rwnx_hw;
 };
 
 struct amsdu_subframe_hdr {
 	u8 da[6];
 	u8 sa[6];
 	u16 sublen;
+};
+
+enum rwnx_drv_connect_status {
+	RWNX_DRV_STATUS_DISCONNECTED = 0,
+	RWNX_DRV_STATUS_DISCONNECTING,
+	RWNX_DRV_STATUS_CONNECTING,
+	RWNX_DRV_STATUS_CONNECTED,
+	RWNX_DRV_STATUS_ROAMING,
+};
+
+static const char *const s_conn_state[] = {
+	"RWNX_DRV_STATUS_DISCONNECTED",
+	"RWNX_DRV_STATUS_DISCONNECTING",
+	"RWNX_DRV_STATUS_CONNECTING",
+	"RWNX_DRV_STATUS_CONNECTED",
+	"RWNX_DRV_STATUS_ROAMING",
 };
 
 struct rwnx_hw {
@@ -437,10 +484,18 @@ struct rwnx_hw {
 	struct rwnx_sta sta_table[NX_REMOTE_STA_MAX + NX_VIRT_DEV_MAX];
 	struct rwnx_survey_info survey[SCAN_CHANNEL_MAX];
 	struct cfg80211_scan_request *scan_request;
+#ifdef CONFIG_SCHED_SCAN
+	struct cfg80211_sched_scan_request *sched_scan_req;
+#endif
 	struct rwnx_chanctx chanctx_table[NX_CHAN_CTXT_CNT];
 	u8 cur_chanctx;
 
 	u8 monitor_vif; /* FW id of the monitor interface, RWNX_INVALID_VIF if no monitor vif at fw level */
+
+#ifdef CONFIG_FILTER_TCP_ACK
+	/* tcp ack management */
+	struct tcp_ack_manage ack_m;
+#endif
 
 	/* RoC Management */
 	struct rwnx_roc_elem *roc_elem;             /* Information provided by cfg80211 in its remain on channel request */
@@ -448,7 +503,6 @@ struct rwnx_hw {
 
 	struct rwnx_cmd_mgr *cmd_mgr;
 
-	unsigned long drv_flags;
 	struct rwnx_plat *plat;
 
 	spinlock_t tx_lock;
@@ -476,7 +530,7 @@ struct rwnx_hw {
 	struct rwnx_ipc_dbgdump_elem dbgdump_elem;
 	struct rwnx_ipc_elem_pool e2arxdesc_pool;
 	struct rwnx_ipc_skb_elem *e2aunsuprxvec_elems;
-	struct rwnx_ipc_rxbuf_elems rxbuf_elems;
+	//struct rwnx_ipc_rxbuf_elems rxbuf_elems;
 	struct rwnx_ipc_elem_var scan_ie;
 
 	struct kmem_cache      *sw_txhdr_cache;
@@ -487,7 +541,7 @@ struct rwnx_hw {
 	struct rwnx_txq txq[NX_NB_TXQ];
 	struct rwnx_hwq hwq[NX_TXQ_CNT];
 
-	u8 avail_idx_map;
+	u64 avail_idx_map;
 	u8 vif_started;
 	bool adding_sta;
 	struct rwnx_phy_info phy;
@@ -508,6 +562,10 @@ struct rwnx_hw {
 	bool band_5g_support;
 	u8_l vendor_info;
 	bool fwlog_en;
+	u16  chipid;
+	u8   cpmode;
+	u16 rev;
+	u16 subrev;
 
 	struct list_head defrag_list;
 	spinlock_t defrag_lock;
@@ -516,6 +574,18 @@ struct rwnx_hw {
 	struct workqueue_struct *apmStaloss_wq;
 	u8 apm_vif_idx;
 	u8 sta_mac_addr[6];
+
+	struct wakeup_source *ws_rx;
+	struct wakeup_source *ws_irqrx;
+	struct wakeup_source *ws_tx;
+	struct wakeup_source *ws_pwrctrl;
+
+	u8 wakeup_enable;
+	u32 hostwake_irq_num;
+#ifdef CONFIG_SCHED_SCAN
+	bool is_sched_scan;
+#endif
+	bool irq_enable;
 };
 
 u8 *rwnx_build_bcn(struct rwnx_bcn *bcn, struct cfg80211_beacon_data *new);
@@ -527,7 +597,19 @@ int  rwnx_chanctx_valid(struct rwnx_hw *rwnx_hw, u8 idx);
 
 static inline bool is_multicast_sta(int sta_idx)
 {
-	return (sta_idx >= NX_REMOTE_STA_MAX);
+#if defined(AICWF_SDIO_SUPPORT)
+	if ((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->sdiodev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->sdiodev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#elif defined(AICWF_USB_SUPPORT)
+	if ((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800D) ||
+		((g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		g_rwnx_plat->usbdev->rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) && (g_rwnx_plat->usbdev->rwnx_hw->rev < CHIP_REV_ID_U02))) {
+#endif
+		return (sta_idx >= NX_REMOTE_STA_MAX_FOR_OLD_IC);
+	} else {
+		return (sta_idx >= NX_REMOTE_STA_MAX);
+	}
 }
 struct rwnx_sta *rwnx_get_sta(struct rwnx_hw *rwnx_hw, const u8 *mac_addr);
 
@@ -542,5 +624,7 @@ static inline uint8_t master_vif_idx(struct rwnx_vif *vif)
 
 void rwnx_external_auth_enable(struct rwnx_vif *vif);
 void rwnx_external_auth_disable(struct rwnx_vif *vif);
+
+void rwnx_set_conn_state(atomic_t *drv_conn_state, int state);
 
 #endif /* _RWNX_DEFS_H_ */

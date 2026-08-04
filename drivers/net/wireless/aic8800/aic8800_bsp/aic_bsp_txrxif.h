@@ -130,7 +130,6 @@ struct recv_msdu {
 	 u8  tid;
 	 u16 seq_num;
 	 uint len;
-	 u8 *rx_data;
 	 //for pending rx reorder list
 	struct list_head reord_pending_list;
 	//for total frame list, when rxframe from busif, dequeue, when submit frame to net, enqueue

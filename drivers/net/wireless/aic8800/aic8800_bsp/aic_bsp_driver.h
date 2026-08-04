@@ -16,7 +16,7 @@
 #include <linux/module.h>
 #include "aic_bsp_export.h"
 
-#define RWNX_CMD_TIMEOUT_MS         2000//500//300
+#define RWNX_CMD_TIMEOUT_MS         6000//500//300
 
 #define RWNX_CMD_FLAG_NONBLOCK      BIT(0)
 #define RWNX_CMD_FLAG_REQ_CFM       BIT(1)
@@ -29,7 +29,7 @@
 #define RWNX_CMD_WAIT_COMPLETE(flags) \
 	(!(flags & (RWNX_CMD_FLAG_WAIT_ACK | RWNX_CMD_FLAG_WAIT_CFM)))
 
-#define RWNX_CMD_MAX_QUEUED         8
+#define RWNX_CMD_MAX_QUEUED         16
 
 #define IPC_E2A_MSG_PARAM_SIZE 256
 
@@ -192,14 +192,47 @@ enum dbg_msg_tag {
 	DBG_BINDING_CFM,
 	DBG_BINDING_IND,
 
+	DBG_CUSTOM_MSG_REQ,
+	DBG_CUSTOM_MSG_CFM,
+	DBG_CUSTOM_MSG_IND,
+
+	DBG_GPIO_WRITE_REQ,
+	DBG_GPIO_WRITE_CFM,
+	DBG_GPIO_READ_REQ,
+	DBG_GPIO_READ_CFM,
+	DBG_GPIO_INIT_REQ,
+	DBG_GPIO_INIT_CFM,
+
+	/// EF usrdata read request
+	DBG_EF_USRDATA_READ_REQ,
+	/// EF usrdata read confirm
+	DBG_EF_USRDATA_READ_CFM,
+	/// Memory block read request
+	DBG_MEM_BLOCK_READ_REQ,
+	/// Memory block read confirm
+	DBG_MEM_BLOCK_READ_CFM,
+
+	DBG_PWM_INIT_REQ,
+	DBG_PWM_INIT_CFM,
+	DBG_PWM_DEINIT_REQ,
+	DBG_PWM_DEINIT_CFM,
+
 	/// Max number of Debug messages
 	DBG_MAX,
+};
+
+enum mm_msg_tag {
+	MM_SET_RF_CONFIG_REQ = 103,
+	MM_SET_RF_CONFIG_CFM,
+	MM_MAX
 };
 
 enum {
 	HOST_START_APP_AUTO = 1,
 	HOST_START_APP_CUSTOM,
 	HOST_START_APP_REBOOT,
+	HOST_START_APP_FNCALL = 4,
+	HOST_START_APP_DUMMY  = 5,
 };
 
 struct dbg_mem_block_write_req {
@@ -268,28 +301,39 @@ struct dbg_binding_req {
 	u8 driver_data[16];
 };
 
+struct mm_set_rf_config_req {
+	u8 table_sel;
+	u8 table_ofst;
+	u8 table_num;
+	u8 deft_page;
+	u32 data[64];
+};
+
 void rwnx_cmd_mgr_deinit(struct rwnx_cmd_mgr *cmd_mgr);
 int  rwnx_send_dbg_start_app_req(struct priv_dev *aicdev, u32 boot_addr, u32 boot_type, struct dbg_start_app_cfm *start_app_cfm);
 void rwnx_rx_handle_msg(struct priv_dev *aicdev, struct ipc_e2a_msg *msg);
+int  rwnx_send_dbg_mem_read_req(struct priv_dev *aicdev, u32 mem_addr, struct dbg_mem_read_cfm *cfm);
+int  rwnx_send_dbg_mem_block_write_req(struct priv_dev *aicdev, u32 mem_addr, u32 mem_size, u32 *mem_data);
+int  rwnx_send_dbg_mem_write_req(struct priv_dev *aicdev, u32 mem_addr, u32 mem_data);
+int  rwnx_send_dbg_mem_mask_write_req(struct priv_dev *aicdev, u32 mem_addr, u32 mem_mask, u32 mem_data);
+int  rwnx_send_dbg_binding_req(struct priv_dev *aicdev, u8 *dout, u8 *binding_status);
+int  rwnx_send_rf_config_req(struct priv_dev *aicdev, u8 ofst, u8 sel, u8 *tbl, u16 len);
 
 int  aicbsp_platform_init(struct priv_dev *aicdev);
 void aicbsp_platform_deinit(struct priv_dev *aicdev);
 int  aicbsp_driver_fw_init(struct priv_dev *aicdev);
+int  aicbsp_system_reboot(struct priv_dev *aicdev);
+int  rwnx_send_reboot(struct priv_dev *aicdev);
 int  aicbsp_device_init(void);
 void aicbsp_device_exit(void);
 
-#ifdef CONFIG_AIC_INTF_SDIO
-#define RAM_FMAC_FW_ADDR            0x00120000
-#else
-#define RAM_FMAC_FW_ADDR            0x00110000
-#endif
-#define FW_RAM_ADID_BASE_ADDR       0x00161928
-#define FW_RAM_ADID_BASE_ADDR_U03   0x00161928
-#define FW_RAM_PATCH_BASE_ADDR      0x00100000
+int aicbsp_resv_mem_init(void);
+int aicbsp_resv_mem_deinit(void);
 
 #define AICBT_PT_TAG                "AICBT_PT_TAG"
 
 enum aicbt_patch_table_type {
+	AICBT_PT_INF  = 0x0,
 	AICBT_PT_TRAP = 0x1,
 	AICBT_PT_B4,
 	AICBT_PT_BTMODE,
@@ -314,6 +358,7 @@ enum aicbt_btmode_type {
 	AICBT_BTMODE_BT_ONLY,             // bt only mode without switch
 	AICBT_BTMODE_BT_ONLY_TEST,        // bt only test mode
 	AICBT_BTMODE_BT_WIFI_COMBO_TEST,  // wifi/bt combo test mode
+	AICBT_BTMODE_BT_WIFI_COANT,       // wifi/bt coant mode
 	AICBT_BTMODE_NULL = 0xFF,         // invalid value
 };
 
@@ -333,27 +378,24 @@ enum aicbt_uart_flowctrl_type {
 	AICBT_UART_FLOWCTRL_ENABLE,           // uart with flow ctrl
 };
 
-enum aicbsp_cpmode_type {
-	AICBSP_CPMODE_WORK,
-	AICBSP_CPMODE_TEST,
-	AICBSP_CPMODE_MAX,
+/* hw feature support
+ * each bit for one feature
+ */
+enum aicdev_hw_feature {
+	AICBT_PCM_SUPPORT = 0x1,
 };
 
-enum chip_rev {
-	CHIP_REV_U02 = 3,
-	CHIP_REV_U03 = 7,
-	CHIP_REV_U04 = 7,
-};
+///aic bt tx pwr lvl :lsb->msb: first byte, min pwr lvl; second byte, max pwr lvl;
+///pwr lvl:20(min), 30 , 40 , 50 , 60(max)
+#define AICBT_TXPWR_LVL             0x00006020
+#define AICBT_TXPWR_LVL_8800DC      0x00004f2f
+#define AICBT_TXPWR_LVL_8800D80     0x00006f2f
 
 #define AICBSP_HWINFO_DEFAULT       (-1)
-#ifdef CONFIG_AIC_WLAN_RF_TEST
-#define AICBSP_CPMODE_DEFAULT       AICBSP_CPMODE_TEST
-#else
 #define AICBSP_CPMODE_DEFAULT       AICBSP_CPMODE_WORK
-#endif
 
 #ifdef AICWF_USB_SUPPORT
-#define AICBT_BTMODE_DEFAULT        AICBT_BTMODE_BT_ONLY
+#define AICBT_BTMODE_DEFAULT        AICBT_BTMODE_NULL
 #define AICBT_BTPORT_DEFAULT        AICBT_BTPORT_MB
 #else
 #define AICBT_BTMODE_DEFAULT        AICBT_BTMODE_NULL
@@ -361,9 +403,18 @@ enum chip_rev {
 #endif
 #define AICBT_UART_BAUD_DEFAULT     AICBT_UART_BAUD_1_5M
 #define AICBT_UART_FC_DEFAULT       AICBT_UART_FLOWCTRL_ENABLE
+#define AICBT_LPM_ENABLE_DEFAULT    0
+#define AICBT_TXPWR_LVL_DEFAULT     AICBT_TXPWR_LVL
 
-#define FEATURE_SDIO_CLOCK          70000000 // 0: default, other: target clock rate
-#define FEATURE_SDIO_PHASE          2        // 0: default, 2: 180°
+#define AIC_SDIO_V2_CLOCK           70000000U  // 0: default, other: target clock rate
+#define AIC_SDIO_V2_PHASE           2          // 0: default, 2: 180°
+#define AIC_SDIO_V3_CLOCK           208000000U // 0: default, other: target clock rate
+#define AIC_SDIO_V3_PHASE           0x30       // 0: default
+
+#define FW_PATH_MAX_LEN 200
+
+typedef u32 (*array2_tbl_t)[2];
+typedef u32 (*array3_tbl_t)[3];
 
 struct aicbt_patch_table {
 	char     *name;
@@ -378,6 +429,20 @@ struct aicbt_info_t {
 	uint32_t btport;
 	uint32_t uart_baud;
 	uint32_t uart_flowctrl;
+	uint32_t lpm_enable;
+	uint32_t txpwr_lvl;
+};
+
+struct aicbt_patch_info_t {
+	uint32_t info_len;
+	uint32_t adid_addrinf;
+	uint32_t addr_adid;
+	uint32_t patch_addrinf;
+	uint32_t addr_patch;
+	uint32_t reset_addr;
+	uint32_t reset_val;
+	uint32_t adid_flag_addr;
+	uint32_t adid_flag;
 };
 
 struct aicbsp_firmware {
@@ -386,20 +451,41 @@ struct aicbsp_firmware {
 	const char *bt_patch;
 	const char *bt_table;
 	const char *wl_fw;
+	const char *wl_table;
+	const char *wl_calib;
 };
 
 struct aicbsp_info_t {
 	int hwinfo;
 	int hwinfo_r;
 	uint32_t cpmode;
-	uint32_t chip_rev;
+	uint32_t adap_test;
 	bool fwlog_en;
+	struct device_match_entry *chipinfo;
+	int32_t sdio_clock;
+	int32_t sdio_phase;
+	uint8_t btpcm;
+	int32_t btmode;
 };
+
+int aicbsp_8800d_fw_init(struct priv_dev *aicdev);
+int aicbsp_8800dc_fw_init(struct priv_dev *aicdev);
+int aicbsp_8800d80_fw_init(struct priv_dev *aicdev);
+
+int wcn_bind_verify_calculate_verify_data(uint8_t *din, uint8_t *dout);
+int rwnx_plat_bin_fw_upload_android(struct priv_dev *aicdev, u32 fw_addr, const char *filename);
+int aicbt_patch_table_free(struct aicbt_patch_table **head);
+struct aicbt_patch_table *aicbt_patch_table_alloc(const char *filename);
+int aicbt_patch_info_unpack(struct aicbt_patch_table *head, struct aicbt_patch_info_t *patch_info);
+int aicbt_patch_table_load(struct priv_dev *aicdev, struct aicbt_info_t *aicbt_info, struct aicbt_patch_table *head);
+
+int aicbsp_driver_btmode_reinit(struct aicbt_info_t *aicbt_info);
+
+extern u8 binding_enc_data[16];
+extern bool need_binding_verify;
 
 extern struct aicbsp_info_t aicbsp_info;
 extern struct mutex aicbsp_power_lock;
 extern const struct aicbsp_firmware *aicbsp_firmware_list;
-extern const struct aicbsp_firmware fw_u02[];
-extern const struct aicbsp_firmware fw_u03[];
 
 #endif

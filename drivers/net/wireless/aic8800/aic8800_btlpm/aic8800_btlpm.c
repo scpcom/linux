@@ -39,6 +39,7 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 #include <linux/serial_core.h>
+#include <dt-bindings/gpio/gpio.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 #include <linux/wakelock.h>
@@ -62,9 +63,11 @@
 /*
  * Defines
  */
-
-#define VERSION		"1.3.3"
-#define PROC_DIR	"bluetooth/sleep"
+#define DRV_RELEASE_DATE "20220429"
+#define DRV_PATCH_LEVEL  "010"
+#define DRV_RELEASE_TAG  "aic-btlpm-" DRV_RELEASE_DATE "-" DRV_PATCH_LEVEL
+#define VERSION          "1.3.3"
+#define PROC_DIR         "bluetooth/sleep"
 
 #define DEFAULT_UART_INDEX   1
 #define BT_BLUEDROID_SUPPORT 1
@@ -107,8 +110,12 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 #define BT_PROTO	0x01
 #define BT_TXDATA	0x02
 #define BT_ASLEEP	0x04
-#define BT_RXTIMER	0x20
 #define BT_TXIDLE	0x08
+/*
+ * When soc-tx with PULL-UP resistance, no need to enable it
+#define BT_PAUSE	0x09
+ */
+#define BT_RXTIMER	0x0a
 
 #if BT_BLUEDROID_SUPPORT
 static bool has_lpm_enabled;
@@ -154,6 +161,9 @@ static struct timer_list rx_timer;
 
 /** Lock for state transitions */
 static spinlock_t rw_lock;
+
+/** Lock for hsuart power*/
+static struct mutex uart_lock;
 
 #if !BT_BLUEDROID_SUPPORT
 /** Notifier block for HCI events */
@@ -204,14 +214,20 @@ static void bluesleep_sleep_work(struct work_struct *work)
 {
 	if (!has_lpm_enabled)
 		return;
-
+	mutex_lock(&uart_lock);
 	if (bluesleep_can_sleep()) {
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
 			BT_DBG("already asleep");
+			mutex_unlock(&uart_lock);
 			return;
 		}
-		if (bsi->uport->ops->tx_empty(bsi->uport)) {
+		if (bsi->uport->ops->tx_empty(bsi->uport) ||
+#ifdef BT_PAUSE
+			(test_bit(BT_PAUSE, &flags) && test_bit(BT_TXIDLE, &flags))) {
+#else
+			test_bit(BT_TXIDLE, &flags)) {
+#endif
 			BT_DBG("going to sleep...");
 			set_bit(BT_ASLEEP, &flags);
 			/*Deactivating UART */
@@ -223,6 +239,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 #endif
 		} else {
 			BT_DBG("This should never happen.\n");
+			mutex_unlock(&uart_lock);
 			return;
 		}
 	} else if (test_bit(BT_ASLEEP, &flags)) {
@@ -242,15 +259,34 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		set_bit(BT_RXTIMER, &flags);
 		hsuart_power(1);
 	} else {
+		static int tx_idle_cnt;
+		if (gpio_get_value(bsi->ext_wake) != bsi->ext_wake_assert && test_bit(BT_TXIDLE, &flags))
+			tx_idle_cnt++;
+		else
+			tx_idle_cnt = 0;
+
 		mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
-		if (gpio_get_value(bsi->ext_wake) != bsi->ext_wake_assert
-					&& !test_bit(BT_TXIDLE, &flags)) {
+		set_bit(BT_RXTIMER, &flags);
+
+#ifdef BT_PAUSE
+		if (test_bit(BT_PAUSE, &flags)) {
+			BT_DBG("rx wake du BT_PAUSE:%lx", flags);
+			///enable bt sleep immediately
+			gpio_set_value(bsi->ext_wake, !bsi->ext_wake_assert);
+		} else if ((gpio_get_value(bsi->ext_wake) != bsi->ext_wake_assert
+					&& !test_bit(BT_TXIDLE, &flags)) || tx_idle_cnt > 5) {
+#else
+		if ((gpio_get_value(bsi->ext_wake) != bsi->ext_wake_assert
+					&& !test_bit(BT_TXIDLE, &flags)) || tx_idle_cnt > 5) {
+#endif
+			tx_idle_cnt = 0;
 			BT_DBG("force retrigger bt wake:%lx", flags);
 			gpio_set_value(bsi->ext_wake, bsi->ext_wake_assert);
 			msleep(20);
 			gpio_set_value(bsi->ext_wake, !bsi->ext_wake_assert);
 		}
 	}
+	mutex_unlock(&uart_lock);
 }
 
 /**
@@ -280,6 +316,7 @@ static void bluesleep_outgoing_data(void)
 	unsigned long irq_flags;
 	int power_on_uart = 0;
 
+	mutex_lock(&uart_lock);
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
 	/* if the tx side is sleeping... */
@@ -296,9 +333,11 @@ static void bluesleep_outgoing_data(void)
 		power_on_uart = 1;
 	}
 
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
 	if (power_on_uart == 1)
 		hsuart_power(1);
+
+	spin_unlock_irqrestore(&rw_lock, irq_flags);
+	mutex_unlock(&uart_lock);
 }
 
 #if BT_BLUEDROID_SUPPORT
@@ -340,11 +379,22 @@ static ssize_t bluesleep_write_proc_lpm(struct file *file,
 		return -EFAULT;
 
 	if (b == '0') {
+#ifdef BT_PAUSE
+		set_bit(BT_PAUSE, &flags);
+		set_bit(BT_TXIDLE, &flags);
+		clear_bit(BT_TXDATA, &flags);
+		/* deassert BT_WAKE */
+		gpio_set_value(bsi->ext_wake, !bsi->ext_wake_assert);
+#else
 		/* HCI_DEV_UNREG */
 		bluesleep_stop();
 		has_lpm_enabled = false;
 		bsi->uport = NULL;
+#endif
 	} else {
+#ifdef BT_PAUSE
+		clear_bit(BT_PAUSE, &flags);
+#endif
 		/* HCI_DEV_REG */
 		if (!has_lpm_enabled) {
 			has_lpm_enabled = true;
@@ -382,6 +432,12 @@ static ssize_t bluesleep_write_proc_btwrite(struct file *file,
 	if (copy_from_user(&b, buffer, 1))
 		return -EFAULT;
 
+	if (!has_lpm_enabled) {
+		BT_DBG("lpm disabled, direct set ext_wake to %c\n", b);
+		gpio_set_value(bsi->ext_wake, b != '0' ? bsi->ext_wake_assert : !bsi->ext_wake_assert);
+		return count;
+	}
+
 	/* HCI_DEV_WRITE */
 	if (b != '0')
 		bluesleep_outgoing_data();
@@ -391,20 +447,42 @@ static ssize_t bluesleep_write_proc_btwrite(struct file *file,
 	return count;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 static const struct proc_ops lpm_fops = {
-	.proc_open		= bluesleep_lpm_proc_open,
-	.proc_read		= seq_read,
-	.proc_lseek		= seq_lseek,
-	.proc_release	= single_release,
-	.proc_write		= bluesleep_write_proc_lpm,
+	.proc_open    = bluesleep_lpm_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+	.proc_write   = bluesleep_write_proc_lpm,
 };
 static const struct proc_ops btwrite_fops = {
-	.proc_open		= bluesleep_btwrite_proc_open,
-	.proc_read		= seq_read,
-	.proc_lseek		= seq_lseek,
-	.proc_release	= single_release,
-	.proc_write		= bluesleep_write_proc_btwrite,
+	.proc_open    = bluesleep_btwrite_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+	.proc_write   = bluesleep_write_proc_btwrite,
 };
+
+#else
+
+static const struct file_operations lpm_fops = {
+	.owner		= THIS_MODULE,
+	.open		= bluesleep_lpm_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= bluesleep_write_proc_lpm,
+};
+static const struct file_operations btwrite_fops = {
+	.owner		= THIS_MODULE,
+	.open		= bluesleep_btwrite_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= bluesleep_write_proc_btwrite,
+};
+#endif
+
 #else
 /**
  * Handles HCI device events.
@@ -456,6 +534,7 @@ static void bluesleep_tx_allow_sleep(void)
 	spin_lock_irqsave(&rw_lock, irq_flags);
 	gpio_set_value(bsi->ext_wake, !bsi->ext_wake_assert);
 	set_bit(BT_TXIDLE, &flags);
+	clear_bit(BT_TXDATA, &flags);
 	bluesleep_tx_idle();
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
@@ -522,7 +601,7 @@ static int bluesleep_start(void)
 	/* assert BT_WAKE */
 	gpio_set_value(bsi->ext_wake, bsi->ext_wake_assert);
 	retval = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
-				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				bsi->host_wake_assert ? IRQF_TRIGGER_RISING : IRQF_TRIGGER_FALLING,
 				"bluetooth hostwake", &bsi->pdev->dev);
 	if (retval  < 0) {
 		BT_ERR("Couldn't acquire BT_HOST_WAKE IRQ");
@@ -547,7 +626,7 @@ fail:
 /**
  * Stops the Sleep-Mode Protocol on the Host.
  */
-static void bluesleep_stop(void)
+static __attribute__((unused)) void bluesleep_stop(void)
 {
 	unsigned long irq_flags;
 
@@ -751,7 +830,11 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(6, 2, 0))
 	enum of_gpio_flags config;
+#else
+	u32 config = 0;
+#endif
 	int ret, uart_index;
 	u32 val;
 
@@ -760,7 +843,11 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 	if (!bsi)
 		return -ENOMEM;
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 2, 0))
+	bsi->host_wake = of_get_named_gpio(np, "bt_hostwake", 0);
+#else
 	bsi->host_wake = of_get_named_gpio_flags(np, "bt_hostwake", 0, &config);
+#endif
 	if (!gpio_is_valid(bsi->host_wake)) {
 		BT_ERR("get gpio bt_hostwake failed\n");
 		ret = -EINVAL;
@@ -768,7 +855,17 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 	}
 
 	/* set host_wake_assert */
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 2, 0))
+	of_property_read_u32_index(np, "bt_hostwake", 3, &config);
+	bsi->host_wake_assert = (config == GPIO_ACTIVE_LOW) ? 0 : 1;
+#else
 	bsi->host_wake_assert = (config == OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+#endif
+#if IS_ENABLED(CONFIG_AIC_IRQ_ACTIVE_HIGH) || IS_ENABLED(CONFIG_AIC_IRQ_ACTIVE_RISING)
+	bsi->host_wake_assert = 1;
+#elif IS_ENABLED(CONFIG_AIC_IRQ_ACTIVE_LOW) || IS_ENABLED(CONFIG_AIC_IRQ_ACTIVE_FALLING)
+	bsi->host_wake_assert = 0;
+#endif
 	BT_DBG("bt_hostwake gpio=%d assert=%d\n", bsi->host_wake, bsi->host_wake_assert);
 
 	if (assert_level != -1) {
@@ -811,7 +908,11 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 		bsi->wakeup_enable = 1;
 	}
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 2, 0))
+	bsi->ext_wake = of_get_named_gpio(np, "bt_wake", 0);
+#else
 	bsi->ext_wake = of_get_named_gpio_flags(np, "bt_wake", 0, &config);
+#endif
 	if (!gpio_is_valid(bsi->ext_wake)) {
 		BT_ERR("get gpio bt_wake failed\n");
 		ret = -EINVAL;
@@ -826,7 +927,12 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 	}
 
 	/* set ext_wake_assert */
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(6, 2, 0))
+	of_property_read_u32_index(np, "bt_wake", 3, &config);
+	bsi->ext_wake_assert = (config == GPIO_ACTIVE_LOW) ? 0 : 1;
+#else
 	bsi->ext_wake_assert = (config == OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+#endif
 	BT_DBG("bt_wake gpio=%d assert=%d\n", bsi->ext_wake, bsi->ext_wake_assert);
 
 	if (assert_level != -1) {
@@ -859,6 +965,7 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 		case 0:
 		case 1:
 		case 2:
+		case 3:
 			uart_index = val;
 			break;
 		default:
@@ -878,13 +985,13 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 	return 0;
 
 err3:
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	devm_gpio_free(dev, bsi->ext_wake);
 #endif
 err2:
 	device_init_wakeup(dev, false);
 err1:
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 	devm_gpio_free(dev, bsi->host_wake);
 #endif
 err0:
@@ -899,8 +1006,10 @@ static int bluesleep_remove(struct platform_device *pdev)
 	/* assert bt wake */
 	gpio_set_value(bsi->ext_wake, bsi->ext_wake_assert);
 	if (test_bit(BT_PROTO, &flags)) {
+#ifndef BT_PAUSE
 		if (disable_irq_wake(bsi->host_wake_irq))
 			BT_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
+#endif
 		free_irq(bsi->host_wake_irq, &bsi->pdev->dev);
 		del_timer(&rx_timer);
 		if (test_bit(BT_ASLEEP, &flags))
@@ -948,6 +1057,7 @@ static int __init bluesleep_init(void)
 	struct proc_dir_entry *ent;
 
 	BT_DBG("BlueSleep Mode Driver Ver %s", VERSION);
+	BT_DBG("Driver Release Tag: %s", DRV_RELEASE_TAG);
 
 	retval = platform_driver_probe(&bluesleep_driver, bluesleep_probe);
 	if (retval)
@@ -1027,6 +1137,9 @@ static int __init bluesleep_init(void)
 	/* Initialize spinlock. */
 	spin_lock_init(&rw_lock);
 
+	/* Initialize mutexlock. */
+	mutex_init(&uart_lock);
+
 	/* Initialize timer */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 	timer_setup(&rx_timer, bluesleep_rx_timer_expire, 0);
@@ -1070,6 +1183,8 @@ static void __exit bluesleep_exit(void)
 	hci_unregister_notifier(&hci_event_nblock);
 #endif
 	platform_driver_unregister(&bluesleep_driver);
+
+	mutex_destroy(&uart_lock);
 
 #if BT_BLUEDROID_SUPPORT
 	remove_proc_entry("btwrite", sleep_dir);

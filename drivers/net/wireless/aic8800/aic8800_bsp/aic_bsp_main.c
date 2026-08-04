@@ -13,90 +13,29 @@
 #define DRV_AUTHOR            "AICSemi"
 #define DRV_VERS_MOD          "1.0"
 
+#if defined(AICWF_SDIO_SUPPORT)
+#define DRV_TYPE_NAME   "compatible(sdio)"
+#elif defined(AICWF_USB_SUPPORT)
+#define DRV_TYPE_NAME   "compatible(usb)"
+#else
+#define DRV_TYPE_NAME   "compatible(unknow)"
+#endif
+
+#define DRV_RELEASE_DATE "20240919"
+#define DRV_PATCH_LEVEL  "001"
+#define DRV_RELEASE_TAG  "aic-bsp-" DRV_TYPE_NAME "-" DRV_RELEASE_DATE "-" DRV_PATCH_LEVEL
+
 static struct platform_device *aicbsp_pdev;
 
-const struct aicbsp_firmware *aicbsp_firmware_list = fw_u02;
-
-#if defined(AICWF_SDIO_SUPPORT)
-const struct aicbsp_firmware fw_u02[] = {
-	[AICBSP_CPMODE_WORK] = {
-		.desc          = "normal work mode(sdio u02)",
-		.bt_adid       = "fw_adid.bin",
-		.bt_patch      = "fw_patch.bin",
-		.bt_table      = "fw_patch_table.bin",
-		.wl_fw         = "fmacfw.bin"
-	},
-
-	[AICBSP_CPMODE_TEST] = {
-		.desc          = "rf test mode(sdio u02)",
-		.bt_adid       = "fw_adid.bin",
-		.bt_patch      = "fw_patch.bin",
-		.bt_table      = "fw_patch_table.bin",
-		.wl_fw         = "fmacfw_rf.bin"
-	},
-};
-
-const struct aicbsp_firmware fw_u03[] = {
-	[AICBSP_CPMODE_WORK] = {
-		.desc          = "normal work mode(sdio u03/u04)",
-		.bt_adid       = "fw_adid_u03.bin",
-		.bt_patch      = "fw_patch_u03.bin",
-		.bt_table      = "fw_patch_table_u03.bin",
-		.wl_fw         = "fmacfw.bin"
-	},
-
-	[AICBSP_CPMODE_TEST] = {
-		.desc          = "rf test mode(sdio u03/u04)",
-		.bt_adid       = "fw_adid_u03.bin",
-		.bt_patch      = "fw_patch_u03.bin",
-		.bt_table      = "fw_patch_table_u03.bin",
-		.wl_fw         = "fmacfw_rf.bin"
-	},
-};
-
-#elif defined(AICWF_USB_SUPPORT)
-
-const struct aicbsp_firmware fw_u02[] = {
-	[AICBSP_CPMODE_WORK] = {
-		.desc          = "normal work mode(usb u02)",
-		.bt_adid       = "fw_adid.bin",
-		.bt_patch      = "fw_patch.bin",
-		.bt_table      = "fw_patch_table.bin",
-		.wl_fw         = "fmacfw_usb.bin"
-	},
-
-	[AICBSP_CPMODE_TEST] = {
-		.desc          = "rf test mode(usb u02)",
-		.bt_adid       = "fw_adid.bin",
-		.bt_patch      = "fw_patch.bin",
-		.bt_table      = "fw_patch_table.bin",
-		.wl_fw         = "fmacfw_rf_usb.bin"
-	},
-};
-
-const struct aicbsp_firmware fw_u03[] = {
-	[AICBSP_CPMODE_WORK] = {
-		.desc          = "normal work mode(usb u03/u04)",
-		.bt_adid       = "fw_adid_u03.bin",
-		.bt_patch      = "fw_patch_u03.bin",
-		.bt_table      = "fw_patch_table_u03.bin",
-		.wl_fw         = "fmacfw_usb.bin"
-	},
-
-	[AICBSP_CPMODE_TEST] = {
-		.desc          = "rf test mode(usb u03/u04)",
-		.bt_adid       = "fw_adid_u03.bin",
-		.bt_patch      = "fw_patch_u03.bin",
-		.bt_table      = "fw_patch_table_u03.bin",
-		.wl_fw         = "fmacfw_rf_usb.bin"
-	},
-};
-#endif
+const struct aicbsp_firmware *aicbsp_firmware_list;
 
 struct aicbsp_info_t aicbsp_info = {
 	.hwinfo_r = AICBSP_HWINFO_DEFAULT,
 	.hwinfo   = AICBSP_HWINFO_DEFAULT,
 	.cpmode   = AICBSP_CPMODE_DEFAULT,
+	.sdio_clock = -1,
+	.sdio_phase = -1,
+	.btmode = -1,
 };
 
 struct mutex aicbsp_power_lock;
@@ -116,15 +55,28 @@ static struct platform_driver aicbsp_driver = {
 	//.remove = aicbsp_remove,
 };
 
+static int test_enable = -1;
+module_param(test_enable, int, S_IRUGO);
+MODULE_PARM_DESC(test_enable, "Set driver to test mode as default");
+
+static int adap_test = -1;
+module_param(adap_test, int, 0660);
+MODULE_PARM_DESC(adap_test, "Set driver to adap test");
+
 static ssize_t cpmode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	ssize_t count = 0;
 	uint8_t i = 0;
 
+	if (aicbsp_firmware_list == NULL) {
+		count += sprintf(&buf[count], "Wi-Fi not opened since system power on\n");
+		return count;
+	}
+
 	count += sprintf(&buf[count], "Support mode value:\n");
 
-	for (i = 0; i < AICBSP_CPMODE_MAX; i++) {
+	for (i = 0; i < 2; i++) {
 		if (aicbsp_firmware_list[i].desc)
 			count += sprintf(&buf[count], " %2d: %s\n", i, aicbsp_firmware_list[i].desc);
 	}
@@ -151,7 +103,7 @@ static ssize_t cpmode_store(struct device *dev,
 	}
 
 	aicbsp_info.cpmode = val;
-	printk("%s, set mode to: %lu[%s] done\n", __func__, val, aicbsp_firmware_list[val].desc);
+	printk("%s, set mode to: %lu[%s] done\n", __func__, val, aicbsp_firmware_list ? aicbsp_firmware_list[val].desc : "unknow");
 
 	return count;
 }
@@ -161,11 +113,12 @@ static ssize_t hwinfo_show(struct device *dev,
 {
 	ssize_t count = 0;
 
-	count += sprintf(&buf[count], "chip hw rev: ");
-	if (aicbsp_info.hwinfo_r < 0)
-		count += sprintf(&buf[count], "-1(not avalible)\n");
+	if (aicbsp_info.chipinfo == NULL)
+		count += sprintf(&buf[count], "chip info not avalible)\n");
 	else
-		count += sprintf(&buf[count], "0x%02X\n", aicbsp_info.chip_rev);
+		count += sprintf(&buf[count], "chip name: %s, id: 0x%02X, rev: 0x%02X, subrev: 0x%02X\n",
+					aicbsp_info.chipinfo->name, aicbsp_info.chipinfo->chipid,
+					aicbsp_info.chipinfo->rev, aicbsp_info.chipinfo->subrev);
 
 	count += sprintf(&buf[count], "hwinfo read: ");
 	if (aicbsp_info.hwinfo_r < 0)
@@ -232,6 +185,103 @@ static ssize_t fwdebug_store(struct device *dev,
 	return count;
 }
 
+static ssize_t sdio_clock_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t count = 0;
+
+	count += sprintf(&buf[count], "sdio clock: %d\n", aicbsp_info.sdio_clock);
+
+	return count;
+}
+
+static ssize_t sdio_clock_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	long val;
+	int err = kstrtol(buf, 0, &val);
+
+	if (err) {
+		pr_err("invalid input\n");
+		return err;
+	}
+	aicbsp_info.sdio_clock = val;
+	return count;
+}
+
+static ssize_t sdio_phase_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t count = 0;
+
+	count += sprintf(&buf[count], "sdio phase: 0x%02X\n", aicbsp_info.sdio_phase);
+
+	return count;
+}
+
+static ssize_t sdio_phase_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	long val;
+	int err = kstrtol(buf, 0, &val);
+
+	if (err) {
+		pr_err("invalid input\n");
+		return err;
+	}
+
+	if (val < 0) {
+		pr_err("must greater than 0\n");
+		return err;
+	}
+
+	aicbsp_info.sdio_phase = val;
+	return count;
+}
+
+static ssize_t btpcm_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t count = 0;
+
+	count += sprintf(&buf[count], "%d\n", aicbsp_info.btpcm);
+
+	return count;
+}
+
+static ssize_t btmode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t count = 0;
+
+	count += sprintf(&buf[count], "%d\n", aicbsp_info.btmode);
+
+	return count;
+}
+
+static ssize_t btmode_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	long val;
+	int err = kstrtol(buf, 0, &val);
+
+	if (err) {
+		pr_err("invalid input\n");
+		return err;
+	}
+
+	if (val < 0) {
+		pr_err("must greater than 0\n");
+		return val;
+	}
+
+	if (val >= AICBT_BTMODE_BT_ONLY_SW && val <= AICBT_BTMODE_NULL)
+		aicbsp_info.btmode = val;
+	else
+		aicbsp_info.btmode = -1;
+	return count;
+}
+
 static DEVICE_ATTR(cpmode, S_IRUGO | S_IWUSR,
 		cpmode_show, cpmode_store);
 
@@ -241,10 +291,26 @@ static DEVICE_ATTR(hwinfo, S_IRUGO | S_IWUSR,
 static DEVICE_ATTR(fwdebug, S_IRUGO | S_IWUSR,
 		fwdebug_show, fwdebug_store);
 
+static DEVICE_ATTR(sdio_clock, S_IRUGO | S_IWUSR,
+		sdio_clock_show, sdio_clock_store);
+
+static DEVICE_ATTR(sdio_phase, S_IRUGO | S_IWUSR,
+		sdio_phase_show, sdio_phase_store);
+
+static DEVICE_ATTR(btpcm, S_IRUGO | S_IWUSR,
+		btpcm_show, NULL);
+
+static DEVICE_ATTR(btmode, S_IRUGO | S_IWUSR,
+		btmode_show, btmode_store);
+
 static struct attribute *aicbsp_attributes[] = {
 	&dev_attr_cpmode.attr,
 	&dev_attr_hwinfo.attr,
 	&dev_attr_fwdebug.attr,
+	&dev_attr_sdio_clock.attr,
+	&dev_attr_sdio_phase.attr,
+	&dev_attr_btpcm.attr,
+	&dev_attr_btmode.attr,
 	NULL,
 };
 
@@ -312,7 +378,9 @@ static int __init aicbsp_init(void)
 {
 	int ret;
 	printk("%s\n", __func__);
+	printk("%s, Driver Release Tag: %s\n", __func__, DRV_RELEASE_TAG);
 
+	aicbsp_resv_mem_init();
 	mutex_init(&aicbsp_power_lock);
 	ret = platform_driver_register(&aicbsp_driver);
 	if (ret) {
@@ -331,6 +399,16 @@ static int __init aicbsp_init(void)
 	if (ret) {
 		pr_err("register sysfs create group failed!\n");
 		goto err2;
+	}
+
+	if (test_enable == 1) {
+		aicbsp_info.cpmode = AICBSP_CPMODE_TEST;
+		printk("aicbsp: Test mode enable!!!\n");
+	}
+
+	if (adap_test == 1) {
+		aicbsp_info.adap_test = 1;
+		printk("aicbsp: adap_test enable!!!\n");
 	}
 
 	ret = aicbt_rfkill_init(aicbsp_pdev);
@@ -357,6 +435,7 @@ err1:
 	platform_driver_unregister(&aicbsp_driver);
 err0:
 	mutex_destroy(&aicbsp_power_lock);
+	aicbsp_resv_mem_deinit();
 	return ret;
 }
 
@@ -368,6 +447,7 @@ static void __exit aicbsp_exit(void)
 	platform_device_del(aicbsp_pdev);
 	platform_driver_unregister(&aicbsp_driver);
 	mutex_destroy(&aicbsp_power_lock);
+	aicbsp_resv_mem_deinit();
 	printk("%s\n", __func__);
 }
 
