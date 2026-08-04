@@ -533,6 +533,7 @@ static const struct file_operations pdp_driver_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= drm_compat_ioctl,
 #endif
+	.fop_flags	= FOP_UNSIGNED_OFFSET
 };
 
 static struct drm_driver pdp_drm_driver = {
