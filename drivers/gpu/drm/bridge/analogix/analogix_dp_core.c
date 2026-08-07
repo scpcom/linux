@@ -1852,10 +1852,6 @@ int analogix_dp_bind(struct analogix_dp_device *dp, struct drm_device *drm_dev)
 
 	if (IS_ENABLED(CONFIG_PM)) {
 		pm_runtime_enable(dp->dev);
-	} else {
-		ret = analogix_dp_resume(dp);
-		if (ret)
-			return ret;
 	}
 
 	dp->aux.name = "DP-AUX";
@@ -1882,8 +1878,6 @@ err_unregister_aux:
 err_disable_pm_runtime:
 	if (IS_ENABLED(CONFIG_PM)) {
 		pm_runtime_disable(dp->dev);
-	} else {
-		analogix_dp_suspend(dp);
 	}
 
 	return ret;
@@ -1904,8 +1898,6 @@ void analogix_dp_unbind(struct analogix_dp_device *dp)
 
 	if (IS_ENABLED(CONFIG_PM)) {
 		pm_runtime_disable(dp->dev);
-	} else {
-		analogix_dp_suspend(dp);
 	}
 }
 EXPORT_SYMBOL_GPL(analogix_dp_unbind);
