@@ -67,7 +67,7 @@ MODULE_PARM_DESC(umplock_debug_level, "set umplock_debug_level to print debug me
 #define PDEBUG(level, fmt, args...) do { if ((level) <= umplock_debug_level) printk(KERN_DEBUG "umplock: " fmt, ##args); } while (0)
 #define PERROR(fmt, args...) do { printk(KERN_ERR "umplock: " fmt, ##args); } while (0)
 
-int umplock_find_item(u32 secure_id)
+static int umplock_find_item(u32 secure_id)
 {
 	int i;
 	for (i = 0; i < MAX_ITEMS; i++) {
@@ -358,7 +358,7 @@ static int do_umplock_dump(void)
 	return 0;
 }
 
-int do_umplock_client_add(_lock_cmd_priv *lock_cmd)
+static int do_umplock_client_add(_lock_cmd_priv *lock_cmd)
 {
 	int i;
 	mutex_lock(&device.item_list_lock);
@@ -382,7 +382,7 @@ int do_umplock_client_add(_lock_cmd_priv *lock_cmd)
 	return 0;
 }
 
-int do_umplock_client_delete(_lock_cmd_priv *lock_cmd)
+static int do_umplock_client_delete(_lock_cmd_priv *lock_cmd)
 {
 	int p_index = -1, i_index = -1, ref_index = -1;
 	int ret;
@@ -534,7 +534,7 @@ static struct file_operations umplock_fops = {
 	.unlocked_ioctl = umplock_driver_ioctl,
 };
 
-int umplock_device_initialize(void)
+static int umplock_device_initialize(void)
 {
 	int err;
 
@@ -576,7 +576,7 @@ int umplock_device_initialize(void)
 	return err;
 }
 
-void umplock_device_terminate(void)
+static void umplock_device_terminate(void)
 {
 	device_destroy(umplock_device.umplock_class, umplock_dev);
 	class_destroy(umplock_device.umplock_class);
