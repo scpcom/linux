@@ -2271,11 +2271,9 @@ static int vop2_probe(struct platform_device *pdev)
 	return component_add(dev, &vop2_component_ops);
 }
 
-static int vop2_remove(struct platform_device *pdev)
+static void vop2_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &vop2_component_ops);
-
-	return 0;
 }
 
 struct platform_driver vop2_platform_driver = {
