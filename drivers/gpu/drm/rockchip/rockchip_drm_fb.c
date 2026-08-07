@@ -183,18 +183,8 @@ rockchip_fb_create(struct drm_device *dev, struct drm_file *file,
 	return &afbc_fb->base;
 }
 
-static void rockchip_drm_output_poll_changed(struct drm_device *dev)
-{
-	struct rockchip_drm_private *private = dev->dev_private;
-	struct drm_fb_helper *fb_helper = dev->fb_helper;
-
-	if (fb_helper && dev->mode_config.poll_enabled && !private->loader_protect)
-		drm_fb_helper_hotplug_event(fb_helper);
-}
-
 static const struct drm_mode_config_funcs rockchip_drm_mode_config_funcs = {
 	.fb_create = rockchip_fb_create,
-	.output_poll_changed = rockchip_drm_output_poll_changed,
 	.atomic_check = drm_atomic_helper_check,
 	.atomic_commit = drm_atomic_helper_commit,
 };
