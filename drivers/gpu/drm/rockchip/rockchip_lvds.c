@@ -518,11 +518,9 @@ static int rockchip_lvds_probe(struct platform_device *pdev)
 	return component_add(dev, &rockchip_lvds_component_ops);
 }
 
-static int rockchip_lvds_remove(struct platform_device *pdev)
+static void rockchip_lvds_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &rockchip_lvds_component_ops);
-
-	return 0;
 }
 
 static void px30_lvds_enable(struct rockchip_lvds *lvds)
