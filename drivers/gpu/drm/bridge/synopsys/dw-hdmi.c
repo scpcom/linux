@@ -242,6 +242,7 @@ struct dw_hdmi {
 	struct platform_device *audio;
 	struct platform_device *cec;
 	struct device *dev;
+	struct clk *isfr_clk;
 	struct dw_hdmi_i2c *i2c;
 
 	unsigned int i2c_scl_high_ns;
@@ -3004,8 +3005,7 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 	memset(metedata, 0, sizeof(*metedata));
 	drm_edid = dw_hdmi_edid_read(hdmi, connector);
 	if (drm_edid) {
-		dev_info(hdmi->dev, "got edid: width[%d] x height[%d]\n",
-			drm_edid->width_cm, drm_edid->height_cm);
+		dev_info(hdmi->dev, "got edid\n");
 		drm_edid_connector_update(connector, drm_edid);
 		cec_notifier_set_phys_addr(hdmi->cec_notifier,
 					   connector->display_info.source_physical_address);
@@ -4564,6 +4564,7 @@ struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
 		dev_err(hdmi->dev, "Unable to get HDMI isfr clk: %d\n", ret);
 		goto err_res;
 	}
+	hdmi->isfr_clk = clk;
 
 	clk = devm_clk_get_enabled(hdmi->dev, "iahb");
 	if (IS_ERR(clk)) {
