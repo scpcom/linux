@@ -280,18 +280,6 @@ static bool has_uv_swapped(uint32_t format)
 	}
 }
 
-static bool is_fmt_10(uint32_t format)
-{
-	switch (format) {
-	case DRM_FORMAT_NV15:
-	case DRM_FORMAT_NV20:
-	case DRM_FORMAT_NV30:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static enum vop_data_format vop_convert_format(uint32_t format)
 {
 	switch (format) {
@@ -307,15 +295,12 @@ static enum vop_data_format vop_convert_format(uint32_t format)
 	case DRM_FORMAT_BGR565:
 		return VOP_FMT_RGB565;
 	case DRM_FORMAT_NV12:
-	case DRM_FORMAT_NV15:
 	case DRM_FORMAT_NV21:
 		return VOP_FMT_YUV420SP;
 	case DRM_FORMAT_NV16:
-	case DRM_FORMAT_NV20:
 	case DRM_FORMAT_NV61:
 		return VOP_FMT_YUV422SP;
 	case DRM_FORMAT_NV24:
-	case DRM_FORMAT_NV30:
 	case DRM_FORMAT_NV42:
 		return VOP_FMT_YUV444SP;
 	default:
@@ -396,8 +381,8 @@ static void scl_vop_cal_scl_fac(struct vop *vop, const struct vop_win_data *win,
 	if (info->is_yuv)
 		is_yuv = true;
 
-	if (dst_w > 4096) {
-		DRM_DEV_ERROR(vop->dev, "Maximum dst width (4096) exceeded\n");
+	if (dst_w > 3840) {
+		DRM_DEV_ERROR(vop->dev, "Maximum dst width (3840) exceeded\n");
 		return;
 	}
 
@@ -788,6 +773,11 @@ out:
 	}
 }
 
+static void vop_plane_destroy(struct drm_plane *plane)
+{
+	drm_plane_cleanup(plane);
+}
+
 static inline bool rockchip_afbc(u64 modifier)
 {
 	return modifier == ROCKCHIP_AFBC_MOD;
@@ -962,12 +952,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	dsp_sty = dest->y1 + crtc->mode.vtotal - crtc->mode.vsync_start;
 	dsp_st = dsp_sty << 16 | (dsp_stx & 0xffff);
 
-	if (fb->format->char_per_block[0])
-		offset = drm_format_info_min_pitch(fb->format, 0,
-						   src->x1 >> 16);
-	else
-		offset = (src->x1 >> 16) * fb->format->cpp[0];
-
+	offset = (src->x1 >> 16) * fb->format->cpp[0];
 	offset += (src->y1 >> 16) * fb->pitches[0];
 	dma_addr = rk_obj->dma_addr + offset + fb->offsets[0];
 
@@ -993,7 +978,6 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 	}
 
 	VOP_WIN_SET(vop, win, format, format);
-	VOP_WIN_SET(vop, win, fmt_10, is_fmt_10(fb->format->format));
 	VOP_WIN_SET(vop, win, yrgb_vir, DIV_ROUND_UP(fb->pitches[0], 4));
 	VOP_WIN_SET(vop, win, yrgb_mst, dma_addr);
 	VOP_WIN_YUV2YUV_SET(vop, win_yuv2yuv, y2r_en, is_yuv);
@@ -1003,16 +987,15 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
 		    (new_state->rotation & DRM_MODE_REFLECT_X) ? 1 : 0);
 
 	if (is_yuv) {
+		int hsub = fb->format->hsub;
+		int vsub = fb->format->vsub;
+		int bpp = fb->format->cpp[1];
+
 		uv_obj = fb->obj[1];
 		rk_uv_obj = to_rockchip_obj(uv_obj);
 
-		if (fb->format->char_per_block[1])
-			offset = drm_format_info_min_pitch(fb->format, 1,
-							   src->x1 >> 16);
-		else
-			offset = (src->x1 >> 16) * fb->format->cpp[1];
-		offset /= fb->format->hsub;
-		offset += (src->y1 >> 16) * fb->pitches[1] / fb->format->vsub;
+		offset = (src->x1 >> 16) * bpp / hsub;
+		offset += (src->y1 >> 16) * fb->pitches[1] / vsub;
 
 		dma_addr = rk_uv_obj->dma_addr + offset + fb->offsets[1];
 		VOP_WIN_SET(vop, win, uv_vir, DIV_ROUND_UP(fb->pitches[1], 4));
@@ -1093,10 +1076,10 @@ static int vop_plane_atomic_async_check(struct drm_plane *plane,
 	if (!plane->state->fb)
 		return -EINVAL;
 
-	crtc_state = drm_atomic_get_existing_crtc_state(state, new_plane_state->crtc);
-
-	/* Special case for asynchronous cursor updates. */
-	if (!crtc_state)
+	if (state)
+		crtc_state = drm_atomic_get_existing_crtc_state(state,
+								new_plane_state->crtc);
+	else /* Special case for asynchronous cursor updates. */
 		crtc_state = plane->crtc->state;
 
 	return drm_atomic_helper_check_plane_state(plane->state, crtc_state,
@@ -1156,7 +1139,7 @@ static const struct drm_plane_helper_funcs plane_helper_funcs = {
 static const struct drm_plane_funcs vop_plane_funcs = {
 	.update_plane	= drm_atomic_helper_update_plane,
 	.disable_plane	= drm_atomic_helper_disable_plane,
-	.destroy = drm_plane_cleanup,
+	.destroy = vop_plane_destroy,
 	.reset = drm_atomic_helper_plane_reset,
 	.atomic_duplicate_state = drm_atomic_helper_plane_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_plane_destroy_state,
@@ -1583,10 +1566,6 @@ static void vop_crtc_atomic_flush(struct drm_crtc *crtc,
 	VOP_AFBC_SET(vop, enable, s->enable_afbc);
 	vop_cfg_done(vop);
 
-	/* Ack the DMA transfer of the previous frame (RK3066). */
-	if (VOP_HAS_REG(vop, common, dma_stop))
-		VOP_REG_SET(vop, common, dma_stop, 0);
-
 	spin_unlock(&vop->reg_lock);
 
 	/*
@@ -1630,6 +1609,11 @@ static const struct drm_crtc_helper_funcs vop_crtc_helper_funcs = {
 	.atomic_enable = vop_crtc_atomic_enable,
 	.atomic_disable = vop_crtc_atomic_disable,
 };
+
+static void vop_crtc_destroy(struct drm_crtc *crtc)
+{
+	drm_crtc_cleanup(crtc);
+}
 
 static struct drm_crtc_state *vop_crtc_duplicate_state(struct drm_crtc *crtc)
 {
@@ -1738,7 +1722,7 @@ vop_crtc_verify_crc_source(struct drm_crtc *crtc, const char *source_name,
 static const struct drm_crtc_funcs vop_crtc_funcs = {
 	.set_config = drm_atomic_helper_set_config,
 	.page_flip = drm_atomic_helper_page_flip,
-	.destroy = drm_crtc_cleanup,
+	.destroy = vop_crtc_destroy,
 	.reset = vop_crtc_reset,
 	.atomic_duplicate_state = vop_crtc_duplicate_state,
 	.atomic_destroy_state = vop_crtc_destroy_state,
@@ -1989,7 +1973,7 @@ static void vop_destroy_crtc(struct vop *vop)
 	 */
 	list_for_each_entry_safe(plane, tmp, &drm_dev->mode_config.plane_list,
 				 head)
-		drm_plane_cleanup(plane);
+		vop_plane_destroy(plane);
 
 	/*
 	 * Destroy CRTC after vop_plane_destroy() since vop_disable_plane()
