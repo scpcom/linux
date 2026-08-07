@@ -9,6 +9,7 @@
 #include <linux/media-bus-format.h>
 #include <linux/of_device.h>
 #include <linux/of_graph.h>
+#include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
 #include <linux/phy/phy.h>
