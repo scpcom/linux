@@ -41,6 +41,8 @@ void _ump_osk_mem_mapregion_term(ump_memory_allocation *descriptor);
 
 void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_msync_op op, ump_session_data *session_data);
 
+extern void _ump_osk_flush_dcache_area(void *virt, u32 size);
+
 #ifdef __cplusplus
 }
 #endif

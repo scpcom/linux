@@ -28,6 +28,7 @@
 #include <asm/cacheflush.h>
 #include "ump_kernel_common.h"
 #include "ump_kernel_memory_backend.h"
+#include "ump_kernel_memory_backend_os.h"
 
 extern struct device *ump_global_mdev;
 
@@ -45,7 +46,6 @@ static void os_free(void *ctx, ump_dd_mem *descriptor);
 static int os_allocate(void *ctx, ump_dd_mem *descriptor);
 static void os_memory_backend_destroy(ump_memory_backend *backend);
 static u32 os_stat(struct ump_memory_backend *backend);
-extern void _ump_osk_set_dma_ops(struct device *dev);
 
 
 

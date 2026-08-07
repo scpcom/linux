@@ -23,6 +23,7 @@
 #include <linux/vmalloc.h>
 #include "ump_kernel_common.h"
 #include "ump_kernel_memory_backend.h"
+#include "ump_kernel_memory_backend_dedicated.h"
 
 
 

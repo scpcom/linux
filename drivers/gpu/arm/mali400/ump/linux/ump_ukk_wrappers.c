@@ -22,6 +22,7 @@
 #include "ump_uk_types.h"
 #include "ump_ukk.h"
 #include "ump_kernel_common.h"
+#include "ump_ukk_wrappers.h"
 
 #ifdef CONFIG_COMPAT
 int ump_copy_from_user( void * destination, const void * source, size_t num, int pointer_size )
@@ -56,7 +57,7 @@ int ump_copy_to_user( void * destination, const void * source, size_t num, int p
 /*
  * IOCTL operation; Negotiate version of IOCTL API
  */
-int __ump_get_api_version_wrapper(u32 __user *argument, struct ump_session_data *session_data, int pointer_size)
+static int __ump_get_api_version_wrapper(u32 __user *argument, struct ump_session_data *session_data, int pointer_size)
 {
 	_ump_uk_api_version_s version_info;
 	_mali_osk_errcode_t err;
@@ -100,7 +101,7 @@ int ump_get_api_version_wrapper(u32 __user *argument, struct ump_session_data *s
 /*
  * IOCTL operation; Release reference to specified UMP memory.
  */
-int __ump_release_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_release_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_release_s release_args;
 	_mali_osk_errcode_t err;
@@ -136,7 +137,7 @@ int ump_release_wrapper(u32 __user *argument, struct ump_session_data   *session
 /*
  * IOCTL operation; Return size for specified UMP memory.
  */
-int __ump_size_get_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_size_get_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_size_get_s user_interaction;
 	_mali_osk_errcode_t err;
@@ -177,7 +178,7 @@ int ump_size_get_wrapper(u32 __user *argument, struct ump_session_data   *sessio
 /*
  * IOCTL operation; Do cache maintenance on specified UMP memory.
  */
-int __ump_msync_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_msync_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_msync_s user_interaction;
 
@@ -211,7 +212,7 @@ int ump_msync_wrapper(u32 __user *argument, struct ump_session_data   *session_d
 	return __ump_msync_wrapper(argument, session_data, sizeof(void *));
 }
 
-int __ump_cache_operations_control_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_cache_operations_control_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_cache_operations_control_s user_interaction;
 
@@ -246,7 +247,7 @@ int ump_cache_operations_control_wrapper(u32 __user *argument, struct ump_sessio
 	return __ump_cache_operations_control_wrapper(argument, session_data, sizeof(void *));
 }
 
-int __ump_switch_hw_usage_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_switch_hw_usage_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_switch_hw_usage_s user_interaction;
 
@@ -281,7 +282,7 @@ int ump_switch_hw_usage_wrapper(u32 __user *argument, struct ump_session_data   
 	return __ump_switch_hw_usage_wrapper(argument, session_data, sizeof(void *));
 }
 
-int __ump_lock_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_lock_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_lock_s user_interaction;
 
@@ -317,7 +318,7 @@ int ump_lock_wrapper(u32 __user *argument, struct ump_session_data   *session_da
 	return __ump_lock_wrapper(argument, session_data, sizeof(void *));
 }
 
-int __ump_unlock_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_unlock_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_unlock_s user_interaction;
 
@@ -379,7 +380,7 @@ int ump_msync_wrapper_32(u32 __user *argument, struct ump_session_data   *sessio
 /*
  * IOCTL operation; Do cache maintenance on specified UMP memory.
  */
-int ump_msync_wrapper_32(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+int ump_msync_wrapper_32(u32 __user *argument, struct ump_session_data   *session_data)
 {
 	_ump_uk_msync_s user_interaction;
 	_ump_uk_msync_32_s user_interaction_32;
