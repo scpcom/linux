@@ -6,6 +6,7 @@
 #ifndef __DW_HDMI__
 #define __DW_HDMI__
 
+#include <drm/drm_connector.h>
 #include <drm/drm_property.h>
 #include <sound/hdmi-codec.h>
 #include <media/cec.h>
