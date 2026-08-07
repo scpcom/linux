@@ -758,15 +758,6 @@ static void rockchip_drm_postclose(struct drm_device *dev,
 		rockchip_drm_crtc_cancel_pending_vblank(crtc, file_priv);
 }
 
-static void rockchip_drm_lastclose(struct drm_device *dev)
-{
-	struct rockchip_drm_private *priv = dev->dev_private;
-	struct drm_fb_helper *fb_helper = dev->fb_helper;
-
-	if (fb_helper && !priv->logo)
-		drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
-}
-
 static struct drm_pending_vblank_event *
 rockchip_drm_add_vcnt_event(struct drm_crtc *crtc, struct drm_file *file_priv)
 {
@@ -967,7 +958,6 @@ struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj,
 static const struct drm_driver rockchip_drm_driver = {
 	.driver_features	= DRIVER_MODESET | DRIVER_GEM | DRIVER_ATOMIC,
 	.postclose		= rockchip_drm_postclose,
-	.lastclose		= rockchip_drm_lastclose,
 	.open			= rockchip_drm_open,
 	.dumb_create		= rockchip_gem_dumb_create,
 	.gem_prime_import	= rockchip_drm_gem_prime_import,
