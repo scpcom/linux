@@ -20,6 +20,7 @@
 #include "ump_uk_types.h"
 #include "ump_ukk.h"
 #include "ump_kernel_common.h"
+#include "ump_osk_builtin.h"
 #include <linux/module.h>            /* kernel module definitions */
 #include <linux/kernel.h>
 #include <linux/mm.h>

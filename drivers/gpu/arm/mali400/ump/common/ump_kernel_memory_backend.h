@@ -44,7 +44,5 @@ typedef struct ump_memory_backend {
 ump_memory_backend *ump_memory_backend_create(void);
 void ump_memory_backend_destroy(void);
 
-extern void _ump_osk_set_dma_ops(struct device *dev);
-
 #endif /*__UMP_KERNEL_MEMORY_BACKEND_H__ */
 
