@@ -63,5 +63,7 @@ static inline struct rk_context *get_rk_context(
 	return (struct rk_context *)(kbdev->platform_context);
 }
 
+int kbase_platform_rk_enable_regulator(struct kbase_device *kbdev);
+
 #endif				/* _MALI_KBASE_RK_H_ */
 

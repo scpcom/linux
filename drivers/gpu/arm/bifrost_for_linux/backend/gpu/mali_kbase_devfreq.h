@@ -22,4 +22,12 @@ int kbase_devfreq_init(struct kbase_device *kbdev);
 void kbase_devfreq_term(struct kbase_device *kbdev);
 int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev);
 
+void kbase_devfreq_opp_translate(struct kbase_device *kbdev, unsigned long freq,
+	u64 *core_mask, unsigned long *freqs, unsigned long *volts);
+
+void kbase_devfreq_force_freq(struct kbase_device *kbdev, unsigned long freq);
+
+void kbase_devfreq_enqueue_work(struct kbase_device *kbdev,
+				       enum kbase_devfreq_work_type work_type);
+
 #endif /* _BASE_DEVFREQ_H_ */
