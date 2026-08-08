@@ -21,6 +21,7 @@
 #include <net/mac80211_xr.h>
 #include <linux/platform_device.h>
 #include <linux/timer.h>
+#include <linux/sunxi-addr.h>
 
 #include "platform.h"
 #include "xradio.h"
@@ -420,7 +421,6 @@ static int xradio_macaddr_char2val(u8 *v_mac, const char *c_mac)
  a[2] != 0 || a[3] != 0 ||  \
  a[4] != 0 || a[5] != 0))
 
-extern int get_custom_mac_address(int fmt, char *name, char *addr);
 static int xradio_get_mac_addrs(u8 *macaddr)
 {
 	int ret = 0;
