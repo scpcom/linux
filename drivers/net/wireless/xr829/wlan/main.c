@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/proc_fs.h>
+#include <linux/sunxi-addr.h>
 
 
 #include "platform.h"
@@ -475,8 +476,6 @@ static int xradio_macaddr_char2val(u8 *v_mac, const char *c_mac)
  a[2] != 0 || a[3] != 0 ||  \
  a[4] != 0 || a[5] != 0) && \
  !(a[0] & 0x3))
-
-extern int get_custom_mac_address(int fmt, char *name, char *addr);
 
 static void xradio_get_mac_addrs(u8 *macaddr)
 {
