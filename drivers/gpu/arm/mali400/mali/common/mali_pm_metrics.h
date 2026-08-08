@@ -60,6 +60,8 @@ void mali_pm_record_gpu_active(mali_bool is_gp);
  */
 void mali_pm_record_gpu_idle(mali_bool is_gp);
 
+void mali_pm_record_job_status(struct mali_device *mdev);
+
 void mali_pm_reset_dvfs_utilisation(struct mali_device *mdev);
 
 void mali_pm_get_dvfs_utilisation(struct mali_device *mdev, unsigned long *total_out, unsigned long *busy_out);
@@ -68,7 +70,7 @@ void mali_pm_metrics_spin_lock(void);
 
 void mali_pm_metrics_spin_unlock(void);
 #else
-void mali_pm_record_gpu_idle(mali_bool is_gp) {}
-void mali_pm_record_gpu_active(mali_bool is_gp) {}
+inline void mali_pm_record_gpu_idle(mali_bool is_gp) {}
+inline void mali_pm_record_gpu_active(mali_bool is_gp) {}
 #endif
 #endif /* __MALI_PM_METRICS_H__ */
