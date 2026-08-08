@@ -26,14 +26,14 @@ static struct platform_suspend_ops sunxi_riscv_pm = {
 	.enter = sunxi_riscv_enter,
 };
 
-int sunxi_riscv_pm_register(void)
+static int sunxi_riscv_pm_register(void)
 {
 	suspend_set_ops(&sunxi_riscv_pm);
 
 	return 0;
 }
 
-void sunxi_riscv_pm_unregister(void)
+static void sunxi_riscv_pm_unregister(void)
 {
 }
 
