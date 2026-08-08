@@ -108,6 +108,13 @@ struct gator_interface {
 u64 gator_get_time(void);
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
+int gator_events_block_init(void);
+int gator_events_irq_init(void);
+int gator_events_l2c310_init(void);
+int gator_events_meminfo_init(void);
+int gator_events_mmapped_init(void);
+int gator_events_net_init(void);
+int gator_events_sched_init(void);
 u32 gator_cpuid(void);
 
 void gator_marshal_activity_switch(int core, int key, int activity, int pid);
