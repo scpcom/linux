@@ -211,4 +211,7 @@ EXTRA_CFLAGS += -Wno-error=date-time
 EXTRA_CFLAGS +=-Wno-date-time
 EXTRA_CFLAGS += -Wno-implicit-fallthrough
 
+EXTRA_CFLAGS += -Wno-missing-declarations
+EXTRA_CFLAGS += -Wno-missing-prototypes
+
 clean-files += Module.symvers Module.markers modules modules.order
