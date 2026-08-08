@@ -23,6 +23,7 @@
 #if defined(CONFIG_SUNXI_G2D_ROTATE)
 #include "g2d_rotate.h"
 #endif
+#include <linux/sunxi-iommu.h>
 
 /* alloc based on 4K byte */
 #define G2D_BYTE_ALIGN(x) (((x + (4*1024-1)) >> 12) << 12)
@@ -517,10 +518,6 @@ static int g2d_mmap(struct file *file, struct vm_area_struct *vma)
 
 	return 0;
 }
-
-#if defined(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN20IW1)
-extern void sunxi_reset_device_iommu(unsigned int master_id);
-#endif
 
 int g2d_wait_cmd_finish(unsigned int timeout)
 {
