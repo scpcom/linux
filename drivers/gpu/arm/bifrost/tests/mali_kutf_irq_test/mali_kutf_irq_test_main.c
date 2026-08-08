@@ -26,6 +26,7 @@
 
 #include "mali_kbase.h"
 #include <midgard/backend/gpu/mali_kbase_device_internal.h>
+#include <midgard/backend/gpu/mali_kbase_irq_internal.h>
 
 #include <kutf/kutf_suite.h>
 #include <kutf/kutf_utils.h>
@@ -64,9 +65,6 @@ struct kutf_irq_fixture_data {
 #define IRQ_TIMEOUT HZ
 
 /* Kernel API for setting irq throttle hook callback and irq time in us*/
-extern int kbase_set_custom_irq_handler(struct kbase_device *kbdev,
-		irq_handler_t custom_handler,
-		int irq_type);
 extern irqreturn_t kbase_gpu_irq_handler(int irq, void *data);
 
 static DECLARE_WAIT_QUEUE_HEAD(wait);

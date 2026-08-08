@@ -94,7 +94,7 @@ void kbase_ipa_model_use_configured_locked(struct kbase_device *kbdev)
 	atomic_set(&kbdev->ipa_use_configured_model, true);
 }
 
-const char *kbase_ipa_model_name_from_id(u32 gpu_id)
+static const char *kbase_ipa_model_name_from_id(u32 gpu_id)
 {
 	const u32 prod_id = (gpu_id & GPU_ID_VERSION_PRODUCT_ID) >>
 			GPU_ID_VERSION_PRODUCT_ID_SHIFT;
@@ -397,7 +397,7 @@ KBASE_EXPORT_TEST_API(kbase_ipa_term);
  *
  * Return: Power consumption, in mW. Range: 0 < p < 2^13 (0W to ~8W)
  */
-static u32 kbase_scale_dynamic_power(const u32 c, const u32 freq,
+static __maybe_unused u32 kbase_scale_dynamic_power(const u32 c, const u32 freq,
 				     const u32 voltage)
 {
 	/* Range: 2^8 < v2 < 2^16 m(V^2) */
@@ -428,7 +428,7 @@ static u32 kbase_scale_dynamic_power(const u32 c, const u32 freq,
  *
  * Return: Power consumption, in mW. Range: 0 < p < 2^13 (0W to ~8W)
  */
-u32 kbase_scale_static_power(const u32 c, const u32 voltage)
+static u32 kbase_scale_static_power(const u32 c, const u32 voltage)
 {
 	/* Range: 2^8 < v2 < 2^16 m(V^2) */
 	const u32 v2 = (voltage * voltage) / 1000;
@@ -449,7 +449,7 @@ u32 kbase_scale_static_power(const u32 c, const u32 voltage)
 	return div_u64(v3c_big, 1000000);
 }
 
-static struct kbase_ipa_model *get_current_model(struct kbase_device *kbdev)
+static __maybe_unused struct kbase_ipa_model *get_current_model(struct kbase_device *kbdev)
 {
 	lockdep_assert_held(&kbdev->ipa.lock);
 
@@ -459,7 +459,7 @@ static struct kbase_ipa_model *get_current_model(struct kbase_device *kbdev)
 		return kbdev->ipa.fallback_model;
 }
 
-static u32 get_static_power_locked(struct kbase_device *kbdev,
+static __maybe_unused u32 get_static_power_locked(struct kbase_device *kbdev,
 				   struct kbase_ipa_model *model,
 				   unsigned long voltage)
 {
@@ -561,6 +561,7 @@ static unsigned long kbase_get_dynamic_power(unsigned long freq,
 }
 #endif /* KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE */
 
+#if MALI_UNIT_TEST
 int kbase_get_real_power_locked(struct kbase_device *kbdev, u32 *power,
 				unsigned long freq,
 				unsigned long voltage)
@@ -620,6 +621,7 @@ int kbase_get_real_power(struct devfreq *df, u32 *power,
 	return ret;
 }
 KBASE_EXPORT_TEST_API(kbase_get_real_power);
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 struct devfreq_cooling_ops kbase_ipa_power_model_ops = {
