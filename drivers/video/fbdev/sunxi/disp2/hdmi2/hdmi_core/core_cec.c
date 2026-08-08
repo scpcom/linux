@@ -170,7 +170,7 @@ static s32 hdmi_cec_get_simple_msg(unsigned char *msg, unsigned int size)
 	return cec_ctrlReceiveFrame(msg, size);
 }
 
-u16 cec_core_get_phyaddr(void)
+static u16 cec_core_get_phyaddr(void)
 {
 	struct hdmi_tx_core *core = get_platform();
 

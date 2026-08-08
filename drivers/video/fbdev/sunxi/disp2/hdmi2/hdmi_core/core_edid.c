@@ -246,7 +246,7 @@ int edid_sink_supports_vic_code(u32 vic_code)
 	return false;
 }
 
-bool get_cea_vic_support(u32 cea_vic)
+static bool get_cea_vic_support(u32 cea_vic)
 {
 	struct hdmi_tx_core *core = get_platform();
 	struct hdmi_mode *mode = &core->mode;
@@ -271,7 +271,7 @@ exit:
 	return support;
 }
 
-bool get_hdmi_vic_support(u32 hdmi_vic)
+static bool get_hdmi_vic_support(u32 hdmi_vic)
 {
 	struct hdmi_tx_core *core = get_platform();
 	struct hdmi_mode *mode = &core->mode;
@@ -340,7 +340,7 @@ void edid_correct_hardware_config(void)
 	}
 }
 
-void videoParams_SetYcc420Support(dtd_t *paramsDtd, shortVideoDesc_t *paramsSvd)
+static void videoParams_SetYcc420Support(dtd_t *paramsDtd, shortVideoDesc_t *paramsSvd)
 {
 	paramsDtd->mLimitedToYcc420 = paramsSvd->mLimitedToYcc420;
 	paramsDtd->mYcc420 = paramsSvd->mYcc420;

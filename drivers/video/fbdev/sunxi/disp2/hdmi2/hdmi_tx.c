@@ -25,6 +25,7 @@
 #include "../../../../../extcon/extcon.h"
 #endif
 
+#include "../disp/de/disp_hdmi.h"
 #include "hdmi_tx.h"
 #include "hdmi_core/core_hdcp.h"
 /*#include "hdmi_test.h"*/
@@ -96,9 +97,6 @@ static void hdmi_set_ddc_analog(unsigned char set)
 #endif
 }
 
-#ifdef TCON_PAN_SEL
-extern u32 disp_hdmi_pad_get(void);
-#endif
 unsigned char hdmi_get_ddc_analog(void)
 {
 #ifdef TCON_PAN_SEL
@@ -120,7 +118,7 @@ static void ccmu_set_pll_video2_bias(unsigned int val)
 }
 #endif
 
-struct hdmi_tx_drv *get_hdmi_drv(void)
+static __maybe_unused struct hdmi_tx_drv *get_hdmi_drv(void)
 {
 	return hdmi_drv;
 }
@@ -142,7 +140,7 @@ static void hdmi_msleep(unsigned int ms)
 }
 
 #if defined(CONFIG_AW_AXP) || defined(CONFIG_REGULATOR)
-int hdmi_power_enable(struct hdmi_power *power)
+static int hdmi_power_enable(struct hdmi_power *power)
 {
 	struct regulator *regu = NULL;
 	int ret = -1;
@@ -176,7 +174,7 @@ exit:
 	return ret;
 }
 
-int hdmi_power_disable(struct hdmi_power *power)
+static int hdmi_power_disable(struct hdmi_power *power)
 {
 	struct regulator *regu = NULL;
 	int ret = 0;
@@ -442,7 +440,7 @@ static void hdmi_resume_pin_configure(void)
 }
 
 
-void hdmi_pin_release(void)
+static __maybe_unused void hdmi_pin_release(void)
 {
 	s32 ret = 0;
 	struct pinctrl_state *state;
@@ -1985,7 +1983,7 @@ static ssize_t hdmi_test_reg_read_show(struct device *dev,
 	return sprintf(buf, "%s\n", "echo [0x(address offset), 0x(count)] > hdmi_test_reg_read");
 }
 
-ssize_t hdmi_test_reg_read_store(struct device *dev,
+static ssize_t hdmi_test_reg_read_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -2046,7 +2044,7 @@ static ssize_t hdmi_test_reg_write_show(struct device *dev,
 	return sprintf(buf, "%s\n", "echo [0x(address offset), 0x(value)] > hdmi_test_write");
 }
 
-ssize_t hdmi_test_reg_write_store(struct device *dev,
+static ssize_t hdmi_test_reg_write_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -2149,7 +2147,7 @@ static ssize_t phy_read_show(struct device *dev,
 	return sprintf(buf, "%s\n", "echo [0x(address offset), 0x(count)] > phy_read");
 }
 
-ssize_t phy_read_store(struct device *dev,
+static ssize_t phy_read_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -2193,7 +2191,7 @@ static ssize_t hdmi_set_ddc_show(struct device *dev,
 	return n;
 }
 
-ssize_t hdmi_set_ddc_store(struct device *dev,
+static ssize_t hdmi_set_ddc_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -2223,7 +2221,7 @@ static ssize_t scdc_read_show(struct device *dev,
 	return sprintf(buf, "%s\n", "echo [0x(address offset), 0x(count)] > scdc_read");
 }
 
-ssize_t scdc_read_store(struct device *dev,
+static ssize_t scdc_read_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {

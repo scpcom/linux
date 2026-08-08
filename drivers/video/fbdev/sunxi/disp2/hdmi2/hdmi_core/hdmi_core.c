@@ -160,7 +160,7 @@ u32 hdmi_core_get_hpd_state(void)
 	return core->dev_func.dev_hpd_status();
 }
 
-void hdmi_core_set_phy_reg_base(void)
+static void hdmi_core_set_phy_reg_base(void)
 {
 	struct hdmi_tx_core *core = get_platform();
 
@@ -436,7 +436,7 @@ static void print_audioinfo(audioParams_t *audio)
 	AUDIO_INF("Audio mChannelNum = %d\n", audio->mChannelNum);
 }
 
-void video_apply(struct hdmi_tx_core *core)
+static void video_apply(struct hdmi_tx_core *core)
 {
 	if (core == NULL) {
 		pr_err("HDMI_ERROR:Improper arguments\n");
