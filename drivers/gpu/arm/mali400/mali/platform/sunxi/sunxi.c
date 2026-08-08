@@ -21,6 +21,7 @@
 
 #include <linux/clk/clk-conf.h>
 
+#include <linux/mali/mali_platform.h>
 #include <linux/mali/mali_utgard.h>
 
 #include "mali_kernel_linux.h"
@@ -46,7 +47,7 @@ static bool mali_has_reset_line(struct device_node *np)
 		of_device_is_compatible(np, "allwinner,sun50i-h5-mali");
 }
 
-struct resource *mali_create_mp1_resources(unsigned long address,
+static struct resource *mali_create_mp1_resources(unsigned long address,
 					   int irq_gp, int irq_gpmmu,
 					   int irq_pp0, int irq_ppmmu0,
 					   int *len)
@@ -69,7 +70,7 @@ struct resource *mali_create_mp1_resources(unsigned long address,
 	return res;
 }
 
-struct resource *mali_create_mp2_resources(unsigned long address,
+static struct resource *mali_create_mp2_resources(unsigned long address,
 					   int irq_gp, int irq_gpmmu,
 					   int irq_pp0, int irq_ppmmu0,
 					   int irq_pp1, int irq_ppmmu1,
@@ -94,7 +95,7 @@ struct resource *mali_create_mp2_resources(unsigned long address,
 	return res;
 }
 
-struct resource *mali_create_mali450_mp4_resources(unsigned long address,
+static struct resource *mali_create_mali450_mp4_resources(unsigned long address,
 						   int irq_gp, int irq_gpmmu,
 						   int irq_pp,
 						   int irq_pp0, int irq_ppmmu0,
