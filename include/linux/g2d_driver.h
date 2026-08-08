@@ -526,5 +526,13 @@ typedef enum {
 
 } g2d_cmd;
 
+int g2d_open(struct inode *inode, struct file *file);
+int g2d_release(struct inode *inode, struct file *file);
+
+int g2d_blit_h(g2d_blt_h *para);
+
+void g2d_ioctl_mutex_lock(void);
+void g2d_ioctl_mutex_unlock(void);
+
 #endif	/* __G2D_DRIVER_H */
 

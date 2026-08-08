@@ -315,7 +315,7 @@ OUT:
 	return ret;
 }
 
-__s32 g2d_lbc_calc_ctrl(u32 flag, u32 frm_width, u32 frm_height,
+static __s32 g2d_lbc_calc_ctrl(u32 flag, u32 frm_width, u32 frm_height,
 			u32 cmp_ratio, u32 enc_is_lossy, u32 dec_is_lossy)
 {
 	u32 tmp = 0;

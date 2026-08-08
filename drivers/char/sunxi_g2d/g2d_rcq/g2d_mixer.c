@@ -657,7 +657,7 @@ OUT:
 	return ret;
 }
 
-__s32 g2d_mixer_frame_apply(struct g2d_mixer_frame *p_frame,
+static __s32 g2d_mixer_frame_apply(struct g2d_mixer_frame *p_frame,
 			    struct mixer_para *p_para)
 {
 	__s32 ret = -1;
