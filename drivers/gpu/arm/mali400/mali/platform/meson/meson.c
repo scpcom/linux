@@ -70,6 +70,7 @@
 #include <linux/clk/clk-conf.h>
 #include <linux/pm_runtime.h>
 
+#include <linux/mali/mali_platform.h>
 #include <linux/mali/mali_utgard.h>
 
 #define MESON_MALI_MAX_PP	3
@@ -83,7 +84,7 @@ static const struct of_device_id meson_mali_matches[] = {
 };
 MODULE_DEVICE_TABLE(of, meson_mali_matches);
 
-struct resource *mali450_create_mp3_resources(unsigned long address,
+static struct resource *mali450_create_mp3_resources(unsigned long address,
 					int irq_gp, int irq_gpmmu,
 					int irq_pp_bcast, int irq_pmu,
 					int *irq_pp, int *irq_ppmmu,
