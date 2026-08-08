@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 
+#include <linux/mali/mali_platform.h>
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_common.h"
 #include "mali_session.h"
@@ -192,16 +193,6 @@ static int mali_driver_resume_scheduler(struct device *dev);
 static int mali_driver_runtime_suspend(struct device *dev);
 static int mali_driver_runtime_resume(struct device *dev);
 static int mali_driver_runtime_idle(struct device *dev);
-#endif
-
-#if defined(MALI_FAKE_PLATFORM_DEVICE)
-#if defined(CONFIG_MALI_DT)
-extern int mali_platform_device_init(struct platform_device *device);
-extern int mali_platform_device_deinit(struct platform_device *device);
-#else
-extern int mali_platform_device_register(void);
-extern int mali_platform_device_unregister(void);
-#endif
 #endif
 
 /* Linux power management operations provided by the Mali device driver */
