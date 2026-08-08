@@ -41,7 +41,7 @@ static void pm_callback_power_off(struct kbase_device *kbdev)
 	pm_runtime_put_autosuspend(kbdev->dev);
 }
 
-int kbase_device_runtime_init(struct kbase_device *kbdev)
+static int kbase_device_runtime_init(struct kbase_device *kbdev)
 {
 	dev_dbg(kbdev->dev, "kbase_device_runtime_init\n");
 	pm_runtime_enable(kbdev->dev);
@@ -49,7 +49,7 @@ int kbase_device_runtime_init(struct kbase_device *kbdev)
 	return 0;
 }
 
-void kbase_device_runtime_disable(struct kbase_device *kbdev)
+static void kbase_device_runtime_disable(struct kbase_device *kbdev)
 {
 	dev_dbg(kbdev->dev, "kbase_device_runtime_disable\n");
 	pm_runtime_disable(kbdev->dev);
