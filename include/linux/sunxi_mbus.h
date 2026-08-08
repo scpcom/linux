@@ -80,6 +80,10 @@ extern int mbus_set_bwlwsiz(unsigned int size);
 extern int mbus_port_control_by_index(enum mbus_port port, bool enable);
 extern bool mbus_probed(void);
 extern int mbus_port_setbwcu(unsigned int unit);
+extern int mbus_port_set_abs_bwlen(enum mbus_port port, bool en);
+extern int mbus_port_set_abs_bwl(enum mbus_port port, unsigned int bwl);
+extern int mbus_port_set_bw_saturation(enum mbus_port port,
+							unsigned int bw_satu);
 #else
 static inline int mbus_port_setbwlen(enum mbus_port port, bool en)
 {
