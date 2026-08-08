@@ -30,7 +30,7 @@ struct nas_mcu {
 };
 struct nas_mcu *nas_mcu;
 
-struct gpio_desc *nas_mcu_wdt_get_gpiod(s32 index)
+static struct gpio_desc *nas_mcu_wdt_get_gpiod(s32 index)
 {
         if (IS_ERR(nas_mcu->gpios))
                 return ERR_CAST(nas_mcu->gpios);
@@ -75,7 +75,7 @@ static int nas_mcu_wdt_set(unsigned int value)
 	return 0;
 }
 
-ssize_t nas_mcu_wdt_read_fun(struct file *file, char __user *buff,
+static ssize_t nas_mcu_wdt_read_fun(struct file *file, char __user *buff,
 		size_t count, loff_t *pos)
 {
 	int len;

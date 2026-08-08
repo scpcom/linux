@@ -171,7 +171,7 @@ void Reset_To_Defu_func(struct work_struct *in)
 	run_usermode_cmd("/bin/sh /usr/local/btn/reset_and_reboot.sh");
 }
 
-void zyxel_power_off(void)
+static void zyxel_power_off(void)
 {
 	printk(KERN_ERR"GPIO[15] is pull high for power off\n");
 
@@ -415,7 +415,7 @@ struct gpio_list_priv {
 	struct gpio_dev_data gpios[];
 };
 
-int parse_gpio_nodes(struct platform_device *pdev, struct device_node *np)
+static int parse_gpio_nodes(struct platform_device *pdev, struct device_node *np)
 {
 	struct device *dev = &pdev->dev;
 	struct fwnode_handle *parent = of_node_to_fwnode(np);
