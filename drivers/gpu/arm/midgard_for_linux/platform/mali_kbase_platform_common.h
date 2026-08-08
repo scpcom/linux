@@ -26,3 +26,4 @@
  */
 int kbase_platform_early_init(void);
 int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev);
+extern void kbase_platform_rk_shutdown(struct kbase_device *kbdev);
