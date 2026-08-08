@@ -9,6 +9,7 @@
  */
 
 #include <linux/reset.h>
+#include <linux/sunxi-iommu.h>
 #include "disp_manager.h"
 #include "disp_display.h"
 #include "../disp_trace.h"
@@ -3000,8 +3001,6 @@ s32 disp_mgr_set_ksc_para(struct disp_manager *mgr,
 
 	return mgr->apply(mgr);
 }
-
-extern void sunxi_enable_device_iommu(unsigned int mastor_id, bool flag);
 
 static s32 disp_mgr_enable_iommu(struct disp_manager *mgr, bool en)
 {
