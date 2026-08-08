@@ -229,7 +229,7 @@ static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-int simple_util_parse_daistream(struct device *dev,
+static int simple_util_parse_daistream(struct device *dev,
 				struct device_node *node,
 				char *prefix,
 				struct snd_soc_dai_link *dai_link)

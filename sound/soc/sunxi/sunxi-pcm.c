@@ -107,7 +107,7 @@ int sunxi_get_rawflag(void)
 	return raw_flag;
 }
 
-int hdmi_transfer_format_61937_to_60958(int *out, short *temp,
+static int hdmi_transfer_format_61937_to_60958(int *out, short *temp,
 					int samples, int rate)
 {
 	int ret = 0;
@@ -484,7 +484,7 @@ static int sunxi_pcm_copy(struct snd_soc_component *component,
 }
 
 /* For passthrough mode: using no_residue */
-snd_pcm_uframes_t sunxi_dmaengine_pcm_pointer(struct snd_soc_component *component,
+static snd_pcm_uframes_t sunxi_dmaengine_pcm_pointer(struct snd_soc_component *component,
 		struct snd_pcm_substream *substream)
 {
 	if (raw_flag > 1)

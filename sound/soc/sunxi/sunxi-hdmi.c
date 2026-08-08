@@ -24,6 +24,7 @@
 #include <sound/simple_card.h>
 #include <linux/io.h>
 
+#include "sunxi-daudio.h"
 #include "sunxi-pcm.h"
 
 #include <video/drv_hdmi.h>
