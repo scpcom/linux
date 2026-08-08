@@ -1214,7 +1214,7 @@ static int msg_audio_package_is_invalid(unsigned long cmd)
 	return 0;
 }
 
-int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
+static int rpmsg_irq_schedule(struct rpmsg_hifi_priv *hifi_priv)
 {
 	struct msg_audio_package msg_pack = hifi_priv->msg_pack;
 	unsigned long flags;

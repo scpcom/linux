@@ -29,7 +29,7 @@ struct snd_soc_rpaf_misc_priv {
 	struct attribute_group attr_group;
 };
 
-extern int32_t  snd_soc_rpaf_misc_register_device(struct device *dev, int32_t  dsp_id);
-extern int32_t  snd_soc_rpaf_misc_deregister_device(struct device *dev, int32_t  dsp_id);
+extern int snd_soc_rpaf_misc_register_device(struct device *dev, unsigned int dsp_id);
+extern int snd_soc_rpaf_misc_deregister_device(struct device *dev, unsigned int dsp_id);
 
 #endif
