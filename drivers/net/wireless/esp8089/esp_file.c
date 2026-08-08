@@ -268,7 +268,7 @@ struct esp_init_table_elem esp_init_table[MAX_ATTR_NUM] = {
 	
 };
 
-int esp_atoi(char *str)
+static int esp_atoi(char *str)
 {
         int num = 0;
         int ng_flag = 0;
@@ -285,7 +285,7 @@ int esp_atoi(char *str)
         return ng_flag ? 0-num : num;
 }
 
-void show_esp_init_table(struct esp_init_table_elem *econf)
+static __maybe_unused void show_esp_init_table(struct esp_init_table_elem *econf)
 {
 	int i;
 	for (i = 0; i < MAX_ATTR_NUM; i++)

@@ -619,7 +619,7 @@ static void _sip_rxq_process(struct esp_sip *sip)
         sip_trigger_txq_process(sip);
 }
 
-void sip_rxq_process(struct work_struct *work)
+static void sip_rxq_process(struct work_struct *work)
 {
         struct esp_sip *sip = container_of(work, struct esp_sip, rx_process_work);
 	if (sip == NULL) {
