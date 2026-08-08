@@ -15,6 +15,8 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/random.h>
+#include <linux/sunxi-addr.h>
+#include "sunxi-sha256.h"
 
 #define ADDR_MGT_DBG(fmt, arg...) printk(KERN_DEBUG "[ADDR_MGT] %s: " fmt "\n",\
 				__func__, ## arg)
@@ -75,8 +77,6 @@ static struct addr_mgt_info info[] = {
 	{TYPE_ANY, TYPE_ANY, 0, NULL, "bt"  },
 	{TYPE_ANY, TYPE_ANY, 1, NULL, "eth" },
 };
-
-extern int hmac_sha256(const uint8_t *plaintext, ssize_t psize, uint8_t *output);
 
 #if IS_ENABLED(CONFIG_SUNXI_SID)
 #include <linux/sunxi-sid.h>

@@ -664,7 +664,7 @@ static void sun8i_dwmac_set_umac_addr(struct mac_device_info *hw,
 }
 
 #if IS_ENABLED(CONFIG_SUNXI_ADDR_MGT) && IS_ENABLED(CONFIG_SUNXI_SID)
-extern int get_custom_mac_address(int fmt, char *name, char *addr);
+#include <linux/sunxi-addr.h>
 #endif
 
 static void sun8i_dwmac_get_umac_addr(struct mac_device_info *hw,
