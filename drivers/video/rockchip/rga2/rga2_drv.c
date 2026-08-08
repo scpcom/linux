@@ -384,7 +384,7 @@ static int rga2_align_check(struct rga2_req *req)
 	return 0;
 }
 
-int rga2_scale_check(struct rga2_req *req)
+static int __maybe_unused rga2_scale_check(struct rga2_req *req)
 {
 	u32 saw, sah, daw, dah;
 	struct rga2_drvdata_t *data = rga2_drvdata;
