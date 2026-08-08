@@ -5148,7 +5148,7 @@ extern int rwnx_init_aic(struct rwnx_hw *rwnx_hw);
 
 #if IS_ENABLED(CONFIG_SUNXI_ADDR_MGT)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-extern int get_custom_mac_address(int fmt, char *name, char *addr);
+#include <linux/sunxi-addr.h>
 #else
 extern int get_wifi_custom_mac_address(char *addr_str);
 #endif
