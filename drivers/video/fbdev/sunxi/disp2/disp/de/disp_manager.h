@@ -31,4 +31,6 @@ s32 disp_mgr_set_rtwb_layer(struct disp_manager *mgr,
 			    struct disp_capture_info2 *p_cptr_info,
 			    unsigned int layer_num);
 
+int disp_get_num_screens(void);
+
 #endif

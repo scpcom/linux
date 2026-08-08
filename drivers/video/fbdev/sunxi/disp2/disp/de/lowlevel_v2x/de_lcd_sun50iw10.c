@@ -59,7 +59,7 @@ s32 vdpo_src_sel(u32 sel, u32 src)
  * @param[OUT] none
  * @return     return 0 if successful
  */
-s32 dsi_src_sel(u32 sel, u32 src)
+static __maybe_unused s32 dsi_src_sel(u32 sel, u32 src)
 {
 	if (sel >= DEVICE_DSI_NUM || src > 1)
 		return -1;

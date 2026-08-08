@@ -648,7 +648,7 @@ static s32 dsi_dphy_cfg(u32 sel, struct disp_panel_para *panel)
  * @param lane: dis output lane number
  * return ret: clk
  */
-u32 dsi_comb_dphy_pll_set(__u32 sel, __u32 dclk, __u32 mode, __u32 format,
+static u32 dsi_comb_dphy_pll_set(__u32 sel, __u32 dclk, __u32 mode, __u32 format,
 			  __u32 lane)
 {
 	u64 frq;
@@ -695,7 +695,7 @@ u32 dsi_comb_dphy_pll_set(__u32 sel, __u32 dclk, __u32 mode, __u32 format,
 	return 24000000 * n / (div_p + 1) / (div_m0 + 1);
 }
 
-__s32 dsi_dphy_open(__u32 sel, struct disp_panel_para *panel)
+static __s32 dsi_dphy_open(__u32 sel, struct disp_panel_para *panel)
 {
 	u32 i = 0;
 	u32 lane_den = 0;
@@ -762,7 +762,7 @@ __s32 dsi_dphy_open(__u32 sel, struct disp_panel_para *panel)
 	return 0;
 }
 
-__s32 dsi_dphy_close(__u32 sel)
+static __s32 dsi_dphy_close(__u32 sel)
 {
 	dphy_dev[sel]->dphy_ana2.bits.enck_cpu = 0;
 	dphy_dev[sel]->dphy_ana3.bits.endiv = 0;

@@ -240,7 +240,7 @@ de_calc_overlay_scaler_para(unsigned int screen_id,
 	return 0;
 }
 
-int de_al_lyr_apply_direct_show(unsigned int screen_id,
+static int de_al_lyr_apply_direct_show(unsigned int screen_id,
 			struct disp_layer_config_data *data,
 			unsigned int layer_num, bool direct_show)
 {
@@ -835,7 +835,7 @@ int de_al_enable_irq(unsigned int screen_id, unsigned int en)
 	return de_rtmx_enable_irq(screen_id, en);
 }
 
-int de_al_boot_init(int sel, struct disp_bsp_init_para *para)
+static int de_al_boot_init(int sel, struct disp_bsp_init_para *para)
 {
 	int width, height;
 	int disp = para->boot_info.disp;

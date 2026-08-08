@@ -114,7 +114,7 @@ static s32 hdmi_clk_exit(struct disp_device *hdmi)
 	return 0;
 }
 
-bool hdmi_is_divide_by(unsigned long dividend,
+static __maybe_unused bool hdmi_is_divide_by(unsigned long dividend,
 			       unsigned long divisor)
 {
 	bool divide = false;

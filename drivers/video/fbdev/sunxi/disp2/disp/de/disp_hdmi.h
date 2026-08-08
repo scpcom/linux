@@ -39,4 +39,8 @@ s32 disp_init_hdmi(struct disp_bsp_init_para *para);
 
 struct disp_device *disp_get_hdmi(u32 disp);
 
+void disp_hdmi_pad_sel(unsigned int pad_sel);
+void disp_hdmi_pad_release(void);
+u32 disp_hdmi_pad_get(void);
+
 #endif
