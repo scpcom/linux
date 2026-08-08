@@ -1145,7 +1145,7 @@ random_mac:
 }
 
 #if IS_ENABLED(CONFIG_SUNXI_ADDR_MGT)
-extern int get_custom_mac_address(int fmt, char *name, char *addr);
+#include <linux/sunxi-addr.h>
 #endif
 static void sprdwl_set_mac_addr(struct sprdwl_vif *vif, u8 *pending_addr,
 				u8 *addr)
