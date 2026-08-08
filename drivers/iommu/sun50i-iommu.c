@@ -24,6 +24,7 @@
 #include <linux/sizes.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/sunxi-iommu.h>
 #include <linux/types.h>
 
 #include "iommu-pages.h"
