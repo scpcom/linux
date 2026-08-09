@@ -227,7 +227,6 @@ static void btnreset_timer_func(unsigned long in_data)
 		if(_btn->polling_times == (10 << 3)) Beep();
 		else if(_btn->polling_times == (6 << 3)) Beep();
 		else if(_btn->polling_times == (2 << 3)) Beep();
-		else;
 	} else {
 		if (atomic_read(&_btn->pressed)) {
 			if(atomic_read(&button_test_enable) &&
@@ -256,7 +255,6 @@ static void btnreset_timer_func(unsigned long in_data)
 
 					queue_work(btn_workqueue, &Reset_To_Default);
 				}
-				else ;
 			}
 			_btn->polling_times = 0;
 			atomic_set(&_btn->pressed, 0);
@@ -285,7 +283,7 @@ static void btncpy_timer_func(unsigned long in_data)
 		} else if(_btn->polling_times == (30 << 3)) {
 			//Reset Beep
 			Beep();
-		} else;
+		}
 	} else {
 		if (atomic_read(&_btn->pressed)) {
 			if(atomic_read(&button_test_enable) &&
