@@ -408,8 +408,7 @@ err_out:
 	return	-EINVAL;
 }
 
-static int sx865x_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static int sx865x_probe(struct i2c_client *client)
 {
 	struct sx865x *ts;
 	struct input_dev *input_dev;
