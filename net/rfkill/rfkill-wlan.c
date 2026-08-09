@@ -833,7 +833,11 @@ static int rfkill_wlan_probe(struct platform_device *pdev)
 
 	LOG("Enter %s\n", __func__);
 
-	class_register(&rkwifi_power);
+	ret = class_register(&rkwifi_power);
+	if (ret < 0) {
+		LOG("%s: register class failed\n", __func__);
+		return ret;
+	}
 
 	if (!pdata) {
 #ifdef CONFIG_OF
