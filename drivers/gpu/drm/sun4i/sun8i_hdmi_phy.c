@@ -566,6 +566,7 @@ static int sun20i_d1_hdmi_phy_config(struct dw_hdmi *hdmi, void *data,
 static void sun20i_d1_hdmi_phy_disable(struct dw_hdmi *hdmi, void *data)
 {
 	struct sun8i_hdmi_phy *phy = data;
+	(void)(phy);
 }
 
 static const struct dw_hdmi_phy_ops sun20i_d1_hdmi_phy_ops = {

@@ -34,6 +34,7 @@
 #include <asm/cacheflush.h>
 
 #include <sound/aw_rpaf/component-core.h>
+#include <sound/aw_rpaf/component-driver.h>
 #include <sound/aw_rpaf/rpmsg_hifi.h>
 
 //#define RPAF_MEM_DEBUG_LOG
@@ -358,7 +359,7 @@ static ssize_t snd_soc_rpaf_misc_read(struct file *file, char __user *buf,
 #endif
 
 /* 需要在lib_write接口返回后才可以调用操作,目前只支持一个dump地址 */
-ssize_t snd_soc_rpaf_misc_component_lib_read(struct snd_dsp_component *dsp_component,
+static ssize_t snd_soc_rpaf_misc_component_lib_read(struct snd_dsp_component *dsp_component,
 				struct snd_rpaf_xferi *xferi)
 {
 	ssize_t size = xferi->dump_length;
@@ -581,7 +582,7 @@ EXPORT_SYMBOL(snd_soc_rpaf_pcm_stream_update_complete);
 
 static int snd_soc_rpaf_misc_common_start(struct snd_dsp_component *dsp_component);
 
-ssize_t snd_soc_rpaf_misc_stream_lib_read(struct snd_dsp_component *dsp_component,
+static ssize_t snd_soc_rpaf_misc_stream_lib_read(struct snd_dsp_component *dsp_component,
 				struct snd_rpaf_xferi *xferi, transfer_f transfer)
 {
 	char __user *buf = (char __user *)(xferi->dump_buf);
@@ -662,7 +663,7 @@ _end_unlock:
 	return xfer > 0 ? xfer : err;
 }
 
-ssize_t snd_soc_rpaf_misc_lib_read(struct snd_dsp_component *dsp_component,
+static ssize_t snd_soc_rpaf_misc_lib_read(struct snd_dsp_component *dsp_component,
 				struct snd_rpaf_xferi *xferi)
 {
 	struct msg_component_package *msg_component = &dsp_component->msg_component;
@@ -745,7 +746,7 @@ static ssize_t snd_soc_rpaf_misc_write(struct file *file, const char __user *buf
 	return read_size;
 }
 
-ssize_t snd_soc_rpaf_misc_lib_write(struct snd_dsp_component *dsp_component,
+static ssize_t snd_soc_rpaf_misc_lib_write(struct snd_dsp_component *dsp_component,
 			  const void __user *data, ssize_t size)
 {
 	struct snd_soc_rpaf_info *rpaf_info = dsp_component->rpaf_info;

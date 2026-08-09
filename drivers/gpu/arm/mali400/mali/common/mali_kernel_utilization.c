@@ -11,6 +11,7 @@
 #include "mali_kernel_utilization.h"
 #include "mali_osk.h"
 #include "mali_osk_mali.h"
+#include "mali_ukk.h"
 #include "mali_kernel_common.h"
 #include "mali_session.h"
 #include "mali_scheduler.h"

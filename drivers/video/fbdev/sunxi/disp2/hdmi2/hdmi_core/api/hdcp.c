@@ -614,7 +614,7 @@ void hdcp_configure_new(hdmi_tx_dev_t *dev, hdcpParams_t *hdcp, videoParams_t *v
 	dev->snps_hdmi_ctrl.hdcp_enable = 1;
 }
 
-void hdcp_disconfigure_new(hdmi_tx_dev_t *dev)
+static void hdcp_disconfigure_new(hdmi_tx_dev_t *dev)
 {
 	if (dev->snps_hdmi_ctrl.hdcp_enable == 0) {
 		pr_info("hdcp has been disable\n");
@@ -1040,7 +1040,7 @@ static u8 hdcp_av_mute_state(hdmi_tx_dev_t *dev)
 
 }
 
-ssize_t hdcp_config_dump(hdmi_tx_dev_t *dev, char *buf)
+static ssize_t hdcp_config_dump(hdmi_tx_dev_t *dev, char *buf)
 {
 	ssize_t n = 0;
 	struct hdmi_tx_ctrl *ctrl = &dev->snps_hdmi_ctrl;
@@ -1071,7 +1071,7 @@ ssize_t hdcp_config_dump(hdmi_tx_dev_t *dev, char *buf)
 	return n;
 }
 
-void api_hdcp_close(void)
+static void api_hdcp_close(void)
 {
 	hdcp_close(hdmi_dev);
 }

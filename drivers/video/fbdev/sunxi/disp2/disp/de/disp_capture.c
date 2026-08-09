@@ -241,7 +241,7 @@ static s32 disp_capture_rcq_finish_irq_handler(
 }
 
 
-s32 disp_capture_irq_handler(u32 sel, u32 irq_flag, void *ptr)
+static s32 disp_capture_irq_handler(u32 sel, u32 irq_flag, void *ptr)
 {
 	if (irq_flag & DISP_AL_CAPTURE_IRQ_FLAG_RCQ_FINISH)
 		disp_capture_rcq_finish_irq_handler((struct disp_capture *)ptr);

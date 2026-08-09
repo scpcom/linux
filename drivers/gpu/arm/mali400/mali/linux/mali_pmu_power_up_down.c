@@ -13,6 +13,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/mali/mali_utgard.h>
 #include "mali_executor.h"
 
 int mali_perf_set_num_pp_cores(unsigned int num_cores)

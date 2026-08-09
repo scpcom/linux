@@ -50,6 +50,7 @@ struct kbase_ipa_model_simple_data {
 };
 #define FALLBACK_STATIC_TEMPERATURE 55000
 
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 /**
  * calculate_temp_scaling_factor() - Calculate temperature scaling coefficient
  * @ts:		Signed coefficients, in order t^0 to t^3, with units Deg^-N
@@ -88,7 +89,6 @@ static u32 calculate_temp_scaling_factor(s32 ts[4], s64 t)
 	return clamp(res_unclamped, (s64) 0, (s64) 10000000);
 }
 
-#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 static int model_static_coeff(struct kbase_ipa_model *model, u32 *coeffp)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)

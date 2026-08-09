@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/rfkill.h>
 
+#include "internal.h"
 #include "sunxi-rfkill.h"
 
 static struct sunxi_modem_platdata *modem_data;

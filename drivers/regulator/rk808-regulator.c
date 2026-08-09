@@ -806,6 +806,10 @@ static int rk806_set_suspend_disable(struct regulator_dev *rdev)
 static int rk808_set_suspend_enable(struct regulator_dev *rdev)
 {
 	unsigned int reg;
+	struct rk808 *rk808 = dev_get_drvdata(rdev->dev.parent);
+
+	if (rk808->variant == RK805_ID)
+		return rk805_set_suspend_enable(rdev);
 
 	reg = rdev->desc->enable_reg + RK808_SLP_SET_OFF_REG_OFFSET;
 
@@ -817,6 +821,10 @@ static int rk808_set_suspend_enable(struct regulator_dev *rdev)
 static int rk808_set_suspend_disable(struct regulator_dev *rdev)
 {
 	unsigned int reg;
+	struct rk808 *rk808 = dev_get_drvdata(rdev->dev.parent);
+
+	if (rk808->variant == RK805_ID)
+		return rk805_set_suspend_disable(rdev);
 
 	reg = rdev->desc->enable_reg + RK808_SLP_SET_OFF_REG_OFFSET;
 
@@ -1116,7 +1124,7 @@ static const struct regulator_ops rk816_buck1_2_ops_ranges = {
 	.list_voltage		= regulator_list_voltage_linear_range,
 	.map_voltage		= regulator_map_voltage_linear_range,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
-	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.set_voltage_sel	= rk816_regulator_set_voltage_sel_regmap,
 	.set_voltage_time_sel	= regulator_set_voltage_time_sel,
 	.enable			= regulator_enable_regmap,
 	.disable		= regulator_disable_regmap,

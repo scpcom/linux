@@ -490,7 +490,7 @@ static LIST_HEAD(del_task_list);
 #define TASK_RELEASE   0xaa
 #define SIG_CEDAR		35
 
-int enable_cedar_hw_clk(void)
+static int enable_cedar_hw_clk(void)
 {
 	unsigned long flags;
 	int res = 0;
@@ -557,7 +557,7 @@ out:
 	return res;
 }
 
-int disable_cedar_hw_clk(void)
+static int disable_cedar_hw_clk(void)
 {
 	unsigned long flags;
 	int res = 0;
@@ -597,7 +597,8 @@ out:
 	return res;
 }
 
-void cedardev_insert_task(struct cedarv_engine_task *new_task)
+#ifdef USE_CEDAR_ENGINE
+static void cedardev_insert_task(struct cedarv_engine_task *new_task)
 {
 	struct cedarv_engine_task *task_entry;
 	unsigned long flags;
@@ -629,7 +630,7 @@ void cedardev_insert_task(struct cedarv_engine_task *new_task)
 	spin_unlock_irqrestore(&cedar_devp->lock, flags);
 }
 
-int cedardev_del_task(int task_id)
+static int cedardev_del_task(int task_id)
 {
 	struct cedarv_engine_task *task_entry;
 	unsigned long flags;
@@ -649,8 +650,9 @@ int cedardev_del_task(int task_id)
 
 	return -1;
 }
+#endif
 
-int cedardev_check_delay(int check_prio)
+static int cedardev_check_delay(int check_prio)
 {
 	struct cedarv_engine_task *task_entry;
 	int timeout_total = 0;
@@ -2006,7 +2008,7 @@ static const struct file_operations ve_debugfs_fops = {
 	.release = ve_debugfs_release,
 };
 
-int sunxi_ve_debug_register_driver(void)
+static int sunxi_ve_debug_register_driver(void)
 {
 	struct dentry *dent;
 
@@ -2033,7 +2035,7 @@ int sunxi_ve_debug_register_driver(void)
 	return 0;
 }
 
-void sunxi_ve_debug_unregister_driver(void)
+static void sunxi_ve_debug_unregister_driver(void)
 {
 	if (cedar_devp->debug_root == NULL) {
 		VE_LOGW("note: debug root already is null");

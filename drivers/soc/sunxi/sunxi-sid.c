@@ -156,7 +156,7 @@ static u32 sid_readl(void __iomem *base, u32 sec)
 		return sunxi_smc_readl((phys_addr_t)base);
 }
 
-int get_key_map_info(s8 *name, u8 *compatile, u32 *offset, u32 *max_size)
+static int get_key_map_info(s8 *name, u8 *compatile, u32 *offset, u32 *max_size)
 {
 	struct device_node *child_pnode;
 	struct device_node *pnode = of_find_compatible_node(NULL, NULL, compatile);
@@ -221,7 +221,7 @@ static u32 sid_rd_bits(s8 *name, u32 offset, u32 shift, u32 mask, u32 sec)
 #endif
 }
 
-int get_soc_ver_regs(u8 *name, u8 *compatile, struct soc_ver_reg *reg)
+static int get_soc_ver_regs(u8 *name, u8 *compatile, struct soc_ver_reg *reg)
 {
 	struct device_node *child_pnode;
 	struct device_node *pnode = of_find_compatible_node(NULL, NULL, compatile);
@@ -399,7 +399,7 @@ EXPORT_SYMBOL(sunxi_sc_chip_id);
 
 /*
  */
-u32 sunxi_chip_mach_id(u32 id)
+static u32 sunxi_chip_mach_id(u32 id)
 {
 	static u32 chip_ids[2];
 
@@ -423,7 +423,7 @@ static u32 sunxi_mach_id(void)
 	return sunxi_chip_mach_id(1);
 }
 
-int sunxi_pr_chip_id(void)
+static int sunxi_pr_chip_id(void)
 {
 	u32 chip_id = sunxi_chip_id();
 	const char *soc_family, *name;
@@ -609,12 +609,12 @@ EXPORT_SYMBOL(sw_get_chip_id);
 /* from plat-sunxi/soc-detect.c allwinner 3.4 end */
 
 
-bool sid_is_legacy(void)
+static bool sid_is_legacy(void)
 {
 	return (sunxi_chip_id() != SUNXI_UNKNOWN_MACH);
 }
 
-void sid_rd_ver_reg(u32 id)
+static void sid_rd_ver_reg(u32 id)
 {
 	s32 i = 0;
 	u32 ver = 0;
@@ -770,7 +770,7 @@ static void sid_chipid_init(void)
 	init_flag = 1;
 }
 
-void sid_ft_zone_init(void)
+static void sid_ft_zone_init(void)
 {
 	static s32 init_flag;
 	if (init_flag == 1) {
@@ -783,7 +783,7 @@ void sid_ft_zone_init(void)
 
 }
 
-void sid_rd_soc_secure_status(void)
+static void sid_rd_soc_secure_status(void)
 {
 #if defined(CONFIG_TEE) && \
 	(defined(CONFIG_ARCH_SUN8IW7) || defined(CONFIG_ARCH_SUN8IW6))
@@ -815,7 +815,7 @@ void sid_rd_soc_secure_status(void)
 #endif
 }
 
-void sid_rotpk_status_init(void)
+static void sid_rotpk_status_init(void)
 {
 	static s32 init_flag;
 	if (init_flag == 1) {

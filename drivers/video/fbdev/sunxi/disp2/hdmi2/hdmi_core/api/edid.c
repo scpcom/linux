@@ -243,7 +243,7 @@ int dtd_parse(hdmi_tx_dev_t *dev, dtd_t *dtd, u8 data[18])
  * If refreshRate=0 then the first (default)
  *parameters are returned for the VIC code.
  */
-dtd_t *get_dtd(u32 code, u32 refreshRate)
+static dtd_t *get_dtd(u32 code, u32 refreshRate)
 {
 	int i = 0;
 
@@ -723,7 +723,7 @@ int sad_support24bit(hdmi_tx_dev_t *dev, shortAudioDesc_t *sad)
 }
 #endif
 
-void svd_reset(hdmi_tx_dev_t *dev, shortVideoDesc_t *svd)
+static void svd_reset(hdmi_tx_dev_t *dev, shortVideoDesc_t *svd)
 {
 	svd->mNative = FALSE;
 	svd->mCode = 0;
@@ -807,7 +807,7 @@ int video_cap_data_block_parse(hdmi_tx_dev_t *dev,
 }
 
 
-int _edid_checksum(u8 *edid)
+static int _edid_checksum(u8 *edid)
 {
 	int i, checksum = 0;
 

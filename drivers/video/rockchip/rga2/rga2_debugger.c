@@ -22,8 +22,6 @@
 
 extern struct rga2_drvdata_t *rga2_drvdata;
 
-void rga2_slt(void);
-
 int RGA2_TEST_REG;
 int RGA2_TEST_MSG;
 int RGA2_TEST_TIME;

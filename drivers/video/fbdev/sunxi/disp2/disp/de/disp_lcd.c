@@ -1115,7 +1115,7 @@ static s32 disp_lcd_tcon_enable(struct disp_device *lcd)
 	return disp_al_lcd_enable(lcd->hwdev_index, &lcdp->panel_info);
 }
 
-s32 disp_lcd_tcon_disable(struct disp_device *lcd)
+static s32 disp_lcd_tcon_disable(struct disp_device *lcd)
 {
 	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
 
@@ -2395,7 +2395,7 @@ s32 disp_lcd_is_enabled(struct disp_device *lcd)
  * this function only be used by bsp_disp_sync_with_hw to check
  * the device enabled status when driver init
  */
-s32 disp_lcd_check_if_enabled(struct disp_device *lcd)
+static s32 disp_lcd_check_if_enabled(struct disp_device *lcd)
 {
 	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
 	int ret = 1;

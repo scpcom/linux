@@ -766,7 +766,7 @@ u8 audio_iec_word_length_get(hdmi_tx_dev_t *dev)
 	return 0x0;
 }
 
-ssize_t audio_dump(hdmi_tx_dev_t *dev, char *buf)
+static __maybe_unused ssize_t audio_dump(hdmi_tx_dev_t *dev, char *buf)
 {
 	ssize_t n = 0;
 

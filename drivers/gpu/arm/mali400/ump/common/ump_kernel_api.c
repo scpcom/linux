@@ -12,6 +12,7 @@
 #include "mali_osk_list.h"
 #include "ump_osk.h"
 #include "ump_uk_types.h"
+#include "ump_ukk.h"
 #include "ump_kernel_interface.h"
 #include "ump_kernel_common.h"
 #include "ump_kernel_random_mapping.h"
@@ -367,8 +368,8 @@ void _ump_ukk_switch_hw_usage(_ump_uk_switch_hw_usage_s *args)
 		return;
 	}
 
-	old_user = mem->hw_device;
-	mem->hw_device = args->new_user;
+	old_user = (ump_uk_user)mem->hw_device;
+	mem->hw_device = (ump_hw_usage)args->new_user;
 
 	DBG_MSG(3, ("UMP[%02u] Switch usage  Start  New: %s  Prev: %s.\n",
 		    (ump_secure_id)args->secure_id,

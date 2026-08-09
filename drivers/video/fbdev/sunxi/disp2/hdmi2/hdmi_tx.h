@@ -132,7 +132,5 @@ extern int arisc_query_wakeup_source(unsigned int *event);
 extern int sunxi_smc_load_hdcp_key(void *hdcp_buff, size_t size);
 #endif
 extern int sunxi_smc_refresh_hdcp(void);
-extern void disp_hdmi_pad_sel(unsigned int pad_sel);
-extern void disp_hdmi_pad_release(void);
 
 #endif /* __INCLUDES_H__ */

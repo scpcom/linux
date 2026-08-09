@@ -132,7 +132,7 @@ static void vpd_extcon_notify_clr(struct virtual_pd *vpd)
 	vpd_extcon_notify(vpd, vpd->flip, vpd->usb_ss, 0, 0, 0);
 }
 
-void vpd_irq_disable(struct virtual_pd *vpd)
+static void vpd_irq_disable(struct virtual_pd *vpd)
 {
 	unsigned long irqflags = 0;
 
@@ -146,7 +146,7 @@ void vpd_irq_disable(struct virtual_pd *vpd)
 	spin_unlock_irqrestore(&vpd->irq_lock, irqflags);
 }
 
-void vpd_irq_enable(struct virtual_pd *vpd)
+static void vpd_irq_enable(struct virtual_pd *vpd)
 {
 	unsigned long irqflags = 0;
 

@@ -79,6 +79,7 @@
 
 /* The interface functions */
 #if IS_ENABLED(CONFIG_SUNXI_SID)
+struct sw_chip_id;
 unsigned int sunxi_get_soc_ver(void);
 int sunxi_get_soc_chipid(unsigned char *chipid);
 int sunxi_get_soc_chipid_str(char *chipid);
@@ -90,6 +91,9 @@ unsigned int sunxi_get_soc_bin(void);
 s32 sunxi_get_platform(s8 *buf, s32 size);
 s32 sunxi_efuse_readn(s8 *key_name, void *buf, u32 n);
 int sunxi_get_module_param_from_sid(u32 *dst, u32 offset, u32 len);
+u32 sunxi_chip_id(void);
+u32 sunxi_sc_chip_id(u32 *mach_id);
+int sw_get_chip_id(struct sw_chip_id *chip_id);
 #else
 unsigned int __attribute__((weak)) sunxi_get_soc_ver(void) {return -ENOSYS; }
 int __attribute__((weak)) sunxi_get_soc_chipid(unsigned char *chipid) {return -ENOSYS; }

@@ -35,6 +35,7 @@
 #endif /* Linux >= 3.13 */
 
 #include "mali_pm_metrics.h"
+#include "mali_devfreq.h"
 
 static int
 mali_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)

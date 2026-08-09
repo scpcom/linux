@@ -1582,11 +1582,11 @@ static int esp_op_set_bitrate_mask(struct ieee80211_hw *hw, struct ieee80211_vif
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
-void esp_op_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif, u32 queues, bool drop)
+static void esp_op_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif, u32 queues, bool drop)
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))        
-void esp_op_flush(struct ieee80211_hw *hw, u32 queues, bool drop)
+static void esp_op_flush(struct ieee80211_hw *hw, u32 queues, bool drop)
 #else
-void esp_op_flush(struct ieee80211_hw *hw, bool drop)
+static void esp_op_flush(struct ieee80211_hw *hw, bool drop)
 #endif
 {
 	

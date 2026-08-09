@@ -14,6 +14,7 @@
 #include "mali_session.h"
 #include "mali_kernel_linux.h"
 #include "mali_memory.h"
+#include "mali_memory_ump.h"
 #include "ump_kernel_interface.h"
 
 static int mali_mem_ump_map(mali_mem_backend *mem_backend)

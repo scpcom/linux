@@ -39,7 +39,7 @@ void fc_acp_type_dependent_fields(hdmi_tx_dev_t *dev, u8 *fields,
 		dev_write(dev, FC_ACP1 - c, fields[c]);
 }
 
-void fc_RgbYcc(hdmi_tx_dev_t *dev, u8 type)
+static void fc_RgbYcc(hdmi_tx_dev_t *dev, u8 type)
 {
 	LOG_TRACE1(type);
 	dev_write_mask(dev, FC_AVICONF0,
@@ -53,27 +53,27 @@ void fc_ScanInfo(hdmi_tx_dev_t *dev, u8 left)
 			FC_AVICONF0_SCAN_INFORMATION_MASK, left);
 }
 
-void fc_Colorimetry(hdmi_tx_dev_t *dev, unsigned cscITU)
+static void fc_Colorimetry(hdmi_tx_dev_t *dev, unsigned cscITU)
 {
 	LOG_TRACE1(cscITU);
 	dev_write_mask(dev, FC_AVICONF1, FC_AVICONF1_COLORIMETRY_MASK, cscITU);
 }
 
-void fc_PicAspectRatio(hdmi_tx_dev_t *dev, u8 ar)
+static void fc_PicAspectRatio(hdmi_tx_dev_t *dev, u8 ar)
 {
 	LOG_TRACE1(ar);
 	dev_write_mask(dev, FC_AVICONF1,
 			FC_AVICONF1_PICTURE_ASPECT_RATIO_MASK, ar);
 }
 
-void fc_ActiveAspectRatioValid(hdmi_tx_dev_t *dev, u8 valid)
+static void fc_ActiveAspectRatioValid(hdmi_tx_dev_t *dev, u8 valid)
 {
 	LOG_TRACE1(valid);
 	dev_write_mask(dev, FC_AVICONF0,
 			FC_AVICONF0_ACTIVE_FORMAT_PRESENT_MASK, valid);
 }
 
-void fc_ActiveFormatAspectRatio(hdmi_tx_dev_t *dev, u8 left)
+static void fc_ActiveFormatAspectRatio(hdmi_tx_dev_t *dev, u8 left)
 {
 	LOG_TRACE1(left);
 	dev_write_mask(dev, FC_AVICONF1,
@@ -91,14 +91,14 @@ void fc_set_aspect_ratio(hdmi_tx_dev_t *dev, u8 left)
 	}
 }
 
-void fc_IsItContent(hdmi_tx_dev_t *dev, u8 it)
+static void fc_IsItContent(hdmi_tx_dev_t *dev, u8 it)
 {
 	LOG_TRACE1(it);
 	dev_write_mask(dev, FC_AVICONF2,
 			FC_AVICONF2_IT_CONTENT_MASK, (it ? 1 : 0));
 }
 
-void fc_ExtendedColorimetry(hdmi_tx_dev_t *dev, u8 extColor)
+static void fc_ExtendedColorimetry(hdmi_tx_dev_t *dev, u8 extColor)
 {
 	LOG_TRACE1(extColor);
 	dev_write_mask(dev, FC_AVICONF2,
@@ -112,26 +112,26 @@ void fc_QuantizationRange(hdmi_tx_dev_t *dev, u8 range)
 			FC_AVICONF2_QUANTIZATION_RANGE_MASK, range);
 }
 
-void fc_NonUniformPicScaling(hdmi_tx_dev_t *dev, u8 scale)
+static void fc_NonUniformPicScaling(hdmi_tx_dev_t *dev, u8 scale)
 {
 	LOG_TRACE1(scale);
 	dev_write_mask(dev, FC_AVICONF2,
 			FC_AVICONF2_NON_UNIFORM_PICTURE_SCALING_MASK, scale);
 }
 
-void fc_VideoCode(hdmi_tx_dev_t *dev, u8 code)
+static void fc_VideoCode(hdmi_tx_dev_t *dev, u8 code)
 {
 	LOG_TRACE1(code);
 	dev_write(dev, FC_AVIVID, code);
 }
 
-void fc_HorizontalBarsValid(hdmi_tx_dev_t *dev, u8 validity)
+static void fc_HorizontalBarsValid(hdmi_tx_dev_t *dev, u8 validity)
 {
 	dev_write_mask(dev, FC_AVICONF0,
 		FC_AVICONF0_BAR_INFORMATION_MASK & 0x8, (validity ? 1 : 0));
 }
 
-void fc_HorizontalBars(hdmi_tx_dev_t *dev, u16 endTop, u16 startBottom)
+static void fc_HorizontalBars(hdmi_tx_dev_t *dev, u16 endTop, u16 startBottom)
 {
 	LOG_TRACE2(endTop, startBottom);
 	dev_write(dev, FC_AVIETB0, (u8) (endTop));
@@ -140,13 +140,13 @@ void fc_HorizontalBars(hdmi_tx_dev_t *dev, u16 endTop, u16 startBottom)
 	dev_write(dev, FC_AVISBB1, (u8) (startBottom >> 8));
 }
 
-void fc_VerticalBarsValid(hdmi_tx_dev_t *dev, u8 validity)
+static void fc_VerticalBarsValid(hdmi_tx_dev_t *dev, u8 validity)
 {
 	dev_write_mask(dev, FC_AVICONF0,
 		FC_AVICONF0_BAR_INFORMATION_MASK & 0x4, (validity ? 1 : 0));
 }
 
-void fc_VerticalBars(hdmi_tx_dev_t *dev, u16 endLeft, u16 startRight)
+static void fc_VerticalBars(hdmi_tx_dev_t *dev, u16 endLeft, u16 startRight)
 {
 	LOG_TRACE2(endLeft, startRight);
 	dev_write(dev, FC_AVIELB0, (u8) (endLeft));
@@ -155,7 +155,7 @@ void fc_VerticalBars(hdmi_tx_dev_t *dev, u16 endLeft, u16 startRight)
 	dev_write(dev, FC_AVISRB1, (u8) (startRight >> 8));
 }
 
-void fc_OutPixelRepetition(hdmi_tx_dev_t *dev, u8 pr)
+static void fc_OutPixelRepetition(hdmi_tx_dev_t *dev, u8 pr)
 {
 	LOG_TRACE1(pr);
 	dev_write_mask(dev, FC_PRCONF, FC_PRCONF_OUTPUT_PR_FACTOR_MASK, pr);
@@ -276,34 +276,34 @@ void fc_avi_config(hdmi_tx_dev_t *dev, videoParams_t *videoParams)
 
 
 
-void fc_gamut_Profile(hdmi_tx_dev_t *dev, u8 profile)
+static void fc_gamut_Profile(hdmi_tx_dev_t *dev, u8 profile)
 {
 	LOG_TRACE1(profile);
 	dev_write_mask(dev, FC_GMD_HB, FC_GMD_HB_GMDGBD_PROFILE_MASK, profile);
 }
 
-void fc_gamut_AffectedSeqNo(hdmi_tx_dev_t *dev, u8 no)
+static void fc_gamut_AffectedSeqNo(hdmi_tx_dev_t *dev, u8 no)
 {
 	LOG_TRACE1(no);
 	dev_write_mask(dev, FC_GMD_HB,
 			FC_GMD_HB_GMDAFFECTED_GAMUT_SEQ_NUM_MASK, no);
 }
 
-void fc_gamut_PacketsPerFrame(hdmi_tx_dev_t *dev, u8 packets)
+static void fc_gamut_PacketsPerFrame(hdmi_tx_dev_t *dev, u8 packets)
 {
 	LOG_TRACE1(packets);
 	dev_write_mask(dev, FC_GMD_CONF,
 			FC_GMD_CONF_GMDPACKETSINFRAME_MASK, packets);
 }
 
-void fc_gamut_PacketLineSpacing(hdmi_tx_dev_t *dev, u8 lineSpacing)
+static void fc_gamut_PacketLineSpacing(hdmi_tx_dev_t *dev, u8 lineSpacing)
 {
 	LOG_TRACE1(lineSpacing);
 	dev_write_mask(dev, FC_GMD_CONF,
 			FC_GMD_CONF_GMDPACKETLINESPACING_MASK, lineSpacing);
 }
 
-void fc_gamut_Content(hdmi_tx_dev_t *dev, const u8 *content, u8 length)
+static void fc_gamut_Content(hdmi_tx_dev_t *dev, const u8 *content, u8 length)
 {
 	u8 i = 0;
 
@@ -317,7 +317,7 @@ void fc_gamut_Content(hdmi_tx_dev_t *dev, const u8 *content, u8 length)
 		dev_write(dev, FC_GMD_PB0 + (i*4), content[i]);
 }
 
-void fc_gamut_enable_tx(hdmi_tx_dev_t *dev, u8 enable)
+static void fc_gamut_enable_tx(hdmi_tx_dev_t *dev, u8 enable)
 {
 	LOG_TRACE1(enable);
 	if (enable)
@@ -325,13 +325,13 @@ void fc_gamut_enable_tx(hdmi_tx_dev_t *dev, u8 enable)
 	dev_write_mask(dev, FC_GMD_EN, FC_GMD_EN_GMDENABLETX_MASK, enable);
 }
 
-void fc_gamut_UpdatePacket(hdmi_tx_dev_t *dev)
+static void fc_gamut_UpdatePacket(hdmi_tx_dev_t *dev)
 {
 	LOG_TRACE();
 	dev_write_mask(dev, FC_GMD_UP, FC_GMD_UP_GMDUPDATEPACKET_MASK, 1);
 }
 
-u8 fc_gamut_CurrentSeqNo(hdmi_tx_dev_t *dev)
+static u8 fc_gamut_CurrentSeqNo(hdmi_tx_dev_t *dev)
 {
 	LOG_TRACE();
 	return (u8)(dev_read(dev, FC_GMD_STAT) & 0xF);
@@ -420,21 +420,21 @@ void fc_packets_QueuePriorityLow(hdmi_tx_dev_t *dev, u8 value)
 }
 #endif
 
-void fc_packets_MetadataFrameInterpolation(hdmi_tx_dev_t *dev, u8 value)
+static void fc_packets_MetadataFrameInterpolation(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	dev_write_mask(dev, FC_DATAUTO1,
 			FC_DATAUTO1_AUTO_FRAME_INTERPOLATION_MASK, value);
 }
 
-void fc_packets_MetadataFramesPerPacket(hdmi_tx_dev_t *dev, u8 value)
+static void fc_packets_MetadataFramesPerPacket(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	dev_write_mask(dev, FC_DATAUTO2,
 			FC_DATAUTO2_AUTO_FRAME_PACKETS_MASK, value);
 }
 
-void fc_packets_MetadataLineSpacing(hdmi_tx_dev_t *dev, u8 value)
+static void fc_packets_MetadataLineSpacing(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	dev_write_mask(dev, FC_DATAUTO2,
@@ -469,7 +469,7 @@ void fc_packets_metadata_config(hdmi_tx_dev_t *dev)
 	fc_packets_MetadataLineSpacing(dev, 1);
 }
 
-void fc_spd_VendorName(hdmi_tx_dev_t *dev, const u8 *data,
+static void fc_spd_VendorName(hdmi_tx_dev_t *dev, const u8 *data,
 					unsigned short length)
 {
 	unsigned short i = 0;
@@ -479,7 +479,7 @@ void fc_spd_VendorName(hdmi_tx_dev_t *dev, const u8 *data,
 		dev_write(dev, FC_SPDVENDORNAME0 + (i*4), data[i]);
 }
 
-void fc_spd_ProductName(hdmi_tx_dev_t *dev, const u8 *data,
+static void fc_spd_ProductName(hdmi_tx_dev_t *dev, const u8 *data,
 						unsigned short length)
 {
 	unsigned short i = 0;
@@ -489,7 +489,7 @@ void fc_spd_ProductName(hdmi_tx_dev_t *dev, const u8 *data,
 		dev_write(dev, FC_SPDPRODUCTNAME0 + (i*4), data[i]);
 }
 
-void fc_spd_SourceDeviceInfo(hdmi_tx_dev_t *dev, u8 code)
+static void fc_spd_SourceDeviceInfo(hdmi_tx_dev_t *dev, u8 code)
 {
 	LOG_TRACE1(code);
 	dev_write(dev, FC_SPDDEVICEINF, code);

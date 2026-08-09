@@ -63,8 +63,7 @@ static struct dma_buf *exynos_fb_get_dma_buf(struct fb_info *info)
 {
 	struct dma_buf *buf = NULL;
 	struct drm_fb_helper *helper = info->par;
-	struct exynos_drm_fbdev *exynos_fbd = to_exynos_fbdev(helper);
-	struct exynos_drm_gem *exynos_gem = exynos_fbd->exynos_gem;
+	struct exynos_drm_gem *exynos_gem = to_exynos_gem(helper->fb->obj[0]);
 	struct drm_gem_object *obj = &exynos_gem->base;
 
 	if (obj->funcs && obj->funcs->export)

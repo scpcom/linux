@@ -60,7 +60,7 @@ static ssize_t fb_write(struct file *file, const char __user *buf, size_t count,
 	return info->fbops->fb_write(info, buf, count, ppos);
 }
 
-int fb_get_dmabuf(struct fb_info *info, int flags)
+static int fb_get_dmabuf(struct fb_info *info, int flags)
 {
 	struct dma_buf *dmabuf;
 

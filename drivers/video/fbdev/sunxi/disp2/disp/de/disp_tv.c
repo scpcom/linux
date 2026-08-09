@@ -299,7 +299,7 @@ OUT:
 	return ret;
 }
 
-s32 disp_tv_enable(struct disp_device *ptv)
+static s32 disp_tv_enable(struct disp_device *ptv)
 {
 	int ret;
 	struct disp_manager *mgr = NULL;
@@ -377,7 +377,7 @@ exit:
 	return 0;
 }
 
-s32 disp_tv_sw_enable(struct disp_device *ptv)
+static s32 disp_tv_sw_enable(struct disp_device *ptv)
 {
 	struct disp_manager *mgr = NULL;
 	unsigned long flags;
@@ -444,7 +444,7 @@ s32 disp_tv_sw_enable(struct disp_device *ptv)
 	return 0;
 }
 
-s32 disp_tv_disable(struct disp_device *ptv)
+static s32 disp_tv_disable(struct disp_device *ptv)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
 	unsigned long flags;
@@ -488,7 +488,7 @@ s32 disp_tv_disable(struct disp_device *ptv)
 	return 0;
 }
 
-s32 disp_tv_is_enabled(struct disp_device *ptv)
+static s32 disp_tv_is_enabled(struct disp_device *ptv)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
 
@@ -540,7 +540,7 @@ static s32 disp_tv_init(struct disp_device *ptv)
 	return 0;
 }
 
-s32 disp_tv_exit(struct disp_device *ptv)
+static s32 disp_tv_exit(struct disp_device *ptv)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
 
@@ -593,7 +593,7 @@ s32 disp_tv_resume(struct disp_device *ptv)
 	return 0;
 }
 
-s32 disp_tv_set_mode(struct disp_device *ptv, enum disp_tv_mode tv_mode)
+static s32 disp_tv_set_mode(struct disp_device *ptv, enum disp_tv_mode tv_mode)
 {
 	s32 ret = 0;
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
@@ -615,7 +615,7 @@ s32 disp_tv_set_mode(struct disp_device *ptv, enum disp_tv_mode tv_mode)
 	return ret;
 }
 
-s32 disp_tv_get_mode(struct disp_device *ptv)
+static s32 disp_tv_get_mode(struct disp_device *ptv)
 {
 
 	enum disp_tv_mode tv_mode;
@@ -640,7 +640,7 @@ s32 disp_tv_get_mode(struct disp_device *ptv)
 
 }
 
-s32 disp_tv_get_input_csc(struct disp_device *ptv)
+static s32 disp_tv_get_input_csc(struct disp_device *ptv)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
 
@@ -681,7 +681,7 @@ s32 disp_tv_set_func(struct disp_device *ptv, struct disp_tv_func *func)
 	return 0;
 }
 
-s32 disp_tv_check_support_mode(struct disp_device *ptv, enum disp_output_type tv_mode)
+static s32 disp_tv_check_support_mode(struct disp_device *ptv, enum disp_output_type tv_mode)
 {
 
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
@@ -734,7 +734,7 @@ s32 disp_tv_set_hpd(struct disp_device *ptv, u32 state)
 	return ptvp->tv_func.tv_hot_plugging_detect(state);
 }
 
-s32 disp_set_enhance_mode(struct disp_device *ptv, u32 mode)
+static s32 disp_set_enhance_mode(struct disp_device *ptv, u32 mode)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
 

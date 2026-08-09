@@ -16,7 +16,7 @@
 #include "mali_session.h"
 #include "mali_ukk_wrappers.h"
 
-int __mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem_s __user *uargs, u32 usize)
+static int __mem_alloc_wrapper(struct mali_session_data *session_data, _mali_uk_alloc_mem_s __user *uargs, u32 usize)
 {
 	_mali_uk_alloc_mem_s kargs;
 	_mali_osk_errcode_t err;

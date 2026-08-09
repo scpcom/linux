@@ -72,7 +72,7 @@ static void _mali_gp_del_varying_allocations(struct mali_gp_job *job)
 	INIT_LIST_HEAD(&job->varying_alloc);
 }
 
-struct mali_gp_job *__mali_gp_job_create(struct mali_session_data *session, _mali_uk_gp_start_job_s *uargs, u32 id, struct mali_timeline_tracker *pp_tracker, u32 usize)
+static struct mali_gp_job *__mali_gp_job_create(struct mali_session_data *session, _mali_uk_gp_start_job_s *uargs, u32 id, struct mali_timeline_tracker *pp_tracker, u32 usize)
 {
 	struct mali_gp_job *job;
 	u32 perf_counter_flag;

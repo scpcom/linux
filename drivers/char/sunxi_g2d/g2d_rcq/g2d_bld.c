@@ -455,7 +455,7 @@ OUT:
 	return ret;
 }
 
-int bld_rcq_setup(struct blender_submodule *p_bld, u8 __iomem *base,
+static int bld_rcq_setup(struct blender_submodule *p_bld, u8 __iomem *base,
 		  struct g2d_rcq_mem_info *p_rcq_info)
 {
 	u8 __iomem *reg_base = base + G2D_BLD;

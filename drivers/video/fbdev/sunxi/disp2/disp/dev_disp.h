@@ -343,6 +343,10 @@ void disp_ion_flush_cache(void *startAddr, int size);
 int disp_get_ion_fd(struct disp_ion_mem *mem);
 void *disp_get_phy_addr(struct disp_ion_mem *mem);
 
+unsigned int disp_boot_para_parse_array(const char *name, unsigned int *value,
+							  unsigned int count);
+bool disp_is_enable(void);
+
 #ifndef MODULE
 extern struct platform_driver edp_driver;
 extern struct platform_driver eink_driver;

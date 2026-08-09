@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 
+#include <linux/mali/mali_platform.h>
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_common.h"
 #include "mali_session.h"
@@ -192,16 +193,6 @@ static int mali_driver_resume_scheduler(struct device *dev);
 static int mali_driver_runtime_suspend(struct device *dev);
 static int mali_driver_runtime_resume(struct device *dev);
 static int mali_driver_runtime_idle(struct device *dev);
-#endif
-
-#if defined(MALI_FAKE_PLATFORM_DEVICE)
-#if defined(CONFIG_MALI_DT)
-extern int mali_platform_device_init(struct platform_device *device);
-extern int mali_platform_device_deinit(struct platform_device *device);
-#else
-extern int mali_platform_device_register(void);
-extern int mali_platform_device_unregister(void);
-#endif
 #endif
 
 /* Linux power management operations provided by the Mali device driver */
@@ -395,7 +386,7 @@ void mali_init_cpu_time_counters_on_all_cpus(int print_only)
 }
 #endif
 
-int mali_module_init(void)
+static int mali_module_init(void)
 {
 	int err = 0;
 
@@ -461,7 +452,7 @@ int mali_module_init(void)
 	return 0; /* Success */
 }
 
-void mali_module_exit(void)
+static void mali_module_exit(void)
 {
 	MALI_DEBUG_PRINT(2, ("Unloading Mali v%d device driver.\n", _MALI_API_VERSION));
 
@@ -492,12 +483,12 @@ void mali_module_exit(void)
 }
 
 #ifdef CONFIG_MALI_DEVFREQ
-struct mali_device *mali_device_alloc(void)
+static struct mali_device *mali_device_alloc(void)
 {
 	return kzalloc(sizeof(struct mali_device), GFP_KERNEL);
 }
 
-void mali_device_free(struct mali_device *mdev)
+static void mali_device_free(struct mali_device *mdev)
 {
 	kfree(mdev);
 }

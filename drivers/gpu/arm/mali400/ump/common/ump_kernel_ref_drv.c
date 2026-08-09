@@ -12,6 +12,7 @@
 #include "mali_osk_list.h"
 #include "ump_osk.h"
 #include "ump_uk_types.h"
+#include "ump_ukk.h"
 
 #include "ump_kernel_interface_ref_drv.h"
 #include "ump_kernel_common.h"
@@ -75,7 +76,7 @@ UMP_KERNEL_API_EXPORT ump_dd_handle ump_dd_handle_create_from_phys_blocks(ump_dd
 	mem->release_func = phys_blocks_release;
 	/* For now UMP handles created by ump_dd_handle_create_from_phys_blocks() is forced to be Uncached */
 	mem->is_cached = 0;
-	mem->hw_device = _UMP_UK_USED_BY_CPU;
+	mem->hw_device = UMP_USED_BY_CPU;
 	mem->lock_usage = UMP_NOT_LOCKED;
 
 	/* Find a secure ID for this allocation */
@@ -151,7 +152,7 @@ _mali_osk_errcode_t _ump_ukk_allocate(_ump_uk_allocate_s *user_interaction)
 		_mali_osk_free(session_memory_element);
 		return _MALI_OSK_ERR_INVALID_FUNC;
 	}
-	new_allocation->hw_device = _UMP_UK_USED_BY_CPU;
+	new_allocation->hw_device = UMP_USED_BY_CPU;
 	new_allocation->ctx = device.backend->ctx;
 	new_allocation->release_func = device.backend->release;
 

@@ -6,7 +6,10 @@
 #ifndef __DW_HDMI__
 #define __DW_HDMI__
 
+#include <drm/drm_connector.h>
+#include <drm/drm_property.h>
 #include <sound/hdmi-codec.h>
+#include <media/cec.h>
 
 struct drm_display_info;
 struct drm_display_mode;
@@ -92,6 +95,13 @@ enum dw_hdmi_phy_type {
 	DW_HDMI_PHY_VENDOR_PHY = 0xfe,
 };
 
+struct dw_hdmi_audio_tmds_n {
+	unsigned long tmds;
+	unsigned int n_32k;
+	unsigned int n_44k1;
+	unsigned int n_48k;
+};
+
 struct dw_hdmi_mpll_config {
 	unsigned long mpixelclock;
 	struct {
@@ -123,14 +133,36 @@ struct dw_hdmi_phy_ops {
 	void (*setup_hpd)(struct dw_hdmi *hdmi, void *data);
 };
 
+struct dw_hdmi_property_ops {
+	void (*attach_properties)(struct drm_connector *connector,
+				  unsigned int color, int version,
+				  void *data);
+	void (*destroy_properties)(struct drm_connector *connector,
+				   void *data);
+	int (*set_property)(struct drm_connector *connector,
+			    struct drm_connector_state *state,
+			    struct drm_property *property,
+			    u64 val,
+			    void *data);
+	int (*get_property)(struct drm_connector *connector,
+			    const struct drm_connector_state *state,
+			    struct drm_property *property,
+			    u64 *val,
+			    void *data);
+};
+
 struct dw_hdmi_plat_data {
 	struct regmap *regm;
 
 	unsigned int output_port;
 
+	unsigned long input_bus_format;
 	unsigned long input_bus_encoding;
+	unsigned int max_tmdsclk;
 	bool use_drm_infoframe;
 	bool ycbcr_420_allowed;
+	bool unsupported_yuv_input;
+	bool unsupported_deep_color;
 
 	/*
 	 * Private data passed to all the .mode_valid() and .configure_phy()
@@ -139,7 +171,8 @@ struct dw_hdmi_plat_data {
 	void *priv_data;
 
 	/* Platform-specific mode validation (optional). */
-	enum drm_mode_status (*mode_valid)(struct dw_hdmi *hdmi, void *data,
+	enum drm_mode_status (*mode_valid)(struct drm_connector *connector,
+					   void *data,
 					   const struct drm_display_info *info,
 					   const struct drm_display_mode *mode);
 
@@ -153,9 +186,11 @@ struct dw_hdmi_plat_data {
 	const char *phy_name;
 	void *phy_data;
 	unsigned int phy_force_vendor;
+	const struct dw_hdmi_audio_tmds_n *tmds_n_table;
 
 	/* Synopsys PHY support */
 	const struct dw_hdmi_mpll_config *mpll_cfg;
+	const struct dw_hdmi_mpll_config *mpll_cfg_420;
 	const struct dw_hdmi_curr_ctrl *cur_ctr;
 	const struct dw_hdmi_phy_config *phy_config;
 	int (*configure_phy)(struct dw_hdmi *hdmi, void *data,
@@ -165,8 +200,16 @@ struct dw_hdmi_plat_data {
 	unsigned long (*get_output_bus_format)(void *data);
 	unsigned long (*get_enc_in_encoding)(void *data);
 	unsigned long (*get_enc_out_encoding)(void *data);
+	unsigned long (*get_quant_range)(void *data);
+	struct drm_property *(*get_hdr_property)(void *data);
+	struct drm_property_blob *(*get_hdr_blob)(void *data);
+	bool (*get_color_changed)(void *data);
 
 	unsigned int disable_cec : 1;
+
+	/* Vendor Property support */
+	const struct dw_hdmi_property_ops *property_ops;
+	struct drm_connector *connector;
 };
 
 struct dw_hdmi *dw_hdmi_probe(struct platform_device *pdev,
@@ -175,8 +218,9 @@ void dw_hdmi_remove(struct dw_hdmi *hdmi);
 void dw_hdmi_unbind(struct dw_hdmi *hdmi);
 struct dw_hdmi *dw_hdmi_bind(struct platform_device *pdev,
 			     struct drm_encoder *encoder,
-			     const struct dw_hdmi_plat_data *plat_data);
+			     struct dw_hdmi_plat_data *plat_data);
 
+void dw_hdmi_suspend(struct dw_hdmi *hdmi);
 void dw_hdmi_resume(struct dw_hdmi *hdmi);
 
 void dw_hdmi_setup_rx_sense(struct dw_hdmi *hdmi, bool hpd, bool rx_sense);
@@ -210,6 +254,11 @@ enum drm_connector_status dw_hdmi_phy_read_hpd(struct dw_hdmi *hdmi,
 void dw_hdmi_phy_update_hpd(struct dw_hdmi *hdmi, void *data,
 			    bool force, bool disabled, bool rxsense);
 void dw_hdmi_phy_setup_hpd(struct dw_hdmi *hdmi, void *data);
+void dw_hdmi_set_quant_range(struct dw_hdmi *hdmi);
+void dw_hdmi_set_output_type(struct dw_hdmi *hdmi, u64 val);
+bool dw_hdmi_get_output_whether_hdmi(struct dw_hdmi *hdmi);
+int dw_hdmi_get_output_type_cap(struct dw_hdmi *hdmi);
+void dw_hdmi_set_cec_adap(struct dw_hdmi *hdmi, struct cec_adapter *adap);
 
 bool dw_hdmi_bus_fmt_is_420(struct dw_hdmi *hdmi);
 

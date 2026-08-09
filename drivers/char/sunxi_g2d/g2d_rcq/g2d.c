@@ -23,6 +23,7 @@
 #if defined(CONFIG_SUNXI_G2D_ROTATE)
 #include "g2d_rotate.h"
 #endif
+#include <linux/sunxi-iommu.h>
 
 /* alloc based on 4K byte */
 #define G2D_BYTE_ALIGN(x) (((x + (4*1024-1)) >> 12) << 12)
@@ -503,7 +504,7 @@ int g2d_blit_h(g2d_blt_h *para)
 }
 EXPORT_SYMBOL_GPL(g2d_blit_h);
 
-int g2d_mmap(struct file *file, struct vm_area_struct *vma)
+static int g2d_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	unsigned long mypfn = vma->vm_pgoff;
 	unsigned long vmsize = vma->vm_end - vma->vm_start;
@@ -517,10 +518,6 @@ int g2d_mmap(struct file *file, struct vm_area_struct *vma)
 
 	return 0;
 }
-
-#if defined(CONFIG_ARCH_SUN8IW20) || defined(CONFIG_ARCH_SUN20IW1)
-extern void sunxi_reset_device_iommu(unsigned int master_id);
-#endif
 
 int g2d_wait_cmd_finish(unsigned int timeout)
 {
@@ -544,7 +541,7 @@ int g2d_wait_cmd_finish(unsigned int timeout)
 	return 0;
 }
 
-irqreturn_t g2d_handle_irq(int irq, void *dev_id)
+static irqreturn_t g2d_handle_irq(int irq, void *dev_id)
 {
 
 #if defined(CONFIG_SUNXI_G2D_MIXER)
@@ -590,7 +587,7 @@ void g2d_ioctl_mutex_unlock(void)
 }
 EXPORT_SYMBOL_GPL(g2d_ioctl_mutex_unlock);
 
-long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long g2d_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = -1;
 	struct timespec64 test_start, test_end;
@@ -898,7 +895,7 @@ err_noput:
 	return ret;
 }
 
-__s32 drv_g2d_init(void)
+static __s32 drv_g2d_init(void)
 {
 	memset(&g2d_ext_hd, 0, sizeof(__g2d_drv_t));
 	init_waitqueue_head(&g2d_ext_hd.queue);
@@ -1105,7 +1102,7 @@ static struct platform_driver g2d_driver = {
 		   },
 };
 
-int __init g2d_module_init(void)
+static int __init g2d_module_init(void)
 {
 	int ret = 0, err;
 

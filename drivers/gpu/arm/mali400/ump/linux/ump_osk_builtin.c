@@ -20,6 +20,8 @@
 #include <linux/dma-map-ops.h>
 #endif
 
+#include "ump_osk_builtin.h"
+
 void _ump_osk_flush_dcache_area(void *virt, u32 size)
 {
 #ifdef CONFIG_ARM64

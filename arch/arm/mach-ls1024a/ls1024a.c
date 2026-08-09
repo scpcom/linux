@@ -46,12 +46,12 @@ static int ls1024a_set_system_info(void)
 	return 0;
 }
 
-unsigned int ls1024a_pm_bitmask_show(void)
+static __maybe_unused unsigned int ls1024a_pm_bitmask_show(void)
 {
 	return host_utilpe_shared_pmu_bitmask;
 }
 
-void ls1024a_pm_bitmask_store(unsigned int bitmask_value)
+static void ls1024a_pm_bitmask_store(unsigned int bitmask_value)
 {
 	struct device_node *node;
 	void __iomem *base;

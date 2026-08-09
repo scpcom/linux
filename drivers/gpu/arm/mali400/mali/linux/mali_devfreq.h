@@ -14,4 +14,7 @@ int mali_devfreq_init(struct mali_device *mdev);
 
 void mali_devfreq_term(struct mali_device *mdev);
 
+int setup_opps(void);
+int term_opps(struct device *dev);
+
 #endif

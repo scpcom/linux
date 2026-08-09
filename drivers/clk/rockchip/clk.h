@@ -37,12 +37,25 @@ struct clk;
 #define BOOST_SWITCH_THRESHOLD		0x0024
 #define BOOST_FSM_STATUS		0x0028
 #define BOOST_PLL_L_CON(x)		((x) * 0x4 + 0x2c)
+#define BOOST_PLL_CON_MASK		0xffff
+#define BOOST_CORE_DIV_MASK		0x1f
+#define BOOST_CORE_DIV_SHIFT		0
+#define BOOST_BACKUP_PLL_MASK		0x3
+#define BOOST_BACKUP_PLL_SHIFT		8
+#define BOOST_BACKUP_PLL_USAGE_MASK	0x1
+#define BOOST_BACKUP_PLL_USAGE_SHIFT	12
+#define BOOST_BACKUP_PLL_USAGE_BORROW	0
+#define BOOST_BACKUP_PLL_USAGE_TARGET	1
+#define BOOST_ENABLE_MASK		0x1
+#define BOOST_ENABLE_SHIFT		0
 #define BOOST_RECOVERY_MASK		0x1
 #define BOOST_RECOVERY_SHIFT		1
 #define BOOST_SW_CTRL_MASK		0x1
 #define BOOST_SW_CTRL_SHIFT		2
 #define BOOST_LOW_FREQ_EN_MASK		0x1
 #define BOOST_LOW_FREQ_EN_SHIFT		3
+#define BOOST_STATIS_ENABLE_MASK	0x1
+#define BOOST_STATIS_ENABLE_SHIFT	4
 #define BOOST_BUSY_STATE		BIT(8)
 
 #define PX30_PLL_CON(x)			((x) * 0x4)
@@ -395,6 +408,7 @@ struct rockchip_clk_provider {
 	struct clk_onecell_data clk_data;
 	struct device_node *cru_node;
 	struct regmap *grf;
+	struct regmap *pmugrf;
 	spinlock_t lock;
 };
 
@@ -488,6 +502,14 @@ struct clk *rockchip_clk_register_pll(struct rockchip_clk_provider *ctx,
 		struct rockchip_pll_rate_table *rate_table,
 		unsigned long flags, u8 clk_pll_flags);
 
+void rockchip_boost_init(struct clk_hw *hw);
+
+void rockchip_boost_enable_recovery_sw_low(struct clk_hw *hw);
+
+void rockchip_boost_disable_recovery_sw(struct clk_hw *hw);
+
+void rockchip_boost_add_core_div(struct clk_hw *hw, unsigned long prate);
+
 struct rockchip_cpuclk_clksel {
 	int reg;
 	u32 val;
@@ -524,6 +546,7 @@ struct rockchip_cpuclk_reg_data {
 	u8	mux_core_main;
 	u8	mux_core_shift;
 	u32	mux_core_mask;
+	const char	*pll_name;
 };
 
 struct clk *rockchip_clk_register_cpuclk(const char *name,
@@ -574,6 +597,7 @@ enum rockchip_clk_branch_type {
 	branch_composite,
 	branch_mux,
 	branch_muxgrf,
+	branch_muxpmugrf,
 	branch_divider,
 	branch_fraction_divider,
 	branch_gate,
@@ -848,6 +872,21 @@ struct rockchip_clk_branch {
 	{							\
 		.id		= _id,				\
 		.branch_type	= branch_muxgrf,		\
+		.name		= cname,			\
+		.parent_names	= pnames,			\
+		.num_parents	= ARRAY_SIZE(pnames),		\
+		.flags		= f,				\
+		.muxdiv_offset	= o,				\
+		.mux_shift	= s,				\
+		.mux_width	= w,				\
+		.mux_flags	= mf,				\
+		.gate_offset	= -1,				\
+	}
+
+#define MUXPMUGRF(_id, cname, pnames, f, o, s, w, mf)		\
+	{							\
+		.id		= _id,				\
+		.branch_type	= branch_muxpmugrf,		\
 		.name		= cname,			\
 		.parent_names	= pnames,			\
 		.num_parents	= ARRAY_SIZE(pnames),		\

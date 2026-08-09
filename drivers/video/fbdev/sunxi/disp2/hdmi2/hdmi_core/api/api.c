@@ -128,7 +128,7 @@ static void api_avmute(hdmi_tx_dev_t *dev, int enable)
 #endif
 }
 
-u32 api_get_avmute(void)
+static u32 api_get_avmute(void)
 {
 	return packets_get_AvMute(hdmi_api);
 }
@@ -265,7 +265,7 @@ static int api_edid_read(struct edid *edid)
 	return edid_read(hdmi_api, edid);
 }
 
-int api_edid_extension_read(int block, u8 *edid_ext)
+static int api_edid_extension_read(int block, u8 *edid_ext)
 {
 	return edid_extension_read(hdmi_api, block, edid_ext);
 }
@@ -277,7 +277,7 @@ static int api_edid_parser(u8 *buffer, sink_edid_t *edidExt,
 }
 
 #ifdef CONFIG_HDMI2_HDCP_SUNXI
-int hdcp_configure(hdmi_tx_dev_t *dev, hdcpParams_t *hdcp, videoParams_t *video)
+static __maybe_unused int hdcp_configure(hdmi_tx_dev_t *dev, hdcpParams_t *hdcp, videoParams_t *video)
 {
 	if ((!hdcp) && (!video)) {
 		pr_err("ERROR:There is NULL value arguments: hdcp=%lx\n",
@@ -508,7 +508,7 @@ static u32 api_get_video_code(void)
 
 }
 
-void api_set_video_code(u8 data)
+static void api_set_video_code(u8 data)
 {
 	fc_VideoCode_set(hdmi_api, data);
 }

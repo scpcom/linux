@@ -1597,7 +1597,7 @@ static int rgb24_to_rgb32(const void *psrc, struct bmp_header *bmp_header,
 #endif
 
 #if defined(USE_DECOMPRESS_LZMA)
-int lzma_decode(uintptr_t paddr, struct fb_info *info)
+static int lzma_decode(uintptr_t paddr, struct fb_info *info)
 {
 	void *vaddr = NULL;
 	long pos = 0;

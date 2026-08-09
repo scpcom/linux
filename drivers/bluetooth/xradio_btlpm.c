@@ -153,7 +153,7 @@ static inline int bluesleep_can_sleep(void)
 /*
  * after bt wakeup should clean BT_ASLEEP flag and start time.
  */
-int bluesleep_sleep_wakeup(void)
+static int bluesleep_sleep_wakeup(void)
 {
 	int poll_count = 0;
 	BT_SLEEP_DBG("test_bit(BT_ASLEEP, &flags) %d", test_bit(BT_ASLEEP, &flags));

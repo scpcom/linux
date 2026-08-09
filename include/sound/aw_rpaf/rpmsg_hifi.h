@@ -87,4 +87,8 @@ int32_t sunxi_hifi_daudio_substream_block_send(uint32_t hifi_id,
 int32_t sunxi_hifi_dmic_substream_block_send(uint32_t hifi_id,
 		struct snd_pcm_substream *substream, struct snd_soc_dai *dai,
 		int32_t stream, unsigned long msg_cmd);
+
+void *sunxi_hifi_find_sound_drv_info_by_name(const char *name);
+
+int sunxi_mixer_block_send(unsigned int hifi_id, struct msg_mixer_package *msg_mixer);
 #endif

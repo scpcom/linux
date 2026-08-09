@@ -204,6 +204,9 @@ struct snd_soc_rpaf_info *snd_soc_rpaf_info_get_from_list_by_miscdevice(
 void snd_soc_rpaf_pcm_stream_component_lock(void);
 void snd_soc_rpaf_pcm_stream_component_unlock(void);
 
+void snd_soc_rpaf_pcm_stream_lock(struct snd_dsp_component *dsp_component);
+void snd_soc_rpaf_pcm_stream_unlock(struct snd_dsp_component *dsp_component);
+
 void snd_soc_rpaf_pcm_stream_lock_irq(struct snd_dsp_component *dsp_component);
 void snd_soc_rpaf_pcm_stream_unlock_irq(struct snd_dsp_component *dsp_component);
 unsigned long snd_soc_rpaf_pcm_stream_lock_irqsave(struct snd_dsp_component *dsp_component);

@@ -74,6 +74,7 @@ enum __dsi_dcs_t {
 
 extern int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops);
 int lcd_init(void);
+void lcd_set_panel_funs(void);
 
 extern struct __lcd_panel default_eink;
 extern struct __lcd_panel default_panel;

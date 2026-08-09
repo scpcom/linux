@@ -1794,7 +1794,7 @@ static void resume_work_1(struct work_struct *work)
 }
 #endif
 
-int disp_device_set_config(struct disp_init_para *init,
+static int disp_device_set_config(struct disp_init_para *init,
 					unsigned int screen_id)
 {
 	struct disp_device_config config;
@@ -2712,7 +2712,7 @@ int disp_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-void disp_device_off(void)
+static __maybe_unused void disp_device_off(void)
 {
 	int num_screens = 0, i = 0, j = 0;
 	struct disp_manager *mgr = NULL;

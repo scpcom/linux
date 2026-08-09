@@ -188,7 +188,7 @@ static const struct watchdog_info ls1024a_wdt_info = {
 	.identity = "LS1024A watchdog"
 };
 
-unsigned int ls1024a_wdt_get_and_clear_bootstatus(struct ls1024a_wdt *priv)
+static unsigned int ls1024a_wdt_get_and_clear_bootstatus(struct ls1024a_wdt *priv)
 {
 	unsigned int status = 0;
 	regmap_read(priv->clkcore, CLKCORE_GNRL_DEVICE_STATUS, &status);

@@ -65,6 +65,33 @@ static const struct of_device_id cdn_dp_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, cdn_dp_dt_ids);
 
+#define CDN_DP_MODE_UNKNOWN	0x0
+#define CDN_DP_MODE_ON		0x1
+#define CDN_DP_MODE_OFF		0x2
+
+static int cdn_dp_mode;
+
+static int __init setup_cdn_dp_mode(char *str)
+{
+	if (str && strncmp("disabled", str, 8) == 0)
+		cdn_dp_mode = CDN_DP_MODE_OFF;
+	else if (str && strncmp("off", str, 3) == 0)
+		cdn_dp_mode = CDN_DP_MODE_OFF;
+	else if (str && strncmp("0", str, 1) == 0)
+		cdn_dp_mode = CDN_DP_MODE_OFF;
+	else if (str && strncmp("okay", str, 4) == 0)
+		cdn_dp_mode = CDN_DP_MODE_ON;
+	else if (str && strncmp("on", str, 2) == 0)
+		cdn_dp_mode = CDN_DP_MODE_ON;
+	else if (str && strncmp("1", str, 1) == 0)
+		cdn_dp_mode = CDN_DP_MODE_ON;
+	else
+		cdn_dp_mode = CDN_DP_MODE_UNKNOWN;
+
+	return 1;
+}
+__setup("cdn_dp_mode=", setup_cdn_dp_mode);
+
 static int cdn_dp_grf_write(struct cdn_dp_device *dp,
 			    unsigned int reg, unsigned int val)
 {
@@ -699,6 +726,7 @@ static int cdn_dp_encoder_atomic_check(struct drm_encoder *encoder,
 
 	s->output_mode = ROCKCHIP_OUT_MODE_AAAA;
 	s->output_type = DRM_MODE_CONNECTOR_DisplayPort;
+	s->tv_state = &conn_state->tv;
 
 	return 0;
 }
@@ -1035,6 +1063,9 @@ static int cdn_dp_bind(struct device *dev, struct device *master, void *data)
 	struct drm_device *drm_dev = data;
 	int ret, i;
 
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		return 0;
+
 	ret = cdn_dp_parse_dt(dp);
 	if (ret < 0)
 		return ret;
@@ -1049,8 +1080,8 @@ static int cdn_dp_bind(struct device *dev, struct device *master, void *data)
 
 	encoder = &dp->encoder.encoder;
 
-	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm_dev,
-							     dev->of_node);
+	encoder->possible_crtcs = rockchip_drm_of_find_possible_crtcs(drm_dev,
+								      dev->of_node);
 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
 
 	ret = drm_simple_encoder_init(drm_dev, encoder,
@@ -1115,6 +1146,9 @@ static void cdn_dp_unbind(struct device *dev, struct device *master, void *data)
 	struct drm_encoder *encoder = &dp->encoder.encoder;
 	struct drm_connector *connector = &dp->connector;
 
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		return;
+
 	cancel_work_sync(&dp->event_work);
 	cdn_dp_encoder_disable(encoder);
 	encoder->funcs->destroy(encoder);
@@ -1137,6 +1171,9 @@ static int cdn_dp_suspend(struct device *dev)
 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
 	int ret = 0;
 
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		return 0;
+
 	mutex_lock(&dp->lock);
 	if (dp->active)
 		ret = cdn_dp_disable(dp);
@@ -1149,6 +1186,9 @@ static int cdn_dp_suspend(struct device *dev)
 static __maybe_unused int cdn_dp_resume(struct device *dev)
 {
 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
+
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		return 0;
 
 	mutex_lock(&dp->lock);
 	dp->suspended = false;
@@ -1175,6 +1215,9 @@ static int cdn_dp_probe(struct platform_device *pdev)
 	if (!dp)
 		return -ENOMEM;
 	dp->dev = dev;
+
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		return component_add(dev, &cdn_dp_component_ops);
 
 	match = of_match_node(cdn_dp_dt_ids, pdev->dev.of_node);
 	dp_data = (struct cdn_dp_data *)match->data;
@@ -1228,8 +1271,12 @@ static void cdn_dp_remove(struct platform_device *pdev)
 {
 	struct cdn_dp_device *dp = platform_get_drvdata(pdev);
 
+	if (cdn_dp_mode == CDN_DP_MODE_OFF)
+		goto out_component;
+
 	platform_device_unregister(dp->audio_pdev);
 	cdn_dp_suspend(dp->dev);
+out_component:
 	component_del(&pdev->dev, &cdn_dp_component_ops);
 }
 

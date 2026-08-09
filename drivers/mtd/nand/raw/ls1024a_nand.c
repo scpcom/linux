@@ -900,7 +900,7 @@ static int comcerto_nand_read_page_hwecc(struct nand_chip *chip,
 /*
  *	hardware specific access to control-lines
 */
-void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
+static void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
 {
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 
@@ -920,7 +920,7 @@ void comcerto_nand_hwcontrol(struct nand_chip *chip, int cmd, unsigned int ctrl)
 
 }
 
-int comcerto_nand_ready(struct nand_chip *chip)
+static int comcerto_nand_ready(struct nand_chip *chip)
 {
 	struct comcerto_nand_info *info = to_comerto_nand_info(chip);
 

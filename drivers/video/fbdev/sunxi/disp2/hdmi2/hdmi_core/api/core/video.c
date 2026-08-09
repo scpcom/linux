@@ -280,20 +280,20 @@ char *getEncodingString(encoding_t encoding)
 	return "Undefined";
 }
 
-void halVideoSampler_InternalDataEnableGenerator(hdmi_tx_dev_t *dev, u8 bit)
+static void halVideoSampler_InternalDataEnableGenerator(hdmi_tx_dev_t *dev, u8 bit)
 {
 	LOG_TRACE1(bit);
 	dev_write_mask(dev, TX_INVID0,
 			TX_INVID0_INTERNAL_DE_GENERATOR_MASK, (bit ? 1 : 0));
 }
 
-void halVideoSampler_VideoMapping(hdmi_tx_dev_t *dev, u8 value)
+static void halVideoSampler_VideoMapping(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	dev_write_mask(dev, TX_INVID0, TX_INVID0_VIDEO_MAPPING_MASK, value);
 }
 
-void halVideoSampler_StuffingGy(hdmi_tx_dev_t *dev, u16 value)
+static void halVideoSampler_StuffingGy(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	dev_write(dev, (TX_GYDATA0), (u8) (value >> 0));
@@ -302,7 +302,7 @@ void halVideoSampler_StuffingGy(hdmi_tx_dev_t *dev, u16 value)
 			TX_INSTUFFING_GYDATA_STUFFING_MASK, 1);
 }
 
-void halVideoSampler_StuffingRcr(hdmi_tx_dev_t *dev, u16 value)
+static void halVideoSampler_StuffingRcr(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	dev_write(dev, (TX_RCRDATA0), (u8) (value >> 0));
@@ -311,7 +311,7 @@ void halVideoSampler_StuffingRcr(hdmi_tx_dev_t *dev, u16 value)
 			TX_INSTUFFING_RCRDATA_STUFFING_MASK, 1);
 }
 
-void halVideoSampler_StuffingBcb(hdmi_tx_dev_t *dev, u16 value)
+static void halVideoSampler_StuffingBcb(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	dev_write(dev, (TX_BCBDATA0), (u8) (value >> 0));
@@ -402,35 +402,35 @@ void vp_OutputSelector(hdmi_tx_dev_t *dev, u8 value)
 }
 
 
-void csc_Interpolation(hdmi_tx_dev_t *dev, u8 value)
+static void csc_Interpolation(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	/* 2-bit width */
 	dev_write_mask(dev, CSC_CFG, CSC_CFG_INTMODE_MASK, value);
 }
 
-void csc_Decimation(hdmi_tx_dev_t *dev, u8 value)
+static void csc_Decimation(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	/* 2-bit width */
 	dev_write_mask(dev, CSC_CFG, CSC_CFG_DECMODE_MASK, value);
 }
 
-void csc_ColorDepth(hdmi_tx_dev_t *dev, u8 value)
+static void csc_ColorDepth(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	/* 4-bit width */
 	dev_write_mask(dev, CSC_SCALE, CSC_SCALE_CSC_COLOR_DEPTH_MASK, value);
 }
 
-void csc_ScaleFactor(hdmi_tx_dev_t *dev, u8 value)
+static void csc_ScaleFactor(hdmi_tx_dev_t *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	/* 2-bit width */
 	dev_write_mask(dev, CSC_SCALE, CSC_SCALE_CSCSCALE_MASK, value);
 }
 
-void csc_CoefficientA1(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientA1(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -439,7 +439,7 @@ void csc_CoefficientA1(hdmi_tx_dev_t *dev, u16 value)
 			CSC_COEF_A1_MSB_CSC_COEF_A1_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientA2(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientA2(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -448,7 +448,7 @@ void csc_CoefficientA2(hdmi_tx_dev_t *dev, u16 value)
 			CSC_COEF_A2_MSB_CSC_COEF_A2_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientA3(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientA3(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -457,7 +457,7 @@ void csc_CoefficientA3(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_A3_MSB_CSC_COEF_A3_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientA4(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientA4(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -466,7 +466,7 @@ void csc_CoefficientA4(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_A4_MSB_CSC_COEF_A4_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientB1(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientB1(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -475,7 +475,7 @@ void csc_CoefficientB1(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_B1_MSB_CSC_COEF_B1_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientB2(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientB2(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -484,7 +484,7 @@ void csc_CoefficientB2(hdmi_tx_dev_t *dev, u16 value)
 			CSC_COEF_B2_MSB_CSC_COEF_B2_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientB3(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientB3(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -493,7 +493,7 @@ void csc_CoefficientB3(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_B3_MSB_CSC_COEF_B3_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientB4(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientB4(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -502,7 +502,7 @@ void csc_CoefficientB4(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_B4_MSB_CSC_COEF_B4_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientC1(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientC1(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -511,7 +511,7 @@ void csc_CoefficientC1(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_C1_MSB_CSC_COEF_C1_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientC2(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientC2(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -520,7 +520,7 @@ void csc_CoefficientC2(hdmi_tx_dev_t *dev, u16 value)
 			CSC_COEF_C2_MSB_CSC_COEF_C2_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientC3(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientC3(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	/* 15-bit width */
@@ -529,7 +529,7 @@ void csc_CoefficientC3(hdmi_tx_dev_t *dev, u16 value)
 		CSC_COEF_C3_MSB_CSC_COEF_C3_MSB_MASK, (u8)(value >> 8));
 }
 
-void csc_CoefficientC4(hdmi_tx_dev_t *dev, u16 value)
+static void csc_CoefficientC4(hdmi_tx_dev_t *dev, u16 value)
 {
 	LOG_TRACE1(value);
 	dev_write(dev, CSC_COEF_C4_LSB, (u8) (value));

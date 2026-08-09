@@ -23,6 +23,7 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_print.h>
 
+#include <linux/media-bus-format.h>
 #include <linux/videodev2.h>
 
 #include "meson_drv.h"
@@ -776,6 +777,7 @@ static int meson_dw_hdmi_bind(struct device *dev, struct device *master,
 	dw_plat_data->phy_ops = &meson_dw_hdmi_phy_ops;
 	dw_plat_data->phy_name = "meson_dw_hdmi_phy";
 	dw_plat_data->phy_data = meson_dw_hdmi;
+	dw_plat_data->input_bus_format = MEDIA_BUS_FMT_YUV8_1X24;
 	dw_plat_data->input_bus_encoding = V4L2_YCBCR_ENC_709;
 	dw_plat_data->ycbcr_420_allowed = true;
 	dw_plat_data->disable_cec = true;

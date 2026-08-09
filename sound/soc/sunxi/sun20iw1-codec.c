@@ -484,7 +484,7 @@ static void dachpf_enable(struct snd_soc_component *component, bool on)
 }
 #endif
 
-int sunxi_get_gain_volsw(struct snd_kcontrol *kcontrol,
+static int sunxi_get_gain_volsw(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
@@ -526,7 +526,7 @@ int sunxi_get_gain_volsw(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-int sunxi_put_gain_volsw(struct snd_kcontrol *kcontrol,
+static int sunxi_put_gain_volsw(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);

@@ -23,6 +23,7 @@ properties:
       - rockchip,rk3228-dw-hdmi
       - rockchip,rk3288-dw-hdmi
       - rockchip,rk3328-dw-hdmi
+      - rockchip,rk3368-dw-hdmi
       - rockchip,rk3399-dw-hdmi
       - rockchip,rk3568-dw-hdmi
 
@@ -77,6 +78,18 @@ properties:
   phy-names:
     const: hdmi
 
+  skip-check-420-mode:
+    description:
+      If need skip check yuv420 mode valid, set this property.
+
+  hdcp1x-enable:
+    description:
+      enable hdcp1.x, enable if defined, disable if not defined
+
+  scramble-low-rates:
+    description:
+      if defined enable scarmble when tmdsclk less than 340Mhz
+
   pinctrl-names:
     description:
       The unwedge pinctrl entry shall drive the DDC SDA line low. This is
@@ -116,6 +129,10 @@ properties:
     $ref: /schemas/types.yaml#/definitions/phandle
     description:
       phandle to the GRF to mux vopl/vopb.
+
+  rockchip,phy-table:
+    description:
+      the parameter table of hdmi phy configuration.
 
   "#sound-dai-cells":
     const: 0

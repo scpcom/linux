@@ -1453,7 +1453,7 @@ GATOR_TRACEPOINTS;
 #undef GATOR_HANDLE_TRACEPOINT
 }
 
-int gator_new_tracepoint_module(struct notifier_block * nb, unsigned long action, void * data)
+static int gator_new_tracepoint_module(struct notifier_block * nb, unsigned long action, void * data)
 {
     struct tp_module * tp_mod = (struct tp_module *) data;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)

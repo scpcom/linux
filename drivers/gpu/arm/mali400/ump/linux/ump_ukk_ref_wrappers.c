@@ -26,16 +26,14 @@
 #include <linux/scatterlist.h>
 #include "ump_kernel_interface_ref_drv.h"
 #include "mali_osk_list.h"
+#include "ump_ukk_ref_wrappers.h"
 
 extern struct device *ump_global_mdev;
-
-extern int ump_copy_from_user( void * destination, const void * source, size_t num, int pointer_size );
-extern int ump_copy_to_user( void * destination, const void * source, size_t num, int pointer_size );
 
 /*
  * IOCTL operation; Allocate UMP memory
  */
-int __ump_allocate_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
+static int __ump_allocate_wrapper(u32 __user *argument, struct ump_session_data   *session_data, int pointer_size)
 {
 	_ump_uk_allocate_s user_interaction;
 	_mali_osk_errcode_t err;
@@ -117,7 +115,7 @@ static ump_dd_handle get_ump_handle_from_dmabuf(struct ump_session_data *session
 	return NULL;
 }
 
-int __ump_dmabuf_import_wrapper(u32 __user *argument,
+static int __ump_dmabuf_import_wrapper(u32 __user *argument,
 			      struct ump_session_data  *session_data, int pointer_size)
 {
 	ump_session_memory_list_element *session = NULL;

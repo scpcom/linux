@@ -21,6 +21,7 @@
 #include <mali_kbase.h>
 #include <mali_kbase_tlstream.h>
 #include <mali_kbase_config_defaults.h>
+#include <backend/gpu/mali_kbase_devfreq.h>
 #include <backend/gpu/mali_kbase_pm_internal.h>
 
 #include <linux/of.h>

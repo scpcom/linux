@@ -7,6 +7,8 @@
  *
  */
 
+#include "gator_annotate.h"
+
 #define ESCAPE_CODE 0x1c
 #define STRING_ANNOTATION 0x06
 #define NAME_CHANNEL_ANNOTATION 0x07

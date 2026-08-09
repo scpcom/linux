@@ -114,6 +114,8 @@ static inline int rga2_procfs_init(void)
 }
 #endif /* #ifdef CONFIG_ROCKCHIP_RGA2_PROC_FS */
 
+void rga2_slt(void);
+
 #endif /* #ifdef CONFIG_ROCKCHIP_RGA2_DEBUGGER */
 
 #endif /* #ifndef _RGA_DEBUGGER_H_ */

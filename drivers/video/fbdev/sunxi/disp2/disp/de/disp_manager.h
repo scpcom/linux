@@ -17,7 +17,6 @@ s32 disp_init_mgr(struct disp_bsp_init_para *para);
 
 #if IS_ENABLED(CONFIG_SUNXI_IOMMU) || IS_ENABLED(CONFIG_SUN50I_IOMMU)
 #define DE_MASTOR_ID 0
-extern void sunxi_enable_device_iommu(unsigned int mastor_id, bool flag);
 #endif
 
 extern s32 __disp_config_transfer2inner(
@@ -31,5 +30,7 @@ s32 disp_mgr_set_rtwb_layer(struct disp_manager *mgr,
 			    struct disp_layer_config2 *config,
 			    struct disp_capture_info2 *p_cptr_info,
 			    unsigned int layer_num);
+
+int disp_get_num_screens(void);
 
 #endif

@@ -56,6 +56,7 @@
 #include <soc/rockchip/rockchip_opp_select.h>
 #endif
 
+#include <linux/mali/mali_platform.h>
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_common.h"
 #include "../../common/mali_osk_mali.h"
@@ -78,6 +79,7 @@ struct mali_plat_context {
 struct mali_plat_context *mali;
 
 
+#if defined(CONFIG_MALI_DT)
 /*---------------------------------------------------------------------------*/
 
 #define DEFAULT_UTILISATION_PERIOD_IN_MS (100)
@@ -253,6 +255,7 @@ static void rk_context_deinit(struct platform_device *pdev)
 		kfree(platform);
 	}
 }
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* for devfreq cooling. */
@@ -643,6 +646,7 @@ static const struct mali_gpu_device_data rk_mali_gpu_data = {
 #endif
 };
 
+#if defined(CONFIG_MALI_DT)
 static void mali_platform_device_add_config(struct platform_device *pdev)
 {
 	pdev->name = MALI_GPU_NAME_UTGARD,
@@ -710,10 +714,11 @@ void mali_platform_device_deinit(struct platform_device *pdev)
 
 	rk_context_deinit(pdev);
 }
+#endif
 
 /* common helpers */
 
-struct resource *mali_create_mp1_resources(unsigned long address,
+static struct resource *mali_create_mp1_resources(unsigned long address,
 					   int irq_gp, int irq_gpmmu,
 					   int irq_pp0, int irq_ppmmu0,
 					   int *len)
@@ -736,7 +741,7 @@ struct resource *mali_create_mp1_resources(unsigned long address,
 	return res;
 }
 
-struct resource *mali_create_mp2_resources(unsigned long address,
+static struct resource *mali_create_mp2_resources(unsigned long address,
 					   int irq_gp, int irq_gpmmu,
 					   int irq_pp0, int irq_ppmmu0,
 					   int irq_pp1, int irq_ppmmu1,
@@ -761,7 +766,7 @@ struct resource *mali_create_mp2_resources(unsigned long address,
 	return res;
 }
 
-struct resource *mali_create_mali450_mp3_resources(unsigned long address,
+static struct resource *mali_create_mali450_mp3_resources(unsigned long address,
 						   int irq_gp, int irq_gpmmu,
 						   int irq_pp_bcast,
 						   int irq_pp0, int irq_ppmmu0,
@@ -790,7 +795,7 @@ struct resource *mali_create_mali450_mp3_resources(unsigned long address,
 	return res;
 }
 
-struct resource *mali_create_mali450_mp4_resources(unsigned long address,
+static struct resource *mali_create_mali450_mp4_resources(unsigned long address,
 						   int irq_gp, int irq_gpmmu,
 						   int irq_pp,
 						   int irq_pp0, int irq_ppmmu0,

@@ -108,7 +108,7 @@ static void lcd_cfg_panel_info(struct panel_extend_para *info)
 
 }
 
-unsigned long get_func_pointer(u32 opcode)
+static unsigned long get_func_pointer(u32 opcode)
 {
 	int func_table_line;
 	int i;
@@ -125,7 +125,7 @@ unsigned long get_func_pointer(u32 opcode)
 
 }
 
-void handle_data(u32 sel, u32 *data)
+static void handle_data(u32 sel, u32 *data)
 {
 	u32 opcode = *data;
 	unsigned long p_func_addr;
@@ -186,7 +186,7 @@ void handle_data(u32 sel, u32 *data)
 
 }
 
-void exec_command(u32 sel, char *node_name, char *subname)
+static void exec_command(u32 sel, char *node_name, char *subname)
 {
 	int ret;
 	struct device_node *lcd0_node;

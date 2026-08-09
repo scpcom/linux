@@ -180,7 +180,7 @@ error:
 	return _MALI_OSK_ERR_FAULT;
 }
 
-_mali_osk_errcode_t mali_memory_cow_swap_memory(mali_mem_backend *target_bk,
+static _mali_osk_errcode_t mali_memory_cow_swap_memory(mali_mem_backend *target_bk,
 		u32 target_offset,
 		u32 target_size,
 		mali_mem_backend *backend,
@@ -265,7 +265,7 @@ error:
 }
 
 
-_mali_osk_errcode_t _mali_mem_put_page_node(mali_page_node *node)
+static _mali_osk_errcode_t _mali_mem_put_page_node(mali_page_node *node)
 {
 	if (node->type == MALI_PAGE_NODE_OS) {
 		return mali_mem_os_put_page(node->page);

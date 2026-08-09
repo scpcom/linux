@@ -204,7 +204,7 @@ static struct class efuse_class = {
 
 };
 
-int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
+static int get_efusekey_info(struct nvmem_device *nvmem, struct device *nvmem_dev)
 {
 	struct device_node *np_key;
 	const __be32 *addr;

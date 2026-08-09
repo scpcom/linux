@@ -14,6 +14,7 @@
  *
  */
 
+#include "bsp_display.h"
 #include "disp_display.h"
 #if defined(SUPPORT_RTWB)
 #include "disp_rtwb.h"

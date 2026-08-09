@@ -53,6 +53,9 @@ void _ump_ukk_unlock(_ump_uk_unlock_s *args);
 
 u32 _ump_ukk_report_memory_usage(void);
 
+extern int ump_copy_from_user( void * destination, const void * source, size_t num, int pointer_size );
+extern int ump_copy_to_user( void * destination, const void * source, size_t num, int pointer_size );
+
 #ifdef __cplusplus
 }
 #endif

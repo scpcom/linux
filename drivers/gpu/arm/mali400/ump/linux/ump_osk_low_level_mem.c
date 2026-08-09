@@ -20,6 +20,7 @@
 #include "ump_uk_types.h"
 #include "ump_ukk.h"
 #include "ump_kernel_common.h"
+#include "ump_osk_builtin.h"
 #include <linux/module.h>            /* kernel module definitions */
 #include <linux/kernel.h>
 #include <linux/mm.h>
@@ -46,7 +47,6 @@ static int ump_cpu_page_fault_handler(struct vm_area_struct *vma, struct vm_faul
 #else
 static unsigned long ump_cpu_page_fault_handler(struct vm_area_struct *vma, unsigned long address);
 #endif
-extern void _ump_osk_flush_dcache_area(void *virt, u32 size);
 
 static struct vm_operations_struct ump_vm_ops = {
 	.open = ump_vma_open,

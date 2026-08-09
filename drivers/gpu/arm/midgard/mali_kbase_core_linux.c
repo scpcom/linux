@@ -4469,7 +4469,6 @@ static void kbase_platform_device_remove(struct platform_device *pdev)
 #endif
 }
 
-extern void kbase_platform_rk_shutdown(struct kbase_device *kbdev);
 static void kbase_platform_device_shutdown(struct platform_device *pdev)
 {
 #ifdef CONFIG_MALI_PLATFORM_THIRDPARTY

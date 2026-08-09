@@ -9,6 +9,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/string.h>
+#include "sunxi-sha256.h"
 
 /****************************** MACROS ******************************/
 #define ROTRIGHT(a, b) (((a) >> (b)) | ((a) << (32 - (b))))

@@ -9,6 +9,7 @@
  */
 
 #include <linux/reset.h>
+#include <linux/sunxi-iommu.h>
 #include "disp_manager.h"
 #include "disp_display.h"
 #include "../disp_trace.h"
@@ -305,7 +306,7 @@ EXPORT_SYMBOL(__disp_config2_transfer2inner);
 
 /** __disp_inner_transfer2config - transfer inner to disp_layer_config
  */
-s32 __disp_inner_transfer2config(struct disp_layer_config *config,
+static s32 __disp_inner_transfer2config(struct disp_layer_config *config,
 				 struct disp_layer_config_inner *config_inner)
 {
 	config->enable = config_inner->enable;
@@ -357,7 +358,7 @@ s32 __disp_inner_transfer2config(struct disp_layer_config *config,
 
 /** __disp_inner_transfer2config2 - transfer inner to disp_layer_config2
  */
-s32 __disp_inner_transfer2config2(struct disp_layer_config2 *config2,
+static s32 __disp_inner_transfer2config2(struct disp_layer_config2 *config2,
 				  struct disp_layer_config_inner *config_inner)
 {
 	config2->enable = config_inner->enable;
@@ -1011,7 +1012,7 @@ static s32 disp_mgr_rcq_finish_irq_handler(
 	return 0;
 }
 
-s32 disp_mgr_irq_handler(u32 disp, u32 irq_flag, void *ptr)
+static s32 disp_mgr_irq_handler(u32 disp, u32 irq_flag, void *ptr)
 {
 	if (irq_flag & DISP_AL_IRQ_FLAG_RCQ_FINISH)
 		disp_mgr_rcq_finish_irq_handler((struct disp_manager *)ptr);
@@ -1965,7 +1966,7 @@ static s32 disp_map_afbc_header(struct disp_fb_info_inner *fb)
 }
 #endif
 
-s32 disp_mgr_set_layer_config2(struct disp_manager *mgr,
+static s32 disp_mgr_set_layer_config2(struct disp_manager *mgr,
 			  struct disp_layer_config2 *config,
 			  unsigned int layer_num)
 {
@@ -2987,7 +2988,7 @@ static s32 disp_mgr_blank(struct disp_manager *mgr, bool blank)
 	return 0;
 }
 
-s32 disp_mgr_set_ksc_para(struct disp_manager *mgr,
+static s32 disp_mgr_set_ksc_para(struct disp_manager *mgr,
 		    struct disp_ksc_info *pinfo)
 {
 	unsigned long flags;
@@ -3000,8 +3001,6 @@ s32 disp_mgr_set_ksc_para(struct disp_manager *mgr,
 
 	return mgr->apply(mgr);
 }
-
-extern void sunxi_enable_device_iommu(unsigned int mastor_id, bool flag);
 
 static s32 disp_mgr_enable_iommu(struct disp_manager *mgr, bool en)
 {

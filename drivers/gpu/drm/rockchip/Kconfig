@@ -21,6 +21,13 @@ config DRM_ROCKCHIP
 
 if DRM_ROCKCHIP
 
+config ROCKCHIP_DRM_CUBIC_LUT
+	bool "Support 3D cubic LUT"
+	depends on NO_GKI
+	help
+	  This add properties to support provision of a 3D cubic
+	  look up table, allowing for color specific adjustments.
+
 config ROCKCHIP_VOP
 	bool "Rockchip VOP driver"
 	default y
@@ -33,6 +40,16 @@ config ROCKCHIP_VOP2
 	help
 	  This selects support for the VOP2 driver. The VOP2 hardware is
 	  first found on the RK3568.
+
+config ROCKCHIP_DRM_DEBUG
+	bool "Rockchip DRM debug"
+	depends on DEBUG_FS
+	help
+	  This option add a debug node to dump buf from userspace
+	  dump buffer store at: /data
+	  debug node: /d/dri/0/ff900000.vop/vop_dump/dump
+	  cat /d/dri/0/ff900000.vop/vop_dump/dump get more help
+	  the upper ff900000.vop is different at different SOC platform.
 
 config ROCKCHIP_ANALOGIX_DP
 	bool "Rockchip specific extensions for Analogix DP driver"

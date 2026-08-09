@@ -56,7 +56,7 @@ void core_init_hdcp(struct hdmi_mode *cfg, hdcpParams_t *hdcp)
 #endif
 }
 
-u8 get_hdcp22_status_core(void)
+static __maybe_unused u8 get_hdcp22_status_core(void)
 {
 	return 0;
 }
