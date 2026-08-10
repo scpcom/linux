@@ -18,7 +18,7 @@
 extern struct platform_device *g_pldev;
 #endif
 
-extern int spacemit_wlan_set_power(int on);
+#include <soc/spacemit/spacemit-wlan.h>
 
 void pci_cache_wback(struct pci_dev *hwdev,
 			dma_addr_t *bus_addr, size_t size, int direction)
