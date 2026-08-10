@@ -24,6 +24,10 @@
 
 #include "cpufreq-dt.h"
 
+#if defined(CONFIG_SOC_SPACEMIT) || defined(CONFIG_SOC_SPACEMIT_K1X)
+#include "spacemit-cpufreq.h"
+#endif
+
 struct private_data {
 	struct list_head node;
 

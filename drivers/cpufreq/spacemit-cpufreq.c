@@ -17,6 +17,7 @@
 #include <linux/slab.h>
 #include "../opp/opp.h"
 #include "cpufreq-dt.h"
+#include "spacemit-cpufreq.h"
 
 struct private_data {
 	struct list_head node;
