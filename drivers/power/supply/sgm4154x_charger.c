@@ -581,7 +581,7 @@ static int sgm4154x_set_input_volt_lim(struct sgm4154x_device *sgm, unsigned int
 	return ret;
 }
 
-bool sgm4154x_is_hvdcp(struct sgm4154x_device *sgm,enum SGM4154x_QC_VOLT val)
+static __maybe_unused bool sgm4154x_is_hvdcp(struct sgm4154x_device *sgm,enum SGM4154x_QC_VOLT val)
 {
     int i = 20;
 	int vlim;
@@ -757,7 +757,7 @@ static int sgm4154x_set_hiz_en(struct sgm4154x_device *sgm, bool hiz_en)
 				  SGM4154x_HIZ_EN, reg_val);
 }
 #endif
-int sgm4154x_enable_charger(struct sgm4154x_device *sgm)
+static int sgm4154x_enable_charger(struct sgm4154x_device *sgm)
 {
     int ret;
     printk("sgm4154x_enable_charger\n");
@@ -767,7 +767,7 @@ int sgm4154x_enable_charger(struct sgm4154x_device *sgm)
     return ret;
 }
 
-int sgm4154x_disable_charger(struct sgm4154x_device *sgm)
+static int sgm4154x_disable_charger(struct sgm4154x_device *sgm)
 {
     int ret;
     printk("sgm4154x_disable_charger\n");
