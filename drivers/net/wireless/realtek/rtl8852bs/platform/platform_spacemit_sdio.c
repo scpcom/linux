@@ -13,10 +13,8 @@
  *
  *****************************************************************************/
 #include <drv_types.h>
-
-extern int spacemit_wlan_set_power(int on);
-extern int spacemit_wlan_get_oob_irq(void);
-extern void spacemit_sdio_detect_change(int enable_scan);
+#include <soc/spacemit/spacemit-sdhci.h>
+#include <soc/spacemit/spacemit-wlan.h>
 
 void platform_wifi_get_oob_irq(int *oob_irq)
 {
