@@ -31,6 +31,8 @@
 #include <linux/of_device.h>
 #include <linux/reboot.h>
 
+#include "k1x_wdt.h"
+
 /* Watchdog Timer Registers Offset */
 #define WDT_WMER	(0x00b8)
 #define WDT_WMR		(0x00bc)
