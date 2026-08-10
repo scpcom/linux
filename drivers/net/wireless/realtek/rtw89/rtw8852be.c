@@ -92,7 +92,7 @@ static struct pci_driver rtw89_8852be_driver = {
 };
 
 #if defined(CONFIG_SOC_SPACEMIT_K1X)
-extern int spacemit_wlan_set_power(int on);
+#include <soc/spacemit/spacemit-wlan.h>
 static int __init rtw89_8852be_driver_init(void)
 {
 	spacemit_wlan_set_power(1);
