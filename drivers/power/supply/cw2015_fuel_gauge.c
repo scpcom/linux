@@ -119,7 +119,7 @@ static int cw_read_word(struct i2c_client *client, unsigned char reg, unsigned c
 }
 
 /*CW2015 update profile function, Often called during initialization*/
-int cw_update_config_info(struct cw_battery *cw_bat)
+static int cw_update_config_info(struct cw_battery *cw_bat)
 {
 	int ret;
 	unsigned char reg_val;
