@@ -45,13 +45,13 @@ const struct ethtool_ops ax88179_ethtool_ops = {
 	.get_regs	= ax_get_regs,
 };
 
-int ax88179_signature(struct ax_device *axdev, struct _ax_ioctl_command *info)
+static int ax88179_signature(struct ax_device *axdev, struct _ax_ioctl_command *info)
 {
 	strncpy(info->sig, AX88179_SIGNATURE, strlen(AX88179_SIGNATURE));
 	return 0;
 }
 
-int ax88179_read_eeprom(struct ax_device *axdev, struct _ax_ioctl_command *info)
+static int ax88179_read_eeprom(struct ax_device *axdev, struct _ax_ioctl_command *info)
 {
 	u8 i;
 	u16 tmp;
@@ -130,7 +130,7 @@ int ax88179_read_eeprom(struct ax_device *axdev, struct _ax_ioctl_command *info)
 	return 0;
 }
 
-int ax88179_write_eeprom(struct ax_device *axdev,
+static int ax88179_write_eeprom(struct ax_device *axdev,
 			 struct _ax_ioctl_command *info)
 {
 	int i;

@@ -2019,7 +2019,7 @@ int ax_get_mac_pass(struct ax_device *axdev, u8 *mac)
 	return 0;
 }
 
-int ax_check_ether_addr(struct ax_device *axdev)
+static int ax_check_ether_addr(struct ax_device *axdev)
 {
 	u8 *addr = (u8 *)axdev->netdev->dev_addr;
 	u8 default_mac[6] = {0, 0x0e, 0xc6, 0x81, 0x79, 0x01};
