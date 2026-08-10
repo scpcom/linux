@@ -26,7 +26,7 @@
 static int fw_loaded;
 
 #ifdef CONFIG_PLATFORM_SPACEMIT
-extern void spacemit_wlan_set_power(int on);
+#include <soc/spacemit/spacemit-wlan.h>
 #endif
 static int aicbsp_platform_power_on(void);
 static void aicbsp_platform_power_off(void);

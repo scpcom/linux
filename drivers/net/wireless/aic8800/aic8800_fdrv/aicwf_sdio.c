@@ -183,9 +183,7 @@ int aicwf_sdio_recv_pkt(struct aic_sdio_dev *sdiodev, struct sk_buff *skbbuf,
 }
 
 #ifdef CONFIG_PLATFORM_SPACEMIT
-extern int spacemit_wlan_set_power(int on);
-extern int spacemit_wlan_get_oob_irq(void);
-extern void spacemit_sdio_detect_change(int enable_scan);
+#include <soc/spacemit/spacemit-wlan.h>
 #endif
 static irqreturn_t rwnx_hostwake_irq_handler(int irq, void *para)
 {

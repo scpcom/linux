@@ -24,9 +24,8 @@
 #include <linux/of_platform.h>
 
 #ifdef CONFIG_PLATFORM_SPACEMIT
-extern int spacemit_wlan_set_power(int on);
-extern int spacemit_wlan_get_oob_irq(void);
-extern void spacemit_sdio_detect_change(int enable_scan);
+#include <soc/spacemit/spacemit-sdhci.h>
+#include <soc/spacemit/spacemit-wlan.h>
 #endif
 static int  aicbsp_platform_power_on(void);
 static void aicbsp_platform_power_off(void);
