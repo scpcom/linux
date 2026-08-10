@@ -660,4 +660,6 @@ struct rtltool_cmd {
 	struct sockaddr ifru_hwaddr;
 };
 
+u8 rtl8152_get_version(struct usb_interface *intf);
+
 #endif /* LINUX_COMPATIBILITY_H */
