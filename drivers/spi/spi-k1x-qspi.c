@@ -530,7 +530,7 @@ static void qspi_write_rbct(struct k1x_qspi *qspi, uint32_t val)
 		qspi_writel(qspi, val, qspi->io_map + QSPI_RBCT);
 }
 
-void qspi_init_ahbread(struct k1x_qspi *qspi, int seq_id)
+static void qspi_init_ahbread(struct k1x_qspi *qspi, int seq_id)
 {
 	u32 buf_cfg = 0;
 
@@ -553,7 +553,7 @@ void qspi_init_ahbread(struct k1x_qspi *qspi, int seq_id)
 	dev_info(qspi->dev, "AHB buf size: %d\n", qspi->ahb_buf_size);
 }
 
-void qspi_dump_reg(struct k1x_qspi *qspi)
+static void qspi_dump_reg(struct k1x_qspi *qspi)
 {
 	u32 reg = 0;
 	void __iomem *base = qspi->io_map;
@@ -737,7 +737,7 @@ static void k1x_qspi_dma_callback(void *arg)
 	complete(dma_completion);
 }
 
-int k1x_qspi_tx_dma_exec(struct k1x_qspi *qspi,
+static int k1x_qspi_tx_dma_exec(struct k1x_qspi *qspi,
 			const struct spi_mem_op *op)
 {
 	struct dma_async_tx_descriptor *desc;
@@ -779,7 +779,7 @@ out:
 	return err;
 }
 
-int k1x_qspi_rx_dma_exec(struct k1x_qspi *qspi, dma_addr_t dma_dst,
+static int k1x_qspi_rx_dma_exec(struct k1x_qspi *qspi, dma_addr_t dma_dst,
 			dma_addr_t dma_src, size_t len)
 {
 	dma_cookie_t cookie;
