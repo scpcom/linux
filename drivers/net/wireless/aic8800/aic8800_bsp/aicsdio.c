@@ -731,7 +731,7 @@ static void aicwf_sdio_bus_stop(struct device *dev)
 	}
 }
 
-struct sk_buff *aicwf_sdio_readframes(struct priv_dev *aicdev)
+static struct sk_buff *aicwf_sdio_readframes(struct priv_dev *aicdev)
 {
 	int ret = 0;
 	u32 size = 0;

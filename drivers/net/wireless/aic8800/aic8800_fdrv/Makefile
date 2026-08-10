@@ -139,6 +139,8 @@ aic8800_fdrv-$(CONFIG_USB_SUPPORT)     += aicwf_usb.o
 aic8800_fdrv-$(CONFIG_PCIE_SUPPORT)    += rwnx_pci.o
 
 ccflags-y += -Wno-implicit-fallthrough
+ccflags-y += -Wno-missing-declarations
+ccflags-y += -Wno-missing-prototypes
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_RWNX_DEBUGFS
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_RWNX_UM_HELPER_DFLT=\"$(CONFIG_RWNX_UM_HELPER_DFLT)\"
 ccflags-$(CONFIG_RWNX_P2P_DEBUGFS) += -DCONFIG_RWNX_P2P_DEBUGFS
