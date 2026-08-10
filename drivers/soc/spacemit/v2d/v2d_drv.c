@@ -197,7 +197,7 @@ const struct dma_fence_ops v2d_fence_ops = {
 	.fence_value_str = v2d_fence_fence_value_str
 };
 
-int v2d_fence_generate(struct v2d_info *info, struct dma_fence **fence, int *fence_fd)
+static int v2d_fence_generate(struct v2d_info *info, struct dma_fence **fence, int *fence_fd)
 {
 	struct sync_file *sync_file = NULL;
 	int fd;
@@ -229,7 +229,7 @@ int v2d_fence_generate(struct v2d_info *info, struct dma_fence **fence, int *fen
 	return 0;
 }
 
-void v2d_fence_wait(struct v2d_info *info, struct dma_fence *fence)
+static void v2d_fence_wait(struct v2d_info *info, struct dma_fence *fence)
 {
 	int err = dma_fence_wait_timeout(fence, false, msecs_to_jiffies(V2D_SHORT_FENCE_TIMEOUT));
 	if (err > 0)
@@ -242,7 +242,7 @@ void v2d_fence_wait(struct v2d_info *info, struct dma_fence *fence)
 		dev_warn(&info->pdev->dev, "error waiting on fence: %d\n", err);
 }
 
-void kfree_v2d_post_task(struct v2d_pending_post_task *element)
+static void kfree_v2d_post_task(struct v2d_pending_post_task *element)
 {
 	if (!element)
 	{
@@ -455,7 +455,7 @@ static void v2d_put_dmabuf(struct v2d_info *v2dinfo, struct v2d_pending_post_tas
 	v2d_iommu_map_end();
 }
 
-int v2d_job_submit(struct v2d_info *info, V2D_SUBMIT_TASK_S *psubmit)
+static int v2d_job_submit(struct v2d_info *info, V2D_SUBMIT_TASK_S *psubmit)
 {
 	int err = 0;
  	V2D_SUBMIT_TASK_S *pTask = NULL;
@@ -522,7 +522,7 @@ error:
 	return err;
 }
 
-void v2d_work_done(struct work_struct *data)
+static void v2d_work_done(struct work_struct *data)
 {
 	struct v2d_pending_post_task *element, *tmp;
 	int refcount;
@@ -560,7 +560,7 @@ void v2d_work_done(struct work_struct *data)
 	mutex_unlock(&info->free_lock);
 }
 
-void do_softreset(void)
+static void do_softreset(void)
 {
 	struct v2d_pending_post_task *element, *tmp;
 	struct dma_fence *pCompleteFence = NULL;
@@ -600,7 +600,7 @@ void do_softreset(void)
 	flush_workqueue(info->v2d_job_done_wq);
 }
 
-void v2d_post_work_func(struct kthread_work *work)
+static void v2d_post_work_func(struct kthread_work *work)
 {
 	struct v2d_info *info = container_of(work, struct v2d_info, post_work);
 	struct v2d_pending_post_task *post, *next;
@@ -665,12 +665,12 @@ static int v2d_dev_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-ssize_t v2d_dev_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
+static ssize_t v2d_dev_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
 {
 	return 0;
 }
 
-ssize_t v2d_dev_write(struct file *filp, const char __user *buf, size_t count, loff_t *ppos)
+static ssize_t v2d_dev_write(struct file *filp, const char __user *buf, size_t count, loff_t *ppos)
 {
 	int ret;
 	struct v2d_info *pInfo;

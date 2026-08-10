@@ -133,7 +133,7 @@ static void ConfigAxiBus(void)
 	v2d_write(V2D_AXI_BUS_CTRL, ctrl.overlay);
 }
 
-int getBytePerPixel(V2D_COLOR_FORMAT_E enFormat)
+static __maybe_unused int getBytePerPixel(V2D_COLOR_FORMAT_E enFormat)
 {
 	int Bpp=0;
 
