@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/reset.h>
 #include <linux/cpufreq.h>
+#include <soc/spacemit/spacemit-sdhci.h>
 
 #include "sdhci.h"
 #include "sdhci-pltfm.h"
@@ -1520,7 +1521,7 @@ static void spacemit_get_of_property(struct sdhci_host *host,
 extern void switch_jtag_tapctl(unsigned int tap_ctl);
 #endif
 #define SD_PMUX_SYSFS "/sys/devices/platform/soc/d4200000.axi/d4280000.sdh/sd_card_pmux"
-ssize_t sdhci_sysfs_pmux_set(struct device *dev, struct device_attribute *attr,
+static ssize_t sdhci_sysfs_pmux_set(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
@@ -1563,7 +1564,7 @@ ssize_t sdhci_sysfs_pmux_set(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-ssize_t sdhci_tx_delaycode_show(struct device *dev, struct device_attribute *attr,
+static ssize_t sdhci_tx_delaycode_show(struct device *dev, struct device_attribute *attr,
 					char *buf)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
@@ -1573,7 +1574,7 @@ ssize_t sdhci_tx_delaycode_show(struct device *dev, struct device_attribute *att
 	return sprintf(buf, "0x%02x\n", pdata->tx_delaycode);
 }
 
-ssize_t sdhci_tx_delaycode_set(struct device *dev, struct device_attribute *attr,
+static ssize_t sdhci_tx_delaycode_set(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
