@@ -1443,7 +1443,7 @@ int spacemit_headphone_notifier_call_chain(__alsa_codec_event_e val, char *v)
 }
 EXPORT_SYMBOL_GPL(spacemit_headphone_notifier_call_chain);
 
-int headphone_connect_event(struct notifier_block *nb, unsigned long event,
+static int headphone_connect_event(struct notifier_block *nb, unsigned long event,
     void *v)
 {
 	switch(event){
