@@ -1,5 +1,6 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include "cts_strerror.h"
 
 #define ERROR_TEXT_ENTRY(errno, err_desc_str) \
     [(errno)] = #errno ", " err_desc_str

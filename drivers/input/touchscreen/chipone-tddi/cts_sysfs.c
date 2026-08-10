@@ -9,6 +9,7 @@
 #include "cts_spi_flash.h"
 #include "cts_firmware.h"
 #include "cts_strerror.h"
+#include "cts_sysfs.h"
 
 #ifdef CONFIG_CTS_SYSFS
 
@@ -31,7 +32,7 @@ static char cmdline_param[MAX_ARG_LENGTH + 1];
 int argc;
 char *argv[MAX_ARG_NUM];
 
-int parse_arg(const char *buf, size_t count)
+static int parse_arg(const char *buf, size_t count)
 {
     char *p;
     size_t size;

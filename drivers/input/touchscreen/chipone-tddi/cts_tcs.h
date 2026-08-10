@@ -121,4 +121,6 @@ void cts_tcs_reinit_fw_status(struct cts_device *cts_dev);
 
 int cts_tcs_set_product_en(struct cts_device *cts_dev, u8 enable);
 int cts_tcs_wait_krang_stop(struct cts_device *cts_dev);
+
+extern int cts_tcs_set_glove_mode(struct cts_device *cts_dev, u8 enable);
 #endif /* _CTS_TCS_H_ */

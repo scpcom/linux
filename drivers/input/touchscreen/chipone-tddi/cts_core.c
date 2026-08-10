@@ -2499,8 +2499,6 @@ void cts_disable_heartbeat_mechanism(struct chipone_ts_data *cts_data)
 #endif
 
 #ifdef CONFIG_CTS_GLOVE
-extern int cts_tcs_set_glove_mode(struct cts_device *cts_dev, u8 enable);
-
 int cts_enter_glove_mode(struct cts_device *cts_dev)
 {
     int ret;
@@ -2609,7 +2607,7 @@ int cts_set_dev_earjack_attached(struct cts_device *cts_dev, bool attached)
 }
 #endif /* CONFIG_CTS_EARJACK_DETECT */
 
-int cts_enable_fw_log_redirect(struct cts_device *cts_dev)
+static __maybe_unused int cts_enable_fw_log_redirect(struct cts_device *cts_dev)
 {
     int ret;
 
@@ -2623,7 +2621,7 @@ int cts_enable_fw_log_redirect(struct cts_device *cts_dev)
     return 0;
 }
 
-int cts_disable_fw_log_redirect(struct cts_device *cts_dev)
+static __maybe_unused int cts_disable_fw_log_redirect(struct cts_device *cts_dev)
 {
     int ret;
 
@@ -2637,12 +2635,12 @@ int cts_disable_fw_log_redirect(struct cts_device *cts_dev)
     return 0;
 }
 
-bool cts_is_fw_log_redirect(struct cts_device *cts_dev)
+static __maybe_unused bool cts_is_fw_log_redirect(struct cts_device *cts_dev)
 {
     return cts_dev->rtdata.fw_log_redirect_enabled;
 }
 
-int cts_fw_log_show_finish(struct cts_device *cts_dev)
+static __maybe_unused int cts_fw_log_show_finish(struct cts_device *cts_dev)
 {
     int ret;
 

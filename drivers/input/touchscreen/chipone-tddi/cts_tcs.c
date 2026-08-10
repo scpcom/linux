@@ -123,7 +123,7 @@ typedef struct {
 
 static u8 str[1024 * 4];
 
-void dump_spi(const char *prefix, u8 *data, size_t datalen)
+static __maybe_unused void dump_spi(const char *prefix, u8 *data, size_t datalen)
 {
 
     int offset = 0;
@@ -737,7 +737,7 @@ int cts_tcs_write(struct cts_device *cts_dev,
 #endif
 }
 
-int cts_tcs_set_krang_stop(struct cts_device *cts_dev)
+static int cts_tcs_set_krang_stop(struct cts_device *cts_dev)
 {
     uint8_t stop = 1;
     int ret;
@@ -959,7 +959,7 @@ int cts_tcs_get_esd_protection(struct cts_device *cts_dev,
     return ret;
 }
 
-int cts_tcs_get_data_ready_flag(struct cts_device *cts_dev, u8 *ready)
+static int cts_tcs_get_data_ready_flag(struct cts_device *cts_dev, u8 *ready)
 {
     u8 buf[1] = { 0 };
     int ret;
@@ -979,7 +979,7 @@ int cts_tcs_clr_gstr_ready_flag(struct cts_device *cts_dev)
             &ready, sizeof(ready));
 }
 
-int cts_tcs_clr_data_ready_flag(struct cts_device *cts_dev)
+static int cts_tcs_clr_data_ready_flag(struct cts_device *cts_dev)
 {
     u8 ready = 0;
 
@@ -1821,7 +1821,7 @@ int cts_tcs_set_proximity_mode(struct cts_device *cts_dev, u8 enable)
     return ret;
 }
 
-int cts_tcs_set_knuckle_mode(struct cts_device *cts_dev, u8 enable)
+static int cts_tcs_set_knuckle_mode(struct cts_device *cts_dev, u8 enable)
 {
     struct cts_firmware_status *status = (struct cts_firmware_status *)
             &cts_dev->rtdata.firmware_status;
@@ -1855,7 +1855,7 @@ int cts_tcs_set_glove_mode(struct cts_device *cts_dev, u8 enable)
     return ret;
 }
 
-int cts_tcs_set_pocket_enable(struct cts_device *cts_dev, u8 enable)
+static int cts_tcs_set_pocket_enable(struct cts_device *cts_dev, u8 enable)
 {
     struct cts_firmware_status *status = (struct cts_firmware_status *)
             &cts_dev->rtdata.firmware_status;

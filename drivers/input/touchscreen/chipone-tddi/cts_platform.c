@@ -311,7 +311,7 @@ static int cts_plat_spi_set_mode(struct spi_device *spi, SPI_SPEED speed, int fl
 }
 #endif /* CFG_MTK_LEGEND_PLATFORM */
 
-int cts_plat_spi_setup(struct cts_platform_data *pdata)
+static int cts_plat_spi_setup(struct cts_platform_data *pdata)
 {
     int ret;
 

@@ -868,24 +868,24 @@ static int cts_switch_to_ic(struct cts_device *cts_dev, uint8_t type)
     return -EIO;
 }
 
-int cts_switch_to_master(struct cts_device *cts_dev)
+static int cts_switch_to_master(struct cts_device *cts_dev)
 {
     return cts_switch_to_ic(cts_dev, 1);
 }
 
-int cts_switch_to_slave(struct cts_device *cts_dev)
+static int cts_switch_to_slave(struct cts_device *cts_dev)
 {
     return cts_switch_to_ic(cts_dev, 2);
 }
 
-int cts_switch_to_all(struct cts_device *cts_dev)
+static int cts_switch_to_all(struct cts_device *cts_dev)
 {
     return cts_switch_to_ic(cts_dev, 3);
 }
 #endif /* CFG_CTS_CASCADE_SUPPORTED */
 #endif /* CONFIG_CTS_I2C_HOST */
 
-int cts_slave_enter_prog_mode(struct cts_device *cts_dev)
+static int cts_slave_enter_prog_mode(struct cts_device *cts_dev)
 {
     u8 magic_num[] = { 0xCC, 0x33, 0x55, 0x5A };
     int ret;

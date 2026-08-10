@@ -1826,7 +1826,7 @@ static int validate_comp_cap(struct cts_device *cts_dev, const char *desc, u8 *c
 #undef SPLIT_LINE_STR
 }
 
-void cts_dump_comp_cap(struct cts_device *cts_dev, u8 *cap, bool to_console)
+static void cts_dump_comp_cap(struct cts_device *cts_dev, u8 *cap, bool to_console)
 {
 #define SPLIT_LINE_STR \
     "-----------------------------------------------------------------------------"

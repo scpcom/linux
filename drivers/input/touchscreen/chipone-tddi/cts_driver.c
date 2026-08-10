@@ -40,7 +40,7 @@ MODULE_PARM_DESC(debug_log, "Show debug log control");
 
 struct chipone_ts_data *g_cts_data = NULL;
 
-int cts_suspend(struct chipone_ts_data *cts_data)
+static int cts_suspend(struct chipone_ts_data *cts_data)
 {
     int ret;
 
@@ -82,7 +82,7 @@ int cts_suspend(struct chipone_ts_data *cts_data)
     return 0;
 }
 
-int cts_resume(struct chipone_ts_data *cts_data)
+static int cts_resume(struct chipone_ts_data *cts_data)
 {
     int ret;
 
