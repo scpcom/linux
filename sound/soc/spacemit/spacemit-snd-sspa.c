@@ -215,7 +215,7 @@ static int spacemit_sspa_get_hdmi_status(void)
 	return !!value;
 }
 
-int spacemit_hdmi_connect_event(struct notifier_block *nb, unsigned long event,
+static int spacemit_hdmi_connect_event(struct notifier_block *nb, unsigned long event,
 	void *v)
 {
 	int ret;

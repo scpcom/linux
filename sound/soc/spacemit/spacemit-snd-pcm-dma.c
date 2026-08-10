@@ -866,7 +866,7 @@ unlock:
 	return ret;
 }
 
-snd_pcm_uframes_t
+static snd_pcm_uframes_t
 spacemit_snd_pcm_pointer(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	struct spacemit_snd_dmadata *dmadata = substream->runtime->private_data;

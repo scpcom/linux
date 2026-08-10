@@ -22,7 +22,7 @@
 #define PREFIX	"simple-audio-card,"
 
 
-int spacemit_simple_hw_params(struct snd_pcm_substream *substream,
+static int spacemit_simple_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
@@ -157,7 +157,7 @@ static int asoc_simple_card_jack_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-int simple_util_parse_daistream(struct device *dev,
+static int simple_util_parse_daistream(struct device *dev,
 				struct device_node *node,
 				char *prefix,
 				struct snd_soc_dai_link *dai_link)
