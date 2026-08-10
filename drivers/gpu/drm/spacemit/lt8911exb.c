@@ -206,7 +206,7 @@ static struct lt8911exb *panel_to_lt8911exb(struct drm_panel *panel)
 	return container_of(panel, struct lt8911exb, base);
 }
 
-void lt8911exb_mipi_video_timing(struct lt8911exb *lt8911exb)
+static void lt8911exb_mipi_video_timing(struct lt8911exb *lt8911exb)
 {
 	__maybe_unused unsigned int tmp;
 
@@ -281,7 +281,7 @@ void lt8911exb_mipi_video_timing(struct lt8911exb *lt8911exb)
 #endif
 }
 
-void lt8911exb_edp_video_cfg(struct lt8911exb *lt8911exb)
+static void lt8911exb_edp_video_cfg(struct lt8911exb *lt8911exb)
 {
 	__maybe_unused unsigned int tmp;
 
@@ -359,7 +359,7 @@ void lt8911exb_edp_video_cfg(struct lt8911exb *lt8911exb)
 #endif
 }
 
-void lt8911exb_read_edid(struct lt8911exb *lt8911exb)
+static void lt8911exb_read_edid(struct lt8911exb *lt8911exb)
 {
 #ifdef _read_edid_
 	u8 i, j;
@@ -454,7 +454,7 @@ void lt8911exb_read_edid(struct lt8911exb *lt8911exb)
 #endif
 }
 
-void lt8911exb_setup(struct lt8911exb *lt8911exb)
+static void lt8911exb_setup(struct lt8911exb *lt8911exb)
 {
 	u8	i;
 	u8	pcr_pll_postdiv;
@@ -743,7 +743,7 @@ void lt8911exb_setup(struct lt8911exb *lt8911exb)
 	regmap_write(lt8911exb->regmap, 0x01, (u8)(Nvid_Val[_Nvid] % 256));	// 0x00
 }
 
-void lt8911exb_video_check(struct lt8911exb *lt8911exb)
+static void lt8911exb_video_check(struct lt8911exb *lt8911exb)
 {
 	unsigned int reg;
 	unsigned int temp2;
@@ -835,7 +835,7 @@ void lt8911exb_video_check(struct lt8911exb *lt8911exb)
 
 }
 
-void DpcdWrite(struct lt8911exb *lt8911exb, u32 Address, u8 Data)
+static void DpcdWrite(struct lt8911exb *lt8911exb, u32 Address, u8 Data)
 {
 	/***************************
 	   注意大小端的问题!
@@ -866,7 +866,7 @@ void DpcdWrite(struct lt8911exb *lt8911exb, u32 Address, u8 Data)
 	}
 }
 
-unsigned int DpcdRead( struct lt8911exb *lt8911exb, u32 Address )
+static unsigned int DpcdRead( struct lt8911exb *lt8911exb, u32 Address )
 {
 	/***************************
 	   注意大小端的问题!
@@ -919,7 +919,7 @@ unsigned int DpcdRead( struct lt8911exb *lt8911exb, u32 Address )
 
 
 
-void lt8911exb_link_train(struct lt8911exb *lt8911exb)
+static void lt8911exb_link_train(struct lt8911exb *lt8911exb)
 {
 	regmap_write(lt8911exb->regmap, 0xff, 0x81);
 	regmap_write(lt8911exb->regmap, 0x06, 0xdf); // rset VID TX
@@ -983,7 +983,7 @@ void lt8911exb_link_train(struct lt8911exb *lt8911exb)
 #endif
 }
 
-void lt8911exb_reset(struct lt8911exb *lt8911exb)
+static void lt8911exb_reset(struct lt8911exb *lt8911exb)
 {
 	if (!lt8911exb->reset_gpio) {
 		DRM_DEBUG_ATOMIC("no gpio, no reset\n");
@@ -998,7 +998,7 @@ void lt8911exb_reset(struct lt8911exb *lt8911exb)
 	usleep_range(5*1000, 10*1000); //10ms
 }
 
-void LT8911EX_TxSwingPreSet(struct lt8911exb *lt8911exb)
+static void LT8911EX_TxSwingPreSet(struct lt8911exb *lt8911exb)
 {
 	regmap_write(lt8911exb->regmap, 0xFF, 0x82);
 	regmap_write(lt8911exb->regmap, 0x22, Swing_Setting1[Level]);	//lane 0 tap0
@@ -1014,7 +1014,7 @@ void LT8911EX_TxSwingPreSet(struct lt8911exb *lt8911exb)
 #endif
 }
 
-void LT8911EXB_LinkTrainResultCheck( struct lt8911exb *lt8911exb)
+static void LT8911EXB_LinkTrainResultCheck( struct lt8911exb *lt8911exb)
 {
 #ifdef _link_train_enable_
 	u8	i;
@@ -1064,7 +1064,7 @@ void LT8911EXB_LinkTrainResultCheck( struct lt8911exb *lt8911exb)
 }
 
 
-void LT8911EX_link_train_result(struct lt8911exb *lt8911exb)
+static void LT8911EX_link_train_result(struct lt8911exb *lt8911exb)
 {
 	u8 i;
 	unsigned int reg;
@@ -1092,7 +1092,7 @@ void LT8911EX_link_train_result(struct lt8911exb *lt8911exb)
 	}
 }
 
-void PCR_Status(struct lt8911exb *lt8911exb)	// for debug
+static void PCR_Status(struct lt8911exb *lt8911exb)	// for debug
 {
 #ifdef _uart_debug_
 	unsigned int reg;

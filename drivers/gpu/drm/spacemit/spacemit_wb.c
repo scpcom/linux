@@ -66,9 +66,11 @@ static const struct drm_encoder_helper_funcs spacemit_wb_encoder_helper_funcs = 
 	.atomic_check = spacemit_wb_encoder_atomic_check,
 };
 
+#if 0
 static const struct drm_encoder_funcs spacemit_wb_encoder_funcs = {
 	.destroy = drm_encoder_cleanup,
 };
+#endif
 
 static int spacemit_wb_connector_get_modes(struct drm_connector *connector)
 {
@@ -108,7 +110,7 @@ static const struct drm_connector_helper_funcs spacemit_wb_connector_helper_func
 	.mode_valid = spacemit_wb_connector_mode_valid,
 };
 
-void spacemit_wb_drm_atomic_helper_connector_destroy_state(struct drm_connector *connector,
+static void spacemit_wb_drm_atomic_helper_connector_destroy_state(struct drm_connector *connector,
 					  struct drm_connector_state *state)
 {
 	struct drm_crtc *crtc = NULL;

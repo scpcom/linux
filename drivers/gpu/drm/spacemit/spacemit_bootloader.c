@@ -11,6 +11,8 @@
 #include <linux/mm.h>
 #include <linux/memblock.h>
 
+#include "spacemit_bootloader.h"
+
 static bool spacemit_dpu_free_logo = false;
 
 int spacemit_dpu_free_bootloader_mem(struct reserved_mem *rmem)
