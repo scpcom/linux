@@ -579,7 +579,7 @@ static void xhci_disable_port(struct xhci_hcd *xhci, struct xhci_port *port)
 }
 
 #if defined(CONFIG_SOC_SPACEMIT_K1X)
-extern void dwc3_spacemit_clear_disconnect(struct device *dev);
+#include <soc/spacemit/spacemit-dwc3.h>
 #endif
 
 static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
