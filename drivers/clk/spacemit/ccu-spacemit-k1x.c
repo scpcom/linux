@@ -1541,7 +1541,7 @@ static struct clk_hw_table bootup_enable_clk_table[] = {
 	{"pmua_aclk", 	CLK_PMUA_ACLK},
 };
 
-void spacemit_clocks_enable(struct clk_hw_table *tbl, int tbl_size)
+static void spacemit_clocks_enable(struct clk_hw_table *tbl, int tbl_size)
 {
 	int i;
 	struct clk *clk;
@@ -1556,7 +1556,7 @@ void spacemit_clocks_enable(struct clk_hw_table *tbl, int tbl_size)
 }
 
 unsigned long spacemit_k1x_ddr_freq_tbl[MAX_FREQ_LV + 1] = {0};
-void spacemit_fill_ddr_freq_tbl(void)
+static void spacemit_fill_ddr_freq_tbl(void)
 {
 	int i;
 	struct clk *clk;
@@ -1571,7 +1571,7 @@ void spacemit_fill_ddr_freq_tbl(void)
 	}
 }
 
-int ccu_common_init(struct clk_hw * hw, struct spacemit_k1x_clk *clk_info)
+static int ccu_common_init(struct clk_hw * hw, struct spacemit_k1x_clk *clk_info)
 {
 	struct ccu_common *common = hw_to_ccu_common(hw);
 	struct ccu_pll *pll = hw_to_ccu_pll(hw);

@@ -80,4 +80,8 @@ static inline struct ccu_common *hw_to_ccu_common(struct clk_hw *hw)
 int spacemit_ccu_probe(struct device_node *node, struct spacemit_k1x_clk *clk_info,
 		    struct clk_hw_onecell_data *desc);
 
+void * spacemit_get_ddr_freq_tbl(void);
+u32 spacemit_get_ddr_freq_level(void);
+int spacemit_set_ddr_freq_level(u32 level);
+
 #endif /* _CCU_SPACEMIT_K1X_H_ */
