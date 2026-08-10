@@ -23,6 +23,7 @@
 #include <linux/interrupt.h>
 #include <linux/gpio/consumer.h>
 #include <linux/platform_device.h>
+#include <soc/spacemit/spacemit-wlan.h>
 #include "spacemit-pwrseq.h"
 
 struct wlan_pwrseq {
