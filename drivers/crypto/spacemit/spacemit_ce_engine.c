@@ -102,7 +102,8 @@ struct regmap *spacemit_syscon_regmap_lookup_by_compatible(const char *s)
 }
 EXPORT_SYMBOL_GPL(spacemit_syscon_regmap_lookup_by_compatible);
 
-void dump_data(const unsigned char *tag, const unsigned char *str, unsigned int len)
+#ifdef CONFIG_SPACEMIT_CRYPTO_SELF_TEST
+static void dump_data(const unsigned char *tag, const unsigned char *str, unsigned int len)
 {
 	char *p_addr;
 	uint8_t *buff;
@@ -124,6 +125,7 @@ void dump_data(const unsigned char *tag, const unsigned char *str, unsigned int 
 
 	kfree((void *)p_addr);
 }
+#endif
 
 static void engine_irq_enable(int index)
 {
@@ -584,7 +586,8 @@ static int crypto_aes_set_key2(int index, const uint8_t *key, AES_KEY_LEN_T keyl
 	return 0;
 }
 
-int ce_rijndael_setup_internal(int index, const unsigned char *key, int keylen)
+#ifdef CONFIG_SPACEMIT_CRYPTO_SELF_TEST
+static int ce_rijndael_setup_internal(int index, const unsigned char *key, int keylen)
 {
 	if (!key || keylen <= 0) {
 		goto error;
@@ -603,6 +606,7 @@ int ce_rijndael_setup_internal(int index, const unsigned char *key, int keylen)
 error:
 	return -ENOKEY;
 }
+#endif
 
 BLOCKING_NOTIFIER_HEAD(spacemit_crypto_chain);
 
