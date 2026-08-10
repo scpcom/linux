@@ -29,6 +29,7 @@
 
 #include "../../pci.h"
 #include "pcie-designware.h"
+#include "pcie-k1x.h"
 
 #define PCIE_VENDORID_MASK	0xffff
 #define PCIE_DEVICEID_SHIFT	16
@@ -262,7 +263,7 @@ static inline void k1x_pcie_phy0_reg_writel(struct k1x_pcie *pcie, u32 offset,
 #define PCIE_REF_CLK_OUTPUT
 static int porta_init_done = 0;
 // wait porta rterm done
-void porta_rterm(struct k1x_pcie *k1x)
+static void porta_rterm(struct k1x_pcie *k1x)
 {
 	int rd_data, count;
 	u32 val;
@@ -388,7 +389,7 @@ void porta_rterm(struct k1x_pcie *k1x)
 }
 
 // force rterm value to porta/b/c
-void rterm_force(struct k1x_pcie *k1x, u32 pcie_rcal)
+static void rterm_force(struct k1x_pcie *k1x, u32 pcie_rcal)
 {
 	int i, lane;
 	u32 val = 0;
@@ -731,7 +732,7 @@ static struct msi_domain_info k1x_pcie_msi_domain_info = {
 };
 
 /* MSI int handler */
-irqreturn_t k1x_handle_msi_irq(struct dw_pcie_rp *pp)
+static irqreturn_t k1x_handle_msi_irq(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1x_pcie *k1x = to_k1x_pcie(pci);
@@ -835,7 +836,7 @@ static const struct irq_domain_ops k1x_pcie_msi_domain_ops = {
 	.free	= k1x_pcie_irq_domain_free,
 };
 
-int k1x_pcie_allocate_domains(struct dw_pcie_rp *pp)
+static int k1x_pcie_allocate_domains(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pcie = to_dw_pcie_from_pp(pp);
 	struct fwnode_handle *fwnode = of_node_to_fwnode(pcie->dev->of_node);
@@ -860,7 +861,7 @@ int k1x_pcie_allocate_domains(struct dw_pcie_rp *pp)
 	return 0;
 }
 
-void k1x_pcie_msix_addr_alloc(struct dw_pcie_rp *pp)
+static void k1x_pcie_msix_addr_alloc(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1x_pcie *k1x = to_k1x_pcie(pci);
@@ -889,7 +890,7 @@ void k1x_pcie_msix_addr_alloc(struct dw_pcie_rp *pp)
 	k1x_pcie_phy_ahb_writel(k1x, ADDR_MSIX_MON_BASE0, (lower_32_bits(msi_target) >> 2));
 }
 
-void k1x_pcie_msi_addr_alloc(struct dw_pcie_rp *pp)
+static void k1x_pcie_msi_addr_alloc(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1x_pcie *k1x = to_k1x_pcie(pci);
@@ -999,7 +1000,7 @@ void k1x_pcie_disable_clocks(struct k1x_pcie *k1x)
 }
 EXPORT_SYMBOL_GPL(k1x_pcie_disable_clocks);
 
-int k1x_pcie_wait_for_speed_change(struct dw_pcie *pci)
+static __maybe_unused int k1x_pcie_wait_for_speed_change(struct dw_pcie *pci)
 {
 	struct device *dev = pci->dev;
 	u32 tmp;
@@ -1129,7 +1130,7 @@ static void k1x_pcie_msi_irq_handler(struct irq_desc *desc)
 	chained_irq_exit(chip, desc);
 }
 
-int k1x_pcie_msi_host_init(struct dw_pcie_rp *pp)
+static int k1x_pcie_msi_host_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct device *dev = pci->dev;
@@ -1160,7 +1161,7 @@ static const struct dw_pcie_host_ops k1x_pcie_host_ops = {
 
 static void (*k1x_pcie_irq_callback)(int);
 
-void k1x_pcie_set_irq_callback(void (*fn)(int))
+static __maybe_unused void k1x_pcie_set_irq_callback(void (*fn)(int))
 {
 	k1x_pcie_irq_callback = fn;
 }
