@@ -47,6 +47,8 @@
 #include <linux/timer.h>
 #include <linux/pm.h>
 
+#include "pxa_k1x.h"
+
 #define	DMA_BLOCK		UART_XMIT_SIZE
 #define	DMA_BURST_SIZE		(8)
 #define	DMA_FIFO_THRESHOLD	(32)
