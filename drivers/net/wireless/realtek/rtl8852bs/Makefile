@@ -7,6 +7,9 @@ EXTRA_CFLAGS += -O1
 #EXTRA_CFLAGS += -pedantic
 #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
 
+EXTRA_CFLAGS += -Wno-empty-body
+EXTRA_CFLAGS += -Wno-missing-declarations
+EXTRA_CFLAGS += -Wno-missing-prototypes
 EXTRA_CFLAGS += -Wno-unused-variable
 #EXTRA_CFLAGS += -Wno-unused-value
 EXTRA_CFLAGS += -Wno-unused-label
