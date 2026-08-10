@@ -101,7 +101,7 @@ static int csiphy_set_power(struct csiphy_device *csiphy_dev, int on)
  *
  * Return: 0 on success, error code otherwise.
  */
-int csiphy_set_2to2dphy(struct csiphy_device *csiphy_dev, int enable)
+static int csiphy_set_2to2dphy(struct csiphy_device *csiphy_dev, int enable)
 {
 	if (enable) {
 		/* REG_CSI2_DPHY1[1]: analog bif mode on */

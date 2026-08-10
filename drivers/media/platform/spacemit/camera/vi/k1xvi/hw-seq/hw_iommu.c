@@ -91,7 +91,7 @@ static void __maybe_unused iommu_set_tbu_qos(struct isp_iommu_device *mmu_dev, i
  *   this bit will be cleared to 0 after TLB preload.
  *   only work for full frame tbu.
  */
-void iommu_update_trans_table(struct isp_iommu_device *mmu_dev, int tbu)
+static __maybe_unused void iommu_update_trans_table(struct isp_iommu_device *mmu_dev, int tbu)
 {
 	iommu_reg_set_bit(mmu_dev, REG_IOMMU_TCR0(tbu), 0x1 << 2);
 }

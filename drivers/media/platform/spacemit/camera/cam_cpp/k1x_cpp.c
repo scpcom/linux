@@ -564,7 +564,7 @@ static int k1x_cpp_process_frame(struct cpp_ctx *ctx, struct cpp_frame_info *inf
 	return ret;
 }
 
-int k1x_cpp_send_event(struct cpp_device *cpp_dev, u32 event_type,
+static int k1x_cpp_send_event(struct cpp_device *cpp_dev, u32 event_type,
 		       struct k1x_cpp_event_data *event_data)
 {
 	struct v4l2_event cpp_event;

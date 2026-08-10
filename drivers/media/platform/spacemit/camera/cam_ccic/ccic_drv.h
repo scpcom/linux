@@ -220,6 +220,7 @@ static inline void ccic_reg_clear_bit(struct ccic_dev *ccic_dev,
 
 int ccic_ctrl_get(struct ccic_ctrl **ctrl_host, int id,
 		  irqreturn_t(*handler) (struct ccic_ctrl *, u32));
+void ccic_ctrl_put(struct ccic_ctrl *ctrl);
 int ccic_dma_get(struct ccic_dma **ccic_dma, int id);
 int ccic_dphy_hssettle_set(unsigned int ccic_id, unsigned int dphy_freg);
 #endif

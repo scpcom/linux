@@ -562,7 +562,7 @@ static int ccic_clk_set_rate(struct ccic_ctrl *ctrl_dev, int mode)
 	return 0;
 }
 
-int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
+static int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
 {
 	int ret = 0;
 	struct ccic_dev *ccic_dev = ctrl->ccic_dev;
@@ -612,7 +612,7 @@ int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
 	return ret;
 }
 
-int ccic_config_csi2_mbus(struct ccic_ctrl *ctrl, int md, u8 vc0, u8 vc1, u8 dt0, u8 dt1,
+static int ccic_config_csi2_mbus(struct ccic_ctrl *ctrl, int md, u8 vc0, u8 vc1, u8 dt0, u8 dt1,
 			  int lanes)
 {
 	int ret;
@@ -639,7 +639,7 @@ int ccic_config_csi2_mbus(struct ccic_ctrl *ctrl, int md, u8 vc0, u8 vc1, u8 dt0
 	return ret;
 }
 
-int ccic_config_csi2idi_mux(struct ccic_ctrl *ctrl, int chnl, int idi, int en)
+static int ccic_config_csi2idi_mux(struct ccic_ctrl *ctrl, int chnl, int idi, int en)
 {
 	struct ccic_dev *csi2idi = NULL;
 	struct ccic_dev *tmp;
@@ -687,7 +687,7 @@ int ccic_config_csi2idi_mux(struct ccic_ctrl *ctrl, int chnl, int idi, int en)
 	return 0;
 }
 
-int ccic_reset_csi2idi(struct ccic_ctrl *ctrl, int idi, int rst)
+static int ccic_reset_csi2idi(struct ccic_ctrl *ctrl, int idi, int rst)
 {
 	struct ccic_dev *csi2idi = NULL;
 	struct ccic_dev *tmp;
@@ -1267,7 +1267,7 @@ struct platform_driver k1x_ccic_driver = {
 	.remove = k1x_ccic_remove,
 };
 
-int __init k1x_ccic_driver_init(void)
+static int __init k1x_ccic_driver_init(void)
 {
 	int ret;
 
@@ -1282,7 +1282,7 @@ int __init k1x_ccic_driver_init(void)
 	return ret;
 }
 
-void __exit k1x_ccic_driver_exit(void)
+static void __exit k1x_ccic_driver_exit(void)
 {
 	platform_driver_unregister(&k1x_ccic_driver);
 	ccic_csiphy_unregister();

@@ -177,7 +177,7 @@ static const struct svivi_fmt_info svivi_formats[] = {
 
 };
 
-int send_to_user(struct sock *netlinkfd, void *data, unsigned int len, unsigned int pid, unsigned int seq)
+static int send_to_user(struct sock *netlinkfd, void *data, unsigned int len, unsigned int pid, unsigned int seq)
 {
     struct sk_buff *nl_skb;
     struct nlmsghdr *nlh;
@@ -207,7 +207,7 @@ int send_to_user(struct sock *netlinkfd, void *data, unsigned int len, unsigned 
 
     return ret;
 }
-int fill_recv_msg_by_nlmsg_data (struct nlmsghdr *nlh)
+static int fill_recv_msg_by_nlmsg_data (struct nlmsghdr *nlh)
 {
     char *data = NULL;
 
@@ -435,7 +435,7 @@ static const struct svivi_fmt_info *svivi_format_by_fourcc(u32 fourcc)
 	return NULL;
 }
 
-const struct svivi_fmt_info *svivi_format_try(struct v4l2_pix_format_mplane *pix)
+static const struct svivi_fmt_info *svivi_format_try(struct v4l2_pix_format_mplane *pix)
 {
 	const struct svivi_fmt_info *fmt;
 	unsigned int i;
@@ -904,7 +904,7 @@ static void svivi_dev_release(struct v4l2_device *v4l2_dev)
 	kfree(vind);
 }
 
-void svivi_video_device_release_empty(struct video_device *vdev) {
+static void svivi_video_device_release_empty(struct video_device *vdev) {
 
 }
 

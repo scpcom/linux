@@ -227,6 +227,7 @@ int ccic_dma_set_burst(struct ccic_dev *ccic_dev)
 	return 0;
 }
 
+#if 0
 void ccic_dma_enable(struct ccic_dev *ccic_dev, int en)
 {
 	if (en) {
@@ -239,6 +240,7 @@ void ccic_dma_enable(struct ccic_dev *ccic_dev, int en)
 		ccic_reg_clear_bit(ccic_dev, REG_CTRL0, BIT(0));
 	}
 }
+#endif
 
 int ccic_csi2idi_src_sel(struct ccic_dev *ccic_dev, int sel)
 {
