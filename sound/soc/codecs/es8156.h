@@ -81,5 +81,7 @@ enum vmidlow {
 #define ES8156_1V8 1
 #define ES8156_DVDD ES8156_1V8
 
+int es8156_headset_detect(int jack_insert);
+
 #endif
 
