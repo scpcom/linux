@@ -31,6 +31,7 @@
 #include <media/k1x/k1x_videodev2.h>
 #include <media/k1x/k1x_media_bus_format.h>
 #include <linux/reset.h>
+#include <soc/spacemit/spacemit_dpu_mclk.h>
 #include "../../cam_ccic/ccic_drv.h"
 //#include <soc/spm/plat.h>
 //#include <soc/spm/clk-plat.h>
@@ -2828,8 +2829,6 @@ static long fe_isp_global_reset(struct isp_context *isp_ctx)
 	hw_isp_top_global_reset(SC_BLOCK(isp_ctx->pipes[0]));
 	return wait_for_completion_interruptible_timeout(&isp_ctx->global_reset_done, msecs_to_jiffies(500));
 }
-extern void dpu_mclk_exclusive_put(void);
-extern bool dpu_mclk_exclusive_get(void);
 
 static int __fe_isp_s_power(struct v4l2_subdev *sd, int on)
 {
