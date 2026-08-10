@@ -25,7 +25,7 @@ struct bin_code_chain bin_code_map[SEMI_TOUCH_RAM_CODE_COUNT] =
     {fw_short_mcapshare, sizeof(fw_short_mcapshare)},
 };
 
-int semi_touch_write_core_data_and_check(unsigned int addr, const unsigned char* buffer, unsigned short len)
+static int semi_touch_write_core_data_and_check(unsigned int addr, const unsigned char* buffer, unsigned short len)
 {
     int ret = 0, once = 0, index = 0, retry = 0;
     unsigned char core_cmp_buffer[MAX_CORE_WRITE_LEN];
@@ -118,7 +118,7 @@ int semi_touch_run_ram_code(unsigned char code)
     This function will put IC into NVM mode, call it carefully and must reset 
     the chip before entering normal mode.
 */
-int semi_touch_enter_burn_mode(void)
+static int semi_touch_enter_burn_mode(void)
 {
     int ret = 0;
     struct m_ctp_cmd_std_t cmd_send_tp;
@@ -150,7 +150,7 @@ int semi_touch_enter_burn_mode(void)
     set_status_pointing(st_dev.stc.ctp_run_status);
     return -SEMI_DRV_ERR_HAL_IO;
 }
-int semi_touch_core_write(struct apk_complex_data* apk_comlex_addr)
+static int semi_touch_core_write(struct apk_complex_data* apk_comlex_addr)
 {
     int ret = -EINVAL;
     struct m_ctp_cmd_std_t* ptr_cmd = (struct m_ctp_cmd_std_t*)apk_comlex_addr->stm_cmd_buffer;
@@ -166,7 +166,7 @@ int semi_touch_core_write(struct apk_complex_data* apk_comlex_addr)
 
     return ret;
 }
-int semi_touch_core_read(struct apk_complex_data* apk_comlex_addr)
+static int semi_touch_core_read(struct apk_complex_data* apk_comlex_addr)
 {
     int ret = -EINVAL;
     struct m_ctp_cmd_std_t* ptr_cmd = (struct m_ctp_cmd_std_t*)apk_comlex_addr->stm_cmd_buffer;
@@ -179,7 +179,7 @@ int semi_touch_core_read(struct apk_complex_data* apk_comlex_addr)
 
     return ret;
 }
-int semi_touch_burn_write(struct apk_complex_data* apk_comlex_addr)
+static int semi_touch_burn_write(struct apk_complex_data* apk_comlex_addr)
 {
     int ret = -EINVAL;
     struct m_ctp_cmd_std_t* ptr_cmd = (struct m_ctp_cmd_std_t*)apk_comlex_addr->stm_cmd_buffer;
@@ -194,7 +194,7 @@ int semi_touch_burn_write(struct apk_complex_data* apk_comlex_addr)
 
     return cmd_send_to_tp(ptr_cmd, driv_rsp, 7500);
 }
-int semi_touch_burn_read(struct apk_complex_data* apk_comlex_addr)
+static int semi_touch_burn_read(struct apk_complex_data* apk_comlex_addr)
 {
     int ret = -EINVAL;
     struct m_ctp_cmd_std_t *ptr_cmd = (struct m_ctp_cmd_std_t*)apk_comlex_addr->stm_cmd_buffer;
@@ -239,7 +239,7 @@ int semi_touch_memory_read(struct apk_complex_data* apk_comlex_addr)
     }
 }
 
-int semi_touch_bulk_read(unsigned char *pdes, unsigned int adr, unsigned int len)
+static int semi_touch_bulk_read(unsigned char *pdes, unsigned int adr, unsigned int len)
 {
     int ret = -EINVAL;
     unsigned int left = len;
@@ -282,7 +282,7 @@ int semi_touch_bulk_read(unsigned char *pdes, unsigned int adr, unsigned int len
     return ret;
 }
 
-int semi_touch_bulk_write(unsigned char *psrc, unsigned int adr, unsigned int len)
+static int semi_touch_bulk_write(unsigned char *psrc, unsigned int adr, unsigned int len)
 {
     int ret = -EINVAL;
     unsigned int left = len;
@@ -339,7 +339,7 @@ int semi_touch_get_backup_pid(unsigned int *id)
     return ret;
 }
 
-int semi_touch_burn_erase(void)
+static int semi_touch_burn_erase(void)
 {
     int ret = SEMI_DRV_ERR_OK;
 
@@ -357,7 +357,7 @@ int semi_touch_burn_erase(void)
     return ret;
 }
 
-unsigned int config_to_vid_pid(unsigned char *ptcfg, unsigned int len)
+static unsigned int config_to_vid_pid(unsigned char *ptcfg, unsigned int len)
 {
     unsigned int upd_vid_pid;
 #if TYPE_OF_IC(SEMI_TOUCH_IC) == TYPE_OF_IC(SEMI_TOUCH_5816)
@@ -428,7 +428,7 @@ static int semi_touch_check_cfg_update(unsigned char *parray, unsigned int cfg_s
     return ret;
 }
 
-int semi_touch_check_boot_update(unsigned char *pdata, unsigned int len, unsigned int* vlist, unsigned int n_match, unsigned int force_update)
+static int semi_touch_check_boot_update(unsigned char *pdata, unsigned int len, unsigned int* vlist, unsigned int n_match, unsigned int force_update)
 {
     int ret = SEMI_DRV_ERR_OK;
     int k, idx_active;
@@ -481,7 +481,7 @@ int semi_touch_check_boot_update(unsigned char *pdata, unsigned int len, unsigne
         -1  : some error
         0x00: successfull
 */
-int semi_touch_update_updfile(const unsigned char *pdata, unsigned int len, unsigned int force_update)
+static int semi_touch_update_updfile(const unsigned char *pdata, unsigned int len, unsigned int force_update)
 {
     int ret = SEMI_DRV_ERR_OK;
     unsigned int cfg_single_len = 0, cfg_offset = 0;
@@ -511,7 +511,7 @@ int semi_touch_update_updfile(const unsigned char *pdata, unsigned int len, unsi
     return ret;
 }
 
-int semi_touch_check_and_update(const unsigned char* udp, unsigned int len, unsigned char bootCheckOk)
+static int semi_touch_check_and_update(const unsigned char* udp, unsigned int len, unsigned char bootCheckOk)
 {
     int ret = -EINVAL; 
 

@@ -76,7 +76,7 @@ static int input_device_deinit(void)
     return ret;  
 }
 
-bool semi_touch_vkey_handled(bool pointed, unsigned int x, unsigned int y)
+static bool semi_touch_vkey_handled(bool pointed, unsigned int x, unsigned int y)
 {
 #if SEMI_TOUCH_VKEY_MAPPING
     int key = 0;
@@ -265,7 +265,7 @@ static int semi_touch_irq_init(struct sm_touch_dev *st_dev)
     return 0;
 }
 
-int semi_touch_resolution_adaption(struct sm_touch_dev *st_dev)
+static int semi_touch_resolution_adaption(struct sm_touch_dev *st_dev)
 {
     int ret = -SEMI_DRV_ERR_HAL_IO;
     unsigned char readbuffer[256] = {0};

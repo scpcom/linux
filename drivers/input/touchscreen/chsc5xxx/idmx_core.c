@@ -200,7 +200,7 @@ int semi_touch_proximity_stop(void)
 }
 #endif
 
-int semi_touch_platform_variety(void)
+static int semi_touch_platform_variety(void)
 {
     if(st_dev.int_pin) 
     {

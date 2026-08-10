@@ -14,7 +14,7 @@ enum entry_type{ chsc_version, chsc_tp_info, chsc_proximity, chsc_guesture, chsc
 /******************************************************************************************************************************************/
 static struct proc_dir_entry* custom_proc_entry[entry_max];
 
-void semi_touch_create_nodes_dir(void) 
+static void semi_touch_create_nodes_dir(void)
 {
     if(NULL == st_dev.chsc_nodes_dir) 
     {
@@ -22,7 +22,7 @@ void semi_touch_create_nodes_dir(void)
     }
 }
 
-void semi_touch_release_nodes_dir(void)
+static void semi_touch_release_nodes_dir(void)
 {
     int index = 0;
     for(index = 0; index < entry_max; index++)
@@ -147,7 +147,7 @@ ret = 0
 #define chsc_esd_check_node_read_declare() chsc_esd_check_node_read(struct kobject* dev, struct kobj_attribute* attr, char* buff)
 #endif //SEMI_TOUCH_MAKE_NODES_DIR == MAKE_NDDE_UNDER_SYS
 
-const char* const mapping_ic_from_type(unsigned char ictype)
+static const char* const mapping_ic_from_type(unsigned char ictype)
 {
     static char *ic_name = "un-defined";
 
@@ -504,7 +504,7 @@ static ssize_t chsc_online_update_node_read_declare()
 
 /********************************************************************************************************************************/
 /*glove function*/
-int semi_touch_glove_prepare(void)
+static int semi_touch_glove_prepare(void)
 {
 #if SEMI_TOUCH_GLOVE_OPEN
     open_glove_function(st_dev.stc.custom_function_en);
@@ -534,7 +534,7 @@ int semi_touch_glove_prepare(void)
 #define GESTURE_Z                            0x65
 #define GESTURE_L                            0x44
 //static struct wake_lock gesture_timeout_wakelock;
-int semi_touch_gesture_prepare(void)
+static int semi_touch_gesture_prepare(void)
 {
     //open_guesture_function(st_dev.stc.custom_function_en);
     //wake_lock_init(&gesture_timeout_wakelock, WAKE_LOCK_SUSPEND, "gesture_timeout_wakelock");
@@ -573,7 +573,7 @@ int semi_touch_gesture_prepare(void)
 
     return 0;
 }
-int semi_touch_gesture_stop(void)
+static int semi_touch_gesture_stop(void)
 {
     //if(is_guesture_function_en(st_dev.stc.custom_function_en))
     //{
@@ -660,8 +660,8 @@ bool semi_touch_gesture_report(unsigned char gesture_id)
     return true;
 }
 #else //SEMI_TOUCH_GESTURE_OPEN
-int semi_touch_gesture_prepare(void) { return 0; }
-int semi_touch_gesture_stop(void) { return 0; }
+static int semi_touch_gesture_prepare(void) { return 0; }
+static int semi_touch_gesture_stop(void) { return 0; }
 int semi_touch_wake_lock(void) { return 0; }
 bool semi_touch_gesture_report(unsigned char gesture_id) { return 0; }
 #endif //SEMI_TOUCH_GESTURE_OPEN
@@ -671,7 +671,7 @@ bool semi_touch_gesture_report(unsigned char gesture_id) { return 0; }
 #if SEMI_TOUCH_ESD_CHECK_OPEN
 static void semi_touch_esd_work_fun(struct work_struct *work);
 
-int semi_touch_esd_check_prepare(void)
+static int semi_touch_esd_check_prepare(void)
 {
     open_esd_function(st_dev.stc.custom_function_en);
     semi_touch_queue_asyn_work(work_queue_custom_work, semi_touch_esd_work_fun, 4000);

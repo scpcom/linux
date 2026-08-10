@@ -151,7 +151,7 @@ int semi_touch_get_adcshort(struct apk_complex_data* apk_comlex_addr)
     return ret;
 }
 
-void semi_touch_apk_work_fun(struct work_struct *work)
+static void semi_touch_apk_work_fun(struct work_struct *work)
 {
     int ret = 0;
     struct m_ctp_cmd_std_t cmd_send_tp;
