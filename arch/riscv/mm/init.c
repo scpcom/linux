@@ -693,6 +693,9 @@ static uintptr_t __init best_map_size(phys_addr_t pa, uintptr_t va,
 	if (EARLY_VA_ENABLED)
 		goto pmd_map_size;
 
+	if (debug_pagealloc_enabled())
+		return PAGE_SIZE;
+
 	if (pgtable_l5_enabled &&
 	    !(pa & (P4D_SIZE - 1)) && !(va & (P4D_SIZE - 1)) && size >= P4D_SIZE)
 		return P4D_SIZE;
