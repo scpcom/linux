@@ -89,7 +89,7 @@ typedef struct page *pgtable_t;
 #define PTE_FMT "%08lx"
 #endif
 
-#if IS_ENABLED(CONFIG_64BIT)
+#if defined(CONFIG_64BIT) && defined(CONFIG_MMU)
 #define EARLY_VA_ENABLED (IS_ENABLED(CONFIG_RISCV_EARLY_VA) && !efi_enabled(EFI_MEMMAP))
 /*
  * We override this value as its generic definition uses __pa too early in
