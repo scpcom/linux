@@ -36,10 +36,11 @@ ifeq (,$(wildcard $(VERSION_H)))
 VERSION_H := $(KBUILD)/include/linux/version.h
 endif
 ifeq (,$(wildcard $(VERSION_H)))
-$(error Please run 'make modules_prepare' in $(KBUILD))
-endif
-
+$(warning Please run 'make modules_prepare' in $(KBUILD))
+KVERS := 0.0.0
+else
 KVERS := $(shell sed -ne 's/"//g;s/^\#define UTS_RELEASE //p' $(VERSION_H))
+endif
 
 ifeq (,$(KVERS))
 $(error Cannot find UTS_RELEASE in $(VERSION_H), please report)
