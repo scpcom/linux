@@ -157,7 +157,9 @@ int riscv_of_parent_hartid(struct device_node *node, unsigned long *hartid);
 
 extern void riscv_fill_hwcap(void);
 extern int arch_dup_task_struct(struct task_struct *dst, struct task_struct *src);
+#ifdef CONFIG_BIND_THREAD_TO_AICORES
 extern struct cpumask ai_core_mask_get(void);
+#endif
 
 extern unsigned long signal_minsigstksz __ro_after_init;
 
