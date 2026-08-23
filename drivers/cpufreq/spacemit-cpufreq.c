@@ -320,9 +320,6 @@ remove_table:
 	return ret;
 }
 
-extern struct private_data *cpufreq_dt_find_data(int cpu);
-extern void cpufreq_dt_add_data(struct private_data *priv);
-
 static int spacemit_dt_cpufreq_pre_early_init(struct device *dev, int cpu, int indexs)
 {
 	struct private_data *priv;
@@ -462,9 +459,6 @@ int spacmeit_cpufreq_veritfy(struct cpufreq_policy_data *policy)
 				policy->min, policy->max, policy->cpu);
 	return 0;
 }
-
-extern void remove_boost_sysfs_file(void);
-extern void remove_policy_boost_sysfs_file(struct cpufreq_policy *policy);
 
 void spacemit_cpufreq_ready(struct cpufreq_policy *policy)
 {
