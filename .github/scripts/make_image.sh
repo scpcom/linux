@@ -50,6 +50,7 @@ fi
 bs=${BUILDDIR}/sdk-prepare-patch-stamp
 if [ ! -e $bs ]; then
   echo "\n${green}Patching SDK for ${BOARD_SHORT}${end_color}\n"
+  apt-get update
   cd ${BUILDDIR}
   [ "${ARCH}" != "riscv64" ] || CROSS_GCC=-riscv64-linux-gnu CROSS_DEBARCH=-riscv64-cross bash -e build-deps.sh
   [ "${ARCH}" != "arm64"   ] || CROSS_GCC=-aarch64-linux-gnu CROSS_DEBARCH=-arm64-cross bash -e build-deps.sh
