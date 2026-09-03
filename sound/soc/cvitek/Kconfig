@@ -76,7 +76,7 @@ config SND_SOC_CV182XA_CV182XADAC
 
 config SND_CV1835_I2S
 	tristate "CVITEK CV1835 I2S Device Driver"
-	depends on CLKDEV_LOOKUP
+	depends on HAVE_CLK
 	select SND_SOC_GENERIC_DMAENGINE_PCM
 	help
 	 Say y or m if you want to add support for I2S driver for
