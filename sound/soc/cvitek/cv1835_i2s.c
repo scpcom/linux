@@ -235,18 +235,18 @@ static int cvi_i2s_dai_probe(struct snd_soc_dai *cpu_dai)
 	struct cvi_i2s_dev *dev = snd_soc_dai_get_drvdata(cpu_dai);
 
 	dev_dbg(cpu_dai->dev, "%s start *cpu_dai = %p name = %s\n", __func__, cpu_dai, cpu_dai->name);
-	cpu_dai->playback_dma_data = &dev->play_dma_data;
-	cpu_dai->capture_dma_data = &dev->capture_dma_data;
+	snd_soc_dai_dma_data_set(cpu_dai, SNDRV_PCM_STREAM_PLAYBACK, &dev->play_dma_data);
+	snd_soc_dai_dma_data_set(cpu_dai, SNDRV_PCM_STREAM_CAPTURE, &dev->capture_dma_data);
 
-	if (cpu_dai->playback_dma_data == NULL) {
+	if (snd_soc_dai_dma_data_get_playback(cpu_dai) == NULL) {
 		dev_err(cpu_dai->dev, "%s playback_dma_data == NULL\n", __func__);
 	}
 
-	if (cpu_dai->capture_dma_data == NULL) {
+	if (snd_soc_dai_dma_data_get_capture(cpu_dai) == NULL) {
 		dev_err(cpu_dai->dev, "%s capture_dma_data == NULL\n", __func__);
 	}
 
-	dev_dbg(cpu_dai->dev, "%s end cpu_dai->playback_dma_data = %p\n", __func__, cpu_dai->playback_dma_data);
+	dev_dbg(cpu_dai->dev, "%s end cpu_dai->playback_dma_data = %p\n", __func__, snd_soc_dai_dma_data_get_playback(cpu_dai));
 
 	return 0;
 
@@ -283,7 +283,7 @@ static int cvi_i2s_startup(struct snd_pcm_substream *substream,
 	dev_dbg(dev->dev, "%s start *dma_data = %p\n", __func__, dma_data);
 	snd_soc_dai_set_dma_data(cpu_dai, substream, (void *)dma_data);
 	dev_dbg(dev->dev, "%s end cpu_dai->playback_dma_data = %p\n",
-		__func__, cpu_dai->playback_dma_data);
+		__func__, snd_soc_dai_dma_data_get_playback(cpu_dai));
 	return 0;
 }
 
@@ -665,7 +665,7 @@ static int cvi_i2s_hw_params(struct snd_pcm_substream *substream,
 static void cvi_i2s_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
-	pr_info("%s not start *dai = %p, *dai->playback_dma_data = %p\n", __func__, dai, dai->playback_dma_data);
+	pr_info("%s not start *dai = %p, *dai->playback_dma_data = %p\n", __func__, dai, snd_soc_dai_dma_data_get_playback(dai));
 	//snd_soc_dai_set_dma_data(dai, substream, NULL);
 }
 
