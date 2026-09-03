@@ -437,7 +437,7 @@ static int thead_dwmac_init(struct platform_device *pdev, void *bsp_priv)
 	return 0;
 }
 
-static void thead_dwmac_fix_speed(void *bsp_priv, unsigned int speed)
+static void thead_dwmac_fix_speed(void *bsp_priv, unsigned int speed, unsigned int mode)
 {
 	struct thead_dwmac_priv_data *thead_plat_dat = bsp_priv;
 
