@@ -278,7 +278,7 @@ static const struct dev_pm_ops cvi_eth_pm_ops = {
 
 static struct platform_driver bm_dwmac_driver = {
 	.probe  = bm_dwmac_probe,
-	.remove = stmmac_pltfr_remove,
+	.remove_new = stmmac_pltfr_remove,
 	.driver = {
 		.name           = "bm-dwmac",
 #ifdef CONFIG_PM_SLEEP
