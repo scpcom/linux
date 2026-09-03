@@ -545,8 +545,8 @@ static void hyn_ts_late_resume(struct early_suspend *handler)
 #endif
 
 #ifdef I2C_PORT
-static int hyn_ts_remove(struct i2c_client *client);
-static int hyn_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static void hyn_ts_remove(struct i2c_client *client);
+static int hyn_ts_probe(struct i2c_client *client)
 #else
 static int hyn_ts_remove(struct spi_device *client);
 static int hyn_ts_probe(struct spi_device *client)
@@ -704,7 +704,7 @@ FREE_RESOURCE:
 
 
 #ifdef I2C_PORT
-static int hyn_ts_remove(struct i2c_client *client)
+static void hyn_ts_remove(struct i2c_client *client)
 #else
 static int hyn_ts_remove(struct spi_device *client)
 #endif
@@ -761,7 +761,9 @@ static int hyn_ts_remove(struct spi_device *client)
         hyn_data = NULL;
         HYN_INFO("ts_remove7");
     }
+#ifndef I2C_PORT
     return 0;
+#endif
 }
 
 #ifdef I2C_PORT
