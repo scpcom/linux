@@ -597,11 +597,12 @@ stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 #if defined(CONFIG_ARCH_CV183X)
 		plat->has_gmac4 = 1;
 		plat->has_gmac = 0;
-		plat->tso_en = 1;
+		//plat->tso_en = 1;
+		plat->flags |= STMMAC_FLAG_TSO_EN;
 #else
 		plat->has_gmac4 = 0;
 		plat->has_gmac = 1;
-		plat->tso_en = 0;
+		//plat->tso_en = 0;
 #endif
 		plat->pmt = 0;
 	}
