@@ -715,7 +715,7 @@ static ssize_t hynitron_proc_read_foobar(struct file *page,char __user *user_buf
 	unsigned short rx,tx;
 	int data_len;
 
-	struct i2c_client *client = (struct i2c_client *)PDE_DATA(file_inode(page));
+	struct i2c_client *client = (struct i2c_client *)pde_data(file_inode(page));
 	mutex_lock(&g_procrw_mutex);
 	HYN_INFO("hynitron_proc_read_foobar********CMDIndex:%d. \n",CMDIndex);
 
@@ -1094,7 +1094,7 @@ static ssize_t hynitron_proc_write_foobar(struct file *file, const char __user *
 	int copy_len;
 	int ret = 0;
    	int length;
-	struct i2c_client *client = (struct i2c_client *)PDE_DATA(file_inode(file));
+	struct i2c_client *client = (struct i2c_client *)pde_data(file_inode(file));
 
 	HYN_FUNC_ENTER();
 
