@@ -1079,7 +1079,7 @@ static int i2s_proc_show(struct seq_file *m, void *v)
 
 static int seq_i2s_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, i2s_proc_show, PDE_DATA(inode));
+	return single_open(file, i2s_proc_show, pde_data(inode));
 }
 
 static const struct proc_ops i2s_proc_ops = {

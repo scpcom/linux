@@ -194,7 +194,7 @@ static int cv181x_adc_proc_show(struct seq_file *m, void *v)
 
 static int seq_cv181x_adc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, cv181x_adc_proc_show, PDE_DATA(inode));
+	return single_open(file, cv181x_adc_proc_show, pde_data(inode));
 }
 
 static const struct proc_ops cv181x_adc_proc_ops = {
