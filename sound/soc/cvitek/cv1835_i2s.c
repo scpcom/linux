@@ -900,6 +900,7 @@ static int cvi_i2s_set_tdm_slot(struct snd_soc_dai *cpu_dai, unsigned int tx_mas
 }
 
 static struct snd_soc_dai_ops cvi_i2s_dai_ops = {
+	.probe		= cvi_i2s_dai_probe,
 	.startup	= cvi_i2s_startup,
 	.shutdown	= cvi_i2s_shutdown,
 	.hw_params	= cvi_i2s_hw_params,
@@ -1119,7 +1120,7 @@ static int cvi_i2s_probe(struct platform_device *pdev)
 	//cvi_i2s_dai->suspend = cvi_i2s_suspend;
 	//cvi_i2s_dai->resume = cvi_i2s_resume;
 
-	cvi_i2s_dai->probe = cvi_i2s_dai_probe;
+	//cvi_i2s_dai->probe = cvi_i2s_dai_probe;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	dev->i2s_base = devm_ioremap_resource(&pdev->dev, res);
