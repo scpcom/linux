@@ -445,7 +445,7 @@ static int dw_spi_resume(struct device *dev)
 {
 	struct dw_spi *dws = dev_get_drvdata(dev);
 
-	spi_set_clk(dws, dws->dw_spi_div);
+	dw_spi_set_clk(dws, dws->dw_spi_div);
 	return dw_spi_add_host(dev, dws);
 }
 #endif
