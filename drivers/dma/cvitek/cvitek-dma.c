@@ -1892,7 +1892,7 @@ static int dma_proc_show(struct seq_file *m, void *v)
 
 static int seq_dma_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, dma_proc_show, PDE_DATA(inode));
+	return single_open(file, dma_proc_show, pde_data(inode));
 }
 
 static int ch_proc_show(struct seq_file *m, void *v)
@@ -1920,7 +1920,7 @@ static int ch_proc_show(struct seq_file *m, void *v)
 
 static int seq_ch_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, ch_proc_show, PDE_DATA(inode));
+	return single_open(file, ch_proc_show, pde_data(inode));
 }
 
 static int log_proc_show(struct seq_file *m, void *v)
@@ -1934,12 +1934,12 @@ static int log_proc_show(struct seq_file *m, void *v)
 
 static int seq_log_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, log_proc_show, PDE_DATA(inode));
+	return single_open(file, log_proc_show, pde_data(inode));
 }
 
 static ssize_t log_level_write(struct file *file, const char __user *data, size_t len, loff_t *off)
 {
-	struct dw_dma *dw = PDE_DATA(file_inode(file));
+	struct dw_dma *dw = pde_data(file_inode(file));
 	char buf[3];
 
 	if (data && !copy_from_user(buf, data, len)) {
