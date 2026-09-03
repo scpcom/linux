@@ -1905,7 +1905,7 @@ static void hyn_fw_update_func(struct work_struct *work)
 * Output:
 * Return:
 ***********************************************************************/
-static int hyn_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int hyn_probe(struct i2c_client *client)
 {
     int ret =-1;	
 	struct hynitron_ts_data *ts_data = NULL;	
@@ -2088,7 +2088,7 @@ err_end:
 *  Output:
 *  Return:
 *****************************************************************************/
-static int __exit hyn_remove(struct i2c_client *client)
+static void __exit hyn_remove(struct i2c_client *client)
 {
     HYN_FUNC_ENTER();
 	
@@ -2135,8 +2135,6 @@ static int __exit hyn_remove(struct i2c_client *client)
 		hyn_ts_data->input_dev = NULL;
 	}
     HYN_FUNC_EXIT();
-
-    return 0;
 }
 
 
