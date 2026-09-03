@@ -66,7 +66,6 @@ static int hyn_factory_test_judge(unsigned char *pdata)
   
 
   struct file *fp;  
-  mm_segment_t fs;  
   loff_t pos; 
   struct inode *inode;
   unsigned long magic;
@@ -108,8 +107,6 @@ static int hyn_factory_test_judge(unsigned char *pdata)
 
 		memset((unsigned char *)p_test_data,0x00,80);
 	 	length=80;
-		fs = get_fs();  
-	    set_fs(KERNEL_DS);
 	    pos = fp->f_pos; 
 		snprintf (p_test_data,80, "touch_test enter.\n");
 	  	length=strlen(p_test_data);
@@ -219,7 +216,6 @@ static int hyn_factory_test_judge(unsigned char *pdata)
 	  vfs_write(fp, p_test_data, length, &pos);	 
 	  
 	  fp->f_pos = pos;
-	  set_fs(fs);
 	  filp_close(fp, NULL); 
   }
   
@@ -389,13 +385,11 @@ static struct proc_dir_entry *g_proc_dir;
 static struct proc_dir_entry *g_update_file;
 static int CMDIndex = 0;
 
-static struct file *hynitron_open_fw_file(char *path, mm_segment_t * old_fs_p)
+static struct file *hynitron_open_fw_file(char *path)
 {
 	struct file * filp;
 	int ret;
 	
-	*old_fs_p = get_fs();
-	//set_fs(KERNEL_DS);
 	filp = filp_open(path, O_RDONLY, 0);
 	if (IS_ERR(filp)) 
 	{   
@@ -408,9 +402,8 @@ static struct file *hynitron_open_fw_file(char *path, mm_segment_t * old_fs_p)
     return filp;
 }
 
-static void hynitron_close_fw_file(struct file * filp,mm_segment_t old_fs)
+static void hynitron_close_fw_file(struct file * filp)
 {
-	//set_fs(old_fs);
 	if(filp)
 	    filp_close(filp,NULL);
 }
@@ -418,7 +411,6 @@ static void hynitron_close_fw_file(struct file * filp,mm_segment_t old_fs)
 static int hynitron_read_fw_file(unsigned char *filename, unsigned char **pdata, int *plen)
 {
 	struct file *fp;
-	mm_segment_t old_fs;
 	//int size;
 	//int length;
 	int ret = -1;
@@ -432,7 +424,7 @@ static int hynitron_read_fw_file(unsigned char *filename, unsigned char **pdata,
 	if((!pdata) || (strlen(filename) == 0)) 
 		return ret;
 		
-	fp = hynitron_open_fw_file(filename, &old_fs);
+	fp = hynitron_open_fw_file(filename);
 	if(!fp) 
 	{		
         HYN_INFO("Open bin file faild.path:%s.\n", filename);
@@ -448,8 +440,6 @@ static int hynitron_read_fw_file(unsigned char *filename, unsigned char **pdata,
 	magic = inode->i_sb->s_magic;
 	fsize = inode->i_size;		
 	*pdata = (unsigned char *)vmalloc(fsize);	
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
 	pos = 0;
 	ret=vfs_read(fp, *pdata, fsize, &pos);
 
@@ -459,13 +449,12 @@ static int hynitron_read_fw_file(unsigned char *filename, unsigned char **pdata,
 		HYN_INFO("vfs_read fail.ret:%d.\n",ret);
 	}
 	filp_close(fp, NULL);
-	set_fs(old_fs);
 	
 	HYN_INFO("vfs_read done.\n");
 
 
 clean:
-	hynitron_close_fw_file(fp, old_fs);
+	hynitron_close_fw_file(fp);
 	return ret;
 }
 static int hynitron_apk_fw_dowmload(struct i2c_client *client,
@@ -1330,7 +1319,6 @@ void hyn_save_log(unsigned char *buf)
 {
   unsigned char p_test_data[180];
   struct file *fp;  
-  mm_segment_t fs;  
   loff_t pos; 
   struct inode *inode;
   unsigned long magic;
@@ -1351,8 +1339,6 @@ void hyn_save_log(unsigned char *buf)
 	  length=0;
 
 	  {
-		  fs = get_fs();  
-		  set_fs(KERNEL_DS);	  
 	  	  printk("start save log.\t\n");
 		  snprintf (p_test_data,180, "pos:0x%04x********start save log**********\t\n",(unsigned int)pos);
 		  length=strlen(p_test_data);
@@ -1370,7 +1356,6 @@ void hyn_save_log(unsigned char *buf)
 			vfs_write(fp, p_test_data, length, &pos);	 
 			fp->f_pos=pos; 
 		  }	 
-		  set_fs(fs);
 		  filp_close(fp, NULL);  
 	  }
 	}
@@ -1381,7 +1366,6 @@ static void hyn_save_noise_log(unsigned char *buf)
 {
   unsigned char p_test_data[180];
   struct file *fp;  
-  mm_segment_t fs;  
   loff_t pos; 
   struct inode *inode;
   unsigned long magic;
@@ -1400,9 +1384,6 @@ static void hyn_save_noise_log(unsigned char *buf)
 	  pos = fp->f_pos; 
 	  length=0;
 	  {
-		  fs = get_fs();  
-		  set_fs(KERNEL_DS);	
-		  
 	  	  printk("start save log.\t\n");  
 		  fp->f_pos=pos; 	 
 		  pos = fp->f_pos; 
@@ -1413,7 +1394,6 @@ static void hyn_save_noise_log(unsigned char *buf)
 		  vfs_write(fp, p_test_data, length, &pos);	 
 		  fp->f_pos=pos; 
 		   
-		  set_fs(fs);
 		  filp_close(fp, NULL);  
 	  }
 }
