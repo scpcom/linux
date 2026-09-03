@@ -593,7 +593,7 @@ MODULE_DEVICE_TABLE(of, thead_dwmac_match);
 
 static struct platform_driver thead_dwmac_driver = {
 	.probe  = thead_dwmac_probe,
-	.remove = stmmac_pltfr_remove,
+	.remove_new = stmmac_pltfr_remove,
 	.driver = {
 		.name           = "thead_dwmac_eth",
 		.pm		= &stmmac_pltfr_pm_ops,
