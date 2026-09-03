@@ -437,7 +437,7 @@ static int sel_role_hdler(struct dwc2_hsotg *hsotg, char const *input)
 static ssize_t role_proc_write(struct file *file, const char __user *user_buf, size_t count, loff_t *ppos)
 {
 	char procdata[32] = {'\0'};
-	struct dwc2_hsotg *hsotg = PDE_DATA(file_inode(file));
+	struct dwc2_hsotg *hsotg = pde_data(file_inode(file));
 
 	if (user_buf == NULL || count >= sizeof(procdata)) {
 		dev_err(hsotg->dev, "Invalid input value\n");
@@ -456,7 +456,7 @@ static ssize_t role_proc_write(struct file *file, const char __user *user_buf, s
 
 static int proc_role_open(struct inode *inode, struct file *file)
 {
-	struct dwc2_hsotg *hsotg = PDE_DATA(inode);
+	struct dwc2_hsotg *hsotg = pde_data(inode);
 
 	return single_open(file, proc_role_show, hsotg);
 }
@@ -663,7 +663,7 @@ static int dcd_en_hdler(struct dwc2_hsotg *hsotg, char const *input)
 static ssize_t chgdet_proc_write(struct file *file, const char __user *user_buf, size_t count, loff_t *ppos)
 {
 	char procdata[32] = {'\0'};
-	struct dwc2_hsotg *hsotg = PDE_DATA(file_inode(file));
+	struct dwc2_hsotg *hsotg = pde_data(file_inode(file));
 
 	if (user_buf == NULL || count >= sizeof(procdata)) {
 		dev_err(hsotg->dev, "Invalid input value\n");
@@ -682,7 +682,7 @@ static ssize_t chgdet_proc_write(struct file *file, const char __user *user_buf,
 
 static int proc_chgdet_open(struct inode *inode, struct file *file)
 {
-	struct dwc2_hsotg *hsotg = PDE_DATA(inode);
+	struct dwc2_hsotg *hsotg = pde_data(inode);
 
 	return single_open(file, proc_chgdet_show, hsotg);
 }
