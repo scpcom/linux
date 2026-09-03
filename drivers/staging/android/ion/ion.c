@@ -332,15 +332,17 @@ static void ion_dma_buf_release(struct dma_buf *dmabuf)
 	_ion_buffer_destroy(buffer);
 }
 
-static void *ion_dma_buf_vmap(struct dma_buf *dmabuf)
+static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct iosys_map *map)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
 
-	return buffer->vaddr;
+	iosys_map_set_vaddr(map, buffer->vaddr);
+	return 0;
 }
 
-static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, void *ptr)
+static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct iosys_map *map)
 {
+	iosys_map_clear(map);
 }
 
 static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
