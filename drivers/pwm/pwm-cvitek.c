@@ -274,11 +274,14 @@ static int pwm_cv_capture(struct pwm_chip *chip, struct pwm_device *pwm_dev,
 static const struct pwm_ops pwm_cv_ops = {
 	.request	= pwm_cv_request,
 	.free		= pwm_cv_free,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))
 	.enable		= pwm_cv_enable,
 	.disable	= pwm_cv_disable,
 	.config		= pwm_cv_config,
 	.set_polarity	= pwm_cv_set_polarity,
-	/* .apply		= pwm_cv_apply, */
+#else
+	.apply		= pwm_cv_apply,
+#endif
 	.capture	= pwm_cv_capture,
 	.owner		= THIS_MODULE,
 };
