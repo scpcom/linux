@@ -184,6 +184,30 @@ static int pwm_cv_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 #endif
 {
 	int ret;
+	bool enabled = pwm->state.enabled;
+
+	if (state->polarity != pwm->state.polarity) {
+		/*
+		 * Changing the polarity of a running PWM is only allowed when
+		 * the PWM driver implements ->apply().
+		 */
+		if (enabled) {
+			pwm_cv_disable(chip, pwm);
+
+			enabled = false;
+		}
+
+		ret = pwm_cv_set_polarity(chip, pwm, state->polarity);
+		if (ret)
+			return ret;
+	}
+
+	if (!state->enabled) {
+		if (enabled)
+			pwm_cv_disable(chip, pwm);
+
+		return 0;
+	}
 
 	ret = pwm_cv_config(chip, pwm, state->duty_cycle, state->period);
 	if (ret) {
@@ -192,10 +216,8 @@ static int pwm_cv_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	}
 
 	dev_dbg(chip->dev, "pwm_cv_apply state->enabled = %d\n", state->enabled);
-	if (state->enabled)
+	if (!enabled)
 		ret = pwm_cv_enable(chip, pwm);
-	else
-		pwm_cv_disable(chip, pwm);
 
 	if (ret) {
 		dev_err(chip->dev, "pwm apply failed\n");
