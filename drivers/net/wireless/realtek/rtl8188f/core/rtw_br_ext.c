@@ -17,7 +17,9 @@
 #ifdef __KERNEL__
 	#include <linux/if_arp.h>
 	#include <net/ip.h>
+#ifdef CONFIG_RTW_IPX
 	#include <net/ipx.h>
+#endif
 	#include <linux/atalk.h>
 	#include <linux/udp.h>
 	#include <linux/if_pppox.h>
@@ -949,6 +951,7 @@ int nat25_db_handle(_adapter *priv, struct sk_buff *skb, int method)
 			}
 		}
 
+#ifdef CONFIG_RTW_IPX
 		/*   IPX  */
 		if (ipx != NULL) {
 			switch (method) {
@@ -1015,10 +1018,11 @@ int nat25_db_handle(_adapter *priv, struct sk_buff *skb, int method)
 			default:
 				return -1;
 			}
-		}
+		} else
+#endif
 
 		/*   AARP  */
-		else if (ea != NULL) {
+		if (ea != NULL) {
 			/* Sanity check fields. */
 			if (ea->hw_len != ETH_ALEN || ea->pa_len != AARP_PA_ALEN) {
 				DEBUG_WARN("NAT25: Appletalk AARP Sanity check fail!\n");
