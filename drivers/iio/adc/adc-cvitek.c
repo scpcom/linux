@@ -34,6 +34,7 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 #include <linux/of.h>
+#include <linux/version.h>
 
 #include "cvi_saradc.h"
 #include "cvi_saradc_ioctl.h"
@@ -335,7 +336,11 @@ int cvi_saradc_register_cdev(struct cvi_saradc_device *ndev)
 	int ret;
 	int rc;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 	saradc_class = class_create(THIS_MODULE, CVI_SARADC_CLASS_NAME);
+#else
+	saradc_class = class_create(CVI_SARADC_CLASS_NAME);
+#endif
 	if (IS_ERR(saradc_class)) {
 		pr_err("create class failed\n");
 		return PTR_ERR(saradc_class);
