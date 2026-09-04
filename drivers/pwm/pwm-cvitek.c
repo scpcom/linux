@@ -330,11 +330,15 @@ static int pwm_cv_probe(struct platform_device *pdev)
 static int pwm_cv_remove(struct platform_device *pdev)
 {
 	struct cv_pwm_chip *chip = platform_get_drvdata(pdev);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	int ret;
 
 	ret = pwmchip_remove(&chip->chip);
 	if (ret < 0)
 		return ret;
+#else
+	pwmchip_remove(&chip->chip);
+#endif
 
 	clk_disable_unprepare(chip->base_clk);
 
