@@ -894,7 +894,11 @@ err0:
 	return ret;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0))
 static int bluesleep_remove(struct platform_device *pdev)
+#else
+static void bluesleep_remove(struct platform_device *pdev)
+#endif
 {
 	/* assert bt wake */
 	gpio_set_value(bsi->ext_wake, bsi->ext_wake_assert);
@@ -920,7 +924,9 @@ static int bluesleep_remove(struct platform_device *pdev)
 		dev_pm_clear_wake_irq(&pdev->dev);
 	}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0))
 	return 0;
+#endif
 }
 
 static const struct of_device_id sunxi_btlpm_ids[] = {
