@@ -2,7 +2,9 @@
 GPIO Descriptor Consumer Interface
 ==================================
 
-This document describes the consumer interface of the GPIO framework.
+This document describes the consumer interface of the GPIO framework. Note that
+it describes the new descriptor-based interface. For a description of the
+deprecated integer-based GPIO interface please refer to legacy.rst.
 
 
 Guidelines for GPIOs consumers
