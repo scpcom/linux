@@ -457,7 +457,7 @@ disable_clk:
 	return ret;
 }
 
-static int cvi_rtc_remove(struct platform_device *pdev)
+static void cvi_rtc_remove(struct platform_device *pdev)
 {
 	struct cvi_rtc_info *info = platform_get_drvdata(pdev);
 
@@ -465,8 +465,6 @@ static int cvi_rtc_remove(struct platform_device *pdev)
 #if defined(CVI_RTC_HANDLE_IRQ)
 	cancel_delayed_work(&info->cvi_rtc_work);
 #endif
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
