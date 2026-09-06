@@ -1355,7 +1355,7 @@ pltfm_free:
 	return ret;
 }
 
-static int sdhci_cvi_remove(struct platform_device *pdev)
+static void sdhci_cvi_remove(struct platform_device *pdev)
 {
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -1366,8 +1366,6 @@ static int sdhci_cvi_remove(struct platform_device *pdev)
 	sdhci_pltfm_free(pdev);
 
 	cvi_proc_shutdown(cvi_host);
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
