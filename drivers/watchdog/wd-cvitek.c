@@ -379,15 +379,13 @@ out_disable_clk:
 	return ret;
 }
 
-static int dw_wdt_drv_remove(struct platform_device *pdev)
+static void dw_wdt_drv_remove(struct platform_device *pdev)
 {
 	struct dw_wdt *dw_wdt = platform_get_drvdata(pdev);
 
 	watchdog_unregister_device(&dw_wdt->wdd);
 	reset_control_assert(dw_wdt->rst);
 	clk_disable_unprepare(dw_wdt->clk);
-
-	return 0;
 }
 
 #ifdef CONFIG_OF
