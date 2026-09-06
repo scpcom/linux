@@ -246,14 +246,12 @@ static int cooling_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int cooling_remove(struct platform_device *pdev)
+static void cooling_remove(struct platform_device *pdev)
 {
 	struct cooling_device *cvcdev = platform_get_drvdata(pdev);
 
 	if (!IS_ERR(cvcdev))
 		cooling_device_unregister(cvcdev);
-
-	return 0;
 }
 
 static const struct of_device_id cooling_match[] = {
