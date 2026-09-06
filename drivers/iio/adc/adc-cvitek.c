@@ -444,7 +444,7 @@ static int cvi_saradc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int cvi_saradc_remove(struct platform_device *pdev)
+static void cvi_saradc_remove(struct platform_device *pdev)
 {
 	struct cvi_saradc_device *ndev = platform_get_drvdata(pdev);
 
@@ -461,8 +461,6 @@ static int cvi_saradc_remove(struct platform_device *pdev)
 	sysfs_remove_group(&ndev->dev->kobj, &tee_dev_group);
 
 	pr_debug("cvi_saradc_remove\n");
-
-	return 0;
 }
 
 static const struct of_device_id cvi_saradc_match[] = {
