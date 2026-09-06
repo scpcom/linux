@@ -63,6 +63,8 @@
 		#address-cells = <0x02>;
 		#size-cells = <0x02>;
 		compatible = "simple-bus";
+		interrupt-parent = <&plic0>;
+		dma-noncoherent;
 		ranges;
 
 		plic0: interrupt-controller@70000000 {
