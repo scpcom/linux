@@ -211,7 +211,7 @@
 		};
 	};
 
-	spi0:spi0@4180000 {
+	spi0:spi@4180000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x04180000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -219,7 +219,7 @@
 		#size-cells = <0>;
 	};
 
-	spi1:spi1@4190000 {
+	spi1:spi@4190000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x04190000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -227,7 +227,7 @@
 		#size-cells = <0>;
 	};
 
-	spi2:spi2@41A0000 {
+	spi2:spi@41A0000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x041A0000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -236,7 +236,7 @@
 		bias-pull-up;
 	};
 
-	spi3:spi3@41B0000 {
+	spi3:spi@41B0000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x041B0000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;

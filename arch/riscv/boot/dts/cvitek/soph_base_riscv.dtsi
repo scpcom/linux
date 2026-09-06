@@ -157,22 +157,22 @@
 		interrupt-parent = <&plic0>;
 	};
 
-	spi0:spi0@4180000 {
+	spi0:spi@4180000 {
 		interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
 
-	spi1:spi1@4190000 {
+	spi1:spi@4190000 {
 		interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
 
-	spi2:spi2@41A0000 {
+	spi2:spi@41A0000 {
 		interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
 
-	spi3:spi3@41B0000 {
+	spi3:spi@41B0000 {
 		interrupts = <57 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&plic0>;
 	};
