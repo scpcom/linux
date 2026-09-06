@@ -404,6 +404,9 @@
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04020000 0x0 0x1000>;
 		clock-frequency = <100000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
 		resets = <&rst RST_I2C2>;
 		reset-names = "i2c2";
 	};
@@ -413,6 +416,9 @@
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04030000 0x0 0x1000>;
 		clock-frequency = <400000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
 		resets = <&rst RST_I2C3>;
 		reset-names = "i2c3";
 	};
@@ -422,6 +428,9 @@
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04040000 0x0 0x1000>;
 		clock-frequency = <400000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
 		resets = <&rst RST_I2C4>;
 		reset-names = "i2c4";
 	};
