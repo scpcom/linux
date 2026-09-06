@@ -51,45 +51,26 @@ struct cv_pwm_channel {
  * @tclk1:		external clock 1 (can be ERR_PTR if not present)
  */
 struct cv_pwm_chip {
-	struct pwm_chip chip;
 	void __iomem *base;
 	struct clk *base_clk;
 	u8 polarity_mask;
 	bool no_polarity;
 	uint32_t pwm_saved_regs[PWM_REG_NUM];
+	struct cv_pwm_channel channel[];
 };
 
 
 static inline
 struct cv_pwm_chip *to_cv_pwm_chip(struct pwm_chip *chip)
 {
-	return container_of(chip, struct cv_pwm_chip, chip);
-}
-
-static int pwm_cv_request(struct pwm_chip *chip, struct pwm_device *pwm_dev)
-{
-	struct cv_pwm_channel *channel;
-
-	channel = kzalloc(sizeof(*channel), GFP_KERNEL);
-	if (!channel)
-		return -ENOMEM;
-
-	return pwm_set_chip_data(pwm_dev, channel);
-}
-
-static void pwm_cv_free(struct pwm_chip *chip, struct pwm_device *pwm_dev)
-{
-	struct cv_pwm_channel *channel = pwm_get_chip_data(pwm_dev);
-
-	pwm_set_chip_data(pwm_dev, NULL);
-	kfree(channel);
+	return pwmchip_get_drvdata(chip);
 }
 
 static int pwm_cv_config(struct pwm_chip *chip, struct pwm_device *pwm_dev,
 			     int duty_ns, int period_ns)
 {
 	struct cv_pwm_chip *our_chip = to_cv_pwm_chip(chip);
-	struct cv_pwm_channel *channel = pwm_get_chip_data(pwm_dev);
+	struct cv_pwm_channel *channel = &our_chip->channel[pwm_dev->hwpwm];
 	u64 cycles;
 
 	cycles = clk_get_rate(our_chip->base_clk);
@@ -118,7 +99,7 @@ static int pwm_cv_config(struct pwm_chip *chip, struct pwm_device *pwm_dev,
 static int pwm_cv_enable(struct pwm_chip *chip, struct pwm_device *pwm_dev)
 {
 	struct cv_pwm_chip *our_chip = to_cv_pwm_chip(chip);
-	struct cv_pwm_channel *channel = pwm_get_chip_data(pwm_dev);
+	struct cv_pwm_channel *channel = &our_chip->channel[pwm_dev->hwpwm];
 	uint32_t pwm_start_value;
 	uint32_t value;
 
@@ -161,7 +142,7 @@ static int pwm_cv_set_polarity(struct pwm_chip *chip,
 	struct cv_pwm_chip *our_chip = to_cv_pwm_chip(chip);
 
 	if (our_chip->no_polarity) {
-		dev_err(chip->dev, "no polarity\n");
+		dev_err(&chip->dev, "no polarity\n");
 		return -ENOTSUPP;
 	}
 
@@ -211,16 +192,16 @@ static int pwm_cv_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	ret = pwm_cv_config(chip, pwm, state->duty_cycle, state->period);
 	if (ret) {
-		dev_err(chip->dev, "pwm apply err\n");
+		dev_err(&chip->dev, "pwm apply err\n");
 		return ret;
 	}
 
-	dev_dbg(chip->dev, "pwm_cv_apply state->enabled = %d\n", state->enabled);
+	dev_dbg(&chip->dev, "pwm_cv_apply state->enabled = %d\n", state->enabled);
 	if (!enabled)
 		ret = pwm_cv_enable(chip, pwm);
 
 	if (ret) {
-		dev_err(chip->dev, "pwm apply failed\n");
+		dev_err(&chip->dev, "pwm apply failed\n");
 		return ret;
 	}
 	return ret;
@@ -272,8 +253,6 @@ static int pwm_cv_capture(struct pwm_chip *chip, struct pwm_device *pwm_dev,
 }
 
 static const struct pwm_ops pwm_cv_ops = {
-	.request	= pwm_cv_request,
-	.free		= pwm_cv_free,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))
 	.enable		= pwm_cv_enable,
 	.disable	= pwm_cv_disable,
@@ -283,7 +262,6 @@ static const struct pwm_ops pwm_cv_ops = {
 	.apply		= pwm_cv_apply,
 #endif
 	.capture	= pwm_cv_capture,
-	.owner		= THIS_MODULE,
 };
 
 static const struct of_device_id cv_pwm_match[] = {
@@ -295,19 +273,27 @@ MODULE_DEVICE_TABLE(of, cv_pwm_match);
 static int pwm_cv_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct pwm_chip *pchip;
 	struct cv_pwm_chip *chip;
 	struct resource *res;
+	unsigned int num_pwms = 0;
 	int ret;
 
 	// pr_debug("%s\n", __func__);
 
-	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
-	if (chip == NULL)
-		return -ENOMEM;
+	//pwm-num default is 4, compatible with bm1682
+	if (of_property_read_bool(pdev->dev.of_node, "pwm-num"))
+		device_property_read_u32(&pdev->dev, "pwm-num", &num_pwms);
+	else
+		num_pwms = 4;
 
-	chip->chip.dev = &pdev->dev;
-	chip->chip.ops = &pwm_cv_ops;
-	chip->chip.base = -1;
+	pchip = devm_pwmchip_alloc(&pdev->dev, num_pwms, struct_size(chip, channel, num_pwms));
+	if (IS_ERR(pchip))
+		return PTR_ERR(pchip);
+	chip = to_cv_pwm_chip(pchip);
+
+	pchip->ops = &pwm_cv_ops;
+	//pchip->base = -1;
 	chip->polarity_mask = 0;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -327,12 +313,6 @@ static int pwm_cv_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	//pwm-num default is 4, compatible with bm1682
-	if (of_property_read_bool(pdev->dev.of_node, "pwm-num"))
-		device_property_read_u32(&pdev->dev, "pwm-num", &chip->chip.npwm);
-	else
-		chip->chip.npwm = 4;
-
 	//no_polarity default is false(have polarity) , compatible with bm1682
 	if (of_property_read_bool(pdev->dev.of_node, "no-polarity"))
 		chip->no_polarity = true;
@@ -340,9 +320,9 @@ static int pwm_cv_probe(struct platform_device *pdev)
 		chip->no_polarity = false;
 	// pr_debug("chip->chip.npwm = %d  chip->no_polarity = %d\n", chip->chip.npwm, chip->no_polarity);
 
-	platform_set_drvdata(pdev, chip);
+	platform_set_drvdata(pdev, pchip);
 
-	ret = pwmchip_add(&chip->chip);
+	ret = pwmchip_add(pchip);
 	if (ret < 0) {
 		dev_err(dev, "failed to register PWM chip\n");
 		clk_disable_unprepare(chip->base_clk);
@@ -352,9 +332,10 @@ static int pwm_cv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int pwm_cv_remove(struct platform_device *pdev)
+static void pwm_cv_remove(struct platform_device *pdev)
 {
-	struct cv_pwm_chip *chip = platform_get_drvdata(pdev);
+	struct pwm_chip *pchip = platform_get_drvdata(pdev);
+	struct cv_pwm_chip *chip = to_cv_pwm_chip(pchip);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
 	int ret;
 
@@ -362,18 +343,18 @@ static int pwm_cv_remove(struct platform_device *pdev)
 	if (ret < 0)
 		return ret;
 #else
-	pwmchip_remove(&chip->chip);
+	pwmchip_remove(pchip);
 #endif
 
 	clk_disable_unprepare(chip->base_clk);
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
 static int pwm_cv_suspend(struct device *dev)
 {
-	struct cv_pwm_chip *chip = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct pwm_chip *pchip = platform_get_drvdata(pdev);
+	struct cv_pwm_chip *chip = to_cv_pwm_chip(pchip);
 
 	memcpy_fromio(chip->pwm_saved_regs, chip->base, PWM_REG_NUM * 4);
 
@@ -382,7 +363,9 @@ static int pwm_cv_suspend(struct device *dev)
 
 static int pwm_cv_resume(struct device *dev)
 {
-	struct cv_pwm_chip *chip = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct pwm_chip *pchip = platform_get_drvdata(pdev);
+	struct cv_pwm_chip *chip = to_cv_pwm_chip(pchip);
 
 	memcpy_toio(chip->base, chip->pwm_saved_regs, PWM_REG_NUM * 4);
 
