@@ -389,7 +389,7 @@ free_rproc:
 	return ret;
 }
 
-static int cvitek_rproc_remove(struct platform_device *pdev)
+static void cvitek_rproc_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct cvitek_rproc *ddata = rproc->priv;
@@ -405,8 +405,6 @@ static int cvitek_rproc_remove(struct platform_device *pdev)
 	destroy_workqueue(ddata->workqueue);
 
 	rproc_free(rproc);
-
-	return 0;
 }
 
 static struct platform_driver cvitek_rproc_driver = {
