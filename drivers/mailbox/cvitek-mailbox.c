@@ -468,13 +468,11 @@ err_disable_unprepare:
 	return ret;
 }
 
-static int cvitek_mailbox_remove(struct platform_device *pdev)
+static void cvitek_mailbox_remove(struct platform_device *pdev)
 {
 	struct cvitek_mailbox *mbox = platform_get_drvdata(pdev);
 
 	mbox_controller_unregister(&mbox->controller);
-
-	return 0;
 }
 
 static const struct of_device_id cvitek_mailbox_of_match[] = {
