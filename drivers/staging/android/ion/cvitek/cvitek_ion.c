@@ -493,15 +493,13 @@ out:
 	return ret;
 }
 
-static int cvitek_ion_remove(struct platform_device *pdev)
+static void cvitek_ion_remove(struct platform_device *pdev)
 {
 	struct cvi_ion_dev *ipdev;
 
 	ipdev = platform_get_drvdata(pdev);
 	kfree(ipdev->heaps);
 	ion_destroy_platform_data(ipdev->plat_data);
-
-	return 0;
 }
 
 static const struct of_device_id cvitek_ion_match_table[] = {
