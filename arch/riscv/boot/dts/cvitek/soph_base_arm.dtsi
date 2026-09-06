@@ -180,6 +180,7 @@
 	gpio0: gpio@3020000 {
 		porta: gpio-controller@0 {
 			interrupt-controller;
+			#interrupt-cells = <3>;
 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
@@ -187,6 +188,7 @@
 	gpio1: gpio@3021000 {
 		portb: gpio-controller@1 {
 			interrupt-controller;
+			#interrupt-cells = <3>;
 			interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
@@ -194,6 +196,7 @@
 	gpio2: gpio@3022000 {
 		portc: gpio-controller@2 {
 			interrupt-controller;
+			#interrupt-cells = <3>;
 			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
@@ -201,6 +204,7 @@
 	gpio3: gpio@3023000 {
 		portd: gpio-controller@3 {
 			interrupt-controller;
+			#interrupt-cells = <3>;
 			interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
@@ -208,6 +212,7 @@
 	gpio4: gpio@5021000 {
 		porte: gpio-controller@4 {
 			interrupt-controller;
+			#interrupt-cells = <3>;
 			interrupts = <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
