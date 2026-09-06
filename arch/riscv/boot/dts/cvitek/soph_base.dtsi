@@ -126,7 +126,7 @@
 		int_mux_base = <0x03000298>;
 	};
 
-	dmac: dma@0x4330000 {
+	dmac: dma@4330000 {
 		compatible = "snps,dmac-bm";
 		reg = <0x0 0x04330000 0x0 0x1000>;
 		clock-names = "clk_sdma_axi";
@@ -145,7 +145,7 @@
 	};
 
 
-	watchdog0: cv-wd@0x3010000 {
+	watchdog0: cv-wd@3010000 {
 		compatible = "snps,dw-wdt";
 		reg = <0x0 0x03010000 0x0 0x1000>;
 		resets = <&rst RST_WDT>;
@@ -211,7 +211,7 @@
 		};
 	};
 
-	spi0:spi0@04180000 {
+	spi0:spi0@4180000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x04180000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -219,7 +219,7 @@
 		#size-cells = <0>;
 	};
 
-	spi1:spi1@04190000 {
+	spi1:spi1@4190000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x04190000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -227,7 +227,7 @@
 		#size-cells = <0>;
 	};
 
-	spi2:spi2@041A0000 {
+	spi2:spi2@41A0000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x041A0000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -236,7 +236,7 @@
 		bias-pull-up;
 	};
 
-	spi3:spi3@041B0000 {
+	spi3:spi3@41B0000 {
 		compatible = "snps,dw-apb-ssi";
 		reg = <0x0 0x041B0000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_SPI>;
@@ -250,7 +250,7 @@
 #endif
 	};
 
-	uart0: serial@04140000 {
+	uart0: serial@4140000 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x0 0x04140000 0x0 0x1000>;
 		clock-frequency = <25000000>;
@@ -259,7 +259,7 @@
 		status = "okay";
 	};
 
-	uart1: serial@04150000 {
+	uart1: serial@4150000 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x0 0x04150000 0x0 0x1000>;
 		clock-frequency = <25000000>;
@@ -268,7 +268,7 @@
 		status = "disabled";
 	};
 
-	uart2: serial@04160000 {
+	uart2: serial@4160000 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x0 0x04160000 0x0 0x1000>;
 		clock-frequency = <25000000>;
@@ -277,7 +277,7 @@
 		status = "disabled";
 	};
 
-	uart3: serial@04170000 {
+	uart3: serial@4170000 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x0 0x04170000 0x0 0x1000>;
 		clock-frequency = <25000000>;
@@ -286,7 +286,7 @@
 		status = "disabled";
 	};
 
-	uart4: serial@041C0000 {
+	uart4: serial@41C0000 {
 		compatible = "snps,dw-apb-uart";
 		reg = <0x0 0x041C0000 0x0 0x1000>;
 		clock-frequency = <25000000>;
@@ -295,7 +295,7 @@
 		status = "disabled";
 	};
 
-	gpio0: gpio@03020000 {
+	gpio0: gpio@3020000 {
 		compatible = "snps,dw-apb-gpio";
 		reg = <0x0 0x03020000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -311,7 +311,7 @@
 		};
 	};
 
-	gpio1: gpio@03021000 {
+	gpio1: gpio@3021000 {
 		compatible = "snps,dw-apb-gpio";
 		reg = <0x0 0x03021000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -327,7 +327,7 @@
 		};
 	};
 
-	gpio2: gpio@03022000 {
+	gpio2: gpio@3022000 {
 		compatible = "snps,dw-apb-gpio";
 		reg = <0x0 0x03022000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -343,7 +343,7 @@
 		};
 	};
 
-	gpio3: gpio@03023000 {
+	gpio3: gpio@3023000 {
 		compatible = "snps,dw-apb-gpio";
 		reg = <0x0 0x03023000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -359,7 +359,7 @@
 		};
 	};
 
-	gpio4: gpio@05021000 {
+	gpio4: gpio@5021000 {
 		compatible = "snps,dw-apb-gpio";
 		reg = <0x0 0x05021000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -375,7 +375,7 @@
 		};
 	};
 
-	i2c0: i2c@04000000 {
+	i2c0: i2c@4000000 {
 		compatible = "snps,designware-i2c";
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04000000 0x0 0x1000>;
@@ -387,7 +387,7 @@
 		reset-names = "i2c0";
 	};
 
-	i2c1: i2c@04010000 {
+	i2c1: i2c@4010000 {
 		compatible = "snps,designware-i2c";
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04010000 0x0 0x1000>;
@@ -399,7 +399,7 @@
 		reset-names = "i2c1";
 	};
 
-	i2c2: i2c@04020000 {
+	i2c2: i2c@4020000 {
 		compatible = "snps,designware-i2c";
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04020000 0x0 0x1000>;
@@ -408,7 +408,7 @@
 		reset-names = "i2c2";
 	};
 
-	i2c3: i2c@04030000 {
+	i2c3: i2c@4030000 {
 		compatible = "snps,designware-i2c";
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04030000 0x0 0x1000>;
@@ -417,7 +417,7 @@
 		reset-names = "i2c3";
 	};
 
-	i2c4: i2c@04040000 {
+	i2c4: i2c@4040000 {
 		compatible = "snps,designware-i2c";
 		clocks = <&clk CV181X_CLK_I2C>;
 		reg = <0x0 0x04040000 0x0 0x1000>;
@@ -559,7 +559,7 @@
 		master_base = <0x04110000>; /* I2S1 is master, only useful while using multi I2S IPs work on same IO */
 	};
 
-	i2s0: i2s@04100000 {
+	i2s0: i2s@4100000 {
 		compatible = "cvitek,cv1835-i2s";
 		reg = <0x0 0x04100000 0x0 0x2000>;
 		clocks = <&i2s_mclk 0>;
@@ -572,7 +572,7 @@
 		mclk_out = "false";
 	};
 
-	i2s1: i2s@04110000 {
+	i2s1: i2s@4110000 {
 		compatible = "cvitek,cv1835-i2s";
 		reg = <0x0 0x04110000 0x0 0x2000>;
 		clocks = <&i2s_mclk 0>;
@@ -586,7 +586,7 @@
 		mclk_out = "false";
 	};
 
-	i2s2: i2s@04120000 {
+	i2s2: i2s@4120000 {
 		compatible = "cvitek,cv1835-i2s";
 		reg = <0x0 0x04120000 0x0 0x2000>;
 		clocks = <&i2s_mclk 0>;
@@ -601,7 +601,7 @@
 
 	};
 
-	i2s3: i2s@04130000 {
+	i2s3: i2s@4130000 {
 		compatible = "cvitek,cv1835-i2s";
 		reg = <0x0 0x04130000 0x0 0x2000>;
 		clocks = <&i2s_mclk 0>;
@@ -614,7 +614,7 @@
 		mclk_out = "true";
 	};
 
-	adc: adc@0300A100 {
+	adc: adc@300A100 {
 		compatible = "cvitek,cv182xaadc";
 		reg = <0x0 0x0300A100 0x0 0x100>;
 		clocks = <&i2s_mclk 0>;
@@ -622,14 +622,14 @@
 		clk_source = <0x04130000>; /* MCLK source is I2S3 */
 	};
 
-	dac: dac@0300A000 {
+	dac: dac@300A000 {
 		compatible = "cvitek,cv182xadac";
 		reg = <0x0 0x0300A000 0x0 0x100>;
 		clocks = <&i2s_mclk 0>;
 		clock-names = "i2sclk";
 	};
 
-	pdm: pdm@0x041D0C00 {
+	pdm: pdm@41D0C00 {
 		compatible = "cvitek,cv1835pdm";
 		reg = <0x0 0x041D0C00 0x0 0x100>;
 		clocks = <&i2s_mclk 0>;
@@ -830,7 +830,7 @@
 		reg-names = "mailbox";
 	};
 
-	usb: usb@04340000 {
+	usb: usb@4340000 {
 		compatible = "cvitek,cv182x-usb";
 		reg = <0x0 0x04340000 0x0 0x10000>,
 			<0x0 0x03006000 0x0 0x58>;	//USB 2.0 PHY
@@ -849,7 +849,7 @@
 		status = "okay";
 	};
 
-	thermal:thermal@030E0000 {
+	thermal:thermal@30E0000 {
 		compatible = "cvitek,cv181x-thermal";
 		reg = <0x0 0x030E0000 0x0 0x10000>;
 		clocks = <&clk CV181X_CLK_TEMPSEN>;
