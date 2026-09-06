@@ -18,6 +18,7 @@
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/mm_types.h>
+#include <linux/plist.h>
 #include <linux/rbtree.h>
 #include <linux/sched/task.h>
 #include <linux/slab.h>
