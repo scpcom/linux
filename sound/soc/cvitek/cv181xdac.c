@@ -667,11 +667,10 @@ static int cv181xdac_probe(struct platform_device *pdev)
 					  &cv181xdac_dai, 1);
 }
 
-static int cv181xdac_remove(struct platform_device *pdev)
+static void cv181xdac_remove(struct platform_device *pdev)
 {
 	muteAmp(true);
 	dev_dbg(&pdev->dev, "cvitekadac_remove\n");
-	return 0;
 }
 
 #ifdef CONFIG_OF

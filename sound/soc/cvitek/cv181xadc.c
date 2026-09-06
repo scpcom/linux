@@ -897,13 +897,12 @@ static int cv181xadc_probe(struct platform_device *pdev)
 					  &cv181xadc_dai, 1);
 }
 
-static int cv181xadc_remove(struct platform_device *pdev)
+static void cv181xadc_remove(struct platform_device *pdev)
 {
 	struct cv181xadc *adc = dev_get_drvdata(&pdev->dev);
 
 	dev_dbg(&pdev->dev, "cvitekaadc_remove\n");
 	iounmap(adc->mclk_source);
-	return 0;
 }
 
 #ifdef CONFIG_OF

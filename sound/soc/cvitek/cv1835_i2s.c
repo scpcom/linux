@@ -1247,7 +1247,7 @@ err_clk_disable:
 	return ret;
 }
 
-static int cvi_i2s_remove(struct platform_device *pdev)
+static void cvi_i2s_remove(struct platform_device *pdev)
 {
 	struct cvi_i2s_dev *dev = dev_get_drvdata(&pdev->dev);
 
@@ -1255,7 +1255,6 @@ static int cvi_i2s_remove(struct platform_device *pdev)
 		clk_disable_unprepare(dev->clk);
 
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 #ifdef CONFIG_OF
