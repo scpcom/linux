@@ -47,10 +47,9 @@ static int cvi_pinctrl_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int cvi_pinctrl_remove(struct platform_device *pdev)
+static void cvi_pinctrl_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s()\n", __func__);
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
