@@ -306,6 +306,7 @@
 			bank-name = "porta";
 			gpio-controller;
 			#gpio-cells = <2>;
+			ngpios = <32>;
 			snps,nr-gpios = <32>;
 			reg = <0>;
 		};
@@ -322,6 +323,7 @@
 			bank-name = "portb";
 			gpio-controller;
 			#gpio-cells = <2>;
+			ngpios = <32>;
 			snps,nr-gpios = <32>;
 			reg = <0>;
 		};
@@ -338,6 +340,7 @@
 			bank-name = "portc";
 			gpio-controller;
 			#gpio-cells = <2>;
+			ngpios = <32>;
 			snps,nr-gpios = <32>;
 			reg = <0>;
 		};
@@ -354,6 +357,7 @@
 			bank-name = "portd";
 			gpio-controller;
 			#gpio-cells = <2>;
+			ngpios = <32>;
 			snps,nr-gpios = <32>;
 			reg = <0>;
 		};
@@ -370,6 +374,7 @@
 			bank-name = "porte";
 			gpio-controller;
 			#gpio-cells = <2>;
+			ngpios = <32>;
 			snps,nr-gpios = <32>;
 			reg = <0>;
 		};
