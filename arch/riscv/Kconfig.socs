@@ -155,6 +155,7 @@ config SOC_CANAAN_K210
 
 config ARCH_CVITEK
 	bool "CVITEK SoCs"
+	select ERRATA_THEAD
 	help
 	  This enables support for cvitek SoC platform hardware.
 
