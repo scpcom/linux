@@ -186,6 +186,7 @@ endif # ARCH_CANAAN
 
 config ARCH_CVITEK
 	bool "CVITEK SoCs"
+	select ERRATA_THEAD
 	help
 	  This enables support for cvitek SoC platform hardware.
 
