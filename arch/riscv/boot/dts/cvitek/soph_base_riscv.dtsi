@@ -60,12 +60,8 @@
 	};
 
 	soc {
-		#address-cells = <0x02>;
-		#size-cells = <0x02>;
-		compatible = "simple-bus";
 		interrupt-parent = <&plic0>;
 		dma-noncoherent;
-		ranges;
 
 		plic0: interrupt-controller@70000000 {
 			riscv,ndev = <101>;
@@ -85,8 +81,6 @@
 			compatible = "riscv,clint0";
 			clint,has-no-64bit-mmio;
 		};
-
-	};
 
 	cooling:cooling {
 		clocks = <&clk CV181X_CLK_C906_0>, <&clk CV181X_CLK_TPU>;
@@ -376,4 +370,5 @@
 		interrupt-names = "tempsen";
 	};
 
+	}; // soc
 };
