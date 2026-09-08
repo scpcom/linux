@@ -893,6 +893,19 @@ void ion_device_add_heap(struct ion_heap *heap)
 	struct dentry *heap_root;
 	char debug_name[64];
 
+	if (!dev) {
+		pr_err("%s: dev == NULL\n", __func__);
+		return;
+	}
+	if (!heap) {
+		pr_err("%s: heap == NULL\n", __func__);
+		return;
+	}
+	if (!heap->ops) {
+		pr_err("%s: heap->ops == NULL\n", __func__);
+		return;
+	}
+
 	if (!heap->ops->allocate || !heap->ops->free)
 		pr_err("%s: can not add heap with invalid ops struct.\n",
 		       __func__);
@@ -928,7 +941,8 @@ void ion_device_add_heap(struct ion_heap *heap)
 			   heap_root,
 			   &heap->alloc_bytes_wm);
 
-	if (heap->shrinker->count_objects &&
+	if (heap->shrinker &&
+	    heap->shrinker->count_objects &&
 	    heap->shrinker->scan_objects) {
 		snprintf(debug_name, 64, "%s_shrink", heap->name);
 		debugfs_create_file(debug_name,
