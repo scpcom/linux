@@ -1,4 +1,4 @@
-dtb-$(CONFIG_ARCH_CVITEK) += $(foreach dts,$(patsubst %.dts,%.dtb,$(wildcard ${srctree}/${src}/*.dts)),$(notdir ${dts}))
+dtb-$(CONFIG_ARCH_CVITEK) += $(foreach dts,$(patsubst %.dts,%.dtb,$(wildcard ${src}/*.dts)),$(notdir ${dts}))
 
 always          := $(dtb-y)
 subdir-y        := $(dts-dirs)
