@@ -191,6 +191,11 @@
 / {
         model = "LicheeRv Nano";
 
+	aliases {
+		mmc0 = &sd;
+		mmc1 = &wifisd;
+	};
+
 	spi4: spi4@gpio {
 		compatible = "spi-gpio";
 		#address-cells = <1>;
