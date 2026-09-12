@@ -1,0 +1,4 @@
+[submodule "drivers/osdrv"]
+	path = drivers/osdrv
+	url = https://github.com/scpcom/sophgo-osdrv.git
+	branch = licheervnano-cvisdk
