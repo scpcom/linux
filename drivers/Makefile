@@ -201,3 +201,6 @@ obj-$(CONFIG_DPLL)		+= dpll/
 
 obj-$(CONFIG_S390)		+= s390/
 obj-$(CONFIG_EFUSE)             += efuse/
+ifneq ($(CONFIG_OSDRV_CVITEK),)
+obj-y += osdrv/
+endif
