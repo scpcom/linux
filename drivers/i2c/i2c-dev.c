@@ -32,11 +32,11 @@
 #include <linux/uaccess.h>
 
 #if defined(CONFIG_ARCH_CVITEK)
-#define I2C0 "i2c@04000000"
-#define I2C1 "i2c@04010000"
-#define I2C2 "i2c@04020000"
-#define I2C3 "i2c@04030000"
-#define I2C4 "i2c@04040000"
+#define I2C0 "i2c@4000000"
+#define I2C1 "i2c@4010000"
+#define I2C2 "i2c@4020000"
+#define I2C3 "i2c@4030000"
+#define I2C4 "i2c@4040000"
 #define I2C5 "i2c5@gpio"
 #endif
 
