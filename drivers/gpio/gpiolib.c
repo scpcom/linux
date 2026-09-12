@@ -56,6 +56,14 @@ static DEFINE_IDA(gpio_ida);
 static dev_t gpio_devt;
 #define GPIO_DEV_MAX 256 /* 256 GPIO chip devices supported */
 
+#if defined(CONFIG_ARCH_CVITEK)
+#define GPIO0 "gpio@3020000"
+#define GPIO1 "gpio@3021000"
+#define GPIO2 "gpio@3022000"
+#define GPIO3 "gpio@3023000"
+#define GPIO4 "gpio@5021000"
+#endif
+
 static int gpio_bus_match(struct device *dev, const struct device_driver *drv)
 {
 	struct fwnode_handle *fwnode = dev_fwnode(dev);
@@ -1021,6 +1029,19 @@ int gpiochip_add_data_with_key(struct gpio_chip *gc, void *data,
 		 */
 		base = gc->base;
 		if (base < 0) {
+#if defined(CONFIG_ARCH_CVITEK)
+			if (!strcmp(gdev->dev.of_node->parent->full_name, GPIO0))
+				base = 480;
+			else if (!strcmp(gdev->dev.of_node->parent->full_name, GPIO1))
+				base = 448;
+			else if (!strcmp(gdev->dev.of_node->parent->full_name, GPIO2))
+				base = 416;
+			else if (!strcmp(gdev->dev.of_node->parent->full_name, GPIO3))
+				base = 384;
+			else if (!strcmp(gdev->dev.of_node->parent->full_name, GPIO4))
+				base = 352;
+			else
+#endif
 			base = gpiochip_find_base_unlocked(gc->ngpio);
 			if (base < 0) {
 				ret = base;
