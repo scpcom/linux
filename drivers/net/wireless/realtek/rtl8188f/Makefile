@@ -2229,7 +2229,9 @@ endif
 
 ifneq ($(KERNELRELEASE),)
 
+ifeq ($(CONFIG_ARCH_CVITEK),)
 obj-$(CONFIG_RTL8188FU) := $(MODULE_NAME).o
+endif
 
 ########### this part for *.mk ############################
 include $(src)/hal/phydm/phydm.mk
