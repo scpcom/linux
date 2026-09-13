@@ -1,4 +1,5 @@
 /dts-v1/;
+#include "cvi_256m_63m_memmap.h"
 #include "soph_base_riscv.dtsi"
 #include "soph_asic_qfn.dtsi"
 #include "soph_asic_sd.dtsi"
