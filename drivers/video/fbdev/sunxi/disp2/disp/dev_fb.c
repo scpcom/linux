@@ -1526,7 +1526,7 @@ static int Fb_copy_boot_fb(u32 sel, struct fb_info *info)
 	}
 	Fb_unmap_kernel(src_addr);
 
-	memblock_free((unsigned long)src_phy_addr, src_stride * fb_height);
+	memblock_phys_free((unsigned long)src_phy_addr, src_stride * fb_height);
 	free_reserved_area(__va(src_phy_addr), __va(src_phy_addr + PAGE_ALIGN(src_stride * fb_height)), 0x00, "logo buffer");
 	return 0;
 }
