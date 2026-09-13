@@ -1,0 +1,3 @@
+/dts-v1/;
+#include "cvi_256m_35m_memmap.h"
+#include "sg2002_licheervnano_sd.dts"
