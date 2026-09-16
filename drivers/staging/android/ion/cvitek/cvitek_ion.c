@@ -302,7 +302,11 @@ long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long ar
 #ifdef CONFIG_ARM
 		__cpuc_flush_user_range((u32)data.start, ((u32)data.start) + data.size, 0);
 #else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0))
 		__flush_cache_user_range((u64)data.start, ((u64)data.start) + data.size);
+#else
+		caches_clean_inval_user_pou((u64)data.start, ((u64)data.start) + data.size);
+#endif
 #endif
 		break;
 	}
@@ -335,7 +339,11 @@ long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long ar
 #ifdef CONFIG_ARM
 		invalidate_kernel_vmap_range((void*)va, data.size);
 #else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0))
 		__inval_dcache_area(va, data.size);
+#else
+		dcache_inval_poc(va, data.size);
+#endif
 #endif
 		break;
 	}
