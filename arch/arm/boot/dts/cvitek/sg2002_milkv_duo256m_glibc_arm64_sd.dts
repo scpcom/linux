@@ -20,10 +20,10 @@
 			linux,default-trigger = "activity";
 		};
 	};
+};
 
-	sd:cv-sd@4310000 {
-		max-frequency = <10000000>;
-	};
+&sd {
+	max-frequency = <10000000>;
 };
 
 &mipi_rx {
