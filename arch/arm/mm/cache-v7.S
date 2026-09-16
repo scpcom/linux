@@ -14,7 +14,7 @@
 #include <asm/errno.h>
 #include <asm/unwind.h>
 #include <asm/hardware/cache-b15-rac.h>
-#include <asm-generic/export.h>
+#include <linux/export.h>
 
 #include "proc-macros.S"
 
