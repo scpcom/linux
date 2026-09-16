@@ -63,6 +63,9 @@
 		};
 	};
 
+	soc {
+		interrupt-parent = <&gic>;
+
 	timer {
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
 			<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
@@ -322,4 +325,5 @@
 		interrupt-names = "tempsen";
 	};
 
+	}; // soc
 };
