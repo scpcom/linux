@@ -373,7 +373,7 @@ long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long ar
 
 		pr_debug("flush addr %#llx, size %zu\n", data.paddr, data.size);
 
-#if defined(__arm__) || defined(__aarch64__)
+#if (defined(__arm__) || defined(__aarch64__)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
 		/* compatible with previous version */
 		/* it could be removed and replaced by arch_sync_dma_for_device later */
 		__dma_map_area(phys_to_virt(data.paddr), data.size, DMA_TO_DEVICE);
@@ -393,7 +393,7 @@ long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long ar
 		pr_debug("invalidate addr %#llx, size %zu\n", data.paddr, data.size);
 
 
-#if defined(__arm__) || defined(__aarch64__)
+#if (defined(__arm__) || defined(__aarch64__)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0))
 		/* compatible with previous version */
 		/* it could be removed and replaced by arch_sync_dma_for_device later */
 		__dma_map_area(phys_to_virt(data.paddr), data.size, DMA_FROM_DEVICE);
