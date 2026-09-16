@@ -5,9 +5,9 @@
 #include "soph_default_memmap.dtsi"
 
 / {
+};
 
-	sd:cv-sd@4310000 {
-		max-frequency = <10000000>;
-	};
+&sd {
+	max-frequency = <10000000>;
 };
 
