@@ -10112,10 +10112,8 @@ static int nl80211_start_radar_detection(struct sk_buff *skb,
 		return cfg80211_start_background_radar_detection(rdev, wdev,
 								 &chandef);
 
-	if (rdev->wiphy.flags & WIPHY_FLAG_DFS_OFFLOAD) {
-		err = -EOPNOTSUPP;
-		goto unlock;
-	}
+	if (rdev->wiphy.flags & WIPHY_FLAG_DFS_OFFLOAD)
+		return -EOPNOTSUPP;
 
 	if (cfg80211_beaconing_iface_active(wdev)) {
 		/* During MLO other link(s) can beacon, only the current link
