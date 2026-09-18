@@ -50,6 +50,7 @@ fi
 bs=${BUILDDIR}/sdk-prepare-patch-stamp
 if [ ! -e $bs ]; then
   echo "\n${green}Patching SDK for ${BOARD_SHORT}${end_color}\n"
+  apt-get update
   cd ${BUILDDIR}
   [ "${ARCH}" != "riscv64" ] || CROSS_GCC=-riscv64-linux-gnu CROSS_DEBARCH=-riscv64-cross bash -e build-deps.sh
   [ "${ARCH}" != "arm64"   ] || CROSS_GCC=-aarch64-linux-gnu CROSS_DEBARCH=-arm64-cross bash -e build-deps.sh
@@ -67,7 +68,7 @@ if [ ! -e $bs ]; then
   rm -f linux-${lxmmmkb}-sbc-build.tar.gz
   echo "Creating linux-${lxmmmkb}-sbc-build.tar.gz..."
   tar czvf linux-${lxmmmkb}-sbc-build.tar.gz build-deps.sh build-env.sh build-linux-arm64.sh *-linux.sh *-dtb.sh *-image.sh *-uinitrd.sh *-mali*-driver.sh *-mali-dev.sh build-vdec-fw.sh build-wlan-fw.sh patches patches-optional mali450-meson/DEBIAN
-  [ "${BOARD_SHORT}" != "spacemit" ] || sed -i s/'git clone --depth=100 -b sbc-${lxmmmkb}.y'/'git clone --depth=100 -b '${BOARD_SHORT}'-${lxmmmkb}.y'/g prepare-linux.sh
+  [ "${BOARD_SHORT}" != "sg200x" -a "${BOARD_SHORT}" != "spacemit" ] || sed -i s/'git clone --depth=100 -b sbc-${lxmmmkb}.y'/'git clone --depth=100 -b '${BOARD_SHORT}'-${lxmmmkb}.y'/g prepare-linux.sh
   sed -i 's|https://github.com/scpcom|'${GIT_USER_URL}'|g' prepare-linux.sh
   sed -i 's|https://github.com/LibreELEC|'${GIT_USER_URL}'|g' build-wlan-fw.sh
   sed -i 's|https://github.com/LibreELEC|'${GIT_USER_URL}'|g' build-vdec-fw.sh

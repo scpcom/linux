@@ -18,6 +18,7 @@ MODULE_PARM_DESC(esp_reset_gpio, "ESP8089 CH_PD reset GPIO number");
 
 #define ESP8089_DRV_VERSION "1.9"
 
+#ifdef CONFIG_WL_ROCKCHIP
 extern int rk29sdk_wifi_power(int on);
 extern int rk29sdk_wifi_set_carddetect(int val);
 int rockchip_wifi_init_module(void)
@@ -30,6 +31,7 @@ void rockchip_wifi_exit_module(void)
 	esp_sdio_exit(); 
 		 
 }
+#endif
 void sif_platform_rescan_card(unsigned insert)
 {
 }
@@ -86,8 +88,10 @@ void sif_platform_ack_interrupt(struct esp_pub *epub)
         sdmmc_ack_interrupt(func->card->host);
 }
 #endif //ESP_ACK_INTERRUPT
+#ifdef CONFIG_WL_ROCKCHIP
  EXPORT_SYMBOL(rockchip_wifi_init_module);
  EXPORT_SYMBOL(rockchip_wifi_exit_module);
+#endif
 
 late_initcall(esp_sdio_init);
 module_exit(esp_sdio_exit);
