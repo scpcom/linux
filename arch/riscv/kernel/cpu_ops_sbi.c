@@ -90,15 +90,19 @@ static void sbi_cpu_stop(void)
 	pr_crit("Unable to stop the cpu %u (%d)\n", smp_processor_id(), ret);
 }
 
-static int sbi_cpu_is_stopped(unsigned int cpuid)
+static bool sbi_cpu_is_stopped(unsigned int cpuid)
 {
 	int rc;
 	unsigned long hartid = cpuid_to_hartid_map(cpuid);
 #ifndef CONFIG_SOC_SPACEMIT_K1X
 	rc = sbi_hsm_hart_get_status(hartid);
 
-	if (rc == SBI_HSM_STATE_STOPPED)
-		return 0;
+	if (rc != SBI_HSM_STATE_STOPPED) {
+		pr_warn("HART%lu isn't stopped; status %d\n", hartid, rc);
+		return false;
+	}
+
+	return true;
 #else
         unsigned long start, end;
 
@@ -114,7 +118,7 @@ static int sbi_cpu_is_stopped(unsigned int cpuid)
                 if (rc == SBI_HSM_STATE_STOPPED) {
                         pr_info("CPU%d killed (polled %d ms)\n", cpuid,
                                 jiffies_to_msecs(jiffies - start));
-                        return 0;
+                        return true;
                 }
 
                 usleep_range(100, 1000);
@@ -122,10 +126,8 @@ static int sbi_cpu_is_stopped(unsigned int cpuid)
 
         pr_warn("CPU%d may not have shut down cleanly (AFFINITY_INFO reports %d)\n",
                         cpuid, rc);
-        rc = -ETIMEDOUT;
-
+        return false;
 #endif
-	return rc;
 }
 #endif
 

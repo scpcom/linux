@@ -1189,6 +1189,9 @@ static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev
 }
 
 static int ieee80211_set_monitor_channel(struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 101))
+					 struct net_device *ndev,
+#endif
 					 struct cfg80211_chan_def *chandef)
 {
 	struct ieee80211_local *local = wiphy_priv(wiphy);
