@@ -22,7 +22,7 @@ static inline size_t chunk_size(const struct gen_pool_chunk *chunk)
 	return chunk->end_addr - chunk->start_addr + 1;
 }
 
-void show_bitmap_mem_usage(struct seq_file *s, u32 heap_id, struct gen_pool_chunk *chunk, u32 size_in_bit, int order)
+static void show_bitmap_mem_usage(struct seq_file *s, u32 heap_id, struct gen_pool_chunk *chunk, u32 size_in_bit, int order)
 {
 	unsigned long *map = chunk->bits;
 	phys_addr_t region_start_addr;
@@ -55,7 +55,7 @@ void show_bitmap_mem_usage(struct seq_file *s, u32 heap_id, struct gen_pool_chun
 
 }
 
-void show_carveout_heap_usage(struct seq_file *s, struct ion_heap *heap)
+static void show_carveout_heap_usage(struct seq_file *s, struct ion_heap *heap)
 {
 	int end_bit;
 	struct gen_pool *pool;

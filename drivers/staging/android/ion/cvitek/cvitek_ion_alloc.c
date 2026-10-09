@@ -19,7 +19,7 @@ struct cvi_ion_alloc_info {
 	struct ion_buffer *buf;
 };
 
-int _cvi_ion_alloc(enum ion_heap_type type, size_t len, bool mmap_cache, struct cvi_ion_alloc_info *ion_alloc_info)
+static int _cvi_ion_alloc(enum ion_heap_type type, size_t len, bool mmap_cache, struct cvi_ion_alloc_info *ion_alloc_info)
 {
 	struct ion_heap_query query;
 	int ret = 0, index;

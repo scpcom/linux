@@ -111,7 +111,7 @@ static struct ion_heap_ops carveout_heap_ops = {
 };
 
 #ifdef CONFIG_ION_CVITEK
-void cvi_get_rtos_ion_size(size_t *psize)
+static void cvi_get_rtos_ion_size(size_t *psize)
 {
 	struct device_node * np;
 	u32 rtos_ion_size;

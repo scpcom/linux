@@ -121,7 +121,7 @@ static int ion_setup_heap_common(struct platform_device *parent,
 	return ret;
 }
 
-struct ion_platform_data *ion_parse_dt(struct platform_device *pdev,
+static struct ion_platform_data *ion_parse_dt(struct platform_device *pdev,
 				       struct ion_of_heap *compatible)
 {
 	int num_heaps, ret;
@@ -175,7 +175,7 @@ struct ion_platform_data *ion_parse_dt(struct platform_device *pdev,
 	return data;
 }
 
-void ion_destroy_platform_data(struct ion_platform_data *data)
+static void ion_destroy_platform_data(struct ion_platform_data *data)
 {
 	int i;
 
@@ -226,7 +226,7 @@ static int cvitek_get_heap_info(struct ion_device *dev, struct cvitek_heap_info 
 	return -1;
 }
 #if defined(CONFIG_ARM) || defined(__arm__) || defined(__aarch64__)
-u64 get_user_pa(u64 user_addr)
+static u64 get_user_pa(u64 user_addr)
 {
 	pgd_t *pgd; //= (pgd_t*)per_cpu(current_pgd, smp_processor_id());
 	p4d_t *p4d;
@@ -279,7 +279,7 @@ exit:
 }
 #endif
 
-long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long arg)
+static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned long arg)
 {
 	long ret = 0;
 
