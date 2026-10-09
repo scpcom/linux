@@ -592,7 +592,7 @@ static int _ion_update_memory_statics(struct ion_heap *heap,
 		end_bit = chunk_size >> order;
 		ret = __update_max_avail_size(chunk, end_bit, order, max_avail_size);
 		if (ret) {
-			pr_err("%s: update max avail size fail, chunk addr:%llu ret:%d.\n",
+			pr_err("%s: update max avail size fail, chunk addr:%lu ret:%d.\n",
 				__func__, chunk->start_addr, ret);
 		}
 	}
