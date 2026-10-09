@@ -22,6 +22,11 @@
 
 #include "u_hid.h"
 
+#ifndef ERROR_RATELIMITED
+#define ERROR_RATELIMITED(d, fmt, args...) \
+	dev_err_ratelimited(&(d)->gadget->dev , fmt , ## args)
+#endif
+
 #define HIDG_MINORS	4
 
 /*
@@ -480,7 +485,7 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 	 */
 	if (hidg->wakeup_on_write /*&& cdev->config->bmAttributes & 0x20*/){
 		usb_gadget_wakeup(cdev->gadget);
-		ERROR(hidg->func.config->cdev,
+		ERROR_RATELIMITED(hidg->func.config->cdev,
 			"usb_gadget_wakeup\n");
 	}
 
