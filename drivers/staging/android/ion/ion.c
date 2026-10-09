@@ -727,6 +727,15 @@ out:
 	return ret;
 }
 
+long ion_custom_ioctl(unsigned int cmd, unsigned long arg)
+{
+	struct ion_device *dev = internal_dev;
+
+	if (!dev || !dev->custom_ioctl)
+		return -ENOTTY;
+	return dev->custom_ioctl(dev, cmd, arg);
+}
+
 union ion_ioctl_arg {
 	struct ion_allocation_data allocation;
 	struct ion_heap_query query;

@@ -32,22 +32,6 @@ struct compat_ion_custom_data {
 #define COMPAT_ION_IOC_CUSTOM	_IOWR(ION_IOC_MAGIC, 6, \
 				      struct compat_ion_custom_data)
 
-static int
-compat_get_ion_custom_data(struct compat_ion_custom_data __user *data32,
-			   struct ion_custom_data __user *data)
-{
-	compat_uint_t cmd;
-	compat_ulong_t arg;
-	int err;
-
-	err = get_user(cmd, &data32->cmd);
-	err |= put_user(cmd, &data->cmd);
-	err |= get_user(arg, &data32->arg);
-	err |= put_user(arg, &data->arg);
-
-	return err;
-};
-
 long compat_ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	if (!filp->f_op->unlocked_ioctl)
@@ -55,23 +39,14 @@ long compat_ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case COMPAT_ION_IOC_CUSTOM: {
-		struct compat_ion_custom_data __user *data32;
-		struct ion_custom_data __user *data;
-		int err;
+		struct compat_ion_custom_data data;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (!data)
+		if (copy_from_user(&data, compat_ptr(arg), sizeof(data)))
 			return -EFAULT;
-
-		err = compat_get_ion_custom_data(data32, data);
-		if (err)
-			return err;
-
-		return filp->f_op->unlocked_ioctl(filp, ION_IOC_CUSTOM,
-							(unsigned long)data);
+		return ion_custom_ioctl(data.cmd, (unsigned long)compat_ptr(data.arg));
 	}
 	default:
-		return filp->f_op->unlocked_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
+		return filp->f_op->unlocked_ioctl(filp, cmd,
+						(unsigned long)compat_ptr(arg));
 	}
 }

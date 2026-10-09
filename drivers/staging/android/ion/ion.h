@@ -83,6 +83,7 @@ struct ion_buffer {
 };
 
 void ion_buffer_destroy(struct ion_buffer *buffer);
+long ion_custom_ioctl(unsigned int cmd, unsigned long arg);
 
 /**
  * struct ion_device - the metadata of the ion device node
