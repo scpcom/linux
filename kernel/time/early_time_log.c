@@ -31,7 +31,7 @@ static int early_time_logs_idx;
 #if defined(CONFIG_ARM_ARCH_TIMER)
 #include <asm/arch_timer.h>
 
-u64 early_time_get_us(void)
+static u64 early_time_get_us(void)
 {
 	u64 c = __arch_counter_get_cntpct();
 	u64 f = arch_timer_get_cntfrq();
@@ -42,7 +42,7 @@ u64 early_time_get_us(void)
 	return c;
 }
 #elif defined(CONFIG_RISCV_TIMER)
-u64 early_time_get_us(void)
+static u64 early_time_get_us(void)
 {
 	cycles_t c = get_cycles();
 	u32 f = 25000000 / 1000000;
