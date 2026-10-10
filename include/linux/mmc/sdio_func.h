@@ -178,4 +178,8 @@ extern void sdio_retune_crc_enable(struct sdio_func *func);
 extern void sdio_retune_hold_now(struct sdio_func *func);
 extern void sdio_retune_release(struct sdio_func *func);
 
+struct mmc_card;
+
+extern int sdio_reset_comm(struct mmc_card *card);
+
 #endif /* LINUX_MMC_SDIO_FUNC_H */
