@@ -53,7 +53,7 @@ static inline void mmio_setbits_32(void __iomem *addr, uint32_t set)
 	mmio_write_32(addr, mmio_read_32(addr) | set);
 }
 
-void cvi_efuse_wait_for_ready(void)
+static void cvi_efuse_wait_for_ready(void)
 {
 	while (mmio_read_32(EFUSE_STATUS) & EFUSE_BIT_BUSY)
 		;
@@ -154,7 +154,7 @@ static int cvi_efuse_write_word(uint32_t vir_word_addr, uint32_t val)
 	return err_cnt >= 2 ? -EIO : 0;
 }
 
-int __init cvi_efuse_init(void)
+static int __init cvi_efuse_init(void)
 {
 	efuse_base = ioremap(EFUSE_BASE, 0x1000);
 	if (efuse_base == NULL)
@@ -170,7 +170,7 @@ int __init cvi_efuse_init(void)
 	return 0;
 }
 
-void __exit cvi_efuse_exit(void)
+static void __exit cvi_efuse_exit(void)
 {
 	iounmap(efuse_base);
 }
