@@ -603,13 +603,16 @@ static int __init early_reserved_addr(char *args)
 {
 	char *param, *addr;
 	u64 u64_addr;
+	int ret;
 
 	pr_debug("%s args is %s\n", __func__, args);
 
 	while (*args) {
 		args = next_arg_separator(args, &param, &addr, ':');
+		ret = kstrtou64(addr, 16, &u64_addr);
+		if (ret)
+			continue;
 		reserved_mem_addr_array[reserved_mem_addr_entry_count].uname = param;
-		kstrtou64(addr, 16, &u64_addr);
 		reserved_mem_addr_array[reserved_mem_addr_entry_count].addr = u64_addr;
 		reserved_mem_addr_entry_count++;
 
@@ -626,13 +629,16 @@ static int __init early_reserved_size(char *args)
 {
 	char *param, *size;
 	u64 u64_size;
+	int ret;
 
 	pr_debug("%s args is %s\n", __func__, args);
 
 	while (*args) {
 		args = next_arg_separator(args, &param, &size, ':');
+		ret = kstrtou64(size, 16, &u64_size);
+		if (ret)
+			continue;
 		reserved_mem_size_array[reserved_mem_size_entry_count].uname = param;
-		kstrtou64(size, 16, &u64_size);
 		reserved_mem_size_array[reserved_mem_size_entry_count].size = u64_size;
 		reserved_mem_size_entry_count++;
 
