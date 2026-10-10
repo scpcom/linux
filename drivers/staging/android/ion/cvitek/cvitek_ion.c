@@ -111,6 +111,7 @@ static int ion_setup_heap_common(struct platform_device *parent,
 	case ION_HEAP_TYPE_CHUNK:
 		if (heap->base && heap->size)
 			return 0;
+		fallthrough;
 	case ION_HEAP_TYPE_DMA:
 		ret = of_reserved_mem_device_init(heap->priv);
 		break;
