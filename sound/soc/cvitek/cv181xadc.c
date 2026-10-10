@@ -485,7 +485,7 @@ static long adc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned int __user *argp = (unsigned int __user *)arg;
 	struct cv181xadc *adc = file_adc_dev(file);
 	struct cvi_vol_ctrl vol;
-	u32 val, val2;
+	u32 val;
 	u32 temp;
 
 	if (argp != NULL) {
