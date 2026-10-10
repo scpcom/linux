@@ -229,7 +229,7 @@ static const struct proc_ops cvi_stats_proc_ops = {
 	.proc_release = single_release,
 };
 
-int cvi_proc_init(struct sdhci_cvi_host *cvi_host)
+static int cvi_proc_init(struct sdhci_cvi_host *cvi_host)
 {
 	struct proc_dir_entry *proc_stats_entry;
 
@@ -253,7 +253,7 @@ int cvi_proc_init(struct sdhci_cvi_host *cvi_host)
 	return 0;
 }
 
-int cvi_proc_shutdown(struct sdhci_cvi_host *cvi_host)
+static int cvi_proc_shutdown(struct sdhci_cvi_host *cvi_host)
 {
 	pr_info("%s\n", __func__);
 
@@ -502,7 +502,7 @@ static ssize_t rescan_store(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(rescan, 0200, NULL, rescan_store);
 
-void sdhci_cvi_emmc_voltage_switch(struct sdhci_host *host)
+static void sdhci_cvi_emmc_voltage_switch(struct sdhci_host *host)
 {
 }
 
@@ -799,7 +799,7 @@ static void sdhci_cv181x_sdio_reset(struct sdhci_host *host, u8 mask)
 	}
 }
 
-void sdhci_cv181x_sd_voltage_switch(struct sdhci_host *host)
+static void sdhci_cv181x_sd_voltage_switch(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_cvi_host *cvi_host = sdhci_pltfm_priv(pltfm_host);
@@ -820,7 +820,7 @@ void sdhci_cv181x_sd_voltage_switch(struct sdhci_host *host)
 	mdelay(1);
 }
 
-void sdhci_cv181x_sd_voltage_restore(struct sdhci_host *host, bool bunplug)
+static void sdhci_cv181x_sd_voltage_restore(struct sdhci_host *host, bool bunplug)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_cvi_host *cvi_host = sdhci_pltfm_priv(pltfm_host);
