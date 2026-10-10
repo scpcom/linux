@@ -1173,7 +1173,7 @@ static int dw_dma_cyclic_start(struct dma_chan *chan)
  *
  * Must be called with soft interrupts disabled.
  */
-void dw_dma_cyclic_stop(struct dma_chan *chan)
+static __maybe_unused void dw_dma_cyclic_stop(struct dma_chan *chan)
 {
 	unsigned long flags;
 	struct dw_dma_chan *dwc = to_dw_dma_chan(chan);
@@ -1429,7 +1429,7 @@ static void dwc_handle_cyclic(struct dw_dma *dw, struct dw_dma_chan *dwc)
  * dw_dma_cyclic_free - free a prepared cyclic DMA transfer
  * @chan: the DMA channel to free
  */
-void dw_dma_cyclic_free(struct dma_chan *chan)
+static __maybe_unused void dw_dma_cyclic_free(struct dma_chan *chan)
 {
 	unsigned int i;
 	unsigned long flags;
