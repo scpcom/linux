@@ -37,6 +37,7 @@
 #include <linux/sizes.h>
 #include <linux/dma-mapping.h>
 #include <linux/kernel.h>
+#include <soc/cvitek/cvitek_sdhci.h>
 
 #include "../../core/card.h"
 #include "../sdhci-pltfm.h"
