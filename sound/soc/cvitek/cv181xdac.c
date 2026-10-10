@@ -31,7 +31,7 @@ int mute_pin_l; // 495
 int mute_pin_r; // 510
 
 
-void muteAmp(bool enable)
+static void muteAmp(bool enable)
 {
 	if (enable) {
 		if (mute_pin_l != -EINVAL) {
@@ -528,7 +528,7 @@ static const struct snd_kcontrol_new cv181xdac_controls[] = {
 	SOC_DOUBLE("DAC Playback MUTE", AUDIO_PHY_TXDAC_ANA2, 16, 17, 1, 0),
 };
 
-unsigned int cv181xdac_reg_read(struct snd_soc_component *codec, unsigned int reg)
+static unsigned int cv181xdac_reg_read(struct snd_soc_component *codec, unsigned int reg)
 {
 	struct cv181xdac *dac = dev_get_drvdata(codec->dev);
 	int ret;
@@ -549,7 +549,7 @@ unsigned int cv181xdac_reg_read(struct snd_soc_component *codec, unsigned int re
 	return ret;
 }
 
-int cv181xdac_reg_write(struct snd_soc_component *codec, unsigned int reg, unsigned int value)
+static int cv181xdac_reg_write(struct snd_soc_component *codec, unsigned int reg, unsigned int value)
 {
 	struct cv181xdac *dac = dev_get_drvdata(codec->dev);
 	u32 temp_lval;

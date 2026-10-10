@@ -199,17 +199,17 @@ static int cv181x_dac_probe(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-int cv181x_cv181xdac_suspend(struct device *dev)
+static int cv181x_cv181xdac_suspend(struct device *dev)
 {
 	return 0;
 }
 
-int cv181x_cv181xdac_resume(struct device *dev)
+static int cv181x_cv181xdac_resume(struct device *dev)
 {
 	return 0;
 }
 
-int cv181x_cv181xdac_poweroff(struct device *dev)
+static int cv181x_cv181xdac_poweroff(struct device *dev)
 {
 	return 0;
 }

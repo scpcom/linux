@@ -20,7 +20,7 @@ u32 i2s_subsys_query_master(void)
 	return dev->master_id;
 }
 
-bool i2s_master_is_on(void)
+static bool i2s_master_is_on(void)
 {
 	return readl(master_reg + I2S_ENABLE_REG);
 }

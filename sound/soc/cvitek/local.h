@@ -265,8 +265,8 @@ struct cvi_i2s_dev {
 void cvi_pcm_push_tx(struct cvi_i2s_dev *dev);
 int cvi_pcm_register(struct platform_device *pdev);
 #else
-void cvi_pcm_push_tx(struct cvi_i2s_dev *dev) { }
-int cvi_pcm_register(struct platform_device *pdev)
+static inline void cvi_pcm_push_tx(struct cvi_i2s_dev *dev) { }
+static inline int cvi_pcm_register(struct platform_device *pdev)
 {
 	return -EINVAL;
 }

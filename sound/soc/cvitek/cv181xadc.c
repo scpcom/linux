@@ -770,7 +770,7 @@ static const struct snd_kcontrol_new cv181xadc_controls[] = {
 	SOC_DOUBLE("ADC Capture Mute", AUDIO_PHY_RXADC_ANA2, 0, 1, 1, 0),
 };
 
-unsigned int cv181xadc_reg_read(struct snd_soc_component *codec, unsigned int reg)
+static unsigned int cv181xadc_reg_read(struct snd_soc_component *codec, unsigned int reg)
 {
 	int ret, lidx, ridx;
 	struct cv181xadc *adc = dev_get_drvdata(codec->dev);
@@ -792,7 +792,7 @@ unsigned int cv181xadc_reg_read(struct snd_soc_component *codec, unsigned int re
 	return ret;
 }
 
-int cv181xadc_reg_write(struct snd_soc_component *codec, unsigned int reg, unsigned int value)
+static int cv181xadc_reg_write(struct snd_soc_component *codec, unsigned int reg, unsigned int value)
 {
 	struct cv181xadc *adc = dev_get_drvdata(codec->dev);
 	u32 temp_lval;
