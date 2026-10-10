@@ -367,7 +367,6 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 	case ION_IOC_CVITEK_FLUSH_PHY_RANGE:
 	{
 		struct cvitek_cache_range data;
-		unsigned long  va, pa;
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
@@ -386,7 +385,6 @@ static long cvitek_ion_ioctl(struct ion_device *dev, unsigned int cmd, unsigned 
 	case ION_IOC_CVITEK_INVALIDATE_PHY_RANGE:
 	{
 		struct cvitek_cache_range data;
-		unsigned long  va, pa;
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
