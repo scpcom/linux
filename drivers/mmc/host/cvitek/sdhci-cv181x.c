@@ -1245,7 +1245,6 @@ static int sdhci_cvi_probe(struct platform_device *pdev)
 	struct sdhci_cvi_host *cvi_host;
 	const struct of_device_id *match;
 	const struct sdhci_pltfm_data *pdata;
-	struct clk *clk_sd;
 	int ret;
 	int gpio_cd = -EINVAL;
 	u32 extra;
