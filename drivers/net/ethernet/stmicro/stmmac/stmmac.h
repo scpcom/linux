@@ -502,4 +502,6 @@ static inline int stmmac_selftest_get_count(struct stmmac_priv *priv)
 }
 #endif /* CONFIG_STMMAC_SELFTESTS */
 
+void stmmac_reset_subtask2(struct stmmac_priv *priv);
+
 #endif /* __STMMAC_H__ */

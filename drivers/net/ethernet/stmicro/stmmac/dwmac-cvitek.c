@@ -116,7 +116,7 @@ static int bm_eth_reset_phy(struct platform_device *pdev)
 	return 0;
 }
 
-void bm_dwmac_exit(struct platform_device *pdev, void *priv)
+static void bm_dwmac_exit(struct platform_device *pdev, void *priv)
 {
 	struct cvitek_mac *bsp_priv = priv;
 
@@ -228,8 +228,6 @@ static int cvi_eth_pm_suspend(struct device *dev)
 
 	return 0;
 }
-
-extern void stmmac_reset_subtask2(struct stmmac_priv *priv);
 
 static int cvi_eth_pm_resume(struct device *dev)
 {
