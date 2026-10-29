@@ -5,6 +5,8 @@
 
 obj-$(CONFIG_NVMEM)		+= nvmem_core.o
 nvmem_core-y			:= core.o
+obj-$(CONFIG_NVMEM_LAYOUTS)	+= nvmem_layouts.o
+nvmem_layouts-y			:= layouts.o
 obj-y				+= layouts/
 
 obj-$(CONFIG_GENERIC_EFUSE_CLASS) += nvmem_generic_efuse_class.o
