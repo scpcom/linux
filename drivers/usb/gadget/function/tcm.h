@@ -3,6 +3,7 @@
 #define __TARGET_USB_GADGET_H__
 
 #include <linux/kref.h>
+#include <linux/spinlock.h>
 /* #include <linux/usb/uas.h> */
 #include <linux/usb/composite.h>
 #include <linux/usb/uas.h>
@@ -28,6 +29,12 @@ enum {
 
 #define USB_G_DEFAULT_SESSION_TAGS	USBG_NUM_CMDS
 
+
+enum {
+	USBG_DELAYED_SET_ALT_IDLE = 0,
+	USBG_DELAYED_SET_ALT_QUEUED,
+	USBG_DELAYED_SET_ALT_RUNNING,
+};
 
 struct tcm_usbg_nexus {
 	struct se_session *tvn_se_sess;

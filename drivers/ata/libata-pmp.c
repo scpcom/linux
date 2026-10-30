@@ -448,6 +448,10 @@ static void sata_pmp_quirks(struct ata_port *ap)
 		ap->pmp_link[ap->nr_pmp_links - 1].flags |= ATA_LFLAG_NO_RETRY;
 	} else if (vendor == 0x197b && (devid == 0x2352 || devid == 0x0325 || devid == 0x0585)) {
 		/*
+		 * 0x0562: JMicron JMS562, as used in QNAP QDA-A2AR RAID1
+		 *         adapters.  The exported device may stay not ready
+		 *         while the array is rebuilding, and SRST/classify can
+		 *         time out before the RAID volume is exported.
 		 * 0x2352: found in Thermaltake BlackX Duet, jmicron JMB350?
 		 * 0x0325: jmicron JMB394.
 		 * 0x0325: jmicron JMB585.
