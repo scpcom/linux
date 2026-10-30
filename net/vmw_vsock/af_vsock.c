@@ -1605,12 +1605,10 @@ static int vsock_connect(struct socket *sock, struct sockaddr *addr,
 		prepare_to_wait(sk_sleep(sk), &wait, TASK_INTERRUPTIBLE);
 	}
 
-	if (sk->sk_err) {
-		err = -sk->sk_err;
+	err = sock_error(sk);
+	if (err) {
 		sk->sk_state = TCP_CLOSE;
 		sock->state = SS_UNCONNECTED;
-	} else {
-		err = 0;
 	}
 
 out_wait:
@@ -1651,8 +1649,7 @@ static int vsock_accept(struct socket *sock, struct socket *newsock, int flags,
 	timeout = sock_rcvtimeo(listener, flags & O_NONBLOCK);
 	prepare_to_wait(sk_sleep(listener), &wait, TASK_INTERRUPTIBLE);
 
-	while ((connected = vsock_dequeue_accept(listener)) == NULL &&
-	       listener->sk_err == 0) {
+	while ((connected = vsock_dequeue_accept(listener)) == NULL) {
 		release_sock(listener);
 		timeout = schedule_timeout(timeout);
 		finish_wait(sk_sleep(listener), &wait);
@@ -1669,9 +1666,6 @@ static int vsock_accept(struct socket *sock, struct socket *newsock, int flags,
 		prepare_to_wait(sk_sleep(listener), &wait, TASK_INTERRUPTIBLE);
 	}
 	finish_wait(sk_sleep(listener), &wait);
-
-	if (listener->sk_err)
-		err = -listener->sk_err;
 
 	if (connected) {
 		sk_acceptq_removed(listener);
