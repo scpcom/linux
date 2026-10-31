@@ -308,6 +308,13 @@ SYM_FUNC_START(__switch_to)
 	REG_S s11, TASK_THREAD_S11_RA(a3)
 	/* Save the kernel shadow call stack pointer */
 	scs_save_current
+
+	/* save the user space access flag */
+	li    s0, SR_SUM
+	csrr  s1, CSR_STATUS
+	and   s1, s1, s0
+	REG_S s1, TASK_THREAD_STATUS_RA(a3)
+
 	/* Restore context from next->thread */
 	REG_L s0,  TASK_THREAD_STATUS_RA(a4)
 	csrs  CSR_STATUS, s0
