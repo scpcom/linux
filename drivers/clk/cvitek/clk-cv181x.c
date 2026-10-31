@@ -2646,7 +2646,7 @@ static void cv181x_clk_writel(volatile void __iomem *to, const void *from, size_
         }
 }
 
-static int cv181x_clk_suspend(void)
+static int cv181x_clk_suspend(void *data)
 {
 	cv181x_clk_readl(clk_data->base + REG_CLK_EN_START,
 		clk_data->clken_saved_regs,
@@ -2691,7 +2691,7 @@ static int cv181x_clk_suspend(void)
 	return 0;
 }
 
-static void cv181x_clk_resume(void)
+static void cv181x_clk_resume(void *data)
 {
 	uint32_t regval;
 
@@ -2791,9 +2791,13 @@ static void cv181x_clk_resume(void)
 			REG_CLK_BYP_NUM);
 }
 
-static struct syscore_ops cv181x_clk_syscore_ops = {
+static const struct syscore_ops cv181x_clk_syscore_ops = {
 	.suspend = cv181x_clk_suspend,
 	.resume = cv181x_clk_resume,
+};
+
+static struct syscore cv181x_clk_syscore = {
+	.ops = &cv181x_clk_syscore_ops,
 };
 #endif /* CONFIG_PM_SLEEP */
 
@@ -2857,7 +2861,7 @@ static void __init cvi_clk_init(struct device_node *node)
 	// clk_prepare_enable(clk_data->hw_data.hws[CV181X_CLK_SC_TOP_VIP]->clk);
 
 #ifdef CONFIG_PM_SLEEP
-	register_syscore_ops(&cv181x_clk_syscore_ops);
+	register_syscore(&cv181x_clk_syscore);
 #endif
 
 	if (!ret)
