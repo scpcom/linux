@@ -75,7 +75,7 @@ static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 		dmabuf = gdmabuf[pop_count];
 		fd_dma = gfd_dmabuf[pop_count];
 		pop_count ++;
-		fd = dma_buf_fd(dmabuf, fd_flags);
+		fd = get_unused_fd_flags(fd_flags);
 		if (fd < 0) {
 			printk("%s %d: error! heap_flags:%x, fd: %d\n",__func__,__LINE__, heap_flags, fd);
 			dma_buf_put(dmabuf);
@@ -90,7 +90,7 @@ static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 	if (IS_ERR(dmabuf))
 		return PTR_ERR(dmabuf);
 
-	fd = dma_buf_fd(dmabuf, fd_flags);
+	fd = get_unused_fd_flags(fd_flags);
 	if (fd < 0) {
 		dma_buf_put(dmabuf);
 		/* just return, as put will call release and that will free */
@@ -131,7 +131,6 @@ static struct dma_buf *dma_heap_ioctl_allocate(struct file *file, void *data)
 	struct dma_heap *heap = file->private_data;
 	struct dma_buf *dmabuf;
 	int fd;
-	size_t len;
 
 	if (heap_allocation->fd)
 		return ERR_PTR(-EINVAL);
@@ -144,15 +143,14 @@ static struct dma_buf *dma_heap_ioctl_allocate(struct file *file, void *data)
 		if (heap_allocation->heap_flags == 0xff || heap_allocation->heap_flags == 0xf0)
 			printk("%s,%d: heap_flas: %llx\n", __func__, __LINE__, heap_allocation->heap_flags);
 		else
-			return -EINVAL;
+			return ERR_PTR(-EINVAL);
 	}
 
-	if (IS_ERR(dmabuf))
-		return dmabuf;
+	fd = dma_heap_buffer_alloc(heap, heap_allocation->len,
+				   heap_allocation->fd_flags,
+				   heap_allocation->heap_flags);
 
-	fd = get_unused_fd_flags(heap_allocation->fd_flags);
 	if (fd < 0) {
-		dma_buf_put(dmabuf);
 		return ERR_PTR(fd);
 	}
 
