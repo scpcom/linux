@@ -1080,38 +1080,6 @@ cfg80211_chandef_dfs_cac_time(struct wiphy *wiphy,
 }
 EXPORT_SYMBOL(cfg80211_chandef_dfs_cac_time);
 
-static bool cfg80211_secondary_chans_ok(struct wiphy *wiphy,
-					u32 center_freq, u32 bandwidth,
-					u32 prohibited_flags,
-					u32 permitting_flags)
-{
-	struct ieee80211_channel *c;
-	u32 freq, start_freq, end_freq;
-
-	start_freq = cfg80211_get_start_freq(center_freq, bandwidth);
-	end_freq = cfg80211_get_end_freq(center_freq, bandwidth);
-
-	for (freq = start_freq; freq <= end_freq; freq += MHZ_TO_KHZ(20)) {
-		c = ieee80211_get_channel_khz(wiphy, freq);
-		if (!c)
-			return false;
-		if (c->flags & permitting_flags)
-			continue;
-
-                /* check for radar flags */
-                if ((!(wiphy->flags & WIPHY_FLAG_DFS_OFFLOAD)) &&
-                    (prohibited_flags & c->flags & IEEE80211_CHAN_RADAR) &&
-                    (c->dfs_state != NL80211_DFS_AVAILABLE))
-                        return false;
-
-                /* check for the other flags */
-                if (c->flags & prohibited_flags & ~IEEE80211_CHAN_RADAR)
-                        return false;
-	}
-
-	return true;
-}
-
 /* check if the operating channels are valid and supported */
 static bool cfg80211_edmg_usable(struct wiphy *wiphy, u8 edmg_channels,
 				 enum ieee80211_edmg_bw_config edmg_bw_config,
@@ -1334,6 +1302,13 @@ bool _cfg80211_chandef_usable(struct wiphy *wiphy,
 			return false;
 		if (c->flags & permitting_flags)
 			continue;
+
+                /* check for radar flags */
+                if ((!(wiphy->flags & WIPHY_FLAG_DFS_OFFLOAD)) &&
+                    (prohibited_flags & c->flags & IEEE80211_CHAN_RADAR) &&
+                    (c->dfs_state != NL80211_DFS_AVAILABLE))
+                        return false;
+
 		if (c->flags & prohibited_flags)
 			return false;
 	}
