@@ -136,6 +136,12 @@ struct f_uas {
 #define USBG_IS_BOT		(1 << 3)
 #define USBG_BOT_CMD_PEND	(1 << 4)
 
+	struct work_struct	delayed_set_alt;
+	spinlock_t		delayed_set_alt_lock; /* protects delayed_set_alt_* */
+	unsigned int		delayed_alt;
+	unsigned int		delayed_set_alt_state;
+	bool			delayed_set_alt_cancel;
+
 	struct usbg_cdb		cmd[USBG_NUM_CMDS];
 	struct usb_ep		*ep_in;
 	struct usb_ep		*ep_out;
