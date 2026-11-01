@@ -362,7 +362,7 @@ static inline int __gpio_get_value(unsigned gpio)
 {
        return gpiod_get_raw_value(gpio_to_desc(gpio));
 }
-static inline void __gpio_set_value(unsigned gpio, int value)
+static inline int __gpio_set_value(unsigned gpio, int value)
 {
        return gpiod_set_raw_value(gpio_to_desc(gpio), value);
 }

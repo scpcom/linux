@@ -74,7 +74,7 @@ static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 		dmabuf = gdmabuf[pop_count];
 		fd_dma = gfd_dmabuf[pop_count];
 		pop_count ++;
-		fd = dma_buf_fd(dmabuf, fd_flags);
+		fd = get_unused_fd_flags(fd_flags);
 		if (fd < 0) {
 			printk("%s %d: error! heap_flags:%x, fd: %d\n",__func__,__LINE__, heap_flags, fd);
 			dma_buf_put(dmabuf);
@@ -89,7 +89,7 @@ static int dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 	if (IS_ERR(dmabuf))
 		return PTR_ERR(dmabuf);
 
-	fd = dma_buf_fd(dmabuf, fd_flags);
+	fd = get_unused_fd_flags(fd_flags);
 	if (fd < 0) {
 		dma_buf_put(dmabuf);
 		/* just return, as put will call release and that will free */
@@ -124,35 +124,38 @@ static int dma_heap_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static long dma_heap_ioctl_allocate(struct file *file, void *data)
+static struct dma_buf *dma_heap_ioctl_allocate(struct file *file, void *data)
 {
 	struct dma_heap_allocation_data *heap_allocation = data;
 	struct dma_heap *heap = file->private_data;
+	struct dma_buf *dmabuf;
 	int fd;
 
 	if (heap_allocation->fd)
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	if (heap_allocation->fd_flags & ~DMA_HEAP_VALID_FD_FLAGS)
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	if (heap_allocation->heap_flags & ~DMA_HEAP_VALID_HEAP_FLAGS) {
 		//TODO: flags define
 		if (heap_allocation->heap_flags == 0xff || heap_allocation->heap_flags == 0xf0)
 			printk("%s,%d: heap_flas: %llx\n", __func__, __LINE__, heap_allocation->heap_flags);
 		else
-			return -EINVAL;
+			return ERR_PTR(-EINVAL);
 	}
 
 	fd = dma_heap_buffer_alloc(heap, heap_allocation->len,
 				   heap_allocation->fd_flags,
 				   heap_allocation->heap_flags);
-	if (fd < 0)
-		return fd;
+
+	if (fd < 0) {
+		return ERR_PTR(fd);
+	}
 
 	heap_allocation->fd = fd;
 
-	return 0;
+	return dmabuf;
 }
 
 static unsigned int dma_heap_ioctl_cmds[] = {
@@ -168,6 +171,8 @@ static long dma_heap_ioctl(struct file *file, unsigned int ucmd,
 	unsigned int in_size, out_size, drv_size, ksize;
 	int nr = _IOC_NR(ucmd);
 	int ret = 0;
+	int fd;
+	struct dma_buf *dmabuf;
 
 	if (nr >= ARRAY_SIZE(dma_heap_ioctl_cmds))
 		return -EINVAL;
@@ -204,15 +209,28 @@ static long dma_heap_ioctl(struct file *file, unsigned int ucmd,
 
 	switch (kcmd) {
 	case DMA_HEAP_IOCTL_ALLOC:
-		ret = dma_heap_ioctl_allocate(file, kdata);
+		dmabuf = dma_heap_ioctl_allocate(file, kdata);
+
+		if (IS_ERR(dmabuf)) {
+			ret = PTR_ERR(dmabuf);
+			break;
+		}
+
+		fd = ((struct dma_heap_allocation_data *)kdata)->fd;
+		if (copy_to_user((void __user *)arg, kdata, out_size) != 0) {
+			put_unused_fd(fd);
+			dma_buf_put(dmabuf);
+			ret = -EFAULT;
+		} else {
+			fd_install(fd, dmabuf->file);
+		}
+
 		break;
 	default:
 		ret = -ENOTTY;
 		goto err;
 	}
 
-	if (copy_to_user((void __user *)arg, kdata, out_size) != 0)
-		ret = -EFAULT;
 err:
 	if (kdata != stack_kdata)
 		kfree(kdata);
