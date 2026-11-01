@@ -750,7 +750,7 @@ static void rk8xx_device_shutdown(void)
 /* Called in syscore shutdown */
 static void (*pm_shutdown)(void);
 
-static void rk8xx_syscore_shutdown(void)
+static void rk8xx_syscore_shutdown(void *data)
 {
 	int ret;
 	struct device *dev = rk8xx_dev;
@@ -801,8 +801,12 @@ static void rk8xx_syscore_shutdown(void)
 	}
 }
 
-static struct syscore_ops rk808_syscore_ops = {
+static const struct syscore_ops rk808_syscore_ops = {
 	.shutdown = rk8xx_syscore_shutdown,
+};
+
+static struct syscore rk808_syscore = {
+	.ops = &rk808_syscore_ops,
 };
 
 /*
@@ -1261,7 +1265,7 @@ int rk8xx_probe(struct device *dev, int variant, unsigned int irq, struct regmap
 					 rk808->pm_pwroff_prep_fn, NULL);
 
 		if (device_shutdown_fn) {
-			register_syscore_ops(&rk808_syscore_ops);
+			register_syscore(&rk808_syscore);
 			/* power off system in the syscore shutdown ! */
 			pm_shutdown = device_shutdown_fn;
 		}
@@ -1307,7 +1311,7 @@ void rk8xx_remove(struct device *dev)
 		pm_power_off = NULL;
 
 	if (pm_shutdown)
-		unregister_syscore_ops(&rk808_syscore_ops);
+		unregister_syscore(&rk808_syscore);
 }
 EXPORT_SYMBOL_GPL(rk8xx_remove);
 
