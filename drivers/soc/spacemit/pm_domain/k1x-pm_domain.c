@@ -801,7 +801,7 @@ static void spacemit_pm_domain_cleanup(struct spacemit_pmu *pmu)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int acpr_per_suspend(void)
+static int acpr_per_suspend(void* data)
 {
 	unsigned int apcr_per;
 	unsigned int apcr_clear = 0, apcr_set = (1 << PM_QOS_PE_VOTE_AP_SLPEN_OFFSET);
@@ -842,7 +842,7 @@ static int acpr_per_suspend(void)
 	return 0;
 }
 
-static void acpr_per_resume(void)
+static void acpr_per_resume(void* data)
 {
 	unsigned int apcr_per;
 
@@ -858,9 +858,13 @@ static void acpr_per_resume(void)
 	regmap_write(gpmu->regmap[MPMU_REGMAP_INDEX], MPMU_AWUCRM_REG, apcr_per);
 }
 
-static struct syscore_ops acpr_per_syscore_ops = {
+static const struct syscore_ops acpr_per_syscore_ops = {
 	.suspend = acpr_per_suspend,
 	.resume = acpr_per_resume,
+};
+
+static struct syscore acpr_per_syscore = {
+	.ops = &acpr_per_syscore_ops,
 };
 #endif
 
@@ -949,7 +953,7 @@ static int spacemit_pm_domain_probe(struct platform_device *pdev)
 	gpmu = pmu;
 
 #ifdef CONFIG_PM_SLEEP
-	register_syscore_ops(&acpr_per_syscore_ops);
+	register_syscore(&acpr_per_syscore);
 #endif
 	return 0;
 
