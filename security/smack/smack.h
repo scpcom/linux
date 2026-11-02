@@ -303,9 +303,10 @@ int smack_populate_secattr(struct smack_known *skp);
 /*
  * Shared data.
  */
-extern int smack_enabled;
-extern int smack_cipso_direct;
-extern int smack_cipso_mapped;
+extern int smack_enabled __initdata;
+extern u8  smack_cipso_auto_level[2];
+#define smack_cipso_direct (+smack_cipso_auto_level[0])
+#define smack_cipso_mapped (+smack_cipso_auto_level[1])
 extern struct smack_known *smack_net_ambient;
 extern struct smack_known *smack_syslog_label;
 #ifdef CONFIG_SECURITY_SMACK_BRINGUP
@@ -356,6 +357,11 @@ static inline struct smack_known **smack_msg_msg(const struct msg_msg *msg)
 static inline struct smack_known **smack_ipc(const struct kern_ipc_perm *ipc)
 {
 	return ipc->security + smack_blob_sizes.lbs_ipc;
+}
+
+static inline struct socket_smack *smack_sock(const struct sock *sock)
+{
+	return sock->sk_security + smack_blob_sizes.lbs_sock;
 }
 
 /*

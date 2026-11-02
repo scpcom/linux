@@ -1791,6 +1791,13 @@ struct batadv_priv {
 	/** @bat_v: B.A.T.M.A.N. V per soft-interface private data */
 	struct batadv_priv_bat_v bat_v;
 #endif
+
+	/**
+	 * @softif_destroy: whether the mesh_free() is called via the
+	 *  batadv_softif_destroy_sysfs() or batadv_softif_destroy_netlink()
+	 *  codepath and doesn't have to clean up the untagged VLAN (sysfs)
+	 */
+	bool softif_destroy:1;
 };
 
 /**
@@ -2380,7 +2387,7 @@ struct batadv_dat_entry {
 	__be32 ip;
 
 	/** @mac_addr: the MAC address associated to the stored IPv4 */
-	u8 mac_addr[ETH_ALEN];
+	atomic64_t mac_addr;
 
 	/** @vid: the vlan ID associated to this entry */
 	unsigned short vid;
