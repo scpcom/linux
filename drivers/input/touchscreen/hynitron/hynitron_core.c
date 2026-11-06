@@ -1565,13 +1565,13 @@ static int hyn_parse_dt(struct device *dev, struct hynitron_ts_platform_data *pd
 	    return -1;
 	}
 #else	
-	pdata->reset_gpio = of_get_named_gpio_flags(np, "hynitron,reset-gpio", 0, &pdata->reset_gpio_flags);
+	pdata->reset_gpio = of_get_named_gpio(np, "hynitron,reset-gpio", 0);
 	if (pdata->reset_gpio < 0){
 		HYN_ERROR("DTS Unable to get reset_gpio");
 		return -1;
 	}
 
-	pdata->irq_gpio = of_get_named_gpio_flags(np, "hynitron,irq-gpio", 0, &pdata->irq_gpio_flags);
+	pdata->irq_gpio = of_get_named_gpio(np, "hynitron,irq-gpio", 0);
 	if (pdata->irq_gpio < 0){
 		HYN_ERROR("DTS Unable to get irq_gpio");
 		return -1;

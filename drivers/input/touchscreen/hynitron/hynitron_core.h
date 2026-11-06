@@ -171,7 +171,6 @@ struct hynitron_ts_platform_data{
 	int irq_gpio;
 	u32 irq_gpio_flags;
 	int reset_gpio;
-	u32 reset_gpio_flags;
 	u32 x_resolution;
 	u32 y_resolution;
 	u32  max_key_num;
