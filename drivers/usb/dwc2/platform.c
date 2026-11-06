@@ -949,7 +949,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	int retval;
 #if IS_ENABLED(CONFIG_ARCH_CVITEK)
 	struct cviusb_dev *cviusb;
-	enum of_gpio_flags	flags;
 #endif
 
 	hsotg = devm_kzalloc(&dev->dev, sizeof(*hsotg), GFP_KERNEL);
@@ -1180,9 +1179,12 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
 	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
 
-	hsotg->cviusb.vbus_pin = of_get_named_gpio_flags(dev->dev.of_node,
-				"vbus-gpio", 0, &flags);
-	hsotg->cviusb.vbus_pin_inverted = (flags & OF_GPIO_ACTIVE_LOW) ? 1 : 0;
+	hsotg->cviusb.vbus_pin = of_get_named_gpio(dev->dev.of_node,
+				"vbus-gpio", 0);
+	if (gpio_is_valid(hsotg->cviusb.vbus_pin))
+		hsotg->cviusb.vbus_pin_inverted = (gpiod_is_active_low(gpio_to_desc(hsotg->cviusb.vbus_pin))) ? 1 : 0;
+	else
+		hsotg->cviusb.vbus_pin_inverted = 0;
 	dev_dbg(hsotg->dev, "vbus_pin = %d, flags = %d\n",
 			hsotg->cviusb.vbus_pin, hsotg->cviusb.vbus_pin_inverted);
 	if (gpio_is_valid(hsotg->cviusb.vbus_pin)) {
