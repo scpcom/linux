@@ -611,7 +611,6 @@ static int cv181xdac_probe(struct platform_device *pdev)
 	struct cv181xdac *dac;
 	struct resource *res;
 	int ret;
-	enum of_gpio_flags flags;
 
 	mute_pin_l =  -EINVAL;
 	mute_pin_r =  -EINVAL;
@@ -637,10 +636,10 @@ static int cv181xdac_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	mute_pin_l = of_get_named_gpio_flags(pdev->dev.of_node,
-		"mute-gpio-l", 0, &flags);
-	mute_pin_r = of_get_named_gpio_flags(pdev->dev.of_node,
-		"mute-gpio-r", 0, &flags);
+	mute_pin_l = of_get_named_gpio(pdev->dev.of_node,
+		"mute-gpio-l", 0);
+	mute_pin_r = of_get_named_gpio(pdev->dev.of_node,
+		"mute-gpio-r", 0);
 
 	if (!gpio_is_valid(mute_pin_l)) {
 		pr_err("cvitekadac_probe gpio_is_valid mute_pin_l\n");
