@@ -92,10 +92,9 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
 	struct device *dev = par->info->device;
 	struct device_node *node = dev->of_node;
 	int gpio, flags, ret = 0;
-	enum of_gpio_flags of_flags;
 
 	if (of_find_property(node, name, NULL)) {
-		gpio = of_get_named_gpio_flags(node, name, index, &of_flags);
+		gpio = of_get_named_gpio(node, name, index);
 		if (gpio == -ENOENT)
 			return 0;
 		if (gpio == -EPROBE_DEFER)
@@ -106,7 +105,7 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
 		}
 
 		//active low translates to initially low
-		flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+		flags = (gpiod_is_active_low(gpio_to_desc(gpio))) ? GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
 		ret = devm_gpio_request_one(dev, gpio, flags, dev->driver->name);
 		if (ret) {
 			dev_err(dev,
