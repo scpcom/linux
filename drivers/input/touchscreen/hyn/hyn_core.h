@@ -157,9 +157,7 @@ struct hyn_plat_data {
     struct regulator *vdd_i2c;
 
     int reset_gpio;
-    u32 reset_gpio_flags;
     int irq_gpio;
-    u32 irq_gpio_flags;
 
     struct pinctrl *pinctl;
     struct pinctrl_state *pin_active;
