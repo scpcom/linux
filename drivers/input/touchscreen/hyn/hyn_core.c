@@ -62,8 +62,8 @@ static int hyn_parse_dt(struct hyn_ts_data *ts_data)
         else{
             HYN_INFO("vdd_i2c not config");
         }
-        dt->reset_gpio = of_get_named_gpio_flags(np, "reset-gpio", 0, &dt->reset_gpio_flags);
-        dt->irq_gpio = of_get_named_gpio_flags(np, "irq-gpio", 0, &dt->irq_gpio_flags);
+        dt->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+        dt->irq_gpio = of_get_named_gpio(np, "irq-gpio", 0);
         if(dt->reset_gpio < 0 || dt->irq_gpio < 0){
             HYN_ERROR("dts get gpio failed");
             return -ENODEV;
@@ -419,6 +419,7 @@ static void hyn_esdcheck_work(struct work_struct *work)
 static void hyn_resum(struct device *dev)
 {
     int ret = 0;
+    u32 irq_gpio_flags = 0;
     HYN_ENTER();
 #if (HYN_WAKE_LOCK_EN==1)
     wake_unlock(&hyn_data->tp_wakelock);
@@ -434,7 +435,7 @@ static void hyn_resum(struct device *dev)
     else if(hyn_data->gesture_is_enable){
         hyn_irq_set(hyn_data,DISABLE);
         ret = disable_irq_wake(hyn_data->client->irq);
-        ret |= irq_set_irq_type(hyn_data->client->irq,hyn_data->plat_data.irq_gpio_flags); 
+        ret |= irq_set_irq_type(hyn_data->client->irq,irq_gpio_flags);
         if(ret < 0){
             HYN_ERROR("gesture irq_set_irq failed");
         }  
