@@ -1188,8 +1188,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dev_dbg(hsotg->dev, "vbus_pin = %d, flags = %d\n",
 			hsotg->cviusb.vbus_pin, hsotg->cviusb.vbus_pin_inverted);
 	if (gpio_is_valid(hsotg->cviusb.vbus_pin)) {
-		if (!devm_gpio_request(&dev->dev,
-			hsotg->cviusb.vbus_pin, "cviusb-otg")) {
+		if (!devm_gpio_request_one(&dev->dev,
+			hsotg->cviusb.vbus_pin, GPIOF_IN, "cviusb-otg")) {
 			irq_set_status_flags(gpio_to_irq(hsotg->cviusb.vbus_pin),
 					IRQ_NOAUTOEN);
 			retval = devm_request_threaded_irq(&dev->dev,
