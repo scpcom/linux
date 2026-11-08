@@ -1,6 +1,5 @@
 / {
 	soc {
-		/delete-node/ cv-emmc@4300000;
 		/delete-node/ cv-spinf@4060000;
 	};
 };
