@@ -472,7 +472,7 @@ static unsigned int sdhci_cvi_general_get_max_clock(struct sdhci_host *host)
 }
 
 /* Used for wifi driver due if no SD card detect pin implemented */
-static struct mmc_host *wifi_mmc;
+static struct mmc_host *wifi_mmc = NULL;
 
 int cvi_sdio_rescan(void)
 {
@@ -1258,6 +1258,8 @@ static int sdhci_cvi_probe(struct platform_device *pdev)
 
 	pdata = match->data;
 
+	msleep(50);
+
 	host = sdhci_pltfm_init(pdev, pdata, sizeof(*cvi_host));
 	if (IS_ERR(host))
 		return PTR_ERR(host);
@@ -1333,8 +1335,7 @@ static int sdhci_cvi_probe(struct platform_device *pdev)
 
 		if (device_create_file(&host->mmc->class_dev, &dev_attr_rescan))
 			pr_err("Fail to create rescan sysfs file.\n");
-	} else
-		wifi_mmc = NULL;
+	}
 
 	/* device proc entry */
 	if ((!proc_cvi_dir) &&
@@ -1361,6 +1362,10 @@ static int sdhci_cvi_remove(struct platform_device *pdev)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_cvi_host *cvi_host = sdhci_pltfm_priv(pltfm_host);
 	int dead = (readl_relaxed(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
+
+	if (wifi_mmc == host->mmc) {
+		wifi_mmc = NULL;
+	}
 
 	sdhci_remove_host(host, dead);
 	sdhci_pltfm_free(pdev);
