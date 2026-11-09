@@ -4,6 +4,7 @@
 
 &mipi_rx{
 	snsr-reset = <&portc 13 GPIO_ACTIVE_LOW>, <&portc 13 GPIO_ACTIVE_LOW>, <&portc 13 GPIO_ACTIVE_LOW>;
+	snsr-reset-gpios = <&portc 13 GPIO_ACTIVE_LOW>, <&portc 13 GPIO_ACTIVE_LOW>, <&portc 13 GPIO_ACTIVE_LOW>;
 };
 
 &mipi_tx {

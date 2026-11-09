@@ -692,6 +692,7 @@
 		      <0x0 0x03001c30 0x0 0x30>;
 		reg-names = "csi_mac0", "csi_wrap0", "csi_mac1", "csi_mac2", "pad_ctrl";
 		snsr-reset = <&porta 2 GPIO_ACTIVE_LOW>, <&porta 2 GPIO_ACTIVE_LOW>, <&porta 2 GPIO_ACTIVE_LOW>;
+		snsr-reset-gpios = <&porta 2 GPIO_ACTIVE_LOW>, <&porta 2 GPIO_ACTIVE_LOW>, <&porta 2 GPIO_ACTIVE_LOW>;
 		resets = <&rst RST_CSIPHY0>, <&rst RST_CSIPHY1>,
 			<&rst RST_CSIPHY0RST_APB>, <&rst RST_CSIPHY1RST_APB>;
 		reset-names = "phy0", "phy1", "phy-apb0", "phy-apb1";

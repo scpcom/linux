@@ -636,6 +636,7 @@
 		interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "csi0", "csi1";
 		snsr-reset = <&portd 7 GPIO_ACTIVE_LOW>, <&portd 7 GPIO_ACTIVE_LOW>;
+		snsr-reset-gpios = <&portd 7 GPIO_ACTIVE_LOW>, <&portd 7 GPIO_ACTIVE_LOW>;
 		resets = <&rst RST_CSIPHY0>, <&rst RST_CSIPHY1>,
 			<&rst RST_CSIPHY0RST_APB>, <&rst RST_CSIPHY1RST_APB>;
 		reset-names = "phy0", "phy1", "phy-apb0", "phy-apb1";
