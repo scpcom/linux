@@ -47,7 +47,19 @@
 			reg = <0x00>;
 			status = "okay";
 			compatible = "riscv";
-			riscv,isa = "rv64imafdvcsu";
+			//riscv,isa = "rv64imafdvcsu";
+			riscv,isa = "rv64imafdc";
+			riscv,isa-base = "rv64i";
+			riscv,isa-extensions = "i", "m", "a", "f", "d", "c",
+					       "zicntr", "zicsr",
+					       "zifencei", "zihpm",
+					       "xtheadvector";
+			d-cache-block-size = <64>;
+			d-cache-sets = <512>;
+			d-cache-size = <65536>;
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <32768>;
 			mmu-type = "riscv,sv39";
 			clock-frequency = <25000000>;
 
