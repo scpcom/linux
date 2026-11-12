@@ -116,7 +116,7 @@ static __always_inline bool has_vector(void)
 
 static inline void __riscv_v_vstate_clean(struct pt_regs *regs)
 {
-	xlen_t sr_vs, sr_vs_clean;
+	unsigned long sr_vs, sr_vs_clean;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 	ALT_SR_VS(sr_vs_clean, SR_VS_CLEAN);
@@ -126,7 +126,7 @@ static inline void __riscv_v_vstate_clean(struct pt_regs *regs)
 
 static inline void __riscv_v_vstate_dirty(struct pt_regs *regs)
 {
-	xlen_t sr_vs, sr_vs_dirty;
+	unsigned long sr_vs, sr_vs_dirty;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 	ALT_SR_VS(sr_vs_dirty, SR_VS_DIRTY);
@@ -142,7 +142,7 @@ static inline void riscv_v_vstate_off(struct pt_regs *regs)
 
 static inline void riscv_v_vstate_on(struct pt_regs *regs)
 {
-	xlen_t sr_vs, sr_vs_initial;
+	unsigned long sr_vs, sr_vs_initial;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 	ALT_SR_VS(sr_vs_initial, SR_VS_INITIAL);
@@ -152,7 +152,7 @@ static inline void riscv_v_vstate_on(struct pt_regs *regs)
 
 static inline bool riscv_v_vstate_query(struct pt_regs *regs)
 {
-	xlen_t sr_vs;
+	unsigned long sr_vs;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 
@@ -161,7 +161,7 @@ static inline bool riscv_v_vstate_query(struct pt_regs *regs)
 
 static __always_inline void riscv_v_enable(void)
 {
-	xlen_t sr_vs;
+	unsigned long sr_vs;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 
@@ -321,7 +321,7 @@ static inline void __riscv_v_vstate_discard(void)
 
 static inline void riscv_v_vstate_discard(struct pt_regs *regs)
 {
-	xlen_t sr_vs;
+	unsigned long sr_vs;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 
@@ -335,7 +335,7 @@ static inline void riscv_v_vstate_discard(struct pt_regs *regs)
 static inline void riscv_v_vstate_save(struct task_struct *task,
 				       struct pt_regs *regs)
 {
-	xlen_t sr_vs, sr_vs_dirty;
+	unsigned long sr_vs, sr_vs_dirty;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 	ALT_SR_VS(sr_vs_dirty, SR_VS_DIRTY);
@@ -362,7 +362,7 @@ static inline void riscv_m_mstate_save(struct task_struct *task,
 static inline void riscv_v_vstate_restore(struct task_struct *task,
 					  struct pt_regs *regs)
 {
-	xlen_t sr_vs;
+	unsigned long sr_vs;
 
 	ALT_SR_VS(sr_vs, SR_VS);
 
