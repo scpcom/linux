@@ -121,9 +121,9 @@ struct __riscv_v_regset_state {
 };
 
 struct __riscv_m_ext_state {
-	xlen_t xmrstart;
-	xlen_t xmcsr;
-	xlen_t xmsize;
+	unsigned long xmrstart;
+	unsigned long xmcsr;
+	unsigned long xmsize;
 	void *datap;
 };
 
