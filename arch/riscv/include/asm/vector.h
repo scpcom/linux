@@ -322,8 +322,20 @@ static inline void __riscv_v_vstate_discard(void)
 		"vmv.v.i	v24, -1\n\t"
 		"vsetvl		%0, x0, %1\n\t"
 		".option pop\n\t",
+#ifdef CONFIG_AS_HAS_OPTION_ARCH
+		".option push\n\t"
+		AS_OPTION_ARCH_XTHEADVECTOR
+		"th.vsetvli	%0, x0, e8, m8\n\t"
+		"th.vmv.v.i	v0, -1\n\t"
+		"th.vmv.v.i	v8, -1\n\t"
+		"th.vmv.v.i	v16, -1\n\t"
+		"th.vmv.v.i	v24, -1\n\t"
+		"th.vsetvl	%0, x0, %1\n\t"
+		".option pop\n\t", THEAD_VENDOR_ID,
+#else
 		/* FIXME: Do real vstate discard as above! */
 		__nops(6), THEAD_VENDOR_ID,
+#endif
 		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
 		: "=&r" (vl) : "r" (vtype_inval) : "memory");
 	riscv_v_disable();
