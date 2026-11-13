@@ -60,6 +60,7 @@ struct thread_struct {
 	unsigned long vstate_ctrl;
 	unsigned long status;
 	struct __riscv_v_ext_state vstate;
+	struct __riscv_m_ext_state mstate;
 };
 
 /* Whitelist the fstate from the task_struct for hardened usercopy */

@@ -18,10 +18,102 @@
 #include <asm/hwcap.h>
 #include <asm/csr.h>
 #include <asm/asm.h>
+#include <asm/insn-def.h>
+#include <asm/errata_list.h>
+
+#ifdef AS_HAS_OPTION_ARCH
+#define AS_OPTION_ARCH_V ".option arch, +v\n\t"
+#else
+#define AS_OPTION_ARCH_V
+#endif
+
+static __always_inline bool has_matrix(void)
+{
+	return riscv_has_extension_unlikely(RISCV_ISA_EXT_XTHEADMATRIX);
+}
+
+static inline void __riscv_m_mstate_clean(struct pt_regs *regs)
+{
+	regs->status = (regs->status & ~SR_MS) | SR_MS_CLEAN;
+}
+
+static inline void __riscv_m_mstate_dirty(struct pt_regs *regs)
+{
+	regs->status = (regs->status & ~SR_MS) | SR_MS_DIRTY;
+}
+
+static inline void riscv_m_mstate_off(struct pt_regs *regs)
+{
+	regs->status = (regs->status & ~SR_MS) | SR_MS_OFF;
+}
+
+static inline void riscv_m_mstate_on(struct pt_regs *regs)
+{
+	regs->status = (regs->status & ~SR_MS) | SR_MS_INITIAL;
+}
+
+static inline bool riscv_m_mstate_query(struct pt_regs *regs)
+{
+	return (regs->status & SR_MS) != 0;
+}
+
+static __always_inline void riscv_m_enable(void)
+{
+	csr_set(CSR_SSTATUS, SR_MS);
+}
+
+static __always_inline void riscv_m_disable(void)
+{
+	csr_clear(CSR_SSTATUS, SR_MS);
+}
+
+static __always_inline void __mstate_csr_save(struct __riscv_m_ext_state *dest)
+{
+	asm volatile (
+		"csrrw	%0, " __stringify(CSR_XMRSTART) ", 0\n\t"
+		"csrr	%1, " __stringify(CSR_XMCSR) "\n\t"
+		"csrr	%2, " __stringify(CSR_XMSIZE) "\n\t"
+		: "=r" (dest->xmrstart), "=r" (dest->xmcsr), "=r" (dest->xmsize)
+		: :);
+}
+
+static __always_inline void __mstate_csr_restore(struct __riscv_m_ext_state *src)
+{
+	asm volatile (
+		"csrw	" __stringify(CSR_XMRSTART) ", %0\n\t"
+		"csrw	" __stringify(CSR_XMCSR) ", %1\n\t"
+		"csrw	" __stringify(CSR_XMSIZE) ", %2\n\t"
+		: : "r" (src->xmrstart), "r" (src->xmcsr), "r" (src->xmsize)
+		:);
+}
+
+static inline void __riscv_m_mstate_save(struct __riscv_m_ext_state *save_to,
+					 void *datap)
+{
+	riscv_m_enable();
+	__mstate_csr_save(save_to);
+	asm volatile (
+		INSN_R(OPCODE_MATRIX, FUNC3(0), FUNC7(21), __RD(0), RS1(%0), __RS2(7))
+		: : "r" (datap) : "memory");
+	riscv_m_disable();
+}
+
+static inline void __riscv_m_mstate_restore(struct __riscv_m_ext_state *restore_from,
+					    void *datap)
+{
+	riscv_m_enable();
+	asm volatile (
+		"csrw	" __stringify(CSR_XMRSTART) ", 0\n\t"
+		INSN_R(OPCODE_MATRIX, FUNC3(0), FUNC7(20), __RD(0), RS1(%0), __RS2(7))
+		: : "r" (datap) : "memory");
+	__mstate_csr_restore(restore_from);
+	riscv_m_disable();
+}
 
 extern unsigned long riscv_v_vsize;
 int riscv_v_setup_vsize(void);
 bool riscv_v_first_use_handler(struct pt_regs *regs);
+int riscv_v_thread_zalloc(struct task_struct *tsk);
 
 static __always_inline bool has_vector(void)
 {
@@ -30,62 +122,117 @@ static __always_inline bool has_vector(void)
 
 static inline void __riscv_v_vstate_clean(struct pt_regs *regs)
 {
-	regs->status = (regs->status & ~SR_VS) | SR_VS_CLEAN;
+	unsigned long sr_vs, sr_vs_clean;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+	ALT_SR_VS(sr_vs_clean, SR_VS_CLEAN);
+
+	regs->status = (regs->status & ~sr_vs) | sr_vs_clean;
 }
 
 static inline void __riscv_v_vstate_dirty(struct pt_regs *regs)
 {
-	regs->status = (regs->status & ~SR_VS) | SR_VS_DIRTY;
+	unsigned long sr_vs, sr_vs_dirty;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+	ALT_SR_VS(sr_vs_dirty, SR_VS_DIRTY);
+
+	regs->status = (regs->status & ~sr_vs) | sr_vs_dirty;
 }
 
 static inline void riscv_v_vstate_off(struct pt_regs *regs)
 {
 	regs->status = (regs->status & ~SR_VS) | SR_VS_OFF;
+	regs->status = (regs->status & ~SR_VS_THEAD) | SR_VS_OFF_THEAD;
 }
 
 static inline void riscv_v_vstate_on(struct pt_regs *regs)
 {
-	regs->status = (regs->status & ~SR_VS) | SR_VS_INITIAL;
+	unsigned long sr_vs, sr_vs_initial;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+	ALT_SR_VS(sr_vs_initial, SR_VS_INITIAL);
+
+	regs->status = (regs->status & ~sr_vs) | sr_vs_initial;
 }
 
 static inline bool riscv_v_vstate_query(struct pt_regs *regs)
 {
-	return (regs->status & SR_VS) != 0;
+	unsigned long sr_vs;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+
+	return (regs->status & sr_vs) != 0;
 }
 
 static __always_inline void riscv_v_enable(void)
 {
-	csr_set(CSR_SSTATUS, SR_VS);
+	unsigned long sr_vs;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+
+	csr_set(CSR_SSTATUS, sr_vs);
 }
 
 static __always_inline void riscv_v_disable(void)
 {
-	csr_clear(CSR_SSTATUS, SR_VS);
+	csr_clear(CSR_SSTATUS, SR_VS | SR_VS_THEAD);
 }
 
 static __always_inline void __vstate_csr_save(struct __riscv_v_ext_state *dest)
 {
-	asm volatile (
+	register u32 t1 asm("t1") = (SR_FS);
+
+	asm volatile (ALTERNATIVE(
 		"csrr	%0, " __stringify(CSR_VSTART) "\n\t"
 		"csrr	%1, " __stringify(CSR_VTYPE) "\n\t"
 		"csrr	%2, " __stringify(CSR_VL) "\n\t"
 		"csrr	%3, " __stringify(CSR_VCSR) "\n\t"
 		"csrr	%4, " __stringify(CSR_VLENB) "\n\t"
+		__nops(4),
+		"csrs	sstatus, t1\n\t"
+		"csrr	%0, " __stringify(CSR_VSTART) "\n\t"
+		"csrr	%1, " __stringify(CSR_VTYPE) "\n\t"
+		"csrr	%2, " __stringify(CSR_VL) "\n\t"
+		"csrr	%3, " __stringify(THEAD_C9XX_CSR_VXRM) "\n\t"
+		"slliw	%3, %3, " __stringify(VCSR_VXRM_SHIFT) "\n\t"
+		"csrr	t4, " __stringify(THEAD_C9XX_CSR_VXSAT) "\n\t"
+		"or	%3, %3, t4\n\t"
+		"csrc	sstatus, t1\n\t",
+		THEAD_VENDOR_ID,
+		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
 		: "=r" (dest->vstart), "=r" (dest->vtype), "=r" (dest->vl),
-		  "=r" (dest->vcsr), "=r" (dest->vlenb) : :);
+		  "=r" (dest->vcsr), "=r" (dest->vlenb) : "r"(t1) : "t4");
 }
 
 static __always_inline void __vstate_csr_restore(struct __riscv_v_ext_state *src)
 {
-	asm volatile (
+	register u32 t1 asm("t1") = (SR_FS);
+
+	asm volatile (ALTERNATIVE(
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvl	 x0, %2, %1\n\t"
 		".option pop\n\t"
 		"csrw	" __stringify(CSR_VSTART) ", %0\n\t"
 		"csrw	" __stringify(CSR_VCSR) ", %3\n\t"
+		__nops(6),
+		"csrs	sstatus, t1\n\t"
+		".option push\n\t"
+		AS_OPTION_ARCH_V
+		"vsetvl	 x0, %2, %1\n\t"
+		".option pop\n\t"
+		"csrw	" __stringify(CSR_VSTART) ", %0\n\t"
+		"srliw	t4, %3, " __stringify(VCSR_VXRM_SHIFT) "\n\t"
+		"andi	t4, t4, " __stringify(VCSR_VXRM_MASK) "\n\t"
+		"csrw	" __stringify(THEAD_C9XX_CSR_VXRM) ", t4\n\t"
+		"andi	%3, %3, " __stringify(VCSR_VXSAT_MASK) "\n\t"
+		"csrw	" __stringify(THEAD_C9XX_CSR_VXSAT) ", %3\n\t"
+		"csrc	sstatus, t1\n\t",
+		THEAD_VENDOR_ID,
+		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
 		: : "r" (src->vstart), "r" (src->vtype), "r" (src->vl),
-		    "r" (src->vcsr) :);
+		    "r" (src->vcsr), "r"(t1) : "t4");
 }
 
 static inline void __riscv_v_vstate_save(struct __riscv_v_ext_state *save_to,
@@ -95,9 +242,10 @@ static inline void __riscv_v_vstate_save(struct __riscv_v_ext_state *save_to,
 
 	riscv_v_enable();
 	__vstate_csr_save(save_to);
-	asm volatile (
+	asm volatile (ALTERNATIVE(
+		"nop\n\t"
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vse8.v		v0, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
@@ -106,8 +254,18 @@ static inline void __riscv_v_vstate_save(struct __riscv_v_ext_state *save_to,
 		"vse8.v		v16, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
 		"vse8.v		v24, (%1)\n\t"
-		".option pop\n\t"
-		: "=&r" (vl) : "r" (datap) : "memory");
+		".option pop\n\t",
+		"mv		t0, %1\n\t"
+		THEAD_VSETVLI_T4X0E8M8D1
+		THEAD_VSB_V_V0T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VSB_V_V8T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VSB_V_V16T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VSB_V_V24T0, THEAD_VENDOR_ID,
+		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
+		: "=&r" (vl) : "r" (datap) : "t0", "t4", "memory");
 	riscv_v_disable();
 }
 
@@ -117,9 +275,10 @@ static inline void __riscv_v_vstate_restore(struct __riscv_v_ext_state *restore_
 	unsigned long vl;
 
 	riscv_v_enable();
-	asm volatile (
+	asm volatile (ALTERNATIVE(
+		"nop\n\t"
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vle8.v		v0, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
@@ -128,8 +287,18 @@ static inline void __riscv_v_vstate_restore(struct __riscv_v_ext_state *restore_
 		"vle8.v		v16, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
 		"vle8.v		v24, (%1)\n\t"
-		".option pop\n\t"
-		: "=&r" (vl) : "r" (datap) : "memory");
+		".option pop\n\t",
+		"mv		t0, %1\n\t"
+		THEAD_VSETVLI_T4X0E8M8D1
+		THEAD_VLB_V_V0T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VLB_V_V8T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VLB_V_V16T0
+		"addi		t0, t0, 128\n\t"
+		THEAD_VLB_V_V24T0, THEAD_VENDOR_ID,
+		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
+		: "=&r" (vl) : "r" (datap) : "t0", "t4", "memory");
 	__vstate_csr_restore(restore_from);
 	riscv_v_disable();
 }
@@ -139,23 +308,30 @@ static inline void __riscv_v_vstate_discard(void)
 	unsigned long vl, vtype_inval = 1UL << (BITS_PER_LONG - 1);
 
 	riscv_v_enable();
-	asm volatile (
+	asm volatile (ALTERNATIVE(
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vmv.v.i	v0, -1\n\t"
 		"vmv.v.i	v8, -1\n\t"
 		"vmv.v.i	v16, -1\n\t"
 		"vmv.v.i	v24, -1\n\t"
 		"vsetvl		%0, x0, %1\n\t"
-		".option pop\n\t"
+		".option pop\n\t",
+		/* FIXME: Do real vstate discard as above! */
+		__nops(6), THEAD_VENDOR_ID,
+		ERRATA_THEAD_VECTOR, CONFIG_ERRATA_THEAD_VECTOR)
 		: "=&r" (vl) : "r" (vtype_inval) : "memory");
 	riscv_v_disable();
 }
 
 static inline void riscv_v_vstate_discard(struct pt_regs *regs)
 {
-	if ((regs->status & SR_VS) == SR_VS_OFF)
+	unsigned long sr_vs;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+
+	if ((regs->status & sr_vs) == SR_VS_OFF)
 		return;
 
 	__riscv_v_vstate_discard();
@@ -165,7 +341,12 @@ static inline void riscv_v_vstate_discard(struct pt_regs *regs)
 static inline void riscv_v_vstate_save(struct task_struct *task,
 				       struct pt_regs *regs)
 {
-	if ((regs->status & SR_VS) == SR_VS_DIRTY) {
+	unsigned long sr_vs, sr_vs_dirty;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+	ALT_SR_VS(sr_vs_dirty, SR_VS_DIRTY);
+
+	if ((regs->status & sr_vs) == sr_vs_dirty) {
 		struct __riscv_v_ext_state *vstate = &task->thread.vstate;
 
 		__riscv_v_vstate_save(vstate, vstate->datap);
@@ -173,15 +354,51 @@ static inline void riscv_v_vstate_save(struct task_struct *task,
 	}
 }
 
+static inline void riscv_m_mstate_save(struct task_struct *task,
+				       struct pt_regs *regs)
+{
+	if ((regs->status & SR_MS) == SR_MS_DIRTY) {
+		struct __riscv_m_ext_state *mstate = &task->thread.mstate;
+
+		__riscv_m_mstate_save(mstate, mstate->datap);
+		__riscv_m_mstate_clean(regs);
+	}
+}
+
 static inline void riscv_v_vstate_restore(struct task_struct *task,
 					  struct pt_regs *regs)
 {
-	if ((regs->status & SR_VS) != SR_VS_OFF) {
+	unsigned long sr_vs;
+
+	ALT_SR_VS(sr_vs, SR_VS);
+
+	if ((regs->status & sr_vs) != SR_VS_OFF) {
 		struct __riscv_v_ext_state *vstate = &task->thread.vstate;
 
 		__riscv_v_vstate_restore(vstate, vstate->datap);
 		__riscv_v_vstate_clean(regs);
 	}
+}
+
+static inline void riscv_m_mstate_restore(struct task_struct *task,
+					  struct pt_regs *regs)
+{
+	if ((regs->status & SR_MS) != SR_MS_OFF) {
+		struct __riscv_m_ext_state *mstate = &task->thread.mstate;
+
+		__riscv_m_mstate_restore(mstate, mstate->datap);
+		__riscv_m_mstate_clean(regs);
+	}
+}
+
+static inline void __switch_to_matrix(struct task_struct *prev,
+				      struct task_struct *next)
+{
+	struct pt_regs *regs;
+
+	regs = task_pt_regs(prev);
+	riscv_m_mstate_save(prev, regs);
+	riscv_m_mstate_restore(next, task_pt_regs(next));
 }
 
 static inline void __switch_to_vector(struct task_struct *prev,
@@ -203,6 +420,7 @@ struct pt_regs;
 
 static inline int riscv_v_setup_vsize(void) { return -EOPNOTSUPP; }
 static __always_inline bool has_vector(void) { return false; }
+static __always_inline bool has_matrix(void) { return false; }
 static inline bool riscv_v_first_use_handler(struct pt_regs *regs) { return false; }
 static inline bool riscv_v_vstate_query(struct pt_regs *regs) { return false; }
 static inline bool riscv_v_vstate_ctrl_user_allowed(void) { return false; }
@@ -213,6 +431,12 @@ static inline bool riscv_v_vstate_ctrl_user_allowed(void) { return false; }
 #define __switch_to_vector(__prev, __next)	do {} while (0)
 #define riscv_v_vstate_off(regs)		do {} while (0)
 #define riscv_v_vstate_on(regs)			do {} while (0)
+
+#define riscv_m_mstate_save(task, regs)		do {} while (0)
+#define riscv_m_mstate_restore(task, regs)	do {} while (0)
+#define __switch_to_matrix(__prev, __next)	do {} while (0)
+#define riscv_m_mstate_off(regs)		do {} while (0)
+#define riscv_m_mstate_on(regs)			do {} while (0)
 
 #endif /* CONFIG_RISCV_ISA_V */
 
