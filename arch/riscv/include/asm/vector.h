@@ -23,8 +23,12 @@
 
 #ifdef CONFIG_AS_HAS_OPTION_ARCH
 #define AS_OPTION_ARCH_V ".option arch, +zve32x\n\t"
+#define AS_OPTION_ARCH_XTHEADVECTOR ".option arch, +xtheadvector\n\t"
+#define THEAD_VSETVL "th.vsetvl"
 #else
 #define AS_OPTION_ARCH_V
+#define AS_OPTION_ARCH_XTHEADVECTOR
+#define THEAD_VSETVL "vsetvl"
 #endif
 
 static __always_inline bool has_matrix(void)
@@ -231,8 +235,8 @@ static __always_inline void __vstate_csr_restore(struct __riscv_v_ext_state *src
 		__nops(6),
 		"csrs	sstatus, t1\n\t"
 		".option push\n\t"
-		AS_OPTION_ARCH_V
-		"vsetvl	 x0, %2, %1\n\t"
+		AS_OPTION_ARCH_XTHEADVECTOR
+		THEAD_VSETVL "	 x0, %2, %1\n\t"
 		".option pop\n\t"
 		"csrw	" __stringify(CSR_VSTART) ", %0\n\t"
 		"srliw	t4, %3, " __stringify(VCSR_VXRM_SHIFT) "\n\t"
