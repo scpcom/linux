@@ -941,6 +941,10 @@
 		i2c2 = &i2c2;
 		i2c3 = &i2c3;
 		i2c4 = &i2c4;
+		pwm0 = &pwm0;
+		pwm4 = &pwm1;
+		pwm8 = &pwm2;
+		pwm12 = &pwm3;
 		//spi0 = &spi0;
 		//spi1 = &spi1;
 		//spi2 = &spi2;
