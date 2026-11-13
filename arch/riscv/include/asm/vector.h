@@ -21,6 +21,12 @@
 #include <asm/insn-def.h>
 #include <asm/errata_list.h>
 
+#ifdef AS_HAS_OPTION_ARCH
+#define AS_OPTION_ARCH_V ".option arch, +v\n\t"
+#else
+#define AS_OPTION_ARCH_V
+#endif
+
 static __always_inline bool has_matrix(void)
 {
 	return riscv_has_extension_unlikely(RISCV_ISA_EXT_XTHEADMATRIX);
@@ -205,7 +211,7 @@ static __always_inline void __vstate_csr_restore(struct __riscv_v_ext_state *src
 
 	asm volatile (ALTERNATIVE(
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvl	 x0, %2, %1\n\t"
 		".option pop\n\t"
 		"csrw	" __stringify(CSR_VSTART) ", %0\n\t"
@@ -213,7 +219,7 @@ static __always_inline void __vstate_csr_restore(struct __riscv_v_ext_state *src
 		__nops(6),
 		"csrs	sstatus, t1\n\t"
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvl	 x0, %2, %1\n\t"
 		".option pop\n\t"
 		"csrw	" __stringify(CSR_VSTART) ", %0\n\t"
@@ -239,7 +245,7 @@ static inline void __riscv_v_vstate_save(struct __riscv_v_ext_state *save_to,
 	asm volatile (ALTERNATIVE(
 		"nop\n\t"
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vse8.v		v0, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
@@ -272,7 +278,7 @@ static inline void __riscv_v_vstate_restore(struct __riscv_v_ext_state *restore_
 	asm volatile (ALTERNATIVE(
 		"nop\n\t"
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vle8.v		v0, (%1)\n\t"
 		"add		%1, %1, %0\n\t"
@@ -304,7 +310,7 @@ static inline void __riscv_v_vstate_discard(void)
 	riscv_v_enable();
 	asm volatile (ALTERNATIVE(
 		".option push\n\t"
-		".option arch, +v\n\t"
+		AS_OPTION_ARCH_V
 		"vsetvli	%0, x0, e8, m8, ta, ma\n\t"
 		"vmv.v.i	v0, -1\n\t"
 		"vmv.v.i	v8, -1\n\t"
