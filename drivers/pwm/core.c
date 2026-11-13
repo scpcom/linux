@@ -1137,7 +1137,13 @@ int __pwmchip_add(struct pwm_chip *chip, struct module *owner)
 
 	chip->id = ret;
 
-	dev_set_name(&chip->dev, "pwmchip%u", chip->id);
+#if defined(CONFIG_ARCH_CVITEK)
+	ret = of_alias_get_id(pwmchip_parent(chip)->of_node, "pwm");
+	if (ret < 0)
+		ret = chip->id;
+#endif
+
+	dev_set_name(&chip->dev, "pwmchip%u", ret);
 
 	if (IS_ENABLED(CONFIG_OF))
 		of_pwmchip_add(chip);
