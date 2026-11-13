@@ -1954,10 +1954,11 @@ extern void sched_set_fifo_low(struct task_struct *p);
 extern void sched_set_normal(struct task_struct *p, int nice);
 #ifdef CONFIG_SCHED_CVITEK
 extern int sched_setattr(struct task_struct *, struct sched_attr *);
+extern int sched_setattr_nocheck(struct task_struct *, struct sched_attr *);
 #else
 extern int sched_setattr(struct task_struct *, const struct sched_attr *);
-#endif
 extern int sched_setattr_nocheck(struct task_struct *, const struct sched_attr *);
+#endif
 extern struct task_struct *idle_task(int cpu);
 
 /**

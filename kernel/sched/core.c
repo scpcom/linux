@@ -7952,8 +7952,14 @@ int sched_setattr(struct task_struct *p, const struct sched_attr *attr)
 }
 EXPORT_SYMBOL_GPL(sched_setattr);
 
+#ifdef CONFIG_SCHED_CVITEK
+int sched_setattr_nocheck(struct task_struct *p, struct sched_attr *attr)
+{
+	cvi_checkpriority(p, attr);
+#else
 int sched_setattr_nocheck(struct task_struct *p, const struct sched_attr *attr)
 {
+#endif
 	return __sched_setscheduler(p, attr, false, true);
 }
 EXPORT_SYMBOL_GPL(sched_setattr_nocheck);
