@@ -1011,6 +1011,13 @@ subsys_initcall(ion_device_create);
 #include <linux/fdtable.h>
 void ion_free(pid_t pid, int fd)
 {
+	if (current->pid != pid) {
+		pr_warn("%s(%d): pid %d is not the owner.\n", __func__, fd, current->pid);
+	}
+	if (!current->files) {
+		pr_err("%s(%d): no open fds.\n", __func__, fd);
+		return;
+	}
 	close_fd(fd);
 }
 EXPORT_SYMBOL(ion_free);
