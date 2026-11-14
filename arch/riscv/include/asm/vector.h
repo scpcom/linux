@@ -133,7 +133,8 @@ static inline u32 riscv_v_flags(void)
 
 static __always_inline bool has_vector(void)
 {
-	return riscv_has_extension_unlikely(RISCV_ISA_EXT_ZVE32X);
+	return riscv_has_extension_unlikely(RISCV_ISA_EXT_ZVE32X) ||
+		riscv_has_extension_unlikely(RISCV_ISA_EXT_XTHEADVECTOR);
 }
 
 static inline void __riscv_v_vstate_clean(struct pt_regs *regs)

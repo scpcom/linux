@@ -387,6 +387,7 @@ const struct riscv_isa_ext_data riscv_isa_ext[] = {
 	__RISCV_ISA_EXT_DATA(svpbmt, RISCV_ISA_EXT_SVPBMT),
 	__RISCV_ISA_EXT_DATA(svvptc, RISCV_ISA_EXT_SVVPTC),
 	__RISCV_ISA_EXT_DATA(xtheadmatrix, RISCV_ISA_EXT_XTHEADMATRIX),
+	__RISCV_ISA_EXT_DATA(xtheadvector, RISCV_ISA_EXT_XTHEADVECTOR),
 };
 
 const size_t riscv_isa_ext_count = ARRAY_SIZE(riscv_isa_ext);
@@ -880,7 +881,8 @@ void __init riscv_fill_hwcap(void)
 		elf_hwcap &= ~COMPAT_HWCAP_ISA_F;
 	}
 
-	if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_ZVE32X)) {
+	if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_ZVE32X) ||
+		__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_XTHEADVECTOR)) {
 		/*
 		 * This cannot fail when called on the boot hart
 		 */
