@@ -18,6 +18,7 @@
 #include <asm/csr.h>
 #include <asm/elf.h>
 #include <asm/ptrace.h>
+#include <asm/sbi.h>
 #include <asm/bug.h>
 
 static bool riscv_v_implicit_uacc = IS_ENABLED(CONFIG_RISCV_ISA_V_DEFAULT_ENABLE);
@@ -32,6 +33,13 @@ EXPORT_SYMBOL_GPL(riscv_v_vsize);
 int riscv_v_setup_vsize(void)
 {
 	unsigned long this_vsize;
+
+	if (sbi_get_mvendorid() == THEAD_VENDOR_ID &&
+	    sbi_get_marchid() == 0 &&
+	    sbi_get_mimpid() == 0) {
+		riscv_v_vsize = 128 / 8 * 32;
+		return 0;
+	}
 
 	/* There are 32 vector registers with vlenb length. */
 	riscv_v_enable();
@@ -99,6 +107,31 @@ static bool insn_is_vector(u32 insn_buf)
 	return false;
 }
 
+static bool insn_is_matrix(u32 insn_buf)
+{
+	u32 opcode = insn_buf & __INSN_OPCODE_MASK;
+	u32 csr;
+
+	/*
+	 * All M-related instructions, including CSR operations are 4-Byte. So,
+	 * do not handle if the instruction length is not 4-Byte.
+	 */
+	if (unlikely(GET_INSN_LENGTH(insn_buf) != 4))
+		return false;
+
+	switch (opcode) {
+	case 43:
+		return true;
+	case RVG_OPCODE_SYSTEM:
+		csr = RVG_EXTRACT_SYSTEM_CSR(insn_buf);
+		if ((csr >= CSR_XMRSTART && csr <= CSR_XMSIZE) ||
+		    (csr >= CSR_XMLENB && csr <= CSR_XMISA))
+			return true;
+	}
+
+	return false;
+}
+
 static int riscv_v_thread_ctx_alloc(struct kmem_cache *cache,
 				    struct __riscv_v_ext_state *ctx)
 {
@@ -113,6 +146,11 @@ static int riscv_v_thread_ctx_alloc(struct kmem_cache *cache,
 	ctx->vlenb = riscv_v_vsize / 32;
 
 	return 0;
+}
+
+int riscv_v_thread_zalloc(struct task_struct *tsk)
+{
+	return riscv_v_thread_ctx_alloc(riscv_v_kernel_cachep, &tsk->thread.vstate);
 }
 
 void riscv_v_thread_alloc(struct task_struct *tsk)
@@ -130,6 +168,25 @@ void riscv_v_thread_free(struct task_struct *tsk)
 	if (tsk->thread.kernel_vstate.datap)
 		kmem_cache_free(riscv_v_kernel_cachep, tsk->thread.kernel_vstate.datap);
 #endif
+}
+
+static int riscv_m_thread_zalloc(void)
+{
+	void *datap;
+	size_t alloc_size;
+
+	riscv_m_enable();
+	alloc_size = csr_read(CSR_XMLENB) * 8;
+	riscv_m_disable();
+
+	datap = kzalloc(alloc_size, GFP_KERNEL);
+	if (!datap)
+		return -ENOMEM;
+
+	current->thread.mstate.datap = datap;
+	memset(&current->thread.mstate, 0, offsetof(struct __riscv_m_ext_state,
+						    datap));
+	return 0;
 }
 
 #define VSTATE_CTRL_GET_CUR(x) ((x) & PR_RISCV_V_VSTATE_CTRL_CUR_MASK)
@@ -170,16 +227,24 @@ bool riscv_v_vstate_ctrl_user_allowed(void)
 }
 EXPORT_SYMBOL_GPL(riscv_v_vstate_ctrl_user_allowed);
 
-bool riscv_v_first_use_handler(struct pt_regs *regs)
+static bool __riscv_v_first_use_handler(struct pt_regs *regs)
 {
 	u32 __user *epc = (u32 __user *)regs->epc;
 	u32 insn = (u32)regs->badaddr;
+	bool check;
 
 	if (!has_vector())
 		return false;
 
 	/* Do not handle if V is not supported, or disabled */
-	if (!riscv_v_vstate_ctrl_user_allowed())
+	if (riscv_cached_mvendorid(0) == THEAD_VENDOR_ID &&
+	    riscv_cached_marchid(0) == 0 &&
+	    riscv_cached_mimpid(0) == 0) {
+		check = has_vector();
+	} else {
+		check = riscv_v_vstate_ctrl_user_allowed();
+	}
+	if (!check)
 		return false;
 
 	/* If V has been enabled then it is not the first-use trap */
@@ -213,6 +278,57 @@ bool riscv_v_first_use_handler(struct pt_regs *regs)
 	riscv_v_vstate_set_restore(current, regs);
 
 	return true;
+}
+
+static bool __riscv_m_first_use_handler(struct pt_regs *regs)
+{
+	u32 __user *epc = (u32 __user *)(ulong)regs->epc;
+	u32 insn = (u32)regs->badaddr;
+
+	/* Do not handle if Matrix is not supported, or disabled */
+	if (!has_matrix())
+		return false;
+
+	/* If Matrix has been enabled then it is not the first-use trap */
+	if (riscv_m_mstate_query(regs))
+		return false;
+
+	/* Get the instruction */
+	if (!insn) {
+		if (__get_user(insn, epc))
+			return false;
+	}
+
+	/* Filter out non-Matrix instructions */
+	if (!insn_is_matrix(insn))
+		return false;
+
+	/*
+	 * When datap  = NULL, it's the first use.
+	 * When datap != NULL, mrelease makes sstatus.ms=OFF.
+	 */
+	if (current->thread.mstate.datap == NULL) {
+		if (riscv_m_thread_zalloc()) {
+			force_sig(SIGBUS);
+			return true;
+		}
+		riscv_m_mstate_restore(current, regs);
+	}
+
+	riscv_m_mstate_on(regs);
+	return true;
+}
+
+bool riscv_v_first_use_handler(struct pt_regs *regs)
+{
+	bool ret;
+
+	ret = __riscv_v_first_use_handler(regs);
+
+	if (!ret)
+		ret = __riscv_m_first_use_handler(regs);
+
+	return ret;
 }
 
 void riscv_v_vstate_ctrl_init(struct task_struct *tsk)

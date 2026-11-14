@@ -120,6 +120,13 @@ struct __riscv_v_regset_state {
 	char vreg[];
 };
 
+struct __riscv_m_ext_state {
+	unsigned long xmrstart;
+	unsigned long xmcsr;
+	unsigned long xmsize;
+	void *datap;
+};
+
 /*
  * According to spec: The number of bits in a single vector register,
  * VLEN >= ELEN, which must be a power of 2, and must be no greater than

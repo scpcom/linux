@@ -30,13 +30,29 @@
 #define SR_VS_CLEAN	_AC(0x00000400, UL)
 #define SR_VS_DIRTY	_AC(0x00000600, UL)
 
+#define SR_VS_THEAD	_AC(0x01800000, UL) /* Vector Status */
+#define SR_VS_OFF_THEAD	_AC(0x00000000, UL)
+#define SR_VS_INITIAL_THEAD _AC(0x00800000, UL)
+#define SR_VS_CLEAN_THEAD _AC(0x01000000, UL)
+#define SR_VS_DIRTY_THEAD _AC(0x01800000, UL)
+/* VCSR flags */
+#define VCSR_VXRM_MASK			3
+#define VCSR_VXRM_SHIFT			1
+#define VCSR_VXSAT_MASK			1
+
+#define SR_MS		_AC(0x06000000, UL) /* Matrix Status */
+#define SR_MS_OFF	_AC(0x00000000, UL)
+#define SR_MS_INITIAL	_AC(0x02000000, UL)
+#define SR_MS_CLEAN	_AC(0x04000000, UL)
+#define SR_MS_DIRTY	_AC(0x06000000, UL)
+
 #define SR_XS		_AC(0x00018000, UL) /* Extension Status */
 #define SR_XS_OFF	_AC(0x00000000, UL)
 #define SR_XS_INITIAL	_AC(0x00008000, UL)
 #define SR_XS_CLEAN	_AC(0x00010000, UL)
 #define SR_XS_DIRTY	_AC(0x00018000, UL)
 
-#define SR_FS_VS	(SR_FS | SR_VS) /* Vector and Floating-Point Unit */
+#define SR_FS_VS	(SR_FS | SR_VS | SR_MS | SR_VS_THEAD) /* Vector and Floating-Point Unit */
 
 #ifndef CONFIG_64BIT
 #define SR_SD		_AC(0x80000000, UL) /* FS/VS/XS dirty */
@@ -411,6 +427,13 @@
 #define CSR_VL			0xc20
 #define CSR_VTYPE		0xc21
 #define CSR_VLENB		0xc22
+
+#define CSR_XMRSTART		0x801
+#define CSR_XMCSR		0x802
+#define CSR_XMSIZE		0x803
+#define CSR_XMLENB		0xcc0
+#define CSR_XRLENB		0xcc1
+#define CSR_XMISA		0xcc2
 
 /* Scalar Crypto Extension - Entropy */
 #define CSR_SEED		0x015
