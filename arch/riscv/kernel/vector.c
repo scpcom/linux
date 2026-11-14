@@ -150,7 +150,7 @@ static int riscv_v_thread_ctx_alloc(struct kmem_cache *cache,
 
 int riscv_v_thread_zalloc(struct task_struct *tsk)
 {
-	return riscv_v_thread_ctx_alloc(riscv_v_kernel_cachep, &tsk->thread.vstate);
+	return riscv_v_thread_ctx_alloc(riscv_v_user_cachep, &tsk->thread.vstate);
 }
 
 void riscv_v_thread_alloc(struct task_struct *tsk)
