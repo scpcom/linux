@@ -5,6 +5,19 @@
 	#size-cells = <0x2>;
 	#address-cells = <0x2>;
 
+	osc: oscillator {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <25000000>;
+		clock-output-names = "osc";
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		ranges;
+
 	top_misc:top_misc_ctrl@3000000 {
 		compatible = "syscon";
 		reg = <0x0 0x03000000 0x0 0x8000>;
@@ -14,13 +27,6 @@
 		#reset-cells = <1>;
 		compatible = "cvitek,clk-reset";
 		reg = <0x0 0x03002000 0x0 0x8>;
-	};
-
-	osc: oscillator {
-		#clock-cells = <0>;
-		compatible = "fixed-clock";
-		clock-frequency = <25000000>;
-		clock-output-names = "osc";
 	};
 
 	clk: clock-controller {
@@ -35,12 +41,6 @@
 		compatible = "cvitek,reset";
 		reg = <0x0 0x03003000 0x0 0x10>;
 	};
-
-	soc {
-		compatible = "simple-bus";
-		#address-cells = <0x02>;
-		#size-cells = <0x02>;
-		ranges;
 
 	restart: restart-controller {
 		compatible = "cvitek,restart";
